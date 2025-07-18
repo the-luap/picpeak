@@ -23,7 +23,6 @@ const { initializeTransporter, startEmailQueueProcessor } = require('./src/servi
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
-const logger = require('./src/utils/logger');
 
 // Import routes
 const authRoutes = require('./src/routes/auth-enhanced');

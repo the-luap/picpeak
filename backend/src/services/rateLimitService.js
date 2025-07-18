@@ -251,7 +251,7 @@ async function createAuthRateLimiter() {
         timestamp: new Date().toISOString(),
         headers: {
           'x-forwarded-for': req.headers['x-forwarded-for'],
-          'x-real-ip': req.headers['x-real-ip'
+          'x-real-ip': req.headers['x-real-ip']
         },
         requestUrl: req.originalUrl,
         authType: req.path.includes('admin') ? 'admin' : 'gallery',
