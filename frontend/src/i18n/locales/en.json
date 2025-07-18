@@ -494,6 +494,30 @@
       "sent": "Sent",
       "failed": "Failed",
       "lastUpdate": "Last update"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "umamiIntegration": "Umami Analytics Integration",
+      "enableUmami": "Enable Umami Analytics",
+      "umamiUrl": "Umami URL",
+      "umamiUrlHelp": "The URL of your Umami instance (e.g., https://analytics.yourdomain.com)",
+      "websiteId": "Website ID",
+      "websiteIdHelp": "Your Umami website ID (found in Umami dashboard)",
+      "shareUrl": "Share URL (Optional)",
+      "shareUrlHelp": "Public share URL for embedding the full dashboard (create in Umami)",
+      "umamiInfo": "About Umami Analytics",
+      "umamiInfoText": "Umami is a privacy-focused, open-source analytics platform. It tracks page views, unique visitors, and custom events without using cookies.",
+      "learnMore": "Learn more about Umami",
+      "saveAnalyticsSettings": "Save Analytics Settings",
+      "backendAnalytics": "Backend Analytics",
+      "backendAnalyticsText": "The system also tracks basic analytics server-side for security and performance monitoring.",
+      "tracked": "Tracked Metrics",
+      "galleryViews": "Gallery page views",
+      "photoDownloads": "Individual and bulk downloads",
+      "uniqueVisitors": "Unique visitors by IP",
+      "deviceTypes": "Device types from user agents",
+      "privacy": "Privacy",
+      "privacyText": "IP addresses are hashed for privacy. No personal data is stored. Analytics data is retained for 90 days."
     }
   },
   "analytics": {

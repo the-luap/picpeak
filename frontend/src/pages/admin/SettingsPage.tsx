@@ -21,7 +21,7 @@ import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
 
@@ -72,6 +72,14 @@ export const SettingsPage: React.FC = () => {
     recaptcha_secret_key: ''
   });
 
+  // Analytics settings state
+  const [analyticsSettings, setAnalyticsSettings] = useState({
+    umami_enabled: false,
+    umami_url: '',
+    umami_website_id: '',
+    umami_share_url: ''
+  });
+
   React.useEffect(() => {
     if (settings) {
       // Set the language if it's different from current
@@ -104,8 +112,16 @@ export const SettingsPage: React.FC = () => {
         recaptcha_site_key: settings.security_recaptcha_site_key || '',
         recaptcha_secret_key: settings.security_recaptcha_secret_key || ''
       });
+
+      // Extract analytics settings
+      setAnalyticsSettings({
+        umami_enabled: settings.analytics_umami_enabled || false,
+        umami_url: settings.analytics_umami_url || '',
+        umami_website_id: settings.analytics_umami_website_id || '',
+        umami_share_url: settings.analytics_umami_share_url || ''
+      });
     }
-  }, [settings]);
+  }, [settings, i18n]);
 
   // Save mutations
   const saveGeneralMutation = useMutation({
@@ -132,6 +148,24 @@ export const SettingsPage: React.FC = () => {
       const settingsData: Record<string, any> = {};
       Object.entries(securitySettings).forEach(([key, value]) => {
         settingsData[`security_${key}`] = value;
+      });
+      return settingsService.updateSettings(settingsData);
+    },
+    onSuccess: () => {
+      toast.success(t('toast.settingsSaved'));
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const saveAnalyticsMutation = useMutation({
+    mutationFn: async () => {
+      // Convert to the format expected by the API
+      const settingsData: Record<string, any> = {};
+      Object.entries(analyticsSettings).forEach(([key, value]) => {
+        settingsData[`analytics_${key}`] = value;
       });
       return settingsService.updateSettings(settingsData);
     },
@@ -201,6 +235,16 @@ export const SettingsPage: React.FC = () => {
             }`}
           >
             {t('settings.categories.title')}
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'analytics'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            {t('settings.analytics.title')}
           </button>
         </nav>
       </div>
@@ -748,6 +792,127 @@ export const SettingsPage: React.FC = () => {
                 <h3 className="text-sm font-semibold text-blue-900">{t('settings.categories.about')}</h3>
                 <p className="text-sm text-blue-700 mt-1">
                   {t('settings.categories.aboutText')}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.analytics.umamiIntegration')}</h2>
+            
+            <div className="space-y-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={analyticsSettings.umami_enabled}
+                  onChange={(e) => setAnalyticsSettings(prev => ({ ...prev, umami_enabled: e.target.checked }))}
+                  className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                />
+                <span className="ml-2 text-sm text-neutral-700">{t('settings.analytics.enableUmami')}</span>
+              </label>
+
+              {analyticsSettings.umami_enabled && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      {t('settings.analytics.umamiUrl')}
+                    </label>
+                    <Input
+                      type="url"
+                      value={analyticsSettings.umami_url}
+                      onChange={(e) => setAnalyticsSettings(prev => ({ ...prev, umami_url: e.target.value }))}
+                      placeholder="https://analytics.yourdomain.com"
+                      leftIcon={<Globe className="w-5 h-5 text-neutral-400" />}
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.analytics.umamiUrlHelp')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      {t('settings.analytics.websiteId')}
+                    </label>
+                    <Input
+                      type="text"
+                      value={analyticsSettings.umami_website_id}
+                      onChange={(e) => setAnalyticsSettings(prev => ({ ...prev, umami_website_id: e.target.value }))}
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      leftIcon={<Key className="w-5 h-5 text-neutral-400" />}
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.analytics.websiteIdHelp')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      {t('settings.analytics.shareUrl')}
+                    </label>
+                    <Input
+                      type="url"
+                      value={analyticsSettings.umami_share_url}
+                      onChange={(e) => setAnalyticsSettings(prev => ({ ...prev, umami_share_url: e.target.value }))}
+                      placeholder="https://analytics.yourdomain.com/share/..."
+                      leftIcon={<Activity className="w-5 h-5 text-neutral-400" />}
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.analytics.shareUrlHelp')}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">{t('settings.analytics.umamiInfo')}</p>
+                    <p>{t('settings.analytics.umamiInfoText')}</p>
+                    <a href="https://umami.is" target="_blank" rel="noopener noreferrer" className="underline mt-1 inline-block">
+                      {t('settings.analytics.learnMore')}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                variant="primary"
+                onClick={() => saveAnalyticsMutation.mutate()}
+                isLoading={saveAnalyticsMutation.isPending}
+                leftIcon={<Save className="w-5 h-5" />}
+              >
+                {t('settings.analytics.saveAnalyticsSettings')}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Backend Analytics Info */}
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.analytics.backendAnalytics')}</h2>
+            <p className="text-sm text-neutral-700 mb-4">{t('settings.analytics.backendAnalyticsText')}</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-neutral-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-neutral-900 mb-2">{t('settings.analytics.tracked')}</h3>
+                <ul className="text-xs text-neutral-600 space-y-1">
+                  <li>• {t('settings.analytics.galleryViews')}</li>
+                  <li>• {t('settings.analytics.photoDownloads')}</li>
+                  <li>• {t('settings.analytics.uniqueVisitors')}</li>
+                  <li>• {t('settings.analytics.deviceTypes')}</li>
+                </ul>
+              </div>
+              <div className="bg-neutral-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-neutral-900 mb-2">{t('settings.analytics.privacy')}</h3>
+                <p className="text-xs text-neutral-600">
+                  {t('settings.analytics.privacyText')}
                 </p>
               </div>
             </div>

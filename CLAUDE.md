@@ -39,6 +39,12 @@ docker-compose -f docker-compose.prod.yml up -d  # Production deployment
 pm2 start ecosystem.config.js                     # Alternative: PM2 deployment
 ```
 
+**⚠️ CRITICAL PRODUCTION NOTICE:**
+- Production runs on a SEPARATE SERVER - never assume local changes affect production
+- ALWAYS request production server details before any troubleshooting
+- NO trial-and-error approaches in production - data loss is unacceptable
+- Every change must be thoroughly analyzed and tested locally first
+
 ## Key Product Requirements (from PRD)
 
 ### Core Features
@@ -126,6 +132,41 @@ Background services run as separate processes:
 4. **File Processing**: Sharp library for thumbnail generation (300x300)
 5. **Frontend Status**: Only skeleton exists - requires full implementation based on PRD
 6. **Umami Analytics**: Track password entries, downloads, views, expiration warnings
+
+## Troubleshooting Guidelines
+
+### Before ANY Production Troubleshooting:
+1. **ALWAYS request specific details**:
+   - Production server URL/IP
+   - Current error messages/logs
+   - Recent changes or deployments
+   - Affected users/galleries
+   - Time of issue occurrence
+
+2. **Thorough Analysis Required**:
+   - Use detailed thinking/analysis for EVERY troubleshooting task
+   - Review all related code before suggesting changes
+   - Consider all potential side effects
+   - Never make assumptions about production environment
+
+3. **Safe Troubleshooting Steps**:
+   - First, reproduce issue in local/dev environment
+   - Analyze logs without modifying production
+   - Create detailed action plan before any changes
+   - Always have rollback strategy ready
+   - Document every step taken
+
+### Common Issues & Safe Approaches:
+- **Email not sending**: Check email_queue table, SMTP settings, service status
+- **Photos not loading**: Verify file permissions, storage paths, nginx config
+- **Gallery access issues**: Check JWT tokens, expiration dates, access_logs
+- **Performance problems**: Analyze with monitoring tools first, never experiment
+
+### Data Safety Rules:
+- NEVER delete or modify production data without explicit backup confirmation
+- ALWAYS verify backups exist before any data operations
+- NO direct database modifications without transaction safety
+- Log all actions for audit trail
 
 ## Environment Variables
 
@@ -259,3 +300,29 @@ const { theme, setTheme, setThemeByName } = useTheme();
 - System uptime: 99.9%
 - Email delivery rate: >98%
 - Successful archiving: 100%
+
+## Documentation & Development Practices
+
+### Documentation Guidelines:
+- **NEVER create new documentation files for simple tasks**
+- **ALWAYS update existing documentation (like this CLAUDE.md)**
+- Only create new .md files when explicitly requested
+- Avoid creating temporary scripts for one-off tasks
+
+### Development Best Practices:
+- Test all changes thoroughly in local environment first
+- Use version control for all changes
+- Keep commits atomic and well-described
+- Review impact on all integrated services
+- Consider backward compatibility
+- Update tests when changing functionality
+
+### Production Deployment Checklist:
+- [ ] All tests passing locally
+- [ ] Linting and type checks pass
+- [ ] Database migrations tested with rollback plan
+- [ ] Environment variables documented
+- [ ] Backup strategy confirmed
+- [ ] Monitoring alerts configured
+- [ ] Rollback procedure documented
+- [ ] Stakeholders notified of maintenance window

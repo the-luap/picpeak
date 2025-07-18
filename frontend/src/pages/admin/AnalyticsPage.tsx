@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -52,10 +52,8 @@ export const AnalyticsPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('7d');
   const [isEmbedMode, setIsEmbedMode] = useState(false);
   
-  // Check if Umami is configured
-  const umamiUrl = import.meta.env.VITE_UMAMI_URL;
-  // const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
-  const umamiShareUrl = import.meta.env.VITE_UMAMI_SHARE_URL;
+  // Check if Umami is configured from settings or environment
+  const [umamiConfig, setUmamiConfig] = useState<{ url?: string; shareUrl?: string }>({});
 
   // Fetch analytics data from backend
   const { data: apiData, isLoading, refetch } = useQuery({
@@ -72,6 +70,38 @@ export const AnalyticsPage: React.FC = () => {
     queryKey: ['admin-dashboard-stats'],
     queryFn: () => adminService.getDashboardStats(),
   });
+
+  // Fetch public settings to get Umami config
+  useEffect(() => {
+    const fetchUmamiConfig = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/settings`);
+        const settings = await response.json();
+        
+        if (settings.umami_enabled) {
+          setUmamiConfig({
+            url: settings.umami_url,
+            shareUrl: settings.umami_share_url
+          });
+        } else {
+          // Fall back to environment variables
+          setUmamiConfig({
+            url: import.meta.env.VITE_UMAMI_URL,
+            shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch Umami config:', error);
+        // Fall back to environment variables
+        setUmamiConfig({
+          url: import.meta.env.VITE_UMAMI_URL,
+          shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+        });
+      }
+    };
+
+    fetchUmamiConfig();
+  }, []);
 
   // Calculate trends and format data
   const analytics: ComponentAnalyticsData | undefined = React.useMemo(() => {
@@ -96,11 +126,15 @@ export const AnalyticsPage: React.FC = () => {
     const secondHalfDownloads = apiData.chartData.slice(halfPoint).reduce((sum, day) => sum + day.downloads, 0);
     const downloadsTrend = firstHalfDownloads > 0 ? ((secondHalfDownloads - firstHalfDownloads) / firstHalfDownloads) * 100 : 0;
 
-    // Format top galleries for downloads
-    const topGalleriesWithDownloads = apiData.topGalleries.map(gallery => ({
-      name: gallery.event_name,
-      downloads: gallery.views // Using views as download count for now
-    }));
+    // Get actual download data for top galleries - sort by downloads
+    const topGalleriesWithDownloads = apiData.topGalleries
+      .filter(gallery => gallery.downloads > 0) // Only show galleries with downloads
+      .sort((a, b) => (b.downloads || 0) - (a.downloads || 0)) // Sort by downloads
+      .slice(0, 5) // Take top 5
+      .map(gallery => ({
+        name: gallery.event_name,
+        downloads: gallery.downloads || 0
+      }));
 
     return {
       pageViews: {
@@ -122,7 +156,7 @@ export const AnalyticsPage: React.FC = () => {
       topPages: apiData.topGalleries.map(gallery => ({
         path: `/gallery/${gallery.slug}`,
         views: gallery.views,
-        uniqueVisitors: Math.round(gallery.views * 0.4) // Estimate unique visitors
+        uniqueVisitors: gallery.uniqueVisitors || gallery.views // Use actual unique visitors if available
       }))
     };
   }, [apiData]);
@@ -166,7 +200,7 @@ export const AnalyticsPage: React.FC = () => {
   }
 
   // If Umami is configured and embed mode is enabled, show the Umami dashboard
-  if (isEmbedMode && umamiShareUrl) {
+  if (isEmbedMode && umamiConfig.shareUrl) {
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
@@ -185,7 +219,7 @@ export const AnalyticsPage: React.FC = () => {
         
         <Card padding="none" className="overflow-hidden" style={{ height: '800px' }}>
           <iframe
-            src={umamiShareUrl}
+            src={umamiConfig.shareUrl}
             className="w-full h-full border-0"
             title="Umami Analytics Dashboard"
           />
@@ -203,7 +237,7 @@ export const AnalyticsPage: React.FC = () => {
           <p className="text-neutral-600 mt-1">{t('analytics.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
-          {umamiShareUrl && (
+          {umamiConfig.shareUrl && (
             <Button
               variant="outline"
               onClick={() => setIsEmbedMode(true)}
@@ -405,7 +439,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Configuration Notice */}
-      {!umamiUrl && (
+      {!umamiConfig.url && (
         <Card padding="md" className="mt-6 bg-amber-50 border-amber-200">
           <div className="flex items-start gap-3">
             <Activity className="w-5 h-5 text-amber-600 flex-shrink-0" />

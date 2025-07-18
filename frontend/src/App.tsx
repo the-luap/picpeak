@@ -44,17 +44,26 @@ function App() {
   // Initialize Umami Analytics based on settings
   useEffect(() => {
     const initializeAnalytics = async () => {
-      const umamiUrl = import.meta.env.VITE_UMAMI_URL;
-      const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
-      
-      if (umamiUrl && umamiWebsiteId) {
-        try {
-          // Fetch public settings to check if analytics is enabled
-          const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-          const settings = await response.json();
+      try {
+        // Fetch public settings to get Umami configuration
+        const response = await fetch(`${getApiBaseUrl()}/public/settings`);
+        const settings = await response.json();
+        
+        // Check if Umami is enabled and configured in backend settings
+        if (settings.umami_enabled && settings.umami_url && settings.umami_website_id) {
+          // Use backend configuration
+          analyticsService.initialize({
+            websiteId: settings.umami_website_id,
+            hostUrl: settings.umami_url,
+            autoTrack: true,
+            doNotTrack: true
+          });
+        } else {
+          // Fall back to environment variables if backend not configured
+          const umamiUrl = import.meta.env.VITE_UMAMI_URL;
+          const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
           
-          // Only initialize if analytics is enabled in settings
-          if (settings.enable_analytics !== false) {
+          if (umamiUrl && umamiWebsiteId && settings.enable_analytics !== false) {
             analyticsService.initialize({
               websiteId: umamiWebsiteId,
               hostUrl: umamiUrl,
@@ -62,9 +71,14 @@ function App() {
               doNotTrack: true
             });
           }
-        } catch (error) {
-          console.error('Failed to fetch settings for analytics:', error);
-          // Initialize analytics anyway if settings fetch fails
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings for analytics:', error);
+        // Fall back to environment variables on error
+        const umamiUrl = import.meta.env.VITE_UMAMI_URL;
+        const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+        
+        if (umamiUrl && umamiWebsiteId) {
           analyticsService.initialize({
             websiteId: umamiWebsiteId,
             hostUrl: umamiUrl,
