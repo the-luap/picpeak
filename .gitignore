@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Security - Never commit credentials
+ADMIN_CREDENTIALS.txt
+ADMIN_PASSWORD_RESET.txt
+*_CREDENTIALS.txt
+*_PASSWORD_RESET.txt
+
+# Storage and data
+storage/events/active/*
+storage/events/archived/*
+storage/thumbnails/*
+data/*.db
+data/*.db-journal
+logs/*
+
+# Build outputs
+build/
+dist/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Keep directory structure
+!storage/events/active/.gitkeep
+!storage/events/archived/.gitkeep
+!storage/thumbnails/.gitkeep
+!data/.gitkeep
+!logs/.gitkeep

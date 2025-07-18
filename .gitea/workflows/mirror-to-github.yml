@@ -1,0 +1,99 @@
+name: Mirror to GitHub
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history needed for mirroring
+
+      - name: Setup Git
+        run: |
+          git config --global user.name "the-luap"
+          git config --global user.email "paul-nothaft@hotmail.de"
+
+      - name: Debug - Show current branch and status
+        run: |
+          echo "Current branch:"
+          git branch -a
+          echo "Git status:"
+          git status
+          echo "Remote info:"
+          git remote -v
+
+      - name: Create filtered branch
+        run: |
+          # Clean up any existing github-mirror branch
+          git branch -D github-mirror || true
+          
+          # Create a new branch for GitHub
+          git checkout --orphan github-mirror
+          
+          # Remove sensitive files/directories
+          # Example: Remove .env files, private configs, etc.
+          git rm -r --cached .env* || true
+          git rm -r --cached backend/.env* || true
+          git rm -r --cached frontend/.env* || true
+          git rm -r --cached docker-compose.prod.yml || true
+          git rm -r --cached .claudedocs/ || true
+          git rm -r --cached backend/data/ || true
+          git rm -r --cached backend/storage/ || true
+          git rm -r --cached .gitea/ || true
+          git rm -r --cached scripts/install-gitea-runner.sh || true
+          git rm -r --cached .drone* || true
+          git rm -r --cached .github-mirror-exclude || true
+          git rm -r --cached .gitattributes-github || true
+          git rm -r --cached photo-sharing-prd.md || true
+          git rm -r --cached CLAUDE.md || true
+          git rm -r --cached PRODUCTION_DEPLOYMENT_GUIDE.md || true
+          git rm -r --cached logs/ || true
+          git rm -r --cached frontend/.claudedocs/ || true
+          git rm -r --cached test-maintenance.sh || true
+          git rm -r --cached storage/ || true
+
+        
+          # Commit the changes
+          git commit -m "Remove sensitive files for GitHub mirror" || true
+
+      - name: Check GitHub token
+        env:
+          GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
+        run: |
+          if [ -z "$GITHUBTOKEN" ]; then
+            echo "ERROR: GITHUBTOKEN secret is not set!"
+            exit 1
+          else
+            echo "GitHub token is available (length: ${#GITHUBTOKEN})"
+          fi
+
+      - name: Push to GitHub
+        env:
+          GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
+        run: |
+          # Remove existing github remote if it exists
+          git remote remove github || true
+          
+          # Add GitHub remote
+          git remote add github https://x-access-token:${GITHUBTOKEN}@github.com/the-luap/picpeak.git
+          
+          # Verify remote was added
+          echo "GitHub remote added:"
+          git remote -v
+          
+          # Force push the filtered branch to GitHub main
+          echo "Pushing to GitHub..."
+          git push github github-mirror:main --force
+          echo "Push completed successfully!"
+
+      - name: Workflow completed
+        run: |
+          echo "✅ Mirror to GitHub workflow completed successfully!"
+          echo "Check https://github.com/the-luap/picpeak to verify the mirror."

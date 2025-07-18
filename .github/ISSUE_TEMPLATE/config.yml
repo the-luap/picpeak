@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/the-luap/picpeak/blob/main/DEPLOYMENT.md
+    about: Please read the documentation before opening an issue
+  - name: 💬 Discussions
+    url: https://github.com/the-luap/picpeak/discussions
+    about: Ask questions and discuss with the community
+  - name: 🔒 Security Issues
+    url: https://github.com/the-luap/picpeak/blob/main/SECURITY.md
+    about: Please review our security policy for reporting vulnerabilities
