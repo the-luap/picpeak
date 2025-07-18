@@ -5,9 +5,13 @@ const router = express.Router();
 // Get public settings (branding and theme)
 router.get('/', async (req, res) => {
   try {
-    // Fetch branding, theme, general, security, and analytics settings
+    // Fetch branding, theme, general, and security settings
+    // Note: We include analytics in the query but it might not exist yet
     const settings = await db('app_settings')
-      .whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
+      .where(function() {
+        this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
+          .orWhere('setting_key', 'like', 'analytics_%');
+      })
       .select('setting_key', 'setting_value');
     
     // Convert to object format
@@ -44,9 +48,9 @@ router.get('/', async (req, res) => {
       maintenance_mode: settingsObject.general_maintenance_mode === true || settingsObject.general_maintenance_mode === 'true',
       // Umami analytics configuration (only if enabled)
       umami_enabled: settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true',
-      umami_url: settingsObject.analytics_umami_enabled ? (settingsObject.analytics_umami_url || null) : null,
-      umami_website_id: settingsObject.analytics_umami_enabled ? (settingsObject.analytics_umami_website_id || null) : null,
-      umami_share_url: settingsObject.analytics_umami_enabled ? (settingsObject.analytics_umami_share_url || null) : null
+      umami_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_url || null) : null,
+      umami_website_id: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_website_id || null) : null,
+      umami_share_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_share_url || null) : null
     };
 
     res.json(publicSettings);
