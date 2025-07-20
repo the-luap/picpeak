@@ -10,10 +10,10 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repository with full history
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Full history needed for commit filtering
+          fetch-depth: 0  # Full history needed for finding the commit
 
       - name: Setup Git
         run: |
@@ -28,91 +28,109 @@ jobs:
           git status
           echo "Remote info:"
           git remote -v
-          echo "Target commit exists:"
-          git show --oneline cc7ad4b2bc || echo "Commit not found!"
+          echo "Checking target commit exists:"
+          git show --oneline 7aca927937 || echo "Target commit not found!"
 
       - name: Create filtered history from specific commit
         run: |
-          # Clean up any existing github-mirror branch
-          git branch -D github-mirror || true
+          TARGET_COMMIT="7aca927937"
           
           # Verify the target commit exists
-          if ! git rev-parse --verify cc7ad4b2bc >/dev/null 2>&1; then
-            echo "ERROR: Commit cc7ad4b2bc not found!"
+          if ! git cat-file -e $TARGET_COMMIT^{commit}; then
+            echo "ERROR: Target commit $TARGET_COMMIT does not exist!"
             exit 1
           fi
           
-          echo "Creating filtered history starting from commit cc7ad4b2bc..."
+          echo "✅ Target commit found: $(git log --oneline -1 $TARGET_COMMIT)"
+          
+          # Clean up any existing github-mirror branch
+          git branch -D github-mirror || true
           
           # Create a new branch starting from the target commit
-          git checkout -b github-mirror cc7ad4b2bc
+          git checkout -b github-mirror $TARGET_COMMIT
           
-          # Get all commits from the target commit to HEAD on main
-          echo "Rebasing commits from cc7ad4b2bc to main..."
-          git rebase --onto github-mirror cc7ad4b2bc main --exec 'echo "Processing commit: $(git log --oneline -1)"'
+          echo "Created github-mirror branch from commit $TARGET_COMMIT"
+          echo "Current commit: $(git log --oneline -1)"
           
-          # Alternative approach if rebase fails - cherry-pick all commits
-          if [ $? -ne 0 ]; then
-            echo "Rebase failed, trying cherry-pick approach..."
-            git rebase --abort || true
-            git checkout github-mirror
+          # Get all commits from target commit to current main
+          echo "Getting commits from $TARGET_COMMIT to main..."
+          COMMITS_TO_APPLY=$(git rev-list --reverse $TARGET_COMMIT..main)
+          
+          if [ -n "$COMMITS_TO_APPLY" ]; then
+            echo "Commits to apply:"
+            git log --oneline $TARGET_COMMIT..main
             
-            # Get list of commits from target commit to main (excluding the target commit itself)
-            COMMITS=$(git rev-list --reverse cc7ad4b2bc..main)
-            
-            if [ -n "$COMMITS" ]; then
-              echo "Cherry-picking commits:"
-              echo "$COMMITS"
-              
-              for commit in $COMMITS; do
-                echo "Cherry-picking: $(git log --oneline -1 $commit)"
-                git cherry-pick $commit
-              done
-            else
-              echo "No commits to cherry-pick (already up to date)"
-            fi
+            # Apply all commits since the target commit
+            for commit in $COMMITS_TO_APPLY; do
+              echo "Applying commit: $(git log --oneline -1 $commit)"
+              git cherry-pick $commit || {
+                echo "Cherry-pick failed, trying to resolve..."
+                # If cherry-pick fails, try to continue with merge strategy
+                git cherry-pick --continue || git cherry-pick --skip || {
+                  echo "Failed to apply commit $commit, skipping..."
+                  git cherry-pick --abort
+                  continue
+                }
+              }
+            done
+          else
+            echo "No commits to apply - target commit is up to date with main"
           fi
-          
-          echo "Filtered branch created successfully!"
-          git log --oneline -10
 
-      - name: Remove sensitive files from mirror
+      - name: Remove sensitive files and directories
         run: |
-          echo "Removing sensitive files and directories from GitHub mirror..."
-          
           # Switch to the github-mirror branch
           git checkout github-mirror
           
-          # Remove sensitive files/directories (same as before but now applied to filtered history)
-          git rm -r --cached .env* || true
-          git rm -r --cached backend/.env* || true
-          git rm -r --cached frontend/.env* || true
-          git rm -r --cached docker-compose.prod.yml || true
-          git rm -r --cached .claudedocs/ || true
-          git rm -r --cached backend/data/ || true
-          git rm -r --cached backend/storage/ || true
-          git rm -r --cached .gitea/ || true
-          git rm -r --cached scripts/install-gitea-runner.sh || true
-          git rm -r --cached .drone* || true
-          git rm -r --cached .github-mirror-exclude || true
-          git rm -r --cached .gitattributes-github || true
-          git rm -r --cached photo-sharing-prd.md || true
-          git rm -r --cached CLAUDE.md || true
-          git rm -r --cached PRODUCTION_DEPLOYMENT_GUIDE.md || true
-          git rm -r --cached logs/ || true
-          git rm -r --cached frontend/.claudedocs/ || true
-          git rm -r --cached test-maintenance.sh || true
-          git rm -r --cached storage/ || true
+          echo "Current files before cleanup:"
+          find . -name ".*" -o -name "*" | head -20
           
-          # Check if any files were actually removed
-          if [[ -n $(git status --porcelain) ]]; then
-            echo "Files were removed, committing changes..."
-            git commit -m "Remove sensitive files for GitHub mirror"
+          # Remove sensitive files/directories if they exist
+          rm -rf .env* || true
+          rm -rf backend/.env* || true
+          rm -rf frontend/.env* || true
+          rm -rf docker-compose.prod.yml || true
+          rm -rf .claudedocs/ || true
+          rm -rf backend/data/ || true
+          rm -rf backend/storage/ || true
+          rm -rf .gitea/ || true
+          rm -rf scripts/install-gitea-runner.sh || true
+          rm -rf .drone* || true
+          rm -rf .github-mirror-exclude || true
+          rm -rf .gitattributes-github || true
+          rm -rf photo-sharing-prd.md || true
+          rm -rf CLAUDE.md || true
+          rm -rf PRODUCTION_DEPLOYMENT_GUIDE.md || true
+          rm -rf logs/ || true
+          rm -rf frontend/.claudedocs/ || true
+          rm -rf test-maintenance.sh || true
+          rm -rf storage/ || true
+          
+          # Add and commit the cleanup if there are changes
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: remove sensitive files for GitHub mirror"
+            echo "✅ Committed cleanup of sensitive files"
           else
-            echo "No sensitive files found to remove"
+            echo "✅ No sensitive files to remove"
           fi
           
-          echo "Sensitive file removal completed!"
+          echo "Final file structure:"
+          find . -name ".*" -o -name "*" | head -20
+
+      - name: Verify clean history
+        run: |
+          git checkout github-mirror
+          echo "=== Final branch status ==="
+          echo "Total commits in github-mirror branch:"
+          git rev-list --count github-mirror
+          echo ""
+          echo "Commit history (last 10):"
+          git log --oneline -10
+          echo ""
+          echo "Branch comparison with main:"
+          git log --oneline main..github-mirror || echo "No differences"
+          git log --oneline github-mirror..main || echo "No differences"
 
       - name: Check GitHub token
         env:
@@ -129,6 +147,9 @@ jobs:
         env:
           GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
         run: |
+          # Switch to github-mirror branch
+          git checkout github-mirror
+          
           # Remove existing github remote if it exists
           git remote remove github || true
           
@@ -139,19 +160,14 @@ jobs:
           echo "GitHub remote added:"
           git remote -v
           
-          # Show what we're about to push
-          echo "Commits to be pushed:"
-          git log --oneline github-mirror
-          
           # Force push the filtered branch to GitHub main
           echo "Pushing filtered history to GitHub..."
           git push github github-mirror:main --force
-          echo "Push completed successfully!"
+          echo "✅ Push completed successfully!"
 
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "📊 History starts from commit: cc7ad4b2bc"
-          echo "🗑️  Sensitive files have been removed from mirror"
-          echo "🔗 Check https://github.com/the-luap/picpeak to verify the mirror."
-          echo "📈 Total commits in mirror: $(git rev-list --count github-mirror)"
+          echo "📊 History starts from commit: 7aca927937"
+          echo "🔍 Check https://github.com/the-luap/picpeak to verify the mirror"
+          echo "📈 Total commits pushed: $(git rev-list --count github-mirror)"
