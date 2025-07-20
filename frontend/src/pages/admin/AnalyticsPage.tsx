@@ -53,7 +53,7 @@ export const AnalyticsPage: React.FC = () => {
   const [isEmbedMode, setIsEmbedMode] = useState(false);
   
   // Check if Umami is configured from settings or environment
-  const [umamiConfig, setUmamiConfig] = useState<{ url?: string; shareUrl?: string }>({});
+  const [umamiConfig, setUmamiConfig] = useState<{ url?: string; shareUrl?: string; enabled?: boolean }>({});
 
   // Fetch analytics data from backend
   const { data: apiData, isLoading, refetch } = useQuery({
@@ -82,7 +82,8 @@ export const AnalyticsPage: React.FC = () => {
         if (settings.umami_enabled && settings.umami_url && settings.umami_website_id) {
           setUmamiConfig({
             url: settings.umami_url,
-            shareUrl: settings.umami_share_url
+            shareUrl: settings.umami_share_url,
+            enabled: true
           });
         } else {
           // Fall back to environment variables if they exist
@@ -92,8 +93,11 @@ export const AnalyticsPage: React.FC = () => {
           if (envUrl && envWebsiteId) {
             setUmamiConfig({
               url: envUrl,
-              shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+              shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL,
+              enabled: true
             });
+          } else {
+            setUmamiConfig({ enabled: false });
           }
         }
       } catch (error) {
@@ -105,8 +109,11 @@ export const AnalyticsPage: React.FC = () => {
         if (envUrl && envWebsiteId) {
           setUmamiConfig({
             url: envUrl,
-            shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+            shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL,
+            enabled: true
           });
+        } else {
+          setUmamiConfig({ enabled: false });
         }
       }
     };
@@ -450,7 +457,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Configuration Notice */}
-      {!umamiConfig.url && (
+      {umamiConfig.enabled === false && (
         <Card padding="md" className="mt-6 bg-amber-50 border-amber-200">
           <div className="flex items-start gap-3">
             <Activity className="w-5 h-5 text-amber-600 flex-shrink-0" />

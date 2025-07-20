@@ -289,18 +289,9 @@ export const GalleryPage: React.FC = () => {
               alt={settingsData?.branding_company_name || 'PicPeak'}
               className="h-12 sm:h-16 lg:h-20 w-auto object-contain mx-auto mb-3 sm:mb-4"
             />
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 px-2" style={{ color: 'var(--color-text, #171717)' }}>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 px-2" style={{ color: 'var(--color-primary, #5C8762)' }}>
               {galleryInfo?.event_name}
             </h1>
-            {galleryInfo?.event_type && (
-              <div className="flex items-center justify-center text-xs sm:text-sm" style={{ color: 'var(--color-text, #171717)', opacity: 0.7 }}>
-                <span className="px-3 py-1 rounded-full" style={{ backgroundColor: 'var(--color-primary, #5C8762)', opacity: 0.1 }}>
-                  <span style={{ color: 'var(--color-primary, #5C8762)' }}>
-                    {t(`events.types.${galleryInfo.event_type}`)}
-                  </span>
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Expiration Warning */}
