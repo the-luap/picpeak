@@ -82,13 +82,13 @@ api.interceptors.response.use(
       }
     }
     
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401) {
       // Check if it's an admin route
       const isAdminRoute = error.config?.url?.includes('/admin');
       const currentPath = window.location.pathname;
       
       if (isAdminRoute) {
-        // Clear admin token on unauthorized or forbidden
+        // Clear admin token on unauthorized
         Cookies.remove(ADMIN_TOKEN_KEY);
         // Only redirect if we're not already on the admin login page
         if (!currentPath.includes('/admin/login')) {
@@ -107,7 +107,7 @@ api.interceptors.response.use(
             localStorage.removeItem(`gallery_event_${gallerySlug}`);
           }
           // Don't redirect - let the component handle the auth state
-        } else {
+        } else if (galleryMatch) {
           // We're not on a gallery page but got a 401 from a gallery API
           // This shouldn't happen in normal flow, but if it does, redirect to homepage
           window.location.href = '/';
