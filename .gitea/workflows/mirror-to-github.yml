@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Full history needed for mirroring
+          fetch-depth: 0  # Full history needed for commit filtering
 
       - name: Setup Git
         run: |
@@ -28,17 +28,62 @@ jobs:
           git status
           echo "Remote info:"
           git remote -v
+          echo "Target commit exists:"
+          git show --oneline cfa29ad5cb || echo "Commit not found!"
 
-      - name: Create filtered branch
+      - name: Create filtered history from specific commit
         run: |
           # Clean up any existing github-mirror branch
           git branch -D github-mirror || true
           
-          # Create a new branch for GitHub
-          git checkout --orphan github-mirror
+          # Verify the target commit exists
+          if ! git rev-parse --verify cfa29ad5cb >/dev/null 2>&1; then
+            echo "ERROR: Commit cfa29ad5cb not found!"
+            exit 1
+          fi
           
-          # Remove sensitive files/directories
-          # Example: Remove .env files, private configs, etc.
+          echo "Creating filtered history starting from commit cfa29ad5cb..."
+          
+          # Create a new branch starting from the target commit
+          git checkout -b github-mirror cfa29ad5cb
+          
+          # Get all commits from the target commit to HEAD on main
+          echo "Rebasing commits from cfa29ad5cb to main..."
+          git rebase --onto github-mirror cfa29ad5cb main --exec 'echo "Processing commit: $(git log --oneline -1)"'
+          
+          # Alternative approach if rebase fails - cherry-pick all commits
+          if [ $? -ne 0 ]; then
+            echo "Rebase failed, trying cherry-pick approach..."
+            git rebase --abort || true
+            git checkout github-mirror
+            
+            # Get list of commits from target commit to main (excluding the target commit itself)
+            COMMITS=$(git rev-list --reverse cfa29ad5cb..main)
+            
+            if [ -n "$COMMITS" ]; then
+              echo "Cherry-picking commits:"
+              echo "$COMMITS"
+              
+              for commit in $COMMITS; do
+                echo "Cherry-picking: $(git log --oneline -1 $commit)"
+                git cherry-pick $commit
+              done
+            else
+              echo "No commits to cherry-pick (already up to date)"
+            fi
+          fi
+          
+          echo "Filtered branch created successfully!"
+          git log --oneline -10
+
+      - name: Remove sensitive files from mirror
+        run: |
+          echo "Removing sensitive files and directories from GitHub mirror..."
+          
+          # Switch to the github-mirror branch
+          git checkout github-mirror
+          
+          # Remove sensitive files/directories (same as before but now applied to filtered history)
           git rm -r --cached .env* || true
           git rm -r --cached backend/.env* || true
           git rm -r --cached frontend/.env* || true
@@ -58,10 +103,16 @@ jobs:
           git rm -r --cached frontend/.claudedocs/ || true
           git rm -r --cached test-maintenance.sh || true
           git rm -r --cached storage/ || true
-
-        
-          # Commit the changes
-          git commit -m "Remove sensitive files for GitHub mirror" || true
+          
+          # Check if any files were actually removed
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "Files were removed, committing changes..."
+            git commit -m "Remove sensitive files for GitHub mirror"
+          else
+            echo "No sensitive files found to remove"
+          fi
+          
+          echo "Sensitive file removal completed!"
 
       - name: Check GitHub token
         env:
@@ -88,12 +139,19 @@ jobs:
           echo "GitHub remote added:"
           git remote -v
           
+          # Show what we're about to push
+          echo "Commits to be pushed:"
+          git log --oneline github-mirror
+          
           # Force push the filtered branch to GitHub main
-          echo "Pushing to GitHub..."
+          echo "Pushing filtered history to GitHub..."
           git push github github-mirror:main --force
           echo "Push completed successfully!"
 
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "Check https://github.com/the-luap/picpeak to verify the mirror."
+          echo "📊 History starts from commit: cfa29ad5cb"
+          echo "🗑️  Sensitive files have been removed from mirror"
+          echo "🔗 Check https://github.com/the-luap/picpeak to verify the mirror."
+          echo "📈 Total commits in mirror: $(git rev-list --count github-mirror)"

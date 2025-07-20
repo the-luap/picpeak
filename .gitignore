@@ -54,3 +54,5 @@ coverage/
 !storage/thumbnails/.gitkeep
 !data/.gitkeep
 !logs/.gitkeep
+
+PRODUCTION_DEPLOYMENT_GUIDE.md
