@@ -119,11 +119,14 @@ function validatePassword(password, options = {}) {
  */
 async function getPasswordComplexitySettings() {
   try {
-    const db = require('../db');
-    const settings = await db('app_settings')
-      .where('setting_key', 'password_complexity')
-      .where('setting_type', 'security')
-      .first();
+    const { db, withRetry } = require('../database/db');
+    
+    // Use retry wrapper to handle connection failures
+    const settings = await withRetry(async () => {
+      return await db('app_settings')
+        .where('setting_key', 'security_password_complexity_level')
+        .first();
+    });
     
     if (!settings || !settings.setting_value) {
       return 'moderate'; // Default
@@ -136,7 +139,7 @@ async function getPasswordComplexitySettings() {
     return value;
   } catch (error) {
     logger.error('Failed to get password complexity settings:', error);
-    return 'moderate'; // Default on error
+    return 'moderate'; // Default on error - ensures app continues working
   }
 }
 

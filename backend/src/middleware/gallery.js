@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { db } = require('../database/db');
+const { db, withRetry } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 
 // Middleware to verify gallery access
@@ -11,13 +11,15 @@ async function verifyGalleryAccess(req, res, next) {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const event = await db('events')
-      .where({ 
-        id: decoded.eventId, 
-        is_active: formatBoolean(true),
-        is_archived: formatBoolean(false)
-      })
-      .first();
+    const event = await withRetry(async () => {
+      return await db('events')
+        .where({ 
+          id: decoded.eventId, 
+          is_active: formatBoolean(true),
+          is_archived: formatBoolean(false)
+        })
+        .first();
+    });
     
     if (!event) {
       return res.status(404).json({ error: 'Gallery not found or expired' });

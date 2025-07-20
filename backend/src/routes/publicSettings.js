@@ -1,5 +1,5 @@
 const express = require('express');
-const { db } = require('../database/db');
+const { db, withRetry } = require('../database/db');
 const router = express.Router();
 
 // Get public settings (branding and theme)
@@ -7,12 +7,14 @@ router.get('/', async (req, res) => {
   try {
     // Fetch branding, theme, general, and security settings
     // Note: We include analytics in the query but it might not exist yet
-    const settings = await db('app_settings')
-      .where(function() {
-        this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
-          .orWhere('setting_key', 'like', 'analytics_%');
-      })
-      .select('setting_key', 'setting_value');
+    const settings = await withRetry(async () => {
+      return await db('app_settings')
+        .where(function() {
+          this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
+            .orWhere('setting_key', 'like', 'analytics_%');
+        })
+        .select('setting_key', 'setting_value');
+    });
     
     // Convert to object format
     const settingsObject = {};
