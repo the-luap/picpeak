@@ -29,7 +29,7 @@ jobs:
           echo "Remote info:"
           git remote -v
           echo "Target commit exists:"
-          git show --oneline cfa29ad5cb || echo "Commit not found!"
+          git show --oneline cc7ad4b2bc || echo "Commit not found!"
 
       - name: Create filtered history from specific commit
         run: |
@@ -37,19 +37,19 @@ jobs:
           git branch -D github-mirror || true
           
           # Verify the target commit exists
-          if ! git rev-parse --verify cfa29ad5cb >/dev/null 2>&1; then
-            echo "ERROR: Commit cfa29ad5cb not found!"
+          if ! git rev-parse --verify cc7ad4b2bc >/dev/null 2>&1; then
+            echo "ERROR: Commit cc7ad4b2bc not found!"
             exit 1
           fi
           
-          echo "Creating filtered history starting from commit cfa29ad5cb..."
+          echo "Creating filtered history starting from commit cc7ad4b2bc..."
           
           # Create a new branch starting from the target commit
-          git checkout -b github-mirror cfa29ad5cb
+          git checkout -b github-mirror cc7ad4b2bc
           
           # Get all commits from the target commit to HEAD on main
-          echo "Rebasing commits from cfa29ad5cb to main..."
-          git rebase --onto github-mirror cfa29ad5cb main --exec 'echo "Processing commit: $(git log --oneline -1)"'
+          echo "Rebasing commits from cc7ad4b2bc to main..."
+          git rebase --onto github-mirror cc7ad4b2bc main --exec 'echo "Processing commit: $(git log --oneline -1)"'
           
           # Alternative approach if rebase fails - cherry-pick all commits
           if [ $? -ne 0 ]; then
@@ -58,7 +58,7 @@ jobs:
             git checkout github-mirror
             
             # Get list of commits from target commit to main (excluding the target commit itself)
-            COMMITS=$(git rev-list --reverse cfa29ad5cb..main)
+            COMMITS=$(git rev-list --reverse cc7ad4b2bc..main)
             
             if [ -n "$COMMITS" ]; then
               echo "Cherry-picking commits:"
@@ -151,7 +151,7 @@ jobs:
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "📊 History starts from commit: cfa29ad5cb"
+          echo "📊 History starts from commit: cc7ad4b2bc"
           echo "🗑️  Sensitive files have been removed from mirror"
           echo "🔗 Check https://github.com/the-luap/picpeak to verify the mirror."
           echo "📈 Total commits in mirror: $(git rev-list --count github-mirror)"
