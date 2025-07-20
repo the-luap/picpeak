@@ -310,10 +310,33 @@ router.get('/analytics', adminAuth, async (req, res) => {
       devices[d.device_type] = Math.round((d.count / totalDevices) * 100);
     });
 
+    // Calculate totals for the period (matching /stats logic)
+    const totalViews = await db('access_logs')
+      .where('action', 'view')
+      .where('timestamp', '>=', startDateStr)
+      .count('id as count')
+      .first();
+
+    const totalDownloadsCount = await db('access_logs')
+      .whereIn('action', ['download', 'download_all'])
+      .where('timestamp', '>=', startDateStr)
+      .count('id as count')
+      .first();
+
+    const totalUniqueVisitors = await db('access_logs')
+      .where('timestamp', '>=', startDateStr)
+      .countDistinct('ip_address as count')
+      .first();
+
     res.json({
       chartData: dates,
       topGalleries,
-      devices
+      devices,
+      totals: {
+        views: totalViews?.count || 0,
+        downloads: totalDownloadsCount?.count || 0,
+        uniqueVisitors: totalUniqueVisitors?.count || 0
+      }
     });
   } catch (error) {
     console.error('Analytics error:', error);

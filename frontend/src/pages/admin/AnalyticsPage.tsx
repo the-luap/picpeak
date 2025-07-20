@@ -78,25 +78,36 @@ export const AnalyticsPage: React.FC = () => {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/settings`);
         const settings = await response.json();
         
-        if (settings.umami_enabled) {
+        // Check if Umami is enabled in admin settings
+        if (settings.umami_enabled && settings.umami_url && settings.umami_website_id) {
           setUmamiConfig({
             url: settings.umami_url,
             shareUrl: settings.umami_share_url
           });
         } else {
-          // Fall back to environment variables
-          setUmamiConfig({
-            url: import.meta.env.VITE_UMAMI_URL,
-            shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
-          });
+          // Fall back to environment variables if they exist
+          const envUrl = import.meta.env.VITE_UMAMI_URL;
+          const envWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+          
+          if (envUrl && envWebsiteId) {
+            setUmamiConfig({
+              url: envUrl,
+              shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+            });
+          }
         }
       } catch (error) {
         console.error('Failed to fetch Umami config:', error);
-        // Fall back to environment variables
-        setUmamiConfig({
-          url: import.meta.env.VITE_UMAMI_URL,
-          shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
-        });
+        // Fall back to environment variables if they exist
+        const envUrl = import.meta.env.VITE_UMAMI_URL;
+        const envWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+        
+        if (envUrl && envWebsiteId) {
+          setUmamiConfig({
+            url: envUrl,
+            shareUrl: import.meta.env.VITE_UMAMI_SHARE_URL
+          });
+        }
       }
     };
 

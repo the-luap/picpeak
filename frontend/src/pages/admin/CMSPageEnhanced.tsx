@@ -153,13 +153,13 @@ export const CMSPageEnhanced: React.FC = () => {
                       : 'bg-white border border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >
-                  <FileText className="w-5 h-5" />
-                  <div className="flex-1">
-                    <p className="font-medium">{t(`legal.${page.slug}`)}</p>
+                  <FileText className="w-5 h-5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{t(`legal.${page.slug}`)}</p>
                     <p className="text-sm text-neutral-500">/{page.slug}</p>
                   </div>
                   {selectedPage === page.slug && hasUnsavedChanges && (
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0" />
                   )}
                 </button>
               ))}
@@ -235,7 +235,7 @@ export const CMSPageEnhanced: React.FC = () => {
                       : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  🇬🇧 English
+                  English
                 </button>
                 <button
                   onClick={() => setEditingLang('de')}
@@ -245,7 +245,7 @@ export const CMSPageEnhanced: React.FC = () => {
                       : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  🇩🇪 Deutsch
+                  Deutsch
                 </button>
               </div>
             </div>

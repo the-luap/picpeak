@@ -10,14 +10,14 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
-import { enUS, de } from 'date-fns/locale';
+import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
 
 import { Button, Input, Card } from '../../components/common';
 import { ThemeCustomizerEnhanced, GalleryPreview, WelcomeMessageEditor } from '../../components/admin';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +57,7 @@ const EVENT_TYPES = [
 export const CreateEventPageEnhanced: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { format } = useLocalizedDate();
   const isMountedRef = useRef(true);
   const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);
   // const [showPreview, setShowPreview] = useState(false);
@@ -499,7 +500,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
               </div>
               {formData.event_date && (
                 <p className="mt-2 text-sm text-neutral-500">
-                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days), 'PPP', { locale: i18n.language === 'de' ? de : enUS })}
+                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
                 </p>
               )}
             </div>
