@@ -76,6 +76,11 @@ export const AnalyticsPage: React.FC = () => {
     const fetchUmamiConfig = async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/settings`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const settings = await response.json();
         
         // Check if Umami is enabled in admin settings

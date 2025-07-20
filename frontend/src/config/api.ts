@@ -82,13 +82,13 @@ api.interceptors.response.use(
       }
     }
     
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       // Check if it's an admin route
       const isAdminRoute = error.config?.url?.includes('/admin');
       const currentPath = window.location.pathname;
       
       if (isAdminRoute) {
-        // Clear admin token on unauthorized
+        // Clear admin token on unauthorized or forbidden
         Cookies.remove(ADMIN_TOKEN_KEY);
         // Only redirect if we're not already on the admin login page
         if (!currentPath.includes('/admin/login')) {
