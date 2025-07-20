@@ -52,29 +52,59 @@ jobs:
           echo "Created github-mirror branch from commit $TARGET_COMMIT"
           echo "Current commit: $(git log --oneline -1)"
           
-          # Get all commits from target commit to current main
-          echo "Getting commits from $TARGET_COMMIT to main..."
-          COMMITS_TO_APPLY=$(git rev-list --reverse $TARGET_COMMIT..main)
+          # Get all commits from target commit to current main (excluding merge commits)
+          echo "Getting non-merge commits from $TARGET_COMMIT to main..."
+          COMMITS_TO_APPLY=$(git rev-list --reverse --no-merges $TARGET_COMMIT..main)
           
           if [ -n "$COMMITS_TO_APPLY" ]; then
-            echo "Commits to apply:"
-            git log --oneline $TARGET_COMMIT..main
+            echo "Non-merge commits to apply:"
+            for commit in $COMMITS_TO_APPLY; do
+              git log --oneline -1 $commit
+            done
+            echo ""
             
-            # Apply all commits since the target commit
+            # Apply all non-merge commits since the target commit
             for commit in $COMMITS_TO_APPLY; do
               echo "Applying commit: $(git log --oneline -1 $commit)"
-              git cherry-pick $commit || {
-                echo "Cherry-pick failed, trying to resolve..."
-                # If cherry-pick fails, try to continue with merge strategy
-                git cherry-pick --continue || git cherry-pick --skip || {
-                  echo "Failed to apply commit $commit, skipping..."
+              if git cherry-pick $commit; then
+                echo "✅ Successfully applied $commit"
+              else
+                echo "⚠️ Cherry-pick failed for $commit, trying to resolve..."
+                
+                # Check if there are conflicts
+                if git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
+                  echo "📝 Conflicts detected, trying to auto-resolve..."
+                  
+                  # Try to resolve by taking the incoming changes
+                  git add -A
+                  if git cherry-pick --continue; then
+                    echo "✅ Resolved conflicts and continued"
+                  else
+                    echo "❌ Could not resolve conflicts, skipping commit $commit"
+                    git cherry-pick --abort
+                    continue
+                  fi
+                else
+                  echo "❌ Cherry-pick failed for other reasons, skipping commit $commit"
                   git cherry-pick --abort
                   continue
-                }
-              }
+                fi
+              fi
             done
+            
+            echo "✅ Finished applying commits"
           else
-            echo "No commits to apply - target commit is up to date with main"
+            echo "✅ No non-merge commits to apply - target commit is up to date with main"
+          fi
+          
+          # Show what merge commits were skipped
+          MERGE_COMMITS=$(git rev-list --merges $TARGET_COMMIT..main)
+          if [ -n "$MERGE_COMMITS" ]; then
+            echo ""
+            echo "📋 Merge commits that were skipped:"
+            for commit in $MERGE_COMMITS; do
+              git log --oneline -1 $commit
+            done
           fi
 
       - name: Remove sensitive files and directories
@@ -129,8 +159,10 @@ jobs:
           git log --oneline -10
           echo ""
           echo "Branch comparison with main:"
-          git log --oneline main..github-mirror || echo "No differences"
-          git log --oneline github-mirror..main || echo "No differences"
+          echo "Non-merge commits in main not in github-mirror:"
+          git log --oneline --no-merges main..github-mirror || echo "None"
+          echo "Non-merge commits in github-mirror not in main:"
+          git log --oneline --no-merges github-mirror..main || echo "None"
 
       - name: Check GitHub token
         env:
@@ -171,3 +203,4 @@ jobs:
           echo "📊 History starts from commit: 7aca927937"
           echo "🔍 Check https://github.com/the-luap/picpeak to verify the mirror"
           echo "📈 Total commits pushed: $(git rev-list --count github-mirror)"
+          echo "🔀 Note: Merge commits were automatically filtered out"
