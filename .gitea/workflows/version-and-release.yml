@@ -178,7 +178,36 @@ jobs:
             git commit -m "chore: bump frontend version to ${{ steps.version.outputs.new_version }}"
           fi
           
-          git push
+          # Pull latest changes before pushing to avoid conflicts
+          echo "Pulling latest changes from origin/main..."
+          if ! git pull --rebase origin main; then
+            echo "Rebase failed, attempting to resolve..."
+            # If rebase fails, abort and try a regular merge
+            git rebase --abort || true
+            git pull origin main --no-rebase
+          fi
+          
+          # Push the changes with retry logic
+          echo "Pushing version bump..."
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if git push origin main; then
+              echo "Successfully pushed version bump"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Push failed, retrying in 5 seconds... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep 5
+                git pull --rebase origin main || git pull origin main --no-rebase
+              else
+                echo "Failed to push after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
       
       - name: Create Git tag
         if: steps.version.outputs.version_changed == 'true'
