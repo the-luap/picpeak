@@ -31,7 +31,7 @@ jobs:
           echo "Checking target commit exists:"
           git show --oneline 7aca927937 || echo "Target commit not found!"
 
-      - name: Create filtered history from specific commit
+      - name: Create completely new history from specific commit
         run: |
           TARGET_COMMIT="7aca927937"
           
@@ -46,66 +46,69 @@ jobs:
           # Clean up any existing github-mirror branch
           git branch -D github-mirror || true
           
-          # Create a new branch starting from the target commit
-          git checkout -b github-mirror $TARGET_COMMIT
+          # Create a completely new orphan branch (no history)
+          git checkout --orphan github-mirror
           
-          echo "Created github-mirror branch from commit $TARGET_COMMIT"
-          echo "Current commit: $(git log --oneline -1)"
+          # Clear the staging area completely
+          git rm -rf . || true
           
-          # Get all commits from target commit to current main (excluding merge commits)
-          echo "Getting non-merge commits from $TARGET_COMMIT to main..."
-          COMMITS_TO_APPLY=$(git rev-list --reverse --no-merges $TARGET_COMMIT..main)
+          # Get the file tree from the target commit and create initial commit
+          echo "Creating new history starting from $TARGET_COMMIT..."
+          git read-tree $TARGET_COMMIT
+          git commit -m "Initial commit - imported from $(git log --oneline -1 $TARGET_COMMIT)"
           
-          if [ -n "$COMMITS_TO_APPLY" ]; then
-            echo "Non-merge commits to apply:"
-            for commit in $COMMITS_TO_APPLY; do
-              git log --oneline -1 $commit
-            done
-            echo ""
+          echo "✅ Created new initial commit: $(git log --oneline -1)"
+          
+          # Now get all commits after the target commit and apply their changes
+          COMMITS_AFTER_TARGET=$(git rev-list --reverse --no-merges $TARGET_COMMIT..main)
+          
+          if [ -n "$COMMITS_AFTER_TARGET" ]; then
+            echo "📋 Applying changes from commits after $TARGET_COMMIT:"
             
-            # Apply all non-merge commits since the target commit
-            for commit in $COMMITS_TO_APPLY; do
-              echo "Applying commit: $(git log --oneline -1 $commit)"
-              if git cherry-pick $commit; then
-                echo "✅ Successfully applied $commit"
-              else
-                echo "⚠️ Cherry-pick failed for $commit, trying to resolve..."
+            for commit in $COMMITS_AFTER_TARGET; do
+              echo "Processing: $(git log --oneline -1 $commit)"
+              
+              # Get the commit message and author info
+              COMMIT_MSG=$(git log --format="%B" -n 1 $commit)
+              COMMIT_AUTHOR=$(git log --format="%an <%ae>" -n 1 $commit)
+              COMMIT_DATE=$(git log --format="%ad" -n 1 $commit)
+              
+              # Apply the changes from this commit
+              if git diff-tree --no-commit-id --name-only -r $commit | xargs -I {} git show $commit:{} > /dev/null 2>&1; then
+                # Apply file changes
+                git checkout $commit -- . || true
                 
-                # Check if there are conflicts
-                if git status --porcelain | grep -q "^UU\|^AA\|^DD"; then
-                  echo "📝 Conflicts detected, trying to auto-resolve..."
+                # Stage all changes
+                git add -A
+                
+                # Only commit if there are changes
+                if ! git diff --cached --quiet; then
+                  # Create new commit with original metadata but new SHA
+                  GIT_AUTHOR_NAME=$(echo "$COMMIT_AUTHOR" | cut -d'<' -f1 | xargs)
+                  GIT_AUTHOR_EMAIL=$(echo "$COMMIT_AUTHOR" | cut -d'<' -f2 | cut -d'>' -f1)
+                  GIT_AUTHOR_DATE="$COMMIT_DATE"
                   
-                  # Try to resolve by taking the incoming changes
-                  git add -A
-                  if git cherry-pick --continue; then
-                    echo "✅ Resolved conflicts and continued"
-                  else
-                    echo "❌ Could not resolve conflicts, skipping commit $commit"
-                    git cherry-pick --abort
-                    continue
-                  fi
+                  export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
+                  git commit -m "$COMMIT_MSG"
+                  echo "✅ Applied changes as new commit: $(git log --oneline -1)"
                 else
-                  echo "❌ Cherry-pick failed for other reasons, skipping commit $commit"
-                  git cherry-pick --abort
-                  continue
+                  echo "⚠️ No changes to commit for $commit"
                 fi
+              else
+                echo "⚠️ Skipping problematic commit $commit"
               fi
             done
             
-            echo "✅ Finished applying commits"
+            echo "✅ Finished creating new history"
           else
-            echo "✅ No non-merge commits to apply - target commit is up to date with main"
+            echo "✅ No commits after target commit - history starts fresh"
           fi
           
-          # Show what merge commits were skipped
-          MERGE_COMMITS=$(git rev-list --merges $TARGET_COMMIT..main)
-          if [ -n "$MERGE_COMMITS" ]; then
-            echo ""
-            echo "📋 Merge commits that were skipped:"
-            for commit in $MERGE_COMMITS; do
-              git log --oneline -1 $commit
-            done
-          fi
+          echo ""
+          echo "=== New History Summary ==="
+          echo "Total commits in new history: $(git rev-list --count github-mirror)"
+          echo "History starts with: $(git log --oneline --reverse | head -1)"
+          echo "Latest commit: $(git log --oneline -1)"
 
       - name: Remove sensitive files and directories
         run: |
@@ -152,21 +155,17 @@ jobs:
           echo "Final file structure (top level):"
           ls -la | head -10 || true
 
-      - name: Verify clean history
+      - name: Verify completely new history
         run: |
           git checkout github-mirror
-          echo "=== Final branch status ==="
-          echo "Total commits in github-mirror branch:"
-          git rev-list --count github-mirror
+          echo "=== Final History Verification ==="
+          echo "Total commits in new github-mirror branch: $(git rev-list --count github-mirror)"
           echo ""
-          echo "Commit history (last 10):"
-          git log --oneline -10
+          echo "Complete commit history (should start from target commit content):"
+          git log --oneline --reverse
           echo ""
-          echo "Branch comparison with main:"
-          echo "Non-merge commits in main not in github-mirror:"
-          git log --oneline --no-merges main..github-mirror || echo "None"
-          echo "Non-merge commits in github-mirror not in main:"
-          git log --oneline --no-merges github-mirror..main || echo "None"
+          echo "⚠️ Note: This is a completely NEW history with new commit SHAs"
+          echo "🔍 Original target commit content preserved but with new commit ID"
 
       - name: Check GitHub token
         env:
@@ -179,7 +178,7 @@ jobs:
             echo "GitHub token is available (length: ${#GITHUBTOKEN})"
           fi
 
-      - name: Push to GitHub
+      - name: Force push completely new history to GitHub
         env:
           GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
         run: |
@@ -196,15 +195,17 @@ jobs:
           echo "GitHub remote added:"
           git remote -v
           
-          # Force push the filtered branch to GitHub main
-          echo "Pushing filtered history to GitHub..."
+          # Force push the completely new history to GitHub main
+          echo "🔥 FORCE PUSHING completely new history to GitHub..."
+          echo "⚠️ This will COMPLETELY REPLACE all history on GitHub!"
           git push github github-mirror:main --force
-          echo "✅ Push completed successfully!"
+          echo "✅ Force push completed - GitHub now has completely new history!"
 
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "📊 History starts from commit: 7aca927937"
-          echo "🔍 Check https://github.com/the-luap/picpeak to verify the mirror"
+          echo "🔥 COMPLETE HISTORY REPLACEMENT: GitHub now has entirely new history"
+          echo "📊 History starts from commit content: 7aca927937"
+          echo "🔍 Check https://github.com/the-luap/picpeak to verify the new history"
           echo "📈 Total commits pushed: $(git rev-list --count github-mirror)"
-          echo "🔀 Note: Merge commits were automatically filtered out"
+          echo "🆕 All commit SHAs are NEW - no connection to previous history"
