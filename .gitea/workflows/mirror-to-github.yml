@@ -63,9 +63,18 @@ jobs:
           COMMITS_AFTER_TARGET=$(git rev-list --reverse --no-merges $TARGET_COMMIT..main)
           
           if [ -n "$COMMITS_AFTER_TARGET" ]; then
-            echo "📋 Applying changes from commits after $TARGET_COMMIT:"
+            echo "📋 Applying changes from commits after $TARGET_COMMIT (excluding Claude commits):"
             
             for commit in $COMMITS_AFTER_TARGET; do
+              # Get the commit author name
+              COMMIT_AUTHOR_NAME=$(git log --format="%an" -n 1 $commit)
+              
+              # Skip commits by Claude
+              if [ "$COMMIT_AUTHOR_NAME" = "Claude" ]; then
+                echo "⚠️ Skipping commit by Claude: $(git log --oneline -1 $commit)"
+                continue
+              fi
+              
               echo "Processing: $(git log --oneline -1 $commit)"
               
               # Get the commit message and author info
