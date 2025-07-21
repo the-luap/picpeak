@@ -17,6 +17,7 @@ import { Button, Card, Loading } from '../../components/common';
 import { useQuery } from '@tanstack/react-query';
 import { adminService } from '../../services/admin.service';
 import { useTranslation } from 'react-i18next';
+import { api } from '../../config/api';
 
 // Map API response to component format
 interface ComponentAnalyticsData {
@@ -71,23 +72,25 @@ export const AnalyticsPage: React.FC = () => {
     queryFn: () => adminService.getDashboardStats(),
   });
 
-  // Fetch public settings to get Umami config
+  // Fetch Umami config from admin settings since we're in admin panel
   useEffect(() => {
     const fetchUmamiConfig = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/public/settings`);
+        // Use admin API endpoint with auth token since we're in admin area
+        const response = await api.get('/admin/settings');
+        const settings = response.data;
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const settings = await response.json();
+        // Transform the settings array to object
+        const settingsMap = settings.reduce((acc: any, setting: any) => {
+          acc[setting.key] = setting.value;
+          return acc;
+        }, {});
         
         // Check if Umami is enabled in admin settings
-        if (settings.umami_enabled && settings.umami_url && settings.umami_website_id) {
+        if (settingsMap.analytics_umami_enabled && settingsMap.analytics_umami_url && settingsMap.analytics_umami_website_id) {
           setUmamiConfig({
-            url: settings.umami_url,
-            shareUrl: settings.umami_share_url,
+            url: settingsMap.analytics_umami_url,
+            shareUrl: settingsMap.analytics_umami_share_url,
             enabled: true
           });
         } else {
