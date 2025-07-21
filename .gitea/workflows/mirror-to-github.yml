@@ -130,7 +130,7 @@ jobs:
           
           # Remove sensitive files/directories if they exist
           echo "Removing sensitive files..."
-          rm -rf .env* || true
+          rm -rf .env || true
           rm -rf backend/.env* || true
           rm -rf frontend/.env* || true
           rm -rf docker-compose.prod.yml || true
