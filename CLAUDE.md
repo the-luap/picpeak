@@ -117,6 +117,7 @@ Background services run as separate processes:
 - **archiveService**: Creates ZIP archives of expired events
 - **expirationChecker**: Cron job for expiration warnings
 - **fileWatcher**: Monitors for new photo uploads
+- **backupService**: Scheduled backups with checksum-based change detection
 
 ### API Structure
 - `/api/admin/*` - Admin panel endpoints (requires adminAuth)
@@ -293,6 +294,42 @@ const { theme, setTheme, setThemeByName } = useTheme();
 --font-family: 'Inter', sans-serif;
 --border-radius: 0.5rem;
 ```
+
+## Backup Service
+
+### Overview
+The backup service provides automated, scheduled backups of all photo data with checksum-based change detection to minimize transfer overhead.
+
+### Features
+- **Multiple Destinations**: Local directory, remote server (rsync), S3-compatible storage
+- **Change Detection**: SHA256 checksums track file changes, only modified files are backed up
+- **Scheduled Execution**: Configurable cron-based scheduling (default: 2 AM daily)
+- **Email Notifications**: Alerts on backup failure, optional success notifications
+- **Retention Management**: Automatic cleanup of old backup runs based on retention policy
+- **Progress Tracking**: Database storage of backup history, file states, and statistics
+
+### Configuration
+Backup settings are stored in `app_settings` table with `backup_` prefix:
+- `backup_enabled`: Enable/disable the service
+- `backup_schedule`: Cron expression (e.g., '0 2 * * *')
+- `backup_destination_type`: 'local', 'rsync', or 's3'
+- `backup_retention_days`: How long to keep backup history
+- `backup_include_archived`: Whether to backup archived events
+- `backup_exclude_patterns`: File patterns to exclude
+
+### API Endpoints
+- `GET /api/admin/backup/config` - Get current configuration
+- `PUT /api/admin/backup/config` - Update configuration
+- `GET /api/admin/backup/status` - Get backup status and history
+- `POST /api/admin/backup/run` - Trigger manual backup
+- `POST /api/admin/backup/test-connection` - Test destination connectivity
+
+### Testing
+Run backup service test: `npm run test-backup`
+
+### Database Tables
+- `backup_runs`: Tracks each backup execution with statistics
+- `backup_file_states`: Stores file checksums for change detection
 
 ## Success Metrics (from PRD)
 - Time to generate gallery: <2 minutes

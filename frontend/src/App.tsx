@@ -21,7 +21,8 @@ import {
   AnalyticsPage,
   BrandingPage,
   SettingsPage,
-  CMSPage
+  CMSPage,
+  BackupManagement
 } from './pages/admin';
 import { CMSPageEnhanced } from './pages/admin/CMSPageEnhanced';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
@@ -124,6 +125,7 @@ function App() {
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="branding" element={<BrandingPage />} />
                       <Route path="settings" element={<SettingsPage />} />
+                      <Route path="backup" element={<BackupManagement />} />
                       <Route path="cms" element={<CMSPageEnhanced />} />
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>

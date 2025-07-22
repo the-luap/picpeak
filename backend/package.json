@@ -10,9 +10,14 @@
     "migrate:safe": "node migrations/run-migrations-safe.js",
     "fix-temp-photos": "node scripts/fix-temp-photos.js",
     "test": "jest",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "test-backup": "node scripts/test-backup-service.js",
+    "test-restore": "node scripts/test-restore-service.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/lib-storage": "^3.850.0",
+    "@aws-sdk/s3-request-presigner": "^3.850.0",
     "adm-zip": "^0.5.16",
     "archiver": "^5.3.1",
     "axios": "^1.10.0",
@@ -30,8 +35,10 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
     "joi": "^17.9.1",
+    "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.0",
     "knex": "^2.4.2",
+    "mime-types": "^3.0.1",
     "multer": "^2.0.1",
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.1",

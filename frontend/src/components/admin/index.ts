@@ -23,3 +23,7 @@ export { ThemeEditorModal } from './ThemeEditorModal';
 export { HeroPhotoSelector } from './HeroPhotoSelector';
 export { PhotoUploadModal } from './PhotoUploadModal';
 export { GalleryPreview } from './GalleryPreview';
+export { BackupDashboard } from './BackupDashboard';
+export { BackupConfiguration } from './BackupConfiguration';
+export { BackupHistory } from './BackupHistory';
+export { RestoreWizard } from './RestoreWizard';

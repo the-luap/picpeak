@@ -20,6 +20,8 @@ const { initializeDatabase, db } = require('./src/database/db');
 const { startFileWatcher } = require('./src/services/fileWatcher');
 const { startExpirationChecker } = require('./src/services/expirationChecker');
 const { initializeTransporter, startEmailQueueProcessor } = require('./src/services/emailProcessor');
+const { startBackupService } = require('./src/services/backupService');
+const { startScheduledBackups } = require('./src/services/databaseBackup');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
@@ -201,6 +203,8 @@ app.use('/api/gallery', galleryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
+app.use('/api/admin/backup', require('./src/routes/adminBackup'));
+app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
@@ -242,6 +246,12 @@ async function startServer() {
     // Initialize email transporter and start queue processor
     await initializeTransporter();
     startEmailQueueProcessor();
+    
+    // Start backup service
+    await startBackupService();
+    
+    // Start database backup service
+    await startScheduledBackups();
     
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

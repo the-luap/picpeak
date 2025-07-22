@@ -159,6 +159,20 @@ Organize and manage your photo galleries with intuitive event management tools.
 
 </details>
 
+## 🗺️ Roadmap
+
+We're constantly improving PicPeak and welcome contributions from our community! If you have ideas for new features or want to help implement existing ones, please open an issue or submit a pull request. Your contributions help make PicPeak better for everyone.
+
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|---------|
+| **Backup & Restore** | Comprehensive backup system with S3/MinIO support, automated scheduling, and safe restore functionality | High | ✅ Implemented |
+| **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
+| **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
+| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | 🔄 Open |
+| **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
+
+**Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
+
 ## 🙏 Acknowledgments
 
 PicPeak is inspired by the best features of commercial platforms while remaining completely open source. Special thanks to all contributors who make this project possible.
