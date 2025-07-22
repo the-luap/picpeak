@@ -114,10 +114,7 @@ steps:
     settings:
       api_key:
         from_secret: GITHUB_TOKEN
-      base_url: https://api.github.com/
-      upload_url: https://uploads.github.com/
       repo: the-luap/picpeak
-      owner: the-luap
       title: "PicPeak ${DRONE_TAG}"
       note: |
         # PicPeak ${DRONE_TAG}
