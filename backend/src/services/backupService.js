@@ -11,6 +11,7 @@ const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
 const backupManifest = require('./backupManifest');
 const S3StorageAdapter = require('./storage/s3Storage');
+const packageJson = require('../../package.json');
 
 // Backup job reference
 let backupJob = null;
@@ -19,6 +20,21 @@ let isRunning = false;
 
 // Storage paths
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+
+/**
+ * Get current database schema version
+ */
+async function getCurrentSchemaVersion() {
+  try {
+    const result = await db('knex_migrations')
+      .orderBy('id', 'desc')
+      .first();
+    return result ? result.name : 'unknown';
+  } catch (error) {
+    logger.error('Failed to get schema version:', error);
+    return 'unknown';
+  }
+}
 
 /**
  * Calculate file checksum using SHA256
@@ -646,11 +662,17 @@ async function runBackup() {
       return;
     }
     
-    // Create backup run record
+    // Get current schema version
+    const schemaVersion = await getCurrentSchemaVersion();
+    
+    // Create backup run record with version info
     const [runId] = await db('backup_runs').insert({
       started_at: startTime,
       status: 'running',
-      backup_type: 'scheduled'
+      backup_type: 'scheduled',
+      app_version: packageJson.version,
+      node_version: process.version,
+      db_schema_version: schemaVersion
     });
     
     backupRun = { id: runId };
@@ -801,7 +823,7 @@ async function runBackup() {
       // Don't fail the entire backup for manifest generation failure
     }
     
-    // Update backup run record
+    // Update backup run record with manifest info
     await db('backup_runs')
       .where('id', runId)
       .update({
@@ -812,6 +834,16 @@ async function runBackup() {
         duration_seconds: durationSeconds,
         manifest_path: manifestPath,
         manifest_id: manifestPath ? path.basename(manifestPath, path.extname(manifestPath)) : null,
+        manifest_info: manifestSummary ? JSON.stringify({
+          manifest_version: manifestSummary.manifest?.version,
+          backup_id: manifestSummary.backup?.id,
+          system_info: manifestSummary.system,
+          file_count: manifestSummary.files?.count,
+          database_info: {
+            type: manifestSummary.database?.type,
+            schema_version: manifestSummary.database?.schema_version
+          }
+        }) : null,
         statistics: JSON.stringify({
           totalFilesChecked: files.length,
           filesBackedUp: result.backedUpCount,

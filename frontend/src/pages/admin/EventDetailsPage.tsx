@@ -16,7 +16,8 @@ import {
   Upload,
   Image,
   Key,
-  Mail
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -319,6 +320,14 @@ export const EventDetailsPage: React.FC = () => {
                     {t('common.edit')}
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<MessageSquare className="w-4 h-4" />}
+                  onClick={() => navigate(`/admin/events/${id}/feedback`)}
+                >
+                  {t('feedback.manage', 'Manage Feedback')}
+                </Button>
               </>
             )}
             {event.share_link && (
