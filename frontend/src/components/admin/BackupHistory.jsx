@@ -23,7 +23,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Input, Loading } from '../common';
-import api from '../../config/api';
+import { api } from '../../config/api';
 
 const statusIcons = {
   completed: { icon: CheckCircle, color: 'text-green-500' },

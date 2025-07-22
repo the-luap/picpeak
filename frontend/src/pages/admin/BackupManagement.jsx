@@ -31,7 +31,7 @@ import { BackupDashboard } from '../../components/admin/BackupDashboard';
 import { BackupConfiguration } from '../../components/admin/BackupConfiguration';
 import { BackupHistory } from '../../components/admin/BackupHistory';
 import { RestoreWizard } from '../../components/admin/RestoreWizard';
-import api from '../../config/api';
+import { api } from '../../config/api';
 
 // Tab components
 const tabs = [
