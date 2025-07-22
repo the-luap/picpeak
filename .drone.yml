@@ -114,12 +114,42 @@ steps:
     settings:
       api_key:
         from_secret: GITHUB_TOKEN
-      files: ["CHANGELOG.md"]
       title: "PicPeak ${DRONE_TAG}"
       note: |
-        Release ${DRONE_TAG}
+        # PicPeak ${DRONE_TAG}
         
-        See CHANGELOG.md for full details.
+        ## 🐳 Docker Images
+        
+        This release includes Docker images published to GitHub Container Registry:
+        
+        ```bash
+        # Backend
+        docker pull ghcr.io/the-luap/picpeak-backend:${DRONE_TAG}
+        docker pull ghcr.io/the-luap/picpeak-backend:latest
+        
+        # Frontend
+        docker pull ghcr.io/the-luap/picpeak-frontend:${DRONE_TAG}
+        docker pull ghcr.io/the-luap/picpeak-frontend:latest
+        ```
+        
+        ## 📦 What's New
+        
+        See the [README](https://github.com/the-luap/picpeak#readme) for features and documentation.
+        
+        ## 🚀 Quick Start
+        
+        ```bash
+        # Clone and deploy
+        git clone https://github.com/the-luap/picpeak.git
+        cd picpeak
+        
+        # Use the tagged version
+        docker-compose -f docker-compose.prod.yml up -d
+        ```
+        
+        ---
+        
+        For detailed deployment instructions, see the [Deployment Guide](https://github.com/the-luap/picpeak/blob/main/DEPLOYMENT.md).
 
 trigger:
   event:
