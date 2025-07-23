@@ -1,4 +1,4 @@
-const { formatBoolean, parseBoolean } = require('./helpers');
+// No helpers needed for this migration
 
 /**
  * Add restore_runs table for tracking restore operations
@@ -30,9 +30,9 @@ exports.up = async function(knex) {
     table.string('pre_restore_backup_path', 500); // Path to pre-restore safety backup
     
     // Flags
-    table.boolean('is_dry_run').defaultTo(formatBoolean(false));
-    table.boolean('was_rollback_attempted').defaultTo(formatBoolean(false));
-    table.boolean('was_successful').defaultTo(formatBoolean(false));
+    table.boolean('is_dry_run').defaultTo(false);
+    table.boolean('was_rollback_attempted').defaultTo(false);
+    table.boolean('was_successful').defaultTo(false);
     
     // Operator information
     table.string('operator_type', 50).defaultTo('manual'); // manual, scheduled, api
@@ -59,7 +59,7 @@ exports.up = async function(knex) {
     
     table.bigInteger('file_size');
     table.string('checksum', 64);
-    table.boolean('checksum_verified').defaultTo(formatBoolean(false));
+    table.boolean('checksum_verified').defaultTo(false);
     
     table.text('error_message');
     table.timestamp('started_at');
@@ -92,7 +92,7 @@ exports.up = async function(knex) {
   await knex('app_settings').insert([
     {
       setting_key: 'restore_allow_force',
-      setting_value: formatBoolean(false),
+      setting_value: JSON.stringify(false),
       setting_type: 'restore',
       description: 'Allow force restore with warnings',
       created_at: knex.fn.now(),
@@ -100,7 +100,7 @@ exports.up = async function(knex) {
     },
     {
       setting_key: 'restore_require_pre_backup',
-      setting_value: formatBoolean(true),
+      setting_value: JSON.stringify(true),
       setting_type: 'restore',
       description: 'Require pre-restore backup',
       created_at: knex.fn.now(),
@@ -116,7 +116,7 @@ exports.up = async function(knex) {
     },
     {
       setting_key: 'restore_verify_checksums',
-      setting_value: formatBoolean(true),
+      setting_value: JSON.stringify(true),
       setting_type: 'restore',
       description: 'Verify file checksums during restore',
       created_at: knex.fn.now(),
@@ -124,7 +124,7 @@ exports.up = async function(knex) {
     },
     {
       setting_key: 'restore_email_on_completion',
-      setting_value: formatBoolean(true),
+      setting_value: JSON.stringify(true),
       setting_type: 'restore',
       description: 'Send email on restore completion',
       created_at: knex.fn.now(),
@@ -159,7 +159,7 @@ exports.up = async function(knex) {
 
 <p>Please verify that all systems are functioning correctly after the restore.</p>`,
       language: 'en',
-      is_active: formatBoolean(true),
+      is_active: true,
       created_at: knex.fn.now(),
       updated_at: knex.fn.now()
     },
@@ -180,7 +180,7 @@ exports.up = async function(knex) {
 
 <p><strong>Important:</strong> If a pre-restore backup was created, it may be used for recovery.</p>`,
       language: 'en',
-      is_active: formatBoolean(true),
+      is_active: true,
       created_at: knex.fn.now(),
       updated_at: knex.fn.now()
     },
@@ -201,7 +201,7 @@ exports.up = async function(knex) {
 
 <p>Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemäß funktionieren.</p>`,
       language: 'de',
-      is_active: formatBoolean(true),
+      is_active: true,
       created_at: knex.fn.now(),
       updated_at: knex.fn.now()
     },
@@ -222,7 +222,7 @@ exports.up = async function(knex) {
 
 <p><strong>Wichtig:</strong> Falls ein Backup vor der Wiederherstellung erstellt wurde, kann es zur Wiederherstellung verwendet werden.</p>`,
       language: 'de',
-      is_active: formatBoolean(true),
+      is_active: true,
       created_at: knex.fn.now(),
       updated_at: knex.fn.now()
     }
