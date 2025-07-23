@@ -93,38 +93,32 @@ exports.up = async function(knex) {
     {
       setting_key: 'restore_allow_force',
       setting_value: JSON.stringify(false),
-      setting_type: 'restore',
-      description: 'Allow force restore with warnings'
+      setting_type: 'restore'
     },
     {
       setting_key: 'restore_require_pre_backup',
       setting_value: JSON.stringify(true),
-      setting_type: 'restore',
-      description: 'Require pre-restore backup'
+      setting_type: 'restore'
     },
     {
       setting_key: 'restore_max_file_size_mb',
       setting_value: '5000',
-      setting_type: 'restore',
-      description: 'Maximum file size for restore (MB)'
+      setting_type: 'restore'
     },
     {
       setting_key: 'restore_verify_checksums',
       setting_value: JSON.stringify(true),
-      setting_type: 'restore',
-      description: 'Verify file checksums during restore'
+      setting_type: 'restore'
     },
     {
       setting_key: 'restore_email_on_completion',
       setting_value: JSON.stringify(true),
-      setting_type: 'restore',
-      description: 'Send email on restore completion'
+      setting_type: 'restore'
     },
     {
       setting_key: 'restore_retention_days',
       setting_value: '30',
-      setting_type: 'restore',
-      description: 'Days to retain restore history'
+      setting_type: 'restore'
     }
   ]);
   
