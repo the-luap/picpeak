@@ -978,7 +978,7 @@
       "storageDestination": "Speicherziel",
       "nextScheduledBackup": "Nächstes geplantes Backup",
       "backupType": "{{type}} Backup",
-      "noBackupsYet": "Noch keine Backups"
+      "noDestinationSet": "Kein Ziel festgelegt"
     },
     "configuration": {
       "enableBackup": "Automatisierte Backups aktivieren",
@@ -1000,24 +1000,34 @@
       "fields": {
         "destinationPath": "Zielpfad",
         "destinationPathHelp": "Lokaler Verzeichnispfad für Backup-Speicherung",
+        "destinationPathPlaceholder": "/pfad/zum/backup/verzeichnis",
         "rsyncHost": "Remote-Host",
         "rsyncHostHelp": "SSH-Hostname oder IP-Adresse",
+        "rsyncHostPlaceholder": "backup.beispiel.de",
         "rsyncUser": "SSH-Benutzer",
         "rsyncUserHelp": "Benutzername für SSH-Verbindung",
+        "rsyncUserPlaceholder": "backup-benutzer",
         "rsyncPath": "Remote-Pfad",
         "rsyncPathHelp": "Verzeichnispfad auf Remote-Server",
+        "rsyncPathPlaceholder": "/home/backup/foto-sharing",
         "rsyncSshKey": "SSH Private Key",
         "rsyncSshKeyHelp": "SSH Private Key für Authentifizierung (optional)",
+        "rsyncSshKeyPlaceholder": "-----BEGIN RSA PRIVATE KEY-----",
         "s3Endpoint": "S3-Endpunkt",
         "s3EndpointHelp": "S3 API-Endpunkt (z.B. s3.amazonaws.com)",
+        "s3EndpointPlaceholder": "https://s3.amazonaws.com",
         "s3Bucket": "Bucket-Name",
         "s3BucketHelp": "S3-Bucket für Backup-Speicherung",
+        "s3BucketPlaceholder": "mein-backup-bucket",
         "s3AccessKey": "Zugriffsschlüssel-ID",
         "s3AccessKeyHelp": "AWS/S3 Zugriffsschlüssel-ID",
+        "s3AccessKeyPlaceholder": "AKIAIOSFODNN7EXAMPLE",
         "s3SecretKey": "Geheimer Zugriffsschlüssel",
         "s3SecretKeyHelp": "AWS/S3 geheimer Zugriffsschlüssel",
+        "s3SecretKeyPlaceholder": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         "s3Region": "Region",
-        "s3RegionHelp": "S3-Region (z.B. eu-central-1)"
+        "s3RegionHelp": "S3-Region (z.B. eu-central-1)",
+        "s3RegionPlaceholder": "eu-central-1"
       },
       "schedule": {
         "title": "Backup-Zeitplan",
@@ -1098,6 +1108,14 @@
         "duration": "Dauer",
         "actions": "Aktionen"
       },
+      "columns": {
+        "status": "Status",
+        "dateTime": "Datum & Zeit",
+        "type": "Typ",
+        "size": "Größe",
+        "duration": "Dauer",
+        "actions": "Aktionen"
+      },
       "details": "Details",
       "statistics": "Statistiken",
       "errors": "Fehler",
@@ -1116,6 +1134,27 @@
         "showing": "Zeige {{from}}-{{to}} von {{total}} Backups",
         "previous": "Zurück",
         "next": "Weiter"
+      },
+      "filter": {
+        "allStatus": "Alle Status",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen",
+        "running": "Läuft",
+        "partial": "Teilweise"
+      },
+      "noBackupsFound": "Keine Backups gefunden",
+      "backupsWillAppear": "Backups werden hier angezeigt, sobald sie erstellt wurden",
+      "messages": {
+        "deleteSuccess": "Backup erfolgreich gelöscht"
+      },
+      "details": {
+        "backupDetails": "Backup-Details",
+        "destination": "Ziel",
+        "started": "Gestartet",
+        "completed": "Abgeschlossen",
+        "contentBackedUp": "Gesicherter Inhalt",
+        "errorDetails": "Fehlerdetails",
+        "manifest": "Manifest"
       }
     },
     "restore": {

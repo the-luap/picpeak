@@ -1056,24 +1056,34 @@
       "fields": {
         "destinationPath": "Destination Path",
         "destinationPathHelp": "Local directory path for storing backups",
+        "destinationPathPlaceholder": "/path/to/backup/directory",
         "rsyncHost": "Remote Host",
         "rsyncHostHelp": "SSH hostname or IP address",
+        "rsyncHostPlaceholder": "backup.example.com",
         "rsyncUser": "SSH User",
         "rsyncUserHelp": "Username for SSH connection",
+        "rsyncUserPlaceholder": "backup-user",
         "rsyncPath": "Remote Path",
         "rsyncPathHelp": "Directory path on remote server",
+        "rsyncPathPlaceholder": "/home/backup/photo-sharing",
         "rsyncSshKey": "SSH Private Key",
         "rsyncSshKeyHelp": "SSH private key for authentication (optional)",
+        "rsyncSshKeyPlaceholder": "-----BEGIN RSA PRIVATE KEY-----",
         "s3Endpoint": "S3 Endpoint",
         "s3EndpointHelp": "S3 API endpoint (e.g., s3.amazonaws.com)",
+        "s3EndpointPlaceholder": "https://s3.amazonaws.com",
         "s3Bucket": "Bucket Name",
         "s3BucketHelp": "S3 bucket for storing backups",
+        "s3BucketPlaceholder": "my-backup-bucket",
         "s3AccessKey": "Access Key ID",
         "s3AccessKeyHelp": "AWS/S3 access key ID",
+        "s3AccessKeyPlaceholder": "AKIAIOSFODNN7EXAMPLE",
         "s3SecretKey": "Secret Access Key",
         "s3SecretKeyHelp": "AWS/S3 secret access key",
+        "s3SecretKeyPlaceholder": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         "s3Region": "Region",
-        "s3RegionHelp": "S3 region (e.g., us-east-1)"
+        "s3RegionHelp": "S3 region (e.g., us-east-1)",
+        "s3RegionPlaceholder": "us-east-1"
       },
       "schedule": {
         "title": "Backup Schedule",
@@ -1154,6 +1164,14 @@
         "duration": "Duration",
         "actions": "Actions"
       },
+      "columns": {
+        "status": "Status",
+        "dateTime": "Date & Time",
+        "type": "Type",
+        "size": "Size",
+        "duration": "Duration",
+        "actions": "Actions"
+      },
       "details": "Details",
       "statistics": "Statistics",
       "errors": "Errors",
@@ -1172,6 +1190,27 @@
         "showing": "Showing {{from}}-{{to}} of {{total}} backups",
         "previous": "Previous",
         "next": "Next"
+      },
+      "filter": {
+        "allStatus": "All Status",
+        "completed": "Completed",
+        "failed": "Failed",
+        "running": "Running",
+        "partial": "Partial"
+      },
+      "noBackupsFound": "No backups found",
+      "backupsWillAppear": "Backups will appear here once created",
+      "messages": {
+        "deleteSuccess": "Backup deleted successfully"
+      },
+      "details": {
+        "backupDetails": "Backup Details",
+        "destination": "Destination",
+        "started": "Started",
+        "completed": "Completed",
+        "contentBackedUp": "Content Backed Up",
+        "errorDetails": "Error Details",
+        "manifest": "Manifest"
       }
     },
     "restore": {

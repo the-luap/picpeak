@@ -12,7 +12,7 @@ import {
   Info,
   Eye,
   EyeOff,
-  TestTube,
+  Wifi,
   CheckCircle,
   XCircle,
   Loader2,
@@ -386,7 +386,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                   </>
                 ) : (
                   <>
-                    <TestTube className="mr-2 h-4 w-4" />
+                    <Wifi className="mr-2 h-4 w-4" />
                     {t('backup.actions.testConnection')}
                   </>
                 )}

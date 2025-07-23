@@ -183,7 +183,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
           label={t('backup.dashboard.stats.backupSize')}
           value={formatBytes(statistics.total_size || 0)}
           color="green"
-          subtext={`${statistics.files_processed || 0} files`}
+          subtext={`${statistics.files_processed || 0} ${t('backup.dashboard.stats.files')}`}
         />
         
         <StatCard
@@ -294,7 +294,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
               <div>
                 <p className="font-medium text-gray-900">
                   {config?.backup_destination_type 
-                    ? config.backup_destination_type.toUpperCase() 
+                    ? t(`backup.configuration.destinationTypes.${config.backup_destination_type}.name`) 
                     : t('backup.dashboard.notConfigured.title')}
                 </p>
                 <p className="text-sm text-gray-500">
