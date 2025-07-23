@@ -111,11 +111,17 @@ steps:
   # -------- NEW: Create GitHub Release --------
   - name: github-release
     image: plugins/github-release
+    environment:
+      PLUGIN_API_KEY:
+        from_secret: GITHUB_TOKEN
+      DRONE_REMOTE_URL: https://github.com/the-luap/picpeak.git
     settings:
       api_key:
         from_secret: GITHUB_TOKEN
       repo: the-luap/picpeak
       title: "PicPeak ${DRONE_TAG}"
+      prerelease: false
+      overwrite: true
       note: |
         # PicPeak ${DRONE_TAG}
         
