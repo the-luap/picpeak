@@ -187,8 +187,8 @@ export const RestoreWizard = () => {
   const renderSourceSelection = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Select Backup Source</h3>
-        <p className="text-sm text-gray-600">Choose where to restore the backup from</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.source.title')}</h3>
+        <p className="text-sm text-gray-600">{t('backup.restore.source.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -203,8 +203,8 @@ export const RestoreWizard = () => {
           <HardDrive className={`h-12 w-12 mb-3 mx-auto ${
             restoreData.source === 'local' ? 'text-primary' : 'text-gray-400'
           }`} />
-          <h4 className="font-medium text-gray-900">Local Backup</h4>
-          <p className="text-xs text-gray-500 mt-1">Restore from local filesystem</p>
+          <h4 className="font-medium text-gray-900">{t('backup.restore.source.local.name')}</h4>
+          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.local.description')}</p>
         </button>
 
         <button
@@ -218,8 +218,8 @@ export const RestoreWizard = () => {
           <Cloud className={`h-12 w-12 mb-3 mx-auto ${
             restoreData.source === 's3' ? 'text-primary' : 'text-gray-400'
           }`} />
-          <h4 className="font-medium text-gray-900">S3 Storage</h4>
-          <p className="text-xs text-gray-500 mt-1">Restore from S3 bucket</p>
+          <h4 className="font-medium text-gray-900">{t('backup.restore.source.s3.name')}</h4>
+          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.s3.description')}</p>
         </button>
 
         <button
@@ -233,8 +233,8 @@ export const RestoreWizard = () => {
           <Upload className={`h-12 w-12 mb-3 mx-auto ${
             restoreData.source === 'upload' ? 'text-primary' : 'text-gray-400'
           }`} />
-          <h4 className="font-medium text-gray-900">Upload Backup</h4>
-          <p className="text-xs text-gray-500 mt-1">Upload a backup file</p>
+          <h4 className="font-medium text-gray-900">{t('backup.restore.source.upload.name')}</h4>
+          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.upload.description')}</p>
         </button>
       </div>
 

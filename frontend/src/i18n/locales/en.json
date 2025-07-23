@@ -1254,10 +1254,7 @@
         "enterPassphrase": "Enter encryption passphrase",
         "at": "at"
       },
-      "options": {
-        "title": "Restore Options",
-        "subtitle": "Choose what to restore",
-        "types": {
+      "restoreTypes": {
           "full": {
             "name": "Full Restore",
             "description": "Restore everything including database, photos, and archives",
@@ -1278,7 +1275,10 @@
             "description": "Choose specific items to restore",
             "warning": "Only selected items will be restored"
           }
-        },
+      },
+      "options": {
+        "title": "Restore Options",
+        "subtitle": "Choose what to restore",
         "additionalOptions": {
           "title": "Additional Options",
           "skipPreBackup": "Skip Pre-Restore Backup",
@@ -1341,6 +1341,9 @@
         "starting": "Starting...",
         "validating": "Validating...",
         "startNewRestore": "Start New Restore"
+      },
+      "messages": {
+        "restoreStarted": "Restore started successfully"
       }
     },
     "messages": {

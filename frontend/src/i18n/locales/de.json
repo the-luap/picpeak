@@ -1198,10 +1198,7 @@
         "enterPassphrase": "Verschlüsselungs-Passphrase eingeben",
         "at": "um"
       },
-      "options": {
-        "title": "Wiederherstellungsoptionen",
-        "subtitle": "Wählen Sie, was wiederhergestellt werden soll",
-        "types": {
+      "restoreTypes": {
           "full": {
             "name": "Vollständige Wiederherstellung",
             "description": "Alles wiederherstellen, einschließlich Datenbank, Fotos und Archive",
@@ -1222,7 +1219,10 @@
             "description": "Bestimmte Elemente zur Wiederherstellung auswählen",
             "warning": "Nur ausgewählte Elemente werden wiederhergestellt"
           }
-        },
+      },
+      "options": {
+        "title": "Wiederherstellungsoptionen",
+        "subtitle": "Wählen Sie, was wiederhergestellt werden soll",
         "additionalOptions": {
           "title": "Zusätzliche Optionen",
           "skipPreBackup": "Vor-Wiederherstellungs-Backup überspringen",
@@ -1285,6 +1285,9 @@
         "starting": "Starte...",
         "validating": "Validiere...",
         "startNewRestore": "Neue Wiederherstellung starten"
+      },
+      "messages": {
+        "restoreStarted": "Wiederherstellung erfolgreich gestartet"
       }
     },
     "messages": {
