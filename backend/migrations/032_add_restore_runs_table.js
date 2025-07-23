@@ -125,9 +125,10 @@ exports.up = async function(knex) {
   // Add new email templates for restore notifications
   const emailTemplates = [
     {
-      name: 'restore_completed',
-      subject: '✅ Restore Completed Successfully',
-      body: `<h2>Restore Operation Completed</h2>
+      template_key: 'restore_completed',
+      subject_en: '✅ Restore Completed Successfully',
+      subject_de: '✅ Wiederherstellung erfolgreich abgeschlossen',
+      body_html_en: `<h2>Restore Operation Completed</h2>
 <p>A restore operation has completed successfully.</p>
 
 <h3>Details:</h3>
@@ -140,32 +141,7 @@ exports.up = async function(knex) {
 </ul>
 
 <p>Please verify that all systems are functioning correctly after the restore.</p>`,
-      language: 'en',
-      is_active: true
-    },
-    {
-      name: 'restore_failed',
-      subject: '❌ Restore Operation Failed',
-      body: `<h2>Restore Operation Failed</h2>
-<p>A restore operation has failed and requires attention.</p>
-
-<h3>Details:</h3>
-<ul>
-  <li><strong>Restore Type:</strong> {{restore_type}}</li>
-  <li><strong>Error:</strong> {{error_message}}</li>
-  <li><strong>Timestamp:</strong> {{timestamp}}</li>
-</ul>
-
-<p>Please check the system logs for more details and take appropriate action.</p>
-
-<p><strong>Important:</strong> If a pre-restore backup was created, it may be used for recovery.</p>`,
-      language: 'en',
-      is_active: true
-    },
-    {
-      name: 'restore_completed',
-      subject: '✅ Wiederherstellung erfolgreich abgeschlossen',
-      body: `<h2>Wiederherstellungsvorgang abgeschlossen</h2>
+      body_html_de: `<h2>Wiederherstellungsvorgang abgeschlossen</h2>
 <p>Ein Wiederherstellungsvorgang wurde erfolgreich abgeschlossen.</p>
 
 <h3>Details:</h3>
@@ -178,13 +154,50 @@ exports.up = async function(knex) {
 </ul>
 
 <p>Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemäß funktionieren.</p>`,
-      language: 'de',
-      is_active: true
+      body_text_en: `Restore Operation Completed
+
+A restore operation has completed successfully.
+
+Details:
+- Restore Type: {{restore_type}}
+- Duration: {{duration}}
+- Files Restored: {{files_restored}}
+- Backup ID: {{backup_id}}
+- Timestamp: {{timestamp}}
+
+Please verify that all systems are functioning correctly after the restore.`,
+      body_text_de: `Wiederherstellungsvorgang abgeschlossen
+
+Ein Wiederherstellungsvorgang wurde erfolgreich abgeschlossen.
+
+Details:
+- Wiederherstellungstyp: {{restore_type}}
+- Dauer: {{duration}}
+- Wiederhergestellte Dateien: {{files_restored}}
+- Backup-ID: {{backup_id}}
+- Zeitstempel: {{timestamp}}
+
+Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemäß funktionieren.`,
+      variables: JSON.stringify(['restore_type', 'duration', 'files_restored', 'backup_id', 'timestamp'])
     },
     {
-      name: 'restore_failed',
-      subject: '❌ Wiederherstellungsvorgang fehlgeschlagen',
-      body: `<h2>Wiederherstellungsvorgang fehlgeschlagen</h2>
+      template_key: 'restore_failed',
+      subject_en: '❌ Restore Operation Failed',
+      subject_de: '❌ Wiederherstellungsvorgang fehlgeschlagen',
+      body_html_en: `<h2>Restore Operation Failed</h2>
+<p>A restore operation has failed and requires attention.</p>
+
+<h3>Details:</h3>
+<ul>
+  <li><strong>Restore Type:</strong> {{restore_type}}</li>
+  <li><strong>Error:</strong> {{error_message}}</li>
+  <li><strong>Timestamp:</strong> {{timestamp}}</li>
+</ul>
+
+<p>Please check the system logs for more details and take appropriate action.</p>
+
+<p><strong>Important:</strong> If a pre-restore backup was created, it may be used for recovery.</p>`,
+      body_html_de: `<h2>Wiederherstellungsvorgang fehlgeschlagen</h2>
 <p>Ein Wiederherstellungsvorgang ist fehlgeschlagen und erfordert Ihre Aufmerksamkeit.</p>
 
 <h3>Details:</h3>
@@ -197,8 +210,31 @@ exports.up = async function(knex) {
 <p>Bitte überprüfen Sie die Systemprotokolle für weitere Details und ergreifen Sie entsprechende Maßnahmen.</p>
 
 <p><strong>Wichtig:</strong> Falls ein Backup vor der Wiederherstellung erstellt wurde, kann es zur Wiederherstellung verwendet werden.</p>`,
-      language: 'de',
-      is_active: true
+      body_text_en: `Restore Operation Failed
+
+A restore operation has failed and requires attention.
+
+Details:
+- Restore Type: {{restore_type}}
+- Error: {{error_message}}
+- Timestamp: {{timestamp}}
+
+Please check the system logs for more details and take appropriate action.
+
+Important: If a pre-restore backup was created, it may be used for recovery.`,
+      body_text_de: `Wiederherstellungsvorgang fehlgeschlagen
+
+Ein Wiederherstellungsvorgang ist fehlgeschlagen und erfordert Ihre Aufmerksamkeit.
+
+Details:
+- Wiederherstellungstyp: {{restore_type}}
+- Fehler: {{error_message}}
+- Zeitstempel: {{timestamp}}
+
+Bitte überprüfen Sie die Systemprotokolle für weitere Details und ergreifen Sie entsprechende Maßnahmen.
+
+Wichtig: Falls ein Backup vor der Wiederherstellung erstellt wurde, kann es zur Wiederherstellung verwendet werden.`,
+      variables: JSON.stringify(['restore_type', 'error_message', 'timestamp'])
     }
   ];
   
@@ -208,7 +244,7 @@ exports.up = async function(knex) {
 exports.down = async function(knex) {
   // Remove email templates
   await knex('email_templates')
-    .whereIn('name', ['restore_completed', 'restore_failed'])
+    .whereIn('template_key', ['restore_completed', 'restore_failed'])
     .delete();
   
   // Remove settings
