@@ -8,44 +8,37 @@ async function up() {
     {
       setting_key: 'backup_s3_force_path_style',
       setting_value: JSON.stringify(false),
-      setting_type: 'backup',
-      description: 'Force path-style S3 URLs (for MinIO/self-hosted)'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_s3_ssl_enabled',
       setting_value: JSON.stringify(true),
-      setting_type: 'backup',
-      description: 'Enable SSL/TLS for S3 connections'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_s3_prefix',
       setting_value: JSON.stringify(''),
-      setting_type: 'backup',
-      description: 'S3 key prefix for organizing backups'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_incremental',
       setting_value: JSON.stringify(false),
-      setting_type: 'backup',
-      description: 'Enable incremental backups'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_include_database',
       setting_value: JSON.stringify(true),
-      setting_type: 'backup',
-      description: 'Include database dumps in backups'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_encryption_enabled',
       setting_value: JSON.stringify(false),
-      setting_type: 'backup',
-      description: 'Enable backup encryption'
+      setting_type: 'backup'
     },
     {
       setting_key: 'backup_database_schedule',
       setting_value: JSON.stringify(''),
-      setting_type: 'backup',
-      description: 'Separate cron schedule for database-only backups'
+      setting_type: 'backup'
     }
   ];
 
