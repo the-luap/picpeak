@@ -110,29 +110,49 @@ steps:
 
   # -------- NEW: Create GitHub Release --------
   - name: github-release
-    image: curlimages/curl:latest
+    image: plugins/github-release
     when:
       event: tag
-    environment:
-      GITHUB_TOKEN:
+    settings:
+      api_key:
         from_secret: GITHUB_TOKEN
-    commands:
-      - >
-        echo '{
-          "tag_name": "'${DRONE_TAG}'",
-          "target_commitish": "main",
-          "name": "PicPeak '${DRONE_TAG}'",
-          "body": "# PicPeak '${DRONE_TAG}'\n\n## 🐳 Docker Images\n\nThis release includes Docker images published to GitHub Container Registry:\n\n```bash\n# Backend\ndocker pull ghcr.io/the-luap/picpeak-backend:'${DRONE_TAG}'\ndocker pull ghcr.io/the-luap/picpeak-backend:latest\n\n# Frontend\ndocker pull ghcr.io/the-luap/picpeak-frontend:'${DRONE_TAG}'\ndocker pull ghcr.io/the-luap/picpeak-frontend:latest\n```\n\n## 📦 What'"'"'s New\n\nSee the [README](https://github.com/the-luap/picpeak#readme) for features and documentation.\n\n## 🚀 Quick Start\n\n```bash\n# Clone and deploy\ngit clone https://github.com/the-luap/picpeak.git\ncd picpeak\n\n# Use the tagged version\ndocker-compose -f docker-compose.prod.yml up -d\n```\n\n---\n\nFor detailed deployment instructions, see the [Deployment Guide](https://github.com/the-luap/picpeak/blob/main/DEPLOYMENT.md).",
-          "draft": false,
-          "prerelease": false
-        }' > /tmp/release.json
-      - >
-        curl -X POST
-        -H "Accept: application/vnd.github+json"
-        -H "Authorization: Bearer ${GITHUB_TOKEN}"
-        -H "X-GitHub-Api-Version: 2022-11-28"
-        https://api.github.com/repos/the-luap/picpeak/releases
-        -d @/tmp/release.json
+      files: []
+      title: PicPeak ${DRONE_TAG}
+      note: |
+        # PicPeak ${DRONE_TAG}
+
+        ## 🐳 Docker Images
+
+        This release includes Docker images published to GitHub Container Registry:
+
+        ```bash
+        # Backend
+        docker pull ghcr.io/the-luap/picpeak-backend:${DRONE_TAG}
+        docker pull ghcr.io/the-luap/picpeak-backend:latest
+
+        # Frontend
+        docker pull ghcr.io/the-luap/picpeak-frontend:${DRONE_TAG}
+        docker pull ghcr.io/the-luap/picpeak-frontend:latest
+        ```
+
+        ## 📦 What's New
+
+        See the [README](https://github.com/the-luap/picpeak#readme) for features and documentation.
+
+        ## 🚀 Quick Start
+
+        ```bash
+        # Clone and deploy
+        git clone https://github.com/the-luap/picpeak.git
+        cd picpeak
+
+        # Use the tagged version
+        docker-compose -f docker-compose.prod.yml up -d
+        ```
+
+        ---
+
+        For detailed deployment instructions, see the [Deployment Guide](https://github.com/the-luap/picpeak/blob/main/DEPLOYMENT.md).
 
 trigger:
   event:
