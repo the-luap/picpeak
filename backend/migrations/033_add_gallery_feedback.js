@@ -1,4 +1,4 @@
-const { formatBoolean } = require('./helpers');
+// No helpers needed for boolean values
 
 exports.up = async function(knex) {
   console.log('Adding gallery feedback tables...');
