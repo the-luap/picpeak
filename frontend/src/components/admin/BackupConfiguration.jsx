@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Save,
   Server,
@@ -23,38 +24,40 @@ import {
 import { toast } from 'react-toastify';
 import { Button, Card, Input } from '../common';
 
-const destinationTypes = [
-  {
-    id: 'local',
-    name: 'Local Storage',
-    icon: HardDrive,
-    description: 'Store backups on the local server filesystem',
-    fields: ['backup_destination_path']
-  },
-  {
-    id: 'rsync',
-    name: 'Remote Server (Rsync)',
-    icon: Server,
-    description: 'Sync backups to a remote server via SSH/Rsync',
-    fields: ['backup_rsync_host', 'backup_rsync_user', 'backup_rsync_path', 'backup_rsync_ssh_key']
-  },
-  {
-    id: 's3',
-    name: 'S3 Compatible Storage',
-    icon: Cloud,
-    description: 'Store backups in Amazon S3 or compatible object storage',
-    fields: ['backup_s3_endpoint', 'backup_s3_bucket', 'backup_s3_access_key', 'backup_s3_secret_key', 'backup_s3_region']
-  }
-];
-
-const scheduleOptions = [
-  { value: 'hourly', label: 'Every hour' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'custom', label: 'Custom cron expression' }
-];
-
 export const BackupConfiguration = ({ config, onSave, isSaving }) => {
+  const { t } = useTranslation();
+  
+  const destinationTypes = [
+    {
+      id: 'local',
+      name: t('backup.configuration.destinationTypes.local.name'),
+      icon: HardDrive,
+      description: t('backup.configuration.destinationTypes.local.description'),
+      fields: ['backup_destination_path']
+    },
+    {
+      id: 'rsync',
+      name: t('backup.configuration.destinationTypes.rsync.name'),
+      icon: Server,
+      description: t('backup.configuration.destinationTypes.rsync.description'),
+      fields: ['backup_rsync_host', 'backup_rsync_user', 'backup_rsync_path', 'backup_rsync_ssh_key']
+    },
+    {
+      id: 's3',
+      name: t('backup.configuration.destinationTypes.s3.name'),
+      icon: Cloud,
+      description: t('backup.configuration.destinationTypes.s3.description'),
+      fields: ['backup_s3_endpoint', 'backup_s3_bucket', 'backup_s3_access_key', 'backup_s3_secret_key', 'backup_s3_region']
+    }
+  ];
+
+  const scheduleOptions = [
+    { value: 'hourly', label: t('backup.configuration.schedule.options.hourly') },
+    { value: 'daily', label: t('backup.configuration.schedule.options.daily') },
+    { value: 'weekly', label: t('backup.configuration.schedule.options.weekly') },
+    { value: 'custom', label: t('backup.configuration.schedule.options.custom') }
+  ];
+  
   const [formData, setFormData] = useState({
     backup_enabled: false,
     backup_destination_type: 'local',
@@ -121,7 +124,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
     }
     
     if (missingFields.length > 0) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('backup.configuration.messages.requiredFields'));
       return;
     }
     
@@ -133,9 +136,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
     try {
       // TODO: Implement connection test endpoint
       await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success('Connection test successful!');
+      toast.success(t('backup.configuration.messages.connectionSuccess'));
     } catch (error) {
-      toast.error('Connection test failed: ' + error.message);
+      toast.error(t('backup.configuration.messages.connectionFailed') + ': ' + error.message);
     } finally {
       setTestingConnection(false);
     }
@@ -149,9 +152,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">Backup Service</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('backup.configuration.enableBackup')}</h3>
             <p className="mt-1 text-sm text-gray-600">
-              Enable automatic backups to protect your data
+              {t('backup.configuration.enableBackupHelp')}
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -168,7 +171,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
 
       {/* Destination Configuration */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup Destination</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.configuration.destinationType')}</h3>
         
         {/* Destination Type Selection */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -203,17 +206,17 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Backup Directory Path
+                  {t('backup.configuration.fields.destinationPath')}
                 </label>
                 <Input
                   type="text"
                   value={formData.backup_destination_path}
                   onChange={(e) => handleChange('backup_destination_path', e.target.value)}
-                  placeholder="/path/to/backup/directory"
+                  placeholder={t('backup.configuration.fields.destinationPathPlaceholder')}
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Absolute path where backups will be stored
+                  {t('backup.configuration.fields.destinationPathHelp')}
                 </p>
               </div>
             </>
@@ -224,50 +227,50 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SSH Host
+                    {t('backup.configuration.fields.rsyncHost')}
                   </label>
                   <Input
                     type="text"
                     value={formData.backup_rsync_host}
                     onChange={(e) => handleChange('backup_rsync_host', e.target.value)}
-                    placeholder="backup.example.com"
+                    placeholder={t('backup.configuration.fields.rsyncHostPlaceholder')}
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SSH User
+                    {t('backup.configuration.fields.rsyncUser')}
                   </label>
                   <Input
                     type="text"
                     value={formData.backup_rsync_user}
                     onChange={(e) => handleChange('backup_rsync_user', e.target.value)}
-                    placeholder="backup-user"
+                    placeholder={t('backup.configuration.fields.rsyncUserPlaceholder')}
                     required
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Remote Path
+                  {t('backup.configuration.fields.rsyncPath')}
                 </label>
                 <Input
                   type="text"
                   value={formData.backup_rsync_path}
                   onChange={(e) => handleChange('backup_rsync_path', e.target.value)}
-                  placeholder="/home/backup/photo-sharing"
+                  placeholder={t('backup.configuration.fields.rsyncPathPlaceholder')}
                   required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  SSH Private Key (optional)
+                  {t('backup.configuration.fields.rsyncSshKey')}
                 </label>
                 <div className="relative">
                   <textarea
                     value={formData.backup_rsync_ssh_key}
                     onChange={(e) => handleChange('backup_rsync_ssh_key', e.target.value)}
-                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                    placeholder={t('backup.configuration.fields.rsyncSshKeyPlaceholder')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary font-mono text-sm"
                     rows={4}
                   />
@@ -280,7 +283,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Leave empty to use system SSH keys
+                  {t('backup.configuration.fields.rsyncSshKeyHelp')}
                 </p>
               </div>
             </>
@@ -290,7 +293,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  S3 Endpoint URL
+                  {t('backup.configuration.fields.s3Endpoint')}
                 </label>
                 <Input
                   type="text"
@@ -300,13 +303,13 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Use default for AWS S3, or your provider's endpoint
+                  {t('backup.configuration.fields.s3EndpointHelp')}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Bucket Name
+                    {t('backup.configuration.fields.s3Bucket')}
                   </label>
                   <Input
                     type="text"
@@ -318,7 +321,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Region
+                    {t('backup.configuration.fields.s3Region')}
                   </label>
                   <Input
                     type="text"
@@ -331,7 +334,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Access Key ID
+                    {t('backup.configuration.fields.s3AccessKey')}
                   </label>
                   <Input
                     type="text"
@@ -343,7 +346,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Secret Access Key
+                    {t('backup.configuration.fields.s3SecretKey')}
                   </label>
                   <div className="relative">
                     <Input
@@ -379,12 +382,12 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 {testingConnection ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing...
+                    {t('backup.configuration.testingConnection')}
                   </>
                 ) : (
                   <>
                     <TestTube className="mr-2 h-4 w-4" />
-                    Test Connection
+                    {t('backup.actions.testConnection')}
                   </>
                 )}
               </Button>
@@ -395,12 +398,12 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
 
       {/* Schedule Configuration */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup Schedule</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.configuration.schedule.title')}</h3>
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Schedule
+              {t('backup.configuration.schedule.scheduleType')}
             </label>
             <select
               value={formData.backup_schedule}
@@ -418,7 +421,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
           {formData.backup_schedule === 'custom' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cron Expression
+                {t('backup.configuration.schedule.customCron')}
               </label>
               <Input
                 type="text"
@@ -427,14 +430,14 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 placeholder="0 3 * * *"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Use standard cron syntax (minute hour day month weekday)
+                {t('backup.configuration.schedule.customCronHelp')}
               </p>
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Retention Period (days)
+              {t('backup.configuration.schedule.retention')}
             </label>
             <Input
               type="number"
@@ -444,7 +447,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
               max="365"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Backups older than this will be automatically deleted
+              {t('backup.configuration.schedule.retentionHelp')}
             </p>
           </div>
         </div>
@@ -452,7 +455,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
 
       {/* Backup Content Selection */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup Content</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.configuration.whatToBackup.title')}</h3>
         
         <div className="space-y-3">
           <label className="flex items-center">
@@ -465,9 +468,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <div className="ml-3">
               <div className="flex items-center space-x-2">
                 <Database className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">Database</span>
+                <span className="text-sm font-medium text-gray-700">{t('backup.configuration.whatToBackup.database')}</span>
               </div>
-              <p className="text-xs text-gray-500">All application data and settings</p>
+              <p className="text-xs text-gray-500">{t('backup.configuration.whatToBackup.databaseHelp')}</p>
             </div>
           </label>
 
@@ -481,9 +484,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <div className="ml-3">
               <div className="flex items-center space-x-2">
                 <Image className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">Photos</span>
+                <span className="text-sm font-medium text-gray-700">{t('backup.configuration.whatToBackup.photos')}</span>
               </div>
-              <p className="text-xs text-gray-500">All uploaded photos and galleries</p>
+              <p className="text-xs text-gray-500">{t('backup.configuration.whatToBackup.photosHelp')}</p>
             </div>
           </label>
 
@@ -497,9 +500,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <div className="ml-3">
               <div className="flex items-center space-x-2">
                 <FileArchive className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">Archives</span>
+                <span className="text-sm font-medium text-gray-700">{t('backup.configuration.whatToBackup.archives')}</span>
               </div>
-              <p className="text-xs text-gray-500">Expired gallery archives</p>
+              <p className="text-xs text-gray-500">{t('backup.configuration.whatToBackup.archivesHelp')}</p>
             </div>
           </label>
 
@@ -513,9 +516,9 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
             <div className="ml-3">
               <div className="flex items-center space-x-2">
                 <Image className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium text-gray-700">Thumbnails</span>
+                <span className="text-sm font-medium text-gray-700">{t('backup.configuration.whatToBackup.thumbnails')}</span>
               </div>
-              <p className="text-xs text-gray-500">Generated thumbnail images (can be regenerated)</p>
+              <p className="text-xs text-gray-500">{t('backup.configuration.whatToBackup.thumbnailsHelp')}</p>
             </div>
           </label>
         </div>
@@ -523,7 +526,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
 
       {/* Advanced Options */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Advanced Options</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.configuration.advancedOptions.title')}</h3>
         
         <div className="space-y-4">
           <label className="flex items-center">
@@ -534,8 +537,8 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
               className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
             />
             <div className="ml-3">
-              <span className="text-sm font-medium text-gray-700">Enable Compression</span>
-              <p className="text-xs text-gray-500">Reduce backup size with gzip compression</p>
+              <span className="text-sm font-medium text-gray-700">{t('backup.configuration.advancedOptions.compression')}</span>
+              <p className="text-xs text-gray-500">{t('backup.configuration.advancedOptions.compressionHelp')}</p>
             </div>
           </label>
 
@@ -548,22 +551,22 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
               />
               <div className="ml-3">
-                <span className="text-sm font-medium text-gray-700">Enable Encryption</span>
-                <p className="text-xs text-gray-500">Encrypt backups with AES-256</p>
+                <span className="text-sm font-medium text-gray-700">{t('backup.configuration.advancedOptions.encryption')}</span>
+                <p className="text-xs text-gray-500">{t('backup.configuration.advancedOptions.encryptionHelp')}</p>
               </div>
             </label>
 
             {formData.backup_encryption && (
               <div className="ml-7">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Encryption Passphrase
+                  {t('backup.configuration.advancedOptions.encryptionPassphrase')}
                 </label>
                 <div className="relative">
                   <Input
                     type={showSecrets.encryption_passphrase ? 'text' : 'password'}
                     value={formData.backup_encryption_passphrase}
                     onChange={(e) => handleChange('backup_encryption_passphrase', e.target.value)}
-                    placeholder="Enter a strong passphrase"
+                    placeholder={t('backup.configuration.advancedOptions.encryptionPassphraseHelp')}
                     required={formData.backup_encryption}
                   />
                   <button
@@ -576,7 +579,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 </div>
                 <p className="mt-1 text-xs text-red-600">
                   <AlertCircle className="inline h-3 w-3 mr-1" />
-                  Store this passphrase securely! You'll need it to restore encrypted backups.
+                  {t('backup.configuration.advancedOptions.encryptionPassphraseHelp')}
                 </p>
               </div>
             )}
@@ -593,12 +596,12 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
           {isSaving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {t('backup.configuration.savingSettings')}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Save Configuration
+              {t('backup.configuration.saveSettings')}
             </>
           )}
         </Button>

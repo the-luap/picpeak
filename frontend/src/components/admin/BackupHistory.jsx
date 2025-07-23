@@ -110,7 +110,7 @@ export const BackupHistory = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search backups..."
+                placeholder={t('backup.history.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -149,22 +149,22 @@ export const BackupHistory = () => {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('backup.history.columns.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date & Time
+                  {t('backup.history.columns.dateTime')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  {t('backup.history.columns.type')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Size
+                  {t('backup.history.columns.size')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                  {t('backup.history.columns.duration')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('backup.history.columns.actions')}
                 </th>
               </tr>
             </thead>
@@ -215,7 +215,7 @@ export const BackupHistory = () => {
                             {formatBytes(stats.total_size || 0)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {stats.files_processed || 0} files
+                            {stats.files_processed || 0} {t('backup.dashboard.stats.files')}
                           </p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -228,7 +228,7 @@ export const BackupHistory = () => {
                             <button
                               onClick={() => toggleRowExpansion(backup.id)}
                               className="text-gray-400 hover:text-gray-600"
-                              title="View details"
+                              title={t('backup.actions.view')}
                             >
                               {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                             </button>
@@ -236,7 +236,7 @@ export const BackupHistory = () => {
                               <button
                                 onClick={() => window.open(`/admin/backup/download/${backup.id}`, '_blank')}
                                 className="text-gray-400 hover:text-gray-600"
-                                title="Download backup"
+                                title={t('backup.actions.download')}
                               >
                                 <Download size={20} />
                               </button>
@@ -244,7 +244,7 @@ export const BackupHistory = () => {
                             <button
                               onClick={() => handleDelete(backup)}
                               className="text-gray-400 hover:text-red-600"
-                              title="Delete backup"
+                              title={t('backup.actions.delete')}
                               disabled={deleteMutation.isLoading}
                             >
                               <Trash2 size={20} />
@@ -260,19 +260,19 @@ export const BackupHistory = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {/* Backup Details */}
                               <div className="space-y-2">
-                                <h4 className="font-medium text-gray-900">Backup Details</h4>
+                                <h4 className="font-medium text-gray-900">{t('backup.history.details.backupDetails')}</h4>
                                 <div className="text-sm space-y-1">
                                   <div className="flex justify-between">
-                                    <span className="text-gray-500">Destination:</span>
+                                    <span className="text-gray-500">{t('backup.history.details.destination')}:</span>
                                     <span className="text-gray-900">{backup.destination_type || 'Unknown'}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-gray-500">Started:</span>
+                                    <span className="text-gray-500">{t('backup.history.details.started')}:</span>
                                     <span className="text-gray-900">{format(new Date(backup.created_at), 'p')}</span>
                                   </div>
                                   {backup.completed_at && (
                                     <div className="flex justify-between">
-                                      <span className="text-gray-500">Completed:</span>
+                                      <span className="text-gray-500">{t('backup.history.details.completed')}:</span>
                                       <span className="text-gray-900">{format(new Date(backup.completed_at), 'p')}</span>
                                     </div>
                                   )}
@@ -281,11 +281,11 @@ export const BackupHistory = () => {
 
                               {/* Content Backed Up */}
                               <div className="space-y-2">
-                                <h4 className="font-medium text-gray-900">Content Backed Up</h4>
+                                <h4 className="font-medium text-gray-900">{t('backup.history.details.contentBackedUp')}</h4>
                                 <div className="space-y-2">
                                   <div className="flex items-center space-x-2">
                                     <Database className={`h-4 w-4 ${stats.database_backed_up ? 'text-green-500' : 'text-gray-300'}`} />
-                                    <span className="text-sm text-gray-700">Database</span>
+                                    <span className="text-sm text-gray-700">{t('backup.configuration.whatToBackup.database')}</span>
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     <Image className={`h-4 w-4 ${stats.photos_backed_up > 0 ? 'text-green-500' : 'text-gray-300'}`} />
@@ -305,7 +305,7 @@ export const BackupHistory = () => {
                               {/* Error Information */}
                               {backup.error_message && (
                                 <div className="space-y-2">
-                                  <h4 className="font-medium text-red-900">Error Details</h4>
+                                  <h4 className="font-medium text-red-900">{t('backup.history.details.errorDetails')}</h4>
                                   <p className="text-sm text-red-700 bg-red-50 p-2 rounded">
                                     {backup.error_message}
                                   </p>
@@ -315,7 +315,7 @@ export const BackupHistory = () => {
                               {/* Manifest Path */}
                               {backup.manifest_path && (
                                 <div className="space-y-2">
-                                  <h4 className="font-medium text-gray-900">Manifest</h4>
+                                  <h4 className="font-medium text-gray-900">{t('backup.history.details.manifest')}</h4>
                                   <p className="text-sm text-gray-600 font-mono break-all">
                                     {backup.manifest_path}
                                   </p>
@@ -344,7 +344,7 @@ export const BackupHistory = () => {
                   variant="secondary"
                   size="sm"
                 >
-                  Previous
+                  {t('backup.history.pagination.previous')}
                 </Button>
                 <Button
                   onClick={() => setCurrentPage(p => Math.min(pagination.pages, p + 1))}
@@ -352,17 +352,17 @@ export const BackupHistory = () => {
                   variant="secondary"
                   size="sm"
                 >
-                  Next
+                  {t('backup.history.pagination.next')}
                 </Button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{(currentPage - 1) * pagination.limit + 1}</span> to{' '}
-                    <span className="font-medium">
-                      {Math.min(currentPage * pagination.limit, pagination.total)}
-                    </span>{' '}
-                    of <span className="font-medium">{pagination.total}</span> results
+                    {t('backup.history.pagination.showing', {
+                      from: (currentPage - 1) * pagination.limit + 1,
+                      to: Math.min(currentPage * pagination.limit, pagination.total),
+                      total: pagination.total
+                    })}
                   </p>
                 </div>
                 <div>
@@ -372,7 +372,7 @@ export const BackupHistory = () => {
                       disabled={currentPage === 1}
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
+                      {t('backup.history.pagination.previous')}
                     </button>
                     
                     {[...Array(Math.min(5, pagination.pages))].map((_, i) => {
@@ -397,7 +397,7 @@ export const BackupHistory = () => {
                       disabled={currentPage === pagination.pages}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Next
+                      {t('backup.history.pagination.next')}
                     </button>
                   </nav>
                 </div>

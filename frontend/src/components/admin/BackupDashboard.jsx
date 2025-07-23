@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   HardDrive,
   Database,
@@ -46,6 +47,7 @@ const formatBytes = (bytes) => {
 };
 
 export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }) => {
+  const { t } = useTranslation();
   const lastBackup = status?.lastBackup;
   const statistics = lastBackup?.statistics || {};
   const isConfigured = config && config.backup_destination_type;
@@ -53,22 +55,22 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
 
   // Calculate backup health score
   const getHealthScore = () => {
-    if (!lastBackup) return { score: 0, status: 'critical', message: 'No backups found' };
+    if (!lastBackup) return { score: 0, status: 'critical', message: t('backup.dashboard.healthMessages.noBackups') };
     
     const hoursSinceBackup = (Date.now() - new Date(lastBackup.created_at)) / (1000 * 60 * 60);
     
     if (lastBackup.status === 'failed') {
-      return { score: 0, status: 'critical', message: 'Last backup failed' };
+      return { score: 0, status: 'critical', message: t('backup.dashboard.healthMessages.lastBackupFailed') };
     }
     
     if (hoursSinceBackup < 24) {
-      return { score: 100, status: 'excellent', message: 'Backup is up to date' };
+      return { score: 100, status: 'excellent', message: t('backup.dashboard.healthMessages.upToDate') };
     } else if (hoursSinceBackup < 48) {
-      return { score: 75, status: 'good', message: 'Backup is recent' };
+      return { score: 75, status: 'good', message: t('backup.dashboard.healthMessages.recent') };
     } else if (hoursSinceBackup < 168) { // 1 week
-      return { score: 50, status: 'warning', message: 'Backup is getting old' };
+      return { score: 50, status: 'warning', message: t('backup.dashboard.healthMessages.gettingOld') };
     } else {
-      return { score: 25, status: 'critical', message: 'Backup is outdated' };
+      return { score: 25, status: 'critical', message: t('backup.dashboard.healthMessages.outdated') };
     }
   };
 
@@ -89,10 +91,10 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
             <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
             <div className="ml-3">
               <h3 className="text-sm font-medium text-amber-800">
-                Backup Not Configured
+                {t('backup.dashboard.notConfigured.title')}
               </h3>
               <p className="mt-1 text-sm text-amber-700">
-                Please configure backup settings in the Configuration tab before running backups.
+                {t('backup.dashboard.notConfigured.message')}
               </p>
             </div>
           </div>
@@ -102,7 +104,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       {/* Health Score Card */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Backup Health</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('backup.dashboard.health.title')}</h3>
           <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${healthColors[health.status]}-100 text-${healthColors[health.status]}-700`}>
             {health.status.charAt(0).toUpperCase() + health.status.slice(1)}
           </span>
@@ -153,12 +155,12 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
               {isBackupRunning ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Running...
+                  {t('backup.dashboard.actions.running')}
                 </>
               ) : (
                 <>
                   <Play className="mr-2 h-4 w-4" />
-                  Run Backup Now
+                  {t('backup.dashboard.actions.runBackupNow')}
                 </>
               )}
             </Button>
@@ -170,15 +172,15 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={FileArchive}
-          label="Total Backups"
+          label={t('backup.dashboard.stats.totalBackups')}
           value={status?.totalBackups || 0}
           color="blue"
-          subtext={lastBackup ? `Last: ${format(new Date(lastBackup.created_at), 'PP')}` : 'No backups yet'}
+          subtext={lastBackup ? `${t('backup.dashboard.stats.last')}: ${format(new Date(lastBackup.created_at), 'PP')}` : t('backup.dashboard.stats.noBackupsYet')}
         />
         
         <StatCard
           icon={HardDrive}
-          label="Backup Size"
+          label={t('backup.dashboard.stats.backupSize')}
           value={formatBytes(statistics.total_size || 0)}
           color="green"
           subtext={`${statistics.files_processed || 0} files`}
@@ -186,7 +188,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
         
         <StatCard
           icon={Clock}
-          label="Last Duration"
+          label={t('backup.dashboard.stats.lastDuration')}
           value={lastBackup ? `${Math.round(lastBackup.duration_seconds / 60)}m` : 'N/A'}
           color="purple"
           subtext={lastBackup ? format(new Date(lastBackup.created_at), 'p') : ''}
@@ -194,17 +196,17 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
         
         <StatCard
           icon={Shield}
-          label="Backup Status"
-          value={isEnabled ? 'Active' : 'Inactive'}
+          label={t('backup.dashboard.stats.backupStatus')}
+          value={isEnabled ? t('backup.dashboard.stats.active') : t('backup.dashboard.stats.inactive')}
           color={isEnabled ? 'green' : 'gray'}
-          subtext={config?.backup_destination_type || 'Not configured'}
+          subtext={config?.backup_destination_type || t('backup.dashboard.notConfigured.title')}
         />
       </div>
 
       {/* Recent Activity */}
       {status?.recentBackups && status.recentBackups.length > 0 && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Backup Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.recentActivity.title')}</h3>
           <div className="space-y-3">
             {status.recentBackups.slice(0, 5).map((backup) => (
               <div key={backup.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
@@ -218,7 +220,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                   )}
                   <div>
                     <p className="font-medium text-gray-900">
-                      {backup.backup_type} backup
+                      {t('backup.dashboard.backupType', { type: backup.backup_type })}
                     </p>
                     <p className="text-sm text-gray-500">
                       {format(new Date(backup.created_at), 'PPp')}
@@ -242,7 +244,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       {/* Storage Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup Coverage</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.coverage.title')}</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -252,34 +254,34 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
               <span className={`px-2 py-1 rounded text-xs font-medium ${
                 statistics.database_backed_up ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
               }`}>
-                {statistics.database_backed_up ? 'Backed up' : 'Not backed up'}
+                {statistics.database_backed_up ? t('backup.dashboard.coverage.included') : t('backup.dashboard.coverage.excluded')}
               </span>
             </div>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Image className="h-5 w-5 text-gray-400" />
-                <span className="text-gray-700">Photos</span>
+                <span className="text-gray-700">{t('backup.configuration.whatToBackup.photos')}</span>
               </div>
               <span className="text-sm text-gray-500">
-                {statistics.photos_backed_up || 0} of {statistics.total_photos || 0}
+                {statistics.photos_backed_up || 0} {t('common.of')} {statistics.total_photos || 0}
               </span>
             </div>
             
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <FileArchive className="h-5 w-5 text-gray-400" />
-                <span className="text-gray-700">Archives</span>
+                <span className="text-gray-700">{t('backup.configuration.whatToBackup.archives')}</span>
               </div>
               <span className="text-sm text-gray-500">
-                {statistics.archives_backed_up || 0} files
+                {statistics.archives_backed_up || 0} {t('backup.dashboard.stats.files')}
               </span>
             </div>
           </div>
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Destination Info</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.storageDestination')}</h3>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               {config?.backup_destination_type === 's3' ? (
@@ -293,7 +295,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                 <p className="font-medium text-gray-900">
                   {config?.backup_destination_type 
                     ? config.backup_destination_type.toUpperCase() 
-                    : 'Not Configured'}
+                    : t('backup.dashboard.notConfigured.title')}
                 </p>
                 <p className="text-sm text-gray-500">
                   {config?.backup_destination_type === 's3' && config?.backup_s3_bucket
@@ -302,7 +304,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                     ? `Path: ${config.backup_destination_path}`
                     : config?.backup_destination_type === 'rsync' && config?.backup_rsync_host
                     ? `Host: ${config.backup_rsync_host}`
-                    : 'No destination set'}
+                    : t('backup.dashboard.noDestinationSet')}
                 </p>
               </div>
             </div>
@@ -312,7 +314,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                 <div className="flex items-center space-x-2">
                   <Info className="h-4 w-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    Backups retained for {config.backup_retention_days} days
+                    {t('backup.configuration.schedule.retentionDays')} {config.backup_retention_days} {t('backup.configuration.schedule.retentionHelp').replace('days (older backups will be automatically deleted)', '')}
                   </span>
                 </div>
               </div>

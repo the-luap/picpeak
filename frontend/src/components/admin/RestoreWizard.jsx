@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   RefreshCw,
   AlertTriangle,
@@ -28,47 +29,49 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button, Card, Input, Loading } from '../common';
 import { api } from '../../config/api';
 
-const steps = [
-  { id: 'source', title: 'Select Source' },
-  { id: 'backup', title: 'Choose Backup' },
-  { id: 'options', title: 'Restore Options' },
-  { id: 'confirm', title: 'Review & Confirm' },
-  { id: 'progress', title: 'Restore Progress' }
-];
-
-const restoreTypes = [
-  {
-    id: 'full',
-    name: 'Full Restore',
-    description: 'Restore everything including database, photos, and archives',
-    icon: RefreshCw,
-    warning: 'This will replace all current data'
-  },
-  {
-    id: 'database',
-    name: 'Database Only',
-    description: 'Restore only the database (settings, events, users)',
-    icon: Database,
-    warning: 'Current database will be replaced'
-  },
-  {
-    id: 'files',
-    name: 'Files Only',
-    description: 'Restore only photos and archives',
-    icon: Image,
-    warning: 'Existing files may be overwritten'
-  },
-  {
-    id: 'selective',
-    name: 'Selective Restore',
-    description: 'Choose specific items to restore',
-    icon: CheckCircle,
-    warning: 'Only selected items will be restored'
-  }
-];
-
 export const RestoreWizard = () => {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
+  
+  const steps = [
+    { id: 'source', title: t('backup.restore.steps.selectSource') },
+    { id: 'backup', title: t('backup.restore.steps.chooseBackup') },
+    { id: 'options', title: t('backup.restore.steps.restoreOptions') },
+    { id: 'confirm', title: t('backup.restore.steps.reviewConfirm') },
+    { id: 'progress', title: t('backup.restore.steps.restoreProgress') }
+  ];
+
+  const restoreTypes = [
+    {
+      id: 'full',
+      name: t('backup.restore.restoreTypes.full.name'),
+      description: t('backup.restore.restoreTypes.full.description'),
+      icon: RefreshCw,
+      warning: t('backup.restore.restoreTypes.full.warning')
+    },
+    {
+      id: 'database',
+      name: t('backup.restore.restoreTypes.database.name'),
+      description: t('backup.restore.restoreTypes.database.description'),
+      icon: Database,
+      warning: t('backup.restore.restoreTypes.database.warning')
+    },
+    {
+      id: 'files',
+      name: t('backup.restore.restoreTypes.files.name'),
+      description: t('backup.restore.restoreTypes.files.description'),
+      icon: Image,
+      warning: t('backup.restore.restoreTypes.files.warning')
+    },
+    {
+      id: 'selective',
+      name: t('backup.restore.restoreTypes.selective.name'),
+      description: t('backup.restore.restoreTypes.selective.description'),
+      icon: CheckCircle,
+      warning: t('backup.restore.restoreTypes.selective.warning')
+    }
+  ];
+  
   const [restoreData, setRestoreData] = useState({
     source: null,
     sourceConfig: {},
@@ -238,10 +241,10 @@ export const RestoreWizard = () => {
       {/* Source-specific configuration */}
       {restoreData.source === 's3' && (
         <Card className="p-4 space-y-4">
-          <h4 className="font-medium text-gray-900">S3 Configuration</h4>
+          <h4 className="font-medium text-gray-900">{t('backup.restore.source.configuration.s3')}</h4>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              placeholder="S3 Endpoint URL"
+              placeholder={t('backup.restore.source.configuration.endpoint')}
               value={restoreData.sourceConfig.s3Endpoint || ''}
               onChange={(e) => setRestoreData(prev => ({
                 ...prev,
@@ -249,7 +252,7 @@ export const RestoreWizard = () => {
               }))}
             />
             <Input
-              placeholder="Bucket Name"
+              placeholder={t('backup.restore.source.configuration.bucket')}
               value={restoreData.sourceConfig.s3Bucket || ''}
               onChange={(e) => setRestoreData(prev => ({
                 ...prev,
@@ -257,7 +260,7 @@ export const RestoreWizard = () => {
               }))}
             />
             <Input
-              placeholder="Access Key ID"
+              placeholder={t('backup.restore.source.configuration.accessKey')}
               value={restoreData.sourceConfig.s3AccessKey || ''}
               onChange={(e) => setRestoreData(prev => ({
                 ...prev,
@@ -266,7 +269,7 @@ export const RestoreWizard = () => {
             />
             <Input
               type="password"
-              placeholder="Secret Access Key"
+              placeholder={t('backup.restore.source.configuration.secretKey')}
               value={restoreData.sourceConfig.s3SecretKey || ''}
               onChange={(e) => setRestoreData(prev => ({
                 ...prev,
@@ -281,7 +284,7 @@ export const RestoreWizard = () => {
         <Card className="p-4">
           <div className="text-center py-8">
             <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p className="text-sm text-gray-600">Upload functionality coming soon</p>
+            <p className="text-sm text-gray-600">{t('backup.restore.source.upload.comingSoon')}</p>
           </div>
         </Card>
       )}
@@ -291,8 +294,8 @@ export const RestoreWizard = () => {
   const renderBackupSelection = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Backup to Restore</h3>
-        <p className="text-sm text-gray-600">Select from available backups</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.backup.title')}</h3>
+        <p className="text-sm text-gray-600">{t('backup.restore.backup.subtitle')}</p>
       </div>
 
       {loadingBackups ? (
@@ -300,7 +303,7 @@ export const RestoreWizard = () => {
       ) : availableBackups?.length === 0 ? (
         <Card className="p-8 text-center">
           <FileArchive className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-gray-500">No backups found in selected source</p>
+          <p className="text-gray-500">{t('backup.restore.backup.noBackupsFound')}</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -327,10 +330,10 @@ export const RestoreWizard = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {format(new Date(backup.created_at), 'PPP')} at {format(new Date(backup.created_at), 'p')}
+                      {format(new Date(backup.created_at), 'PPP')} {t('backup.restore.backup.at')} {format(new Date(backup.created_at), 'p')}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {backup.backup_type} backup • {formatBytes(backup.total_size || 0)}
+                      {t('backup.dashboard.backupType', { type: backup.backup_type })} • {formatBytes(backup.total_size || 0)}
                     </p>
                   </div>
                 </div>
@@ -348,13 +351,13 @@ export const RestoreWizard = () => {
           <div className="flex items-start space-x-3">
             <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-amber-900">Encrypted Backup</p>
+              <p className="text-sm font-medium text-amber-900">{t('backup.restore.backup.encrypted')}</p>
               <p className="text-sm text-amber-700 mt-1">
-                You'll need to provide the encryption passphrase to restore this backup.
+                {t('backup.restore.backup.encryptedMessage')}
               </p>
               <Input
                 type="password"
-                placeholder="Enter encryption passphrase"
+                placeholder={t('backup.restore.backup.enterPassphrase')}
                 className="mt-3"
                 value={restoreData.encryptionPassphrase}
                 onChange={(e) => setRestoreData(prev => ({
@@ -372,8 +375,8 @@ export const RestoreWizard = () => {
   const renderRestoreOptions = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Restore Options</h3>
-        <p className="text-sm text-gray-600">Choose what to restore</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.options.title')}</h3>
+        <p className="text-sm text-gray-600">{t('backup.restore.options.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -409,7 +412,7 @@ export const RestoreWizard = () => {
 
       {/* Additional Options */}
       <Card className="p-4 space-y-4">
-        <h4 className="font-medium text-gray-900">Additional Options</h4>
+        <h4 className="font-medium text-gray-900">{t('backup.restore.options.additionalOptions.title')}</h4>
         
         <label className="flex items-start space-x-3">
           <input
@@ -422,9 +425,9 @@ export const RestoreWizard = () => {
             className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
           />
           <div>
-            <p className="text-sm font-medium text-gray-700">Skip Pre-Restore Backup</p>
+            <p className="text-sm font-medium text-gray-700">{t('backup.restore.options.additionalOptions.skipPreBackup')}</p>
             <p className="text-xs text-gray-500">
-              By default, a backup is created before restore. Check this to skip it.
+              {t('backup.restore.options.additionalOptions.skipPreBackupHelp')}
             </p>
           </div>
         </label>
@@ -440,9 +443,9 @@ export const RestoreWizard = () => {
             className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
           />
           <div>
-            <p className="text-sm font-medium text-gray-700">Force Restore</p>
+            <p className="text-sm font-medium text-gray-700">{t('backup.restore.options.additionalOptions.force')}</p>
             <p className="text-xs text-gray-500">
-              Override safety checks and warnings (use with caution)
+              {t('backup.restore.options.additionalOptions.forceHelp')}
             </p>
           </div>
         </label>
@@ -453,8 +456,8 @@ export const RestoreWizard = () => {
   const renderConfirmation = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Review & Confirm</h3>
-        <p className="text-sm text-gray-600">Please review your restore configuration</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.confirmation.title')}</h3>
+        <p className="text-sm text-gray-600">{t('backup.restore.confirmation.subtitle')}</p>
       </div>
 
       {validationResult ? (
@@ -476,8 +479,8 @@ export const RestoreWizard = () => {
                   validationResult.validation?.isValid ? 'text-green-900' : 'text-red-900'
                 }`}>
                   {validationResult.validation?.isValid 
-                    ? 'Validation Passed' 
-                    : 'Validation Failed'}
+                    ? t('backup.restore.confirmation.validation.passed') 
+                    : t('backup.restore.confirmation.validation.failed')}
                 </p>
                 {validationResult.validation?.errors?.length > 0 && (
                   <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
@@ -493,20 +496,20 @@ export const RestoreWizard = () => {
           {/* Space Check */}
           {validationResult.spaceCheck && (
             <Card className="p-4">
-              <h4 className="font-medium text-gray-900 mb-3">Storage Space</h4>
+              <h4 className="font-medium text-gray-900 mb-3">{t('backup.restore.confirmation.spaceCheck.title')}</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Required:</span>
+                  <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.required')}:</span>
                   <span className="font-medium">{formatBytes(validationResult.spaceCheck.required)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Available:</span>
+                  <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.available')}:</span>
                   <span className="font-medium">{formatBytes(validationResult.spaceCheck.available)}</span>
                 </div>
                 {!validationResult.spaceCheck.sufficient && (
                   <p className="text-red-600 text-xs mt-2">
                     <AlertCircle className="inline h-3 w-3 mr-1" />
-                    Insufficient storage space
+                    {t('backup.restore.confirmation.spaceCheck.insufficient')}
                   </p>
                 )}
               </div>
@@ -515,25 +518,25 @@ export const RestoreWizard = () => {
 
           {/* Summary */}
           <Card className="p-4">
-            <h4 className="font-medium text-gray-900 mb-3">Restore Summary</h4>
+            <h4 className="font-medium text-gray-900 mb-3">{t('backup.restore.confirmation.summary.title')}</h4>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-gray-600">Source:</dt>
+                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.source')}:</dt>
                 <dd className="font-medium capitalize">{restoreData.source}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">Backup Date:</dt>
+                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.backupDate')}:</dt>
                 <dd className="font-medium">
                   {format(new Date(restoreData.selectedBackup.created_at), 'PPp')}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">Restore Type:</dt>
+                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.restoreType')}:</dt>
                 <dd className="font-medium capitalize">{restoreData.restoreType}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">Pre-backup:</dt>
-                <dd className="font-medium">{restoreData.skipPreBackup ? 'Skipped' : 'Enabled'}</dd>
+                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.preBackup')}:</dt>
+                <dd className="font-medium">{restoreData.skipPreBackup ? t('backup.restore.confirmation.summary.skipped') : t('backup.restore.confirmation.summary.enabled')}</dd>
               </div>
             </dl>
           </Card>
@@ -544,11 +547,10 @@ export const RestoreWizard = () => {
               <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-amber-800">
-                  Important Notice
+                  {t('backup.restore.confirmation.warning.title')}
                 </h3>
                 <p className="mt-1 text-sm text-amber-700">
-                  This restore operation will replace existing data. Make sure you have a current backup
-                  before proceeding. This action cannot be undone.
+                  {t('backup.restore.confirmation.warning.message')}
                 </p>
               </div>
             </div>
@@ -557,7 +559,7 @@ export const RestoreWizard = () => {
       ) : (
         <div className="text-center py-8">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-sm text-gray-600">Validating restore configuration...</p>
+          <p className="mt-2 text-sm text-gray-600">{t('backup.restore.confirmation.validation.checking')}</p>
         </div>
       )}
     </div>
@@ -570,9 +572,9 @@ export const RestoreWizard = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Restore Progress</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.progress.title')}</h3>
           <p className="text-sm text-gray-600">
-            {isRunning ? 'Restore in progress...' : 'Restore completed'}
+            {isRunning ? t('backup.restore.progress.inProgress') : t('backup.restore.progress.completed')}
           </p>
         </div>
 
@@ -580,7 +582,7 @@ export const RestoreWizard = () => {
         <Card className="p-6">
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Overall Progress</span>
+              <span className="text-gray-600">{t('backup.restore.progress.overallProgress')}</span>
               <span className="font-medium">{progress.percentage || 0}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -591,7 +593,7 @@ export const RestoreWizard = () => {
             </div>
             {progress.currentFile && (
               <p className="text-sm text-gray-600">
-                Current: {progress.currentFile}
+                {t('backup.restore.progress.current')}: {progress.currentFile}
               </p>
             )}
           </div>
@@ -599,7 +601,7 @@ export const RestoreWizard = () => {
 
         {/* Status Details */}
         <Card className="p-6">
-          <h4 className="font-medium text-gray-900 mb-4">Status Details</h4>
+          <h4 className="font-medium text-gray-900 mb-4">{t('backup.restore.progress.statusDetails')}</h4>
           <div className="space-y-3">
             {progress.steps?.map((step, idx) => (
               <div key={idx} className="flex items-center space-x-3">
@@ -629,7 +631,7 @@ export const RestoreWizard = () => {
         {/* Logs */}
         {progress.logs && progress.logs.length > 0 && (
           <Card className="p-6">
-            <h4 className="font-medium text-gray-900 mb-4">Restore Logs</h4>
+            <h4 className="font-medium text-gray-900 mb-4">{t('backup.restore.progress.restoreLogs')}</h4>
             <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
               <pre className="text-xs text-gray-300 font-mono">
                 {progress.logs.join('\n')}
@@ -645,10 +647,10 @@ export const RestoreWizard = () => {
               <CheckCircle className="h-5 w-5 text-green-400 mt-0.5" />
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-green-800">
-                  Restore Completed Successfully
+                  {t('backup.restore.progress.success.title')}
                 </h3>
                 <p className="mt-1 text-sm text-green-700">
-                  Your data has been restored. Please verify everything is working correctly.
+                  {t('backup.restore.progress.success.message')}
                 </p>
               </div>
             </div>
@@ -726,7 +728,7 @@ export const RestoreWizard = () => {
           disabled={currentStep === 0 || currentStep === 4}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
-          Back
+          {t('backup.restore.actions.back')}
         </Button>
 
         {currentStep < 4 && (
@@ -739,12 +741,12 @@ export const RestoreWizard = () => {
                 {restoreMutation.isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Starting...
+                    {t('backup.restore.actions.starting')}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    Start Restore
+                    {t('backup.restore.actions.startRestore')}
                   </>
                 )}
               </>
@@ -753,18 +755,18 @@ export const RestoreWizard = () => {
                 {validateMutation.isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Validating...
+                    {t('backup.restore.actions.validating')}
                   </>
                 ) : (
                   <>
-                    Next
+                    {t('backup.restore.actions.next')}
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </>
             ) : (
               <>
-                Next
+                {t('backup.restore.actions.next')}
                 <ChevronRight className="ml-2 h-4 w-4" />
               </>
             )}
@@ -788,7 +790,7 @@ export const RestoreWizard = () => {
               setValidationResult(null);
             }}
           >
-            Start New Restore
+            {t('backup.restore.actions.startNewRestore')}
           </Button>
         )}
       </div>

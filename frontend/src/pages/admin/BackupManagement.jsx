@@ -25,6 +25,7 @@ import {
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Card, Loading } from '../../components/common';
 import { BackupDashboard } from '../../components/admin/BackupDashboard';
@@ -33,17 +34,20 @@ import { BackupHistory } from '../../components/admin/BackupHistory';
 import { RestoreWizard } from '../../components/admin/RestoreWizard';
 import { api } from '../../config/api';
 
-// Tab components
-const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: HardDrive },
-  { id: 'configuration', label: 'Configuration', icon: Settings },
-  { id: 'history', label: 'Backup History', icon: History },
-  { id: 'restore', label: 'Restore', icon: RefreshCw }
-];
+// Tab components will be defined inside the component to use translations
 
 export const BackupManagement = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  // Tab components with translations
+  const tabs = [
+    { id: 'dashboard', label: t('backup.tabs.dashboard'), icon: HardDrive },
+    { id: 'configuration', label: t('backup.tabs.configuration'), icon: Settings },
+    { id: 'history', label: t('backup.tabs.history'), icon: History },
+    { id: 'restore', label: t('backup.tabs.restore'), icon: RefreshCw }
+  ];
 
   // Fetch backup status
   const { data: backupStatus, isLoading: statusLoading } = useQuery({
@@ -71,11 +75,11 @@ export const BackupManagement = () => {
       return response.data;
     },
     onSuccess: () => {
-      toast.success('Backup started successfully');
+      toast.success(t('backup.messages.backupStarted'));
       queryClient.invalidateQueries({ queryKey: ['backup-status'] });
     },
     onError: (error) => {
-      const message = error.response?.data?.error || 'Failed to start backup';
+      const message = error.response?.data?.error || t('backup.messages.backupFailed');
       toast.error(message);
     }
   });
@@ -87,11 +91,11 @@ export const BackupManagement = () => {
       return response.data;
     },
     onSuccess: () => {
-      toast.success('Backup configuration updated');
+      toast.success(t('backup.messages.configUpdated'));
       queryClient.invalidateQueries({ queryKey: ['backup-config'] });
     },
     onError: (error) => {
-      const message = error.response?.data?.error || 'Failed to update configuration';
+      const message = error.response?.data?.error || t('backup.messages.configUpdateFailed');
       toast.error(message);
     }
   });
@@ -108,9 +112,9 @@ export const BackupManagement = () => {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Backup Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('backup.title')}</h1>
         <p className="text-gray-600">
-          Manage system backups, configure automated backups, and restore from previous backups.
+          {t('backup.subtitle')}
         </p>
       </div>
 
@@ -122,19 +126,19 @@ export const BackupManagement = () => {
               {backupStatus?.isRunning ? (
                 <>
                   <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                  <span className="text-blue-600 font-medium">Backup in progress...</span>
+                  <span className="text-blue-600 font-medium">{t('backup.status.inProgress')}</span>
                 </>
               ) : backupStatus?.lastBackup ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-500" />
                   <span className="text-gray-700">
-                    Last backup: {format(new Date(backupStatus.lastBackup.created_at), 'PPp')}
+                    {t('backup.status.lastBackup')}: {format(new Date(backupStatus.lastBackup.created_at), 'PPp')}
                   </span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="h-5 w-5 text-amber-500" />
-                  <span className="text-gray-700">No backups found</span>
+                  <span className="text-gray-700">{t('backup.status.noBackups')}</span>
                 </>
               )}
             </div>
@@ -143,7 +147,7 @@ export const BackupManagement = () => {
               <div className="flex items-center space-x-2">
                 <Clock className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-600">
-                  Next backup: {backupStatus?.nextBackup || 'Not scheduled'}
+                  {t('backup.status.nextBackup')}: {backupStatus?.nextBackup || t('backup.status.notScheduled')}
                 </span>
               </div>
             )}
@@ -159,12 +163,12 @@ export const BackupManagement = () => {
               {manualBackupMutation.isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Starting...
+                  {t('backup.actions.starting')}
                 </>
               ) : (
                 <>
                   <Play className="mr-2 h-4 w-4" />
-                  Run Backup Now
+                  {t('backup.actions.runBackupNow')}
                 </>
               )}
             </Button>
@@ -175,7 +179,7 @@ export const BackupManagement = () => {
                 : 'bg-gray-100 text-gray-700'
             }`}>
               <Shield className="h-4 w-4" />
-              <span>{backupConfig?.backup_enabled ? 'Enabled' : 'Disabled'}</span>
+              <span>{backupConfig?.backup_enabled ? t('backup.status.enabled') : t('backup.status.disabled')}</span>
             </div>
           </div>
         </div>

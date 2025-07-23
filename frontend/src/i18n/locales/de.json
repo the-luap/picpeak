@@ -903,6 +903,350 @@
     "passwordSecurityRequirements": "Passwort erfüllt nicht die Sicherheitsanforderungen",
     "expirationRange": "Ablauf muss zwischen 1 und 365 Tagen liegen"
   },
+  "backup": {
+    "title": "Backup-Verwaltung",
+    "subtitle": "Verwalten Sie System-Backups, konfigurieren Sie automatisierte Backups und stellen Sie vorherige Backups wieder her.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "configuration": "Konfiguration",
+      "history": "Backup-Verlauf",
+      "restore": "Wiederherstellung"
+    },
+    "status": {
+      "inProgress": "Backup läuft...",
+      "lastBackup": "Letztes Backup",
+      "noBackups": "Keine Backups gefunden",
+      "nextBackup": "Nächstes Backup",
+      "notScheduled": "Nicht geplant",
+      "enabled": "Aktiviert",
+      "disabled": "Deaktiviert"
+    },
+    "actions": {
+      "runBackupNow": "Backup jetzt starten",
+      "starting": "Starte...",
+      "running": "Läuft...",
+      "testConnection": "Verbindung testen",
+      "save": "Konfiguration speichern",
+      "delete": "Löschen",
+      "view": "Details anzeigen",
+      "download": "Herunterladen",
+      "refresh": "Aktualisieren"
+    },
+    "dashboard": {
+      "backupHealth": "Backup-Status",
+      "healthStatus": {
+        "excellent": "Ausgezeichnet",
+        "good": "Gut",
+        "warning": "Warnung",
+        "critical": "Kritisch"
+      },
+      "healthMessages": {
+        "noBackups": "Keine Backups gefunden",
+        "failed": "Letztes Backup fehlgeschlagen",
+        "upToDate": "Backup ist aktuell",
+        "recent": "Backup ist aktuell",
+        "old": "Backup wird alt",
+        "outdated": "Backup ist veraltet"
+      },
+      "stats": {
+        "totalBackups": "Gesamt-Backups",
+        "backupSize": "Backup-Größe",
+        "lastDuration": "Letzte Dauer",
+        "backupStatus": "Backup-Status",
+        "last": "Letztes",
+        "files": "Dateien",
+        "minutes": "{{count}}m",
+        "active": "Aktiv",
+        "inactive": "Inaktiv"
+      },
+      "recentActivity": "Letzte Backup-Aktivitäten",
+      "backupCoverage": "Backup-Abdeckung",
+      "notConfigured": {
+        "title": "Backup nicht konfiguriert",
+        "message": "Bitte konfigurieren Sie die Backup-Einstellungen im Konfiguration-Tab, bevor Sie Backups ausführen."
+      },
+      "coverage": {
+        "database": "Datenbank",
+        "photos": "Fotos",
+        "archives": "Archive",
+        "systemFiles": "Systemdateien",
+        "included": "Enthalten",
+        "excluded": "Ausgeschlossen",
+        "optional": "Optional"
+      },
+      "storageDestination": "Speicherziel",
+      "nextScheduledBackup": "Nächstes geplantes Backup",
+      "backupType": "{{type}} Backup",
+      "noBackupsYet": "Noch keine Backups"
+    },
+    "configuration": {
+      "enableBackup": "Automatisierte Backups aktivieren",
+      "destinationType": "Backup-Ziel",
+      "destinationTypes": {
+        "local": {
+          "name": "Lokaler Speicher",
+          "description": "Backups auf dem lokalen Server-Dateisystem speichern"
+        },
+        "rsync": {
+          "name": "Remote-Server (Rsync)",
+          "description": "Backups über SSH/Rsync auf einen Remote-Server synchronisieren"
+        },
+        "s3": {
+          "name": "S3-kompatibler Speicher",
+          "description": "Backups in Amazon S3 oder kompatiblem Objektspeicher speichern"
+        }
+      },
+      "fields": {
+        "destinationPath": "Zielpfad",
+        "destinationPathHelp": "Lokaler Verzeichnispfad für Backup-Speicherung",
+        "rsyncHost": "Remote-Host",
+        "rsyncHostHelp": "SSH-Hostname oder IP-Adresse",
+        "rsyncUser": "SSH-Benutzer",
+        "rsyncUserHelp": "Benutzername für SSH-Verbindung",
+        "rsyncPath": "Remote-Pfad",
+        "rsyncPathHelp": "Verzeichnispfad auf Remote-Server",
+        "rsyncSshKey": "SSH Private Key",
+        "rsyncSshKeyHelp": "SSH Private Key für Authentifizierung (optional)",
+        "s3Endpoint": "S3-Endpunkt",
+        "s3EndpointHelp": "S3 API-Endpunkt (z.B. s3.amazonaws.com)",
+        "s3Bucket": "Bucket-Name",
+        "s3BucketHelp": "S3-Bucket für Backup-Speicherung",
+        "s3AccessKey": "Zugriffsschlüssel-ID",
+        "s3AccessKeyHelp": "AWS/S3 Zugriffsschlüssel-ID",
+        "s3SecretKey": "Geheimer Zugriffsschlüssel",
+        "s3SecretKeyHelp": "AWS/S3 geheimer Zugriffsschlüssel",
+        "s3Region": "Region",
+        "s3RegionHelp": "S3-Region (z.B. eu-central-1)"
+      },
+      "schedule": {
+        "title": "Backup-Zeitplan",
+        "scheduleType": "Zeitplan-Typ",
+        "scheduleOptions": {
+          "hourly": "Jede Stunde",
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "custom": "Benutzerdefinierter Cron-Ausdruck"
+        },
+        "customCron": "Cron-Ausdruck",
+        "customCronHelp": "Geben Sie einen gültigen Cron-Ausdruck ein (z.B. 0 3 * * *)",
+        "retention": "Aufbewahrungszeitraum",
+        "retentionDays": "Backups aufbewahren für",
+        "retentionHelp": "Tage (ältere Backups werden automatisch gelöscht)"
+      },
+      "whatToBackup": {
+        "title": "Was soll gesichert werden",
+        "database": "Datenbank",
+        "databaseHelp": "Alle Veranstaltungsdaten, Einstellungen und Konfigurationen",
+        "photos": "Fotos",
+        "photosHelp": "Alle hochgeladenen Fotos in aktiven Galerien",
+        "archives": "Archive",
+        "archivesHelp": "Archivierte Veranstaltungs-ZIP-Dateien",
+        "thumbnails": "Miniaturbilder",
+        "thumbnailsHelp": "Generierte Miniaturbilder (können neu erstellt werden)",
+        "tempFiles": "Temporäre Dateien",
+        "tempFilesHelp": "Temporäre Upload- und Verarbeitungsdateien"
+      },
+      "advancedOptions": {
+        "title": "Erweiterte Optionen",
+        "compression": "Komprimierung aktivieren",
+        "compressionHelp": "Backup-Dateien komprimieren, um Speicherplatz zu sparen",
+        "encryption": "Verschlüsselung aktivieren",
+        "encryptionHelp": "Backups für zusätzliche Sicherheit verschlüsseln",
+        "encryptionPassphrase": "Verschlüsselungs-Passphrase",
+        "encryptionPassphraseHelp": "Starke Passphrase für Backup-Verschlüsselung",
+        "confirmPassphrase": "Passphrase bestätigen",
+        "passphrasesDontMatch": "Passphrasen stimmen nicht überein"
+      },
+      "validation": {
+        "requiredFields": "Bitte füllen Sie alle erforderlichen Felder aus",
+        "invalidCron": "Ungültiger Cron-Ausdruck",
+        "connectionTestFailed": "Verbindungstest fehlgeschlagen",
+        "connectionTestSuccess": "Verbindungstest erfolgreich!"
+      },
+      "testingConnection": "Teste Verbindung...",
+      "saveSettings": "Konfiguration speichern",
+      "savingSettings": "Speichern..."
+    },
+    "history": {
+      "searchPlaceholder": "Backups suchen...",
+      "allStatus": "Alle Status",
+      "status": {
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen",
+        "running": "Läuft",
+        "partial": "Teilweise"
+      },
+      "deleteConfirm": "Sind Sie sicher, dass Sie dieses Backup vom {{date}} löschen möchten?",
+      "noBackups": "Keine Backups gefunden",
+      "tableHeaders": {
+        "date": "Datum",
+        "type": "Typ",
+        "status": "Status",
+        "size": "Größe",
+        "duration": "Dauer",
+        "actions": "Aktionen"
+      },
+      "details": "Details",
+      "statistics": "Statistiken",
+      "errors": "Fehler",
+      "backupDetails": {
+        "backupId": "Backup-ID",
+        "startTime": "Startzeit",
+        "endTime": "Endzeit",
+        "destination": "Ziel",
+        "filesProcessed": "Verarbeitete Dateien",
+        "totalSize": "Gesamtgröße",
+        "compressionRatio": "Komprimierungsverhältnis",
+        "errorLog": "Fehlerprotokoll",
+        "noErrors": "Keine Fehler aufgetreten"
+      },
+      "pagination": {
+        "showing": "Zeige {{from}}-{{to}} von {{total}} Backups",
+        "previous": "Zurück",
+        "next": "Weiter"
+      }
+    },
+    "restore": {
+      "steps": {
+        "selectSource": "Quelle auswählen",
+        "chooseBackup": "Backup auswählen",
+        "restoreOptions": "Wiederherstellungsoptionen",
+        "reviewConfirm": "Überprüfen & Bestätigen",
+        "progress": "Wiederherstellungsfortschritt"
+      },
+      "source": {
+        "title": "Backup-Quelle auswählen",
+        "subtitle": "Wählen Sie, woher das Backup wiederhergestellt werden soll",
+        "local": {
+          "name": "Lokales Backup",
+          "description": "Vom lokalen Dateisystem wiederherstellen"
+        },
+        "s3": {
+          "name": "S3-Speicher",
+          "description": "Aus S3-Bucket wiederherstellen"
+        },
+        "upload": {
+          "name": "Backup hochladen",
+          "description": "Eine Backup-Datei hochladen",
+          "comingSoon": "Upload-Funktion kommt bald"
+        },
+        "configuration": {
+          "s3": "S3-Konfiguration",
+          "endpoint": "S3-Endpunkt-URL",
+          "bucket": "Bucket-Name",
+          "accessKey": "Zugriffsschlüssel-ID",
+          "secretKey": "Geheimer Zugriffsschlüssel"
+        }
+      },
+      "backup": {
+        "title": "Backup für Wiederherstellung auswählen",
+        "subtitle": "Aus verfügbaren Backups auswählen",
+        "noBackupsFound": "Keine Backups in ausgewählter Quelle gefunden",
+        "encrypted": "Verschlüsseltes Backup",
+        "encryptedMessage": "Sie müssen die Verschlüsselungs-Passphrase angeben, um dieses Backup wiederherzustellen.",
+        "enterPassphrase": "Verschlüsselungs-Passphrase eingeben",
+        "at": "um"
+      },
+      "options": {
+        "title": "Wiederherstellungsoptionen",
+        "subtitle": "Wählen Sie, was wiederhergestellt werden soll",
+        "types": {
+          "full": {
+            "name": "Vollständige Wiederherstellung",
+            "description": "Alles wiederherstellen, einschließlich Datenbank, Fotos und Archive",
+            "warning": "Dies ersetzt alle aktuellen Daten"
+          },
+          "database": {
+            "name": "Nur Datenbank",
+            "description": "Nur die Datenbank wiederherstellen (Einstellungen, Veranstaltungen, Benutzer)",
+            "warning": "Aktuelle Datenbank wird ersetzt"
+          },
+          "files": {
+            "name": "Nur Dateien",
+            "description": "Nur Fotos und Archive wiederherstellen",
+            "warning": "Vorhandene Dateien können überschrieben werden"
+          },
+          "selective": {
+            "name": "Selektive Wiederherstellung",
+            "description": "Bestimmte Elemente zur Wiederherstellung auswählen",
+            "warning": "Nur ausgewählte Elemente werden wiederhergestellt"
+          }
+        },
+        "additionalOptions": {
+          "title": "Zusätzliche Optionen",
+          "skipPreBackup": "Vor-Wiederherstellungs-Backup überspringen",
+          "skipPreBackupHelp": "Standardmäßig wird vor der Wiederherstellung ein Backup erstellt. Aktivieren Sie dies, um es zu überspringen.",
+          "force": "Wiederherstellung erzwingen",
+          "forceHelp": "Sicherheitsprüfungen und Warnungen überschreiben (mit Vorsicht verwenden)"
+        }
+      },
+      "confirmation": {
+        "title": "Überprüfen & Bestätigen",
+        "subtitle": "Bitte überprüfen Sie Ihre Wiederherstellungskonfiguration",
+        "validation": {
+          "passed": "Validierung bestanden",
+          "failed": "Validierung fehlgeschlagen",
+          "checking": "Validiere Wiederherstellungskonfiguration..."
+        },
+        "spaceCheck": {
+          "title": "Speicherplatz",
+          "required": "Erforderlich",
+          "available": "Verfügbar",
+          "insufficient": "Unzureichender Speicherplatz"
+        },
+        "summary": {
+          "title": "Wiederherstellungszusammenfassung",
+          "source": "Quelle",
+          "backupDate": "Backup-Datum",
+          "restoreType": "Wiederherstellungstyp",
+          "preBackup": "Vor-Backup",
+          "enabled": "Aktiviert",
+          "skipped": "Übersprungen"
+        },
+        "warning": {
+          "title": "Wichtiger Hinweis",
+          "message": "Diese Wiederherstellungsoperation ersetzt vorhandene Daten. Stellen Sie sicher, dass Sie ein aktuelles Backup haben, bevor Sie fortfahren. Diese Aktion kann nicht rückgängig gemacht werden."
+        }
+      },
+      "progress": {
+        "title": "Wiederherstellungsfortschritt",
+        "inProgress": "Wiederherstellung läuft...",
+        "completed": "Wiederherstellung abgeschlossen",
+        "overallProgress": "Gesamtfortschritt",
+        "current": "Aktuell",
+        "statusDetails": "Status-Details",
+        "restoreLogs": "Wiederherstellungsprotokolle",
+        "steps": {
+          "completed": "Abgeschlossen",
+          "running": "Läuft",
+          "failed": "Fehlgeschlagen",
+          "pending": "Ausstehend"
+        },
+        "success": {
+          "title": "Wiederherstellung erfolgreich abgeschlossen",
+          "message": "Ihre Daten wurden wiederhergestellt. Bitte überprüfen Sie, ob alles korrekt funktioniert."
+        }
+      },
+      "actions": {
+        "back": "Zurück",
+        "next": "Weiter",
+        "startRestore": "Wiederherstellung starten",
+        "starting": "Starte...",
+        "validating": "Validiere...",
+        "startNewRestore": "Neue Wiederherstellung starten"
+      }
+    },
+    "messages": {
+      "backupStarted": "Backup erfolgreich gestartet",
+      "backupFailed": "Backup konnte nicht gestartet werden",
+      "configUpdated": "Backup-Konfiguration aktualisiert",
+      "configUpdateFailed": "Konfiguration konnte nicht aktualisiert werden",
+      "backupDeleted": "Backup erfolgreich gelöscht",
+      "deleteFailed": "Backup konnte nicht gelöscht werden",
+      "testEmailSent": "Verbindungstest erfolgreich!",
+      "testEmailFailed": "Verbindungstest fehlgeschlagen"
+    }
+  },
   "maintenance": {
     "title": "Systemwartung",
     "message": "Wir führen derzeit geplante Wartungsarbeiten durch, um unseren Service zu verbessern. Wir sind in Kürze wieder online.",
