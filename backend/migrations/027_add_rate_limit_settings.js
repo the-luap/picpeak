@@ -41,8 +41,7 @@ exports.up = async function(knex) {
     
     if (!exists) {
       await knex('app_settings').insert({
-        ...setting,
-        updated_at: knex.fn.now()
+        ...setting
       });
     }
   }

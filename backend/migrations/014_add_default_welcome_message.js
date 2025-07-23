@@ -8,8 +8,7 @@ exports.up = async function(knex) {
     await knex('app_settings').insert({
       setting_key: 'general_default_welcome_message',
       setting_value: JSON.stringify('Thank you for using our photo sharing service! We hope you enjoy your photos.'),
-      setting_type: 'general',
-      updated_at: new Date()
+      setting_type: 'general'
     });
   }
 

@@ -87,8 +87,7 @@ exports.up = async function(knex) {
     {
       setting_key: 'feedback_notification_email',
       setting_value: JSON.stringify(''),
-      setting_type: 'feedback',
-      updated_at: new Date()
+      setting_type: 'feedback'
     },
     {
       setting_key: 'feedback_rate_limits',
@@ -97,8 +96,7 @@ exports.up = async function(knex) {
         comment: { max: 20, window: 3600 }, // 20 comments per hour
         like: { max: 200, window: 3600 } // 200 likes per hour
       }),
-      setting_type: 'feedback',
-      updated_at: new Date()
+      setting_type: 'feedback'
     }
   ]);
   
