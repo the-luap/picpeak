@@ -83,8 +83,8 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      // Check if it's an admin route
-      const isAdminRoute = error.config?.url?.includes('/admin');
+      // Check if it's an admin route (but not public endpoints)
+      const isAdminRoute = error.config?.url?.includes('/admin') && !error.config?.url?.includes('/public/');
       const currentPath = window.location.pathname;
       
       if (isAdminRoute) {
