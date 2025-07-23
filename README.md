@@ -94,6 +94,20 @@ Perfect for:
 - **Email**: SMTP with customizable templates
 - **Analytics**: Privacy-focused with Umami integration
 
+## 💻 System Requirements
+
+### Minimum Requirements
+- **CPU**: 2 CPU cores
+- **RAM**: 2GB minimum
+- **Storage**: 20GB minimum (plus photo storage needs)
+- **OS**: Linux (Ubuntu 20.04+), macOS, or Windows with WSL2
+- **Node.js**: v18.0.0 or higher
+- **Database**: SQLite (included) or PostgreSQL 12+
+
+### Docker Requirements (Recommended)
+- **Docker**: v20.10.0+
+- **Docker Compose**: v2.0.0+
+
 ## 🤝 Contributing
 
 We love contributions! PicPeak is built by photographers, for photographers. Whether you're fixing bugs, adding features, or improving documentation, your help is welcome.
