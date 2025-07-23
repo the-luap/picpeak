@@ -990,12 +990,15 @@
         "warning": "Warning",
         "critical": "Critical"
       },
+      "health": {
+        "title": "Backup Health"
+      },
       "healthMessages": {
         "noBackups": "No backups found",
-        "failed": "Last backup failed",
+        "lastBackupFailed": "Last backup failed",
         "upToDate": "Backup is up to date",
         "recent": "Backup is recent",
-        "old": "Backup is getting old",
+        "gettingOld": "Backup is getting old",
         "outdated": "Backup is outdated"
       },
       "stats": {
@@ -1007,15 +1010,18 @@
         "files": "files",
         "minutes": "{{count}}m",
         "active": "Active",
-        "inactive": "Inactive"
+        "inactive": "Inactive",
+        "noBackupsYet": "No backups yet"
       },
-      "recentActivity": "Recent Backup Activity",
-      "backupCoverage": "Backup Coverage",
+      "recentActivity": {
+        "title": "Recent Backup Activity"
+      },
       "notConfigured": {
         "title": "Backup Not Configured",
         "message": "Please configure backup settings in the Configuration tab before running backups."
       },
       "coverage": {
+        "title": "Backup Coverage",
         "database": "Database",
         "photos": "Photos",
         "archives": "Archives",
@@ -1027,10 +1033,11 @@
       "storageDestination": "Storage Destination",
       "nextScheduledBackup": "Next Scheduled Backup",
       "backupType": "{{type}} backup",
-      "noBackupsYet": "No backups yet"
+      "noDestinationSet": "No destination set"
     },
     "configuration": {
       "enableBackup": "Enable Automated Backups",
+      "enableBackupHelp": "Automatically create backups according to the configured schedule",
       "destinationType": "Backup Destination",
       "destinationTypes": {
         "local": {
@@ -1077,6 +1084,12 @@
           "weekly": "Weekly",
           "custom": "Custom cron expression"
         },
+        "options": {
+          "hourly": "Every hour",
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "custom": "Custom cron expression"
+        },
         "customCron": "Cron Expression",
         "customCronHelp": "Enter a valid cron expression (e.g., 0 3 * * *)",
         "retention": "Retention Period",
@@ -1112,6 +1125,11 @@
         "invalidCron": "Invalid cron expression",
         "connectionTestFailed": "Connection test failed",
         "connectionTestSuccess": "Connection test successful!"
+      },
+      "messages": {
+        "requiredFields": "Please fill in all required fields",
+        "connectionSuccess": "Connection test successful!",
+        "connectionFailed": "Connection test failed"
       },
       "testingConnection": "Testing connection...",
       "saveSettings": "Save Configuration",

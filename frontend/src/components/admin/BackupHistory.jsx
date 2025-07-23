@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Download,
   Eye,
@@ -41,6 +42,7 @@ const formatBytes = (bytes) => {
 };
 
 export const BackupHistory = () => {
+  const { t } = useTranslation();
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');

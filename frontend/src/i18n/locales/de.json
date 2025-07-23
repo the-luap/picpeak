@@ -959,8 +959,9 @@
         "active": "Aktiv",
         "inactive": "Inaktiv"
       },
-      "recentActivity": "Letzte Backup-Aktivitäten",
-      "backupCoverage": "Backup-Abdeckung",
+      "recentActivity": {
+        "title": "Letzte Backup-Aktivitäten"
+      },
       "notConfigured": {
         "title": "Backup nicht konfiguriert",
         "message": "Bitte konfigurieren Sie die Backup-Einstellungen im Konfiguration-Tab, bevor Sie Backups ausführen."
@@ -1027,6 +1028,12 @@
           "weekly": "Wöchentlich",
           "custom": "Benutzerdefinierter Cron-Ausdruck"
         },
+        "options": {
+          "hourly": "Jede Stunde",
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "custom": "Benutzerdefinierter Cron-Ausdruck"
+        },
         "customCron": "Cron-Ausdruck",
         "customCronHelp": "Geben Sie einen gültigen Cron-Ausdruck ein (z.B. 0 3 * * *)",
         "retention": "Aufbewahrungszeitraum",
@@ -1062,6 +1069,11 @@
         "invalidCron": "Ungültiger Cron-Ausdruck",
         "connectionTestFailed": "Verbindungstest fehlgeschlagen",
         "connectionTestSuccess": "Verbindungstest erfolgreich!"
+      },
+      "messages": {
+        "requiredFields": "Bitte füllen Sie alle erforderlichen Felder aus",
+        "connectionSuccess": "Verbindungstest erfolgreich!",
+        "connectionFailed": "Verbindungstest fehlgeschlagen"
       },
       "testingConnection": "Teste Verbindung...",
       "saveSettings": "Konfiguration speichern",
