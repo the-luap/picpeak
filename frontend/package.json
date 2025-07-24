@@ -1,7 +1,7 @@
 {
   "name": "picpeak-frontend",
   "private": true,
-  "version": "1.0.91",
+  "version": "1.0.92",
   "type": "module",
   "scripts": {
     "dev": "vite",
