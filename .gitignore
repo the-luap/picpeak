@@ -63,6 +63,8 @@ test-archiver/
 backend/.swarm/
 .claudedocs/
 backend/data/
+backend/docs/
+backend/logs/
 logs/
 storage/
 data/

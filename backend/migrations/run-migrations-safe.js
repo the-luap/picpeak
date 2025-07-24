@@ -42,6 +42,8 @@ async function detectExistingSchema() {
     { table: 'cms_pages', migration: '004_add_categories_and_cms.js' },
     { table: 'login_attempts', migration: '015_add_login_attempts_table.js' },
     { table: 'token_blacklist', migration: '017_add_token_revocation_tables.js' },
+    { table: 'backup_runs', migration: '029_add_backup_service_tables.js' },
+    { table: 'gallery_feedback', migration: '033_add_gallery_feedback.js' },
   ];
   
   for (const check of tableChecks) {
@@ -56,13 +58,14 @@ async function detectExistingSchema() {
 }
 
 // Run a single migration safely
-async function runMigrationSafely(filename) {
+async function runMigrationSafely(filepath) {
   try {
-    const migrationPath = path.join(__dirname, filename);
+    const migrationPath = path.join(__dirname, filepath);
     const migration = require(migrationPath);
+    const filename = path.basename(filepath);
     
     if (migration.up) {
-      console.log(`Running migration: ${filename}`);
+      console.log(`Running migration: ${filepath}`);
       
       // Run migration in a transaction if possible
       if (db.client.config.client === 'pg') {
@@ -74,14 +77,14 @@ async function runMigrationSafely(filename) {
       }
       
       await db('migrations').insert({ filename });
-      console.log(`Migration ${filename} completed successfully`);
+      console.log(`Migration ${filepath} completed successfully`);
     }
   } catch (error) {
     // Check if error is because schema already exists
     if (error.code === '42P07' || // PostgreSQL: relation already exists
         error.code === 'SQLITE_ERROR' && error.message.includes('already exists')) {
-      console.log(`Migration ${filename} - schema already exists, marking as applied`);
-      await markMigrationAsApplied(filename);
+      console.log(`Migration ${filepath} - schema already exists, marking as applied`);
+      await markMigrationAsApplied(path.basename(filepath));
     } else {
       throw error;
     }
@@ -104,23 +107,64 @@ async function runMigrations() {
     // Detect and mark existing schema
     await detectExistingSchema();
     
-    // Get all migration files
-    const files = await fs.readdir(__dirname);
-    const migrationFiles = files
-      .filter(f => f.match(/^\d{3}_.*\.js$/) || f === 'init.js')
-      .sort((a, b) => {
-        // Ensure init.js runs first
-        if (a === 'init.js') return -1;
-        if (b === 'init.js') return 1;
-        return a.localeCompare(b);
-      });
+    // Get applied migrations
+    const appliedMigrations = await db('migrations').select('filename');
+    const appliedFilenames = appliedMigrations.map(m => m.filename);
+    
+    // Check if this is a new deployment (no migrations have been applied)
+    const isNewDeployment = appliedFilenames.length === 0;
+    
+    // Get migration files from appropriate directories
+    let migrationFiles = [];
+    
+    if (isNewDeployment) {
+      // For new deployments, only run core migrations
+      console.log('New deployment detected - running core migrations only');
+      const coreDir = path.join(__dirname, 'core');
+      const coreFiles = await fs.readdir(coreDir);
+      migrationFiles = coreFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/) || f === 'init.js')
+        .map(f => path.join('core', f))
+        .sort();
+    } else {
+      // For existing deployments, run all migrations (legacy + core)
+      console.log('Existing deployment detected - checking all migrations');
+      
+      // Get legacy migrations
+      const legacyDir = path.join(__dirname, 'legacy');
+      const legacyFiles = await fs.readdir(legacyDir);
+      const legacyMigrations = legacyFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
+        .map(f => path.join('legacy', f));
+      
+      // Get core migrations
+      const coreDir = path.join(__dirname, 'core');
+      const coreFiles = await fs.readdir(coreDir);
+      const coreMigrations = coreFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/) || f === 'init.js')
+        .map(f => path.join('core', f));
+      
+      // Combine and sort by number
+      migrationFiles = [...legacyMigrations, ...coreMigrations]
+        .sort((a, b) => {
+          const baseA = path.basename(a);
+          const baseB = path.basename(b);
+          // Ensure init.js runs first
+          if (baseA === 'init.js') return -1;
+          if (baseB === 'init.js') return 1;
+          const numA = parseInt(baseA.split('_')[0]);
+          const numB = parseInt(baseB.split('_')[0]);
+          return numA - numB;
+        });
+    }
     
     // Run pending migrations
     let pendingCount = 0;
     let skippedCount = 0;
     
     for (const file of migrationFiles) {
-      const isApplied = await isMigrationApplied(file);
+      const filename = path.basename(file);
+      const isApplied = appliedFilenames.includes(filename);
       if (!isApplied) {
         await runMigrationSafely(file);
         pendingCount++;

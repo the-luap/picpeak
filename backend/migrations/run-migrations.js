@@ -22,15 +22,16 @@ async function getAppliedMigrations() {
 }
 
 // Run a single migration
-async function runMigration(filename) {
-  const migrationPath = path.join(__dirname, filename);
+async function runMigration(filepath) {
+  const migrationPath = path.join(__dirname, filepath);
   const migration = require(migrationPath);
+  const filename = path.basename(filepath);
   
   if (migration.up) {
-    console.log(`Running migration: ${filename}`);
+    console.log(`Running migration: ${filepath}`);
     await migration.up(db);
     await db('migrations').insert({ filename });
-    console.log(`Migration ${filename} completed`);
+    console.log(`Migration ${filepath} completed`);
   }
 }
 
@@ -50,19 +51,56 @@ async function runMigrations() {
     // Create migrations table
     await createMigrationsTable();
     
-    // Get all migration files
-    const files = await fs.readdir(__dirname);
-    const migrationFiles = files
-      .filter(f => f.match(/^\d{3}_.*\.js$/))
-      .sort();
-    
     // Get applied migrations
     const appliedMigrations = await getAppliedMigrations();
+    
+    // Check if this is a new deployment (no migrations have been applied)
+    const isNewDeployment = appliedMigrations.length === 0;
+    
+    // Get migration files from appropriate directories
+    let migrationFiles = [];
+    
+    if (isNewDeployment) {
+      // For new deployments, only run core migrations
+      console.log('New deployment detected - running core migrations only');
+      const coreDir = path.join(__dirname, 'core');
+      const coreFiles = await fs.readdir(coreDir);
+      migrationFiles = coreFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
+        .map(f => path.join('core', f))
+        .sort();
+    } else {
+      // For existing deployments, run all migrations (legacy + core)
+      console.log('Existing deployment detected - checking all migrations');
+      
+      // Get legacy migrations
+      const legacyDir = path.join(__dirname, 'legacy');
+      const legacyFiles = await fs.readdir(legacyDir);
+      const legacyMigrations = legacyFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
+        .map(f => path.join('legacy', f));
+      
+      // Get core migrations
+      const coreDir = path.join(__dirname, 'core');
+      const coreFiles = await fs.readdir(coreDir);
+      const coreMigrations = coreFiles
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
+        .map(f => path.join('core', f));
+      
+      // Combine and sort by number
+      migrationFiles = [...legacyMigrations, ...coreMigrations]
+        .sort((a, b) => {
+          const numA = parseInt(path.basename(a).split('_')[0]);
+          const numB = parseInt(path.basename(b).split('_')[0]);
+          return numA - numB;
+        });
+    }
     
     // Run pending migrations
     let pendingCount = 0;
     for (const file of migrationFiles) {
-      if (!appliedMigrations.includes(file)) {
+      const filename = path.basename(file);
+      if (!appliedMigrations.includes(filename)) {
         await runMigration(file);
         pendingCount++;
       }
