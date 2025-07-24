@@ -15,11 +15,14 @@ We take the security of PicPeak seriously. If you have discovered a security vul
 
 ### 1. **Do NOT create a public GitHub issue**
 
-### 2. Email us at security@example.com with:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+### 2. Report the vulnerability by:
+- Opening a [security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
+- Mark it clearly as "SECURITY" in the title
+- Include:
+  - Description of the vulnerability
+  - Steps to reproduce
+  - Potential impact
+  - Suggested fix (if any)
 
 ### 3. You can expect:
 - Acknowledgment within 48 hours
@@ -79,7 +82,7 @@ We believe in responsible disclosure. Once a vulnerability is fixed:
 
 ## Contact
 
-- Security issues: security@example.com
-- General support: https://github.com/the-luap/picpeak/issues
+- Security issues: [Create a security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
+- General support: [GitHub Issues](https://github.com/the-luap/picpeak/issues)
 
 Thank you for helping keep PicPeak and its users safe!

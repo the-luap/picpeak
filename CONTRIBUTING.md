@@ -153,8 +153,8 @@ picpeak/
 
 ## 📮 Contact
 
-- Create an issue for bugs or features
-- Join discussions for questions
-- Email: picpeak@example.com for security issues
+- Create an [issue](https://github.com/the-luap/picpeak/issues) for bugs or features
+- Join [discussions](https://github.com/the-luap/picpeak/discussions) for questions
+- Security issues: Open a [security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
 
 Thank you for contributing! 🎉

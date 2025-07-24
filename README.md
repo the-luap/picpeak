@@ -138,7 +138,7 @@ PicPeak takes security seriously:
 - 📝 Activity logging
 - 🔒 Secure file access
 
-Found a security issue? Please email security@example.com
+Found a security issue? Please open a [security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
 
 ## 📸 Screenshots
 
