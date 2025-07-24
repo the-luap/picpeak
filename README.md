@@ -192,6 +192,16 @@ We're constantly improving PicPeak and welcome contributions from our community!
 
 PicPeak is inspired by the best features of commercial platforms while remaining completely open source. Special thanks to all contributors who make this project possible.
 
+### 🤖 AI-Assisted Development
+
+This project was generated with the assistance of AI technology, but has been:
+- ✅ **Fully tested end-to-end** by human developers
+- 🔒 **Security audited** with comprehensive security checks
+- 👨‍💻 **Human-reviewed** for code quality and best practices
+- 🧪 **Production-tested** in real-world scenarios
+
+We believe in transparent development practices and the responsible use of AI as a tool to accelerate development while maintaining high standards of quality and security.
+
 ## 📄 License
 
 PicPeak is released under the [MIT License](LICENSE). Use it freely for personal or commercial projects.
