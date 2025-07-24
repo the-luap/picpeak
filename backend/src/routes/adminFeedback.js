@@ -123,8 +123,8 @@ router.get('/events/:eventId/feedback',
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: totalCount.count || 0,
-          pages: Math.ceil((totalCount.count || 0) / limit)
+          total: totalCount?.count || 0,
+          pages: Math.ceil((totalCount?.count || 0) / limit)
         }
       });
     } catch (error) {
@@ -182,7 +182,35 @@ router.get('/events/:eventId/feedback-analytics',
       const { eventId } = req.params;
       
       // Get summary statistics
-      const summary = await feedbackService.getEventFeedbackSummary(eventId);
+      const summaryData = await feedbackService.getEventFeedbackSummary(eventId);
+      
+      // Calculate average rating and other summary stats
+      const avgRatingResult = await db('photo_feedback')
+        .where('event_id', eventId)
+        .where('feedback_type', 'rating')
+        .avg('rating as average_rating')
+        .first();
+      
+      const pendingModeration = await db('photo_feedback')
+        .where('event_id', eventId)
+        .where('feedback_type', 'comment')
+        .where('is_approved', false)
+        .where('is_hidden', false)
+        .count('* as count')
+        .first();
+      
+      const summary = {
+        average_rating: parseFloat(avgRatingResult?.average_rating || 0),
+        total_ratings: summaryData.stats?.total_ratings || 0,
+        total_likes: summaryData.stats?.total_likes || 0,
+        total_comments: summaryData.stats?.total_comments || 0,
+        total_favorites: summaryData.stats?.total_favorites || 0,
+        pending_moderation: pendingModeration?.count || 0,
+        total_feedback: (summaryData.stats?.total_ratings || 0) + 
+                       (summaryData.stats?.total_likes || 0) + 
+                       (summaryData.stats?.total_comments || 0) + 
+                       (summaryData.stats?.total_favorites || 0)
+      };
       
       // Get top-rated photos
       const topRated = await db('photos')

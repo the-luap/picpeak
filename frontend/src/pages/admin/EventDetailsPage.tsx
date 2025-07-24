@@ -349,14 +349,16 @@ export const EventDetailsPage: React.FC = () => {
                     {t('common.edit')}
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<MessageSquare className="w-4 h-4" />}
-                  onClick={() => navigate(`/admin/events/${id}/feedback`)}
-                >
-                  {t('feedback.manage', 'Manage Feedback')}
-                </Button>
+                {feedbackSettings?.feedback_enabled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<MessageSquare className="w-4 h-4" />}
+                    onClick={() => navigate(`/admin/events/${id}/feedback`)}
+                  >
+                    {t('feedback.manage', 'Manage Feedback')}
+                  </Button>
+                )}
               </>
             )}
             {event.share_link && (

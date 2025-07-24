@@ -392,7 +392,7 @@ export const EventFeedbackPage: React.FC = () => {
                     <div className="flex items-center gap-3 mb-2">
                       <Star className="w-8 h-8 text-yellow-500" />
                       <div>
-                        <p className="text-2xl font-bold">{analytics.summary.average_rating.toFixed(1)}</p>
+                        <p className="text-2xl font-bold">{(analytics.summary.average_rating || 0).toFixed(1)}</p>
                         <p className="text-sm text-neutral-600">{t('feedback.avgRating', 'Average Rating')}</p>
                       </div>
                     </div>
