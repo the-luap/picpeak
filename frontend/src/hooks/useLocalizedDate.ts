@@ -4,6 +4,14 @@ import { de, enUS } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { publicSettingsService } from '../services/publicSettings.service';
 
+// Convert old date format strings to new date-fns format
+const convertDateFormat = (format: string): string => {
+  return format
+    .replace(/DD/g, 'dd')    // Days: DD -> dd
+    .replace(/YYYY/g, 'yyyy') // Years: YYYY -> yyyy
+    .replace(/YY/g, 'yy');    // Short years: YY -> yy
+};
+
 export const useLocalizedDate = () => {
   const { i18n } = useTranslation();
   
@@ -30,6 +38,10 @@ export const useLocalizedDate = () => {
         : settings.general_date_format.format || 'PPP';
     }
     dateFormat = dateFormat || 'PPP';
+    
+    // Convert old format to new format
+    dateFormat = convertDateFormat(dateFormat);
+    
     return dateFnsFormat(dateObj, dateFormat, { locale: getLocale() });
   };
   
@@ -43,9 +55,11 @@ export const useLocalizedDate = () => {
     formatDistanceToNow,
     locale: getLocale(),
     dateFormat: settings?.general_date_format 
-      ? (typeof settings.general_date_format === 'string' 
-          ? settings.general_date_format 
-          : settings.general_date_format.format || 'PPP')
+      ? convertDateFormat(
+          typeof settings.general_date_format === 'string' 
+            ? settings.general_date_format 
+            : settings.general_date_format.format || 'PPP'
+        )
       : 'PPP'
   };
 };
