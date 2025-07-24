@@ -108,14 +108,15 @@ steps:
         - VERSION=${DRONE_TAG}
         - VITE_API_URL=${VITE_API_URL:-/api}
 
-  # -------- NEW: Create GitHub Release --------
-  - name: github-release
-    image: plugins/github-release
+  # -------- NEW: Create Gitea Release --------
+  - name: gitea-release
+    image: plugins/gitea-release
     when:
       event: tag
     settings:
       api_key:
-        from_secret: GITHUB_TOKEN
+        from_secret: GITEA_TOKEN
+      base_url: https://gitea.local.nothaft.cloud
       files: []
       title: PicPeak ${DRONE_TAG}
       note: |
@@ -123,27 +124,27 @@ steps:
 
         ## 🐳 Docker Images
 
-        This release includes Docker images published to GitHub Container Registry:
+        This release includes Docker images published to local registry:
 
         ```bash
         # Backend
-        docker pull ghcr.io/the-luap/picpeak-backend:${DRONE_TAG}
-        docker pull ghcr.io/the-luap/picpeak-backend:latest
+        docker pull registry.local.nothaft.cloud/picpeak-backend:${DRONE_TAG}
+        docker pull registry.local.nothaft.cloud/picpeak-backend:latest
 
         # Frontend
-        docker pull ghcr.io/the-luap/picpeak-frontend:${DRONE_TAG}
-        docker pull ghcr.io/the-luap/picpeak-frontend:latest
+        docker pull registry.local.nothaft.cloud/picpeak-frontend:${DRONE_TAG}
+        docker pull registry.local.nothaft.cloud/picpeak-frontend:latest
         ```
 
         ## 📦 What's New
 
-        See the [README](https://github.com/the-luap/picpeak#readme) for features and documentation.
+        See the [README](https://gitea.nothaft.cloud/paul/picpeak#readme) for features and documentation.
 
         ## 🚀 Quick Start
 
         ```bash
         # Clone and deploy
-        git clone https://github.com/the-luap/picpeak.git
+        git clone https://gitea.nothaft.cloud/paul/picpeak.git
         cd picpeak
 
         # Use the tagged version
@@ -152,7 +153,7 @@ steps:
 
         ---
 
-        For detailed deployment instructions, see the [Deployment Guide](https://github.com/the-luap/picpeak/blob/main/DEPLOYMENT.md).
+        For detailed deployment instructions, see the Deployment Guide in the repository.
 
 trigger:
   event:
