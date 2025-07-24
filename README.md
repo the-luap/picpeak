@@ -182,8 +182,9 @@ We're constantly improving PicPeak and welcome contributions from our community!
 | **Backup & Restore** | Comprehensive backup system with S3/MinIO support, automated scheduling, and safe restore functionality | High | ✅ Implemented |
 | **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
 | **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
-| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | 🔄 Open |
+| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented (not tested) |
 | **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
+| **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
 
 **Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
 

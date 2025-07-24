@@ -32,6 +32,12 @@ This comprehensive guide covers all deployment methods for PicPeak, including Do
 - **PM2 method**: Node.js 18+, PostgreSQL 14+
 - **Manual method**: Node.js 18+, PostgreSQL 14+, nginx (optional)
 
+### Development Setup
+For local development, use `docker-compose.dev.yml` which includes Mailhog for email testing:
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
+
 ## 🔐 Security Requirements
 
 ### Critical: JWT Secret Setup
@@ -127,6 +133,9 @@ EMAIL_FROM=PicPeak <noreply@your-domain.com>
 NODE_ENV=production
 PORT=3001
 LOG_LEVEL=info
+
+# Backend URL (if different from frontend)
+# BACKEND_URL=https://api.your-domain.com
 ```
 
 #### Step 2: Docker Volume Permissions
@@ -479,6 +488,7 @@ app.listen(80);
 | `EMAIL_FROM` | From address | `PicPeak <noreply@domain.com>` |
 | `FRONTEND_URL` | Frontend URL | `https://your-domain.com` |
 | `BACKEND_URL` | Backend URL | `https://your-domain.com` |
+| `ADMIN_URL` | Admin panel URL | `https://your-domain.com` |
 
 ### Optional Configuration
 

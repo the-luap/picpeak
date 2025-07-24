@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   # PostgreSQL Database
-  postgres:
+  db:
     image: postgres:15-alpine
     container_name: picpeak-postgres
     environment:
@@ -23,12 +23,13 @@ services:
     build: ./backend
     container_name: picpeak-backend
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
     environment:
       NODE_ENV: production
+      PORT: 3001
       DATABASE_CLIENT: pg
-      DB_HOST: postgres
+      DB_HOST: db
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-picpeak}
       DB_USER: ${DB_USER:-picpeak}
@@ -40,7 +41,7 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

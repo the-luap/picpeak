@@ -12,10 +12,11 @@ services:
       - db
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_URL=${ADMIN_URL}
       - FRONTEND_URL=${FRONTEND_URL}
+      - BACKEND_URL=${BACKEND_URL}
       # Database
       - DATABASE_CLIENT=pg
       - DB_HOST=db
