@@ -447,9 +447,14 @@ router.delete('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     if (photo.thumbnail_path) {
       const thumbPath = path.join(storagePath, 'events/active', photo.thumbnail_path);
       try {
+        // Check if file exists before attempting to delete
+        await fs.access(thumbPath);
         await fs.unlink(thumbPath);
       } catch (error) {
-        console.error('Error deleting thumbnail:', error);
+        // Only log if it's not a "file not found" error
+        if (error.code !== 'ENOENT') {
+          console.error('Error deleting thumbnail:', error);
+        }
       }
     }
     
@@ -534,9 +539,14 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, async (req, res) => {
       if (photo.thumbnail_path) {
         const thumbPath = path.join(storagePath, photo.thumbnail_path);
         try {
+          // Check if file exists before attempting to delete
+          await fs.access(thumbPath);
           await fs.unlink(thumbPath);
         } catch (error) {
-          console.error('Error deleting thumbnail:', error);
+          // Only log if it's not a "file not found" error
+          if (error.code !== 'ENOENT') {
+            console.error('Error deleting thumbnail:', error);
+          }
         }
       }
     }

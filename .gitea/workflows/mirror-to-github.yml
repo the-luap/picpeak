@@ -10,120 +10,18 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository with full history
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Full history needed for finding the commit
+          fetch-depth: 0  # Full history for proper mirroring
 
       - name: Setup Git
         run: |
           git config --global user.name "the-luap"
           git config --global user.email "paul-nothaft@hotmail.de"
 
-      - name: Debug - Show current branch and status
-        run: |
-          echo "Current branch:"
-          git branch -a
-          echo "Git status:"
-          git status
-          echo "Remote info:"
-          git remote -v
-          echo "Checking target commit exists:"
-          git show --oneline 7aca927937 || echo "Target commit not found!"
-
-      - name: Create completely new history from specific commit
-        run: |
-          TARGET_COMMIT="7aca927937"
-          
-          # Verify the target commit exists
-          if ! git cat-file -e $TARGET_COMMIT^{commit}; then
-            echo "ERROR: Target commit $TARGET_COMMIT does not exist!"
-            exit 1
-          fi
-          
-          echo "✅ Target commit found: $(git log --oneline -1 $TARGET_COMMIT)"
-          
-          # Clean up any existing github-mirror branch
-          git branch -D github-mirror || true
-          
-          # Create a completely new orphan branch (no history)
-          git checkout --orphan github-mirror
-          
-          # Clear the staging area completely
-          git rm -rf . || true
-          
-          # Get the file tree from the target commit and create initial commit
-          echo "Creating new history starting from $TARGET_COMMIT..."
-          git read-tree $TARGET_COMMIT
-          git commit -m "Initial commit - imported from $(git log --oneline -1 $TARGET_COMMIT)"
-          
-          echo "✅ Created new initial commit: $(git log --oneline -1)"
-          
-          # Now get all commits after the target commit and apply their changes
-          COMMITS_AFTER_TARGET=$(git rev-list --reverse --no-merges $TARGET_COMMIT..main)
-          
-          if [ -n "$COMMITS_AFTER_TARGET" ]; then
-            echo "📋 Applying changes from commits after $TARGET_COMMIT (excluding Claude commits):"
-            
-            for commit in $COMMITS_AFTER_TARGET; do
-              # Get the commit author name
-              COMMIT_AUTHOR_NAME=$(git log --format="%an" -n 1 $commit)
-              
-              # Skip commits by Claude
-              if [ "$COMMIT_AUTHOR_NAME" = "Claude" ]; then
-                echo "⚠️ Skipping commit by Claude: $(git log --oneline -1 $commit)"
-                continue
-              fi
-              
-              echo "Processing: $(git log --oneline -1 $commit)"
-              
-              # Get the commit message and author info
-              COMMIT_MSG=$(git log --format="%B" -n 1 $commit)
-              COMMIT_AUTHOR=$(git log --format="%an <%ae>" -n 1 $commit)
-              COMMIT_DATE=$(git log --format="%ad" -n 1 $commit)
-              
-              # Apply the changes from this commit
-              if git diff-tree --no-commit-id --name-only -r $commit | xargs -I {} git show $commit:{} > /dev/null 2>&1; then
-                # Apply file changes
-                git checkout $commit -- . || true
-                
-                # Stage all changes
-                git add -A
-                
-                # Only commit if there are changes
-                if ! git diff --cached --quiet; then
-                  # Create new commit with original metadata but new SHA
-                  GIT_AUTHOR_NAME=$(echo "$COMMIT_AUTHOR" | cut -d'<' -f1 | xargs)
-                  GIT_AUTHOR_EMAIL=$(echo "$COMMIT_AUTHOR" | cut -d'<' -f2 | cut -d'>' -f1)
-                  GIT_AUTHOR_DATE="$COMMIT_DATE"
-                  
-                  export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
-                  git commit -m "$COMMIT_MSG"
-                  echo "✅ Applied changes as new commit: $(git log --oneline -1)"
-                else
-                  echo "⚠️ No changes to commit for $commit"
-                fi
-              else
-                echo "⚠️ Skipping problematic commit $commit"
-              fi
-            done
-            
-            echo "✅ Finished creating new history"
-          else
-            echo "✅ No commits after target commit - history starts fresh"
-          fi
-          
-          echo ""
-          echo "=== New History Summary ==="
-          echo "Total commits in new history: $(git rev-list --count github-mirror)"
-          echo "History starts with: $(git log --oneline --reverse | head -1)"
-          echo "Latest commit: $(git log --oneline -1)"
-
       - name: Remove sensitive files and directories
         run: |
-          # Switch to the github-mirror branch
-          git checkout github-mirror
-          
           echo "Current files before cleanup:"
           ls -la | head -10 || true
           echo "..."
@@ -164,18 +62,6 @@ jobs:
           echo "Final file structure (top level):"
           ls -la | head -10 || true
 
-      - name: Verify completely new history
-        run: |
-          git checkout github-mirror
-          echo "=== Final History Verification ==="
-          echo "Total commits in new github-mirror branch: $(git rev-list --count github-mirror)"
-          echo ""
-          echo "Complete commit history (should start from target commit content):"
-          git log --oneline --reverse
-          echo ""
-          echo "⚠️ Note: This is a completely NEW history with new commit SHAs"
-          echo "🔍 Original target commit content preserved but with new commit ID"
-
       - name: Check GitHub token
         env:
           GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
@@ -187,13 +73,10 @@ jobs:
             echo "GitHub token is available (length: ${#GITHUBTOKEN})"
           fi
 
-      - name: Force push completely new history to GitHub
+      - name: Push to GitHub
         env:
           GITHUBTOKEN: ${{ secrets.GITHUBTOKEN }}
         run: |
-          # Switch to github-mirror branch
-          git checkout github-mirror
-          
           # Remove existing github remote if it exists
           git remote remove github || true
           
@@ -204,17 +87,13 @@ jobs:
           echo "GitHub remote added:"
           git remote -v
           
-          # Force push the completely new history to GitHub main
-          echo "🔥 FORCE PUSHING completely new history to GitHub..."
-          echo "⚠️ This will COMPLETELY REPLACE all history on GitHub!"
-          git push github github-mirror:main --force
-          echo "✅ Force push completed - GitHub now has completely new history!"
+          # Push to GitHub main branch
+          echo "Pushing to GitHub..."
+          git push github main --force
+          echo "✅ Push to GitHub completed!"
 
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "🔥 COMPLETE HISTORY REPLACEMENT: GitHub now has entirely new history"
-          echo "📊 History starts from commit content: 7aca927937"
-          echo "🔍 Check https://github.com/the-luap/picpeak to verify the new history"
-          echo "📈 Total commits pushed: $(git rev-list --count github-mirror)"
-          echo "🆕 All commit SHAs are NEW - no connection to previous history"
+          echo "📊 Repository mirrored to: https://github.com/the-luap/picpeak"
+          echo "🔒 Sensitive files have been removed from the mirror"

@@ -35,7 +35,8 @@
     "days": "days",
     "customize": "Customize",
     "hide": "Hide",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "chunk": "Chunk"
   },
   "upload": {
     "photoCategory": "Photo Category",
@@ -51,7 +52,8 @@
     "uploadPhotos": "Upload Photos",
     "maxFilesReached": "Maximum 500 files allowed",
     "someFilesSkipped": "Some files were skipped (500 file limit)",
-    "tooManyFiles": "Maximum 500 files can be uploaded at once"
+    "tooManyFiles": "Maximum 500 files can be uploaded at once",
+    "uploadingChunks": "Uploading {{count}} files in {{total}} batches..."
   },
   "navigation": {
     "dashboard": "Dashboard",

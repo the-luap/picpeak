@@ -35,7 +35,8 @@
     "days": "Tage",
     "customize": "Anpassen",
     "hide": "Ausblenden",
-    "unknown": "Unbekannt"
+    "unknown": "Unbekannt",
+    "chunk": "Teil"
   },
   "upload": {
     "photoCategory": "Fotokategorie",
@@ -51,7 +52,8 @@
     "uploadPhotos": "Fotos hochladen",
     "maxFilesReached": "Maximal 500 Dateien erlaubt",
     "someFilesSkipped": "Einige Dateien wurden übersprungen (500 Dateien Limit)",
-    "tooManyFiles": "Maximal 500 Dateien können gleichzeitig hochgeladen werden"
+    "tooManyFiles": "Maximal 500 Dateien können gleichzeitig hochgeladen werden",
+    "uploadingChunks": "Lade {{count}} Dateien in {{total}} Teilen hoch..."
   },
   "navigation": {
     "dashboard": "Dashboard",
