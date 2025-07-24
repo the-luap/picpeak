@@ -33,11 +33,14 @@ npm test -- path/to/test.test.js
 npm test -- --testNamePattern="test name"
 ```
 
-### Production
-```bash
-docker-compose -f docker-compose.prod.yml up -d  # Production deployment
-pm2 start ecosystem.config.js                     # Alternative: PM2 deployment
-```
+### Production Deployment
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for comprehensive deployment instructions including:
+- Docker Compose deployment
+- PM2 deployment
+- Manual installation
+- Non-nginx deployment options
+- SSL/HTTPS setup
+- Troubleshooting guide
 
 **⚠️ CRITICAL PRODUCTION NOTICE:**
 - Production runs on a SEPARATE SERVER - never assume local changes affect production

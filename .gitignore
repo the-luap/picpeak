@@ -59,4 +59,11 @@ test-archiver/
 !data/.gitkeep
 !logs/.gitkeep
 
-PRODUCTION_DEPLOYMENT_GUIDE.md
+# development files
+backend/.swarm/
+.claudedocs/
+backend/data/
+logs/
+storage/
+data/
+certbot/

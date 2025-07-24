@@ -28,30 +28,12 @@ jobs:
           
           # Remove sensitive files/directories if they exist
           echo "Removing sensitive files..."
-          rm -rf .env || true
-          rm -rf backend/.env* || true
-          rm -rf frontend/.env* || true
-          rm -rf docker-compose.prod.yml || true
-          rm -rf .claudedocs/ || true
-          rm -rf backend/data/ || true
-          rm -rf backend/storage/ || true
           rm -rf .gitea/ || true
-          rm -rf scripts/install-gitea-runner.sh || true
+          rm -rf scripts/ || true
           rm -rf .drone* || true
-          rm -rf .github-mirror-exclude || true
-          rm -rf .gitattributes-github || true
           rm -rf photo-sharing-prd.md || true
           rm -rf CLAUDE.md || true
-          rm -rf PRODUCTION_DEPLOYMENT_GUIDE.md || true
-          rm -rf logs/ || true
-          rm -rf frontend/.claudedocs/ || true
-          rm -rf test-maintenance.sh || true
-          rm -rf storage/ || true
-          rm -rf clean-git-history.sh || true
-          rm -rf frontend/.swarm/ || true
-          rm -rf backend/.hive-mind/ || true
-          rm -rf data/ || true
-          rm -rf certbot/ || true
+
 
           
           echo "Sensitive files removal completed"
