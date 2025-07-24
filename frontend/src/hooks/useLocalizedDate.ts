@@ -22,7 +22,14 @@ export const useLocalizedDate = () => {
   const format = (date: Date | string, formatStr?: string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     // Use admin-configured date format if available and no format string provided
-    const dateFormat = formatStr || settings?.general_date_format || 'PPP';
+    let dateFormat = formatStr;
+    if (!dateFormat && settings?.general_date_format) {
+      // Handle both string and object formats
+      dateFormat = typeof settings.general_date_format === 'string' 
+        ? settings.general_date_format 
+        : settings.general_date_format.format || 'PPP';
+    }
+    dateFormat = dateFormat || 'PPP';
     return dateFnsFormat(dateObj, dateFormat, { locale: getLocale() });
   };
   
@@ -35,6 +42,10 @@ export const useLocalizedDate = () => {
     format,
     formatDistanceToNow,
     locale: getLocale(),
-    dateFormat: settings?.general_date_format || 'PPP'
+    dateFormat: settings?.general_date_format 
+      ? (typeof settings.general_date_format === 'string' 
+          ? settings.general_date_format 
+          : settings.general_date_format.format || 'PPP')
+      : 'PPP'
   };
 };

@@ -15,7 +15,7 @@ export interface PublicSettings {
   theme_config: any;
   default_language: string;
   enable_analytics: boolean;
-  general_date_format: string;
+  general_date_format: string | { format: string; locale: string };
   enable_recaptcha: boolean;
   recaptcha_site_key: string | null;
   maintenance_mode: boolean;

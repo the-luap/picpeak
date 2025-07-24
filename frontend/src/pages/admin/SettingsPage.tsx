@@ -57,7 +57,7 @@ export const SettingsPage: React.FC = () => {
     enable_registration: false,
     maintenance_mode: false,
     default_language: 'en',
-    date_format: { format: 'DD/MM/YYYY', locale: 'en-GB' }
+    date_format: { format: 'dd/MM/yyyy', locale: 'en-GB' }
   });
 
   // Security settings state
@@ -99,7 +99,11 @@ export const SettingsPage: React.FC = () => {
         enable_registration: settings.general_enable_registration || false,
         maintenance_mode: settings.general_maintenance_mode || false,
         default_language: settings.general_default_language || 'en',
-        date_format: settings.general_date_format || { format: 'DD/MM/YYYY', locale: 'en-GB' }
+        date_format: settings.general_date_format 
+          ? (typeof settings.general_date_format === 'string'
+              ? { format: settings.general_date_format, locale: settings.general_date_format.includes('MM/dd') ? 'en-US' : 'en-GB' }
+              : settings.general_date_format)
+          : { format: 'dd/MM/yyyy', locale: 'en-GB' }
       });
 
       // Extract security settings
@@ -130,7 +134,12 @@ export const SettingsPage: React.FC = () => {
       // Convert to the format expected by the API
       const settingsData: Record<string, any> = {};
       Object.entries(generalSettings).forEach(([key, value]) => {
-        settingsData[`general_${key}`] = value;
+        // Special handling for date_format - only send the format string
+        if (key === 'date_format' && typeof value === 'object' && value.format) {
+          settingsData[`general_${key}`] = value.format;
+        } else {
+          settingsData[`general_${key}`] = value;
+        }
       });
       return settingsService.updateSettings(settingsData);
     },
@@ -395,10 +404,10 @@ export const SettingsPage: React.FC = () => {
                   {t('settings.general.dateFormat')}
                 </label>
                 <select
-                  value={generalSettings.date_format?.format || 'DD/MM/YYYY'}
+                  value={generalSettings.date_format?.format || 'dd/MM/yyyy'}
                   onChange={(e) => {
                     const format = e.target.value;
-                    const locale = format === 'MM/DD/YYYY' ? 'en-US' : 'en-GB';
+                    const locale = format === 'MM/dd/yyyy' ? 'en-US' : 'en-GB';
                     setGeneralSettings(prev => ({ 
                       ...prev, 
                       date_format: { format, locale }
@@ -406,10 +415,10 @@ export const SettingsPage: React.FC = () => {
                   }}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  <option value="DD/MM/YYYY">DD/MM/YYYY (European)</option>
-                  <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
-                  <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
-                  <option value="DD.MM.YYYY">DD.MM.YYYY (German)</option>
+                  <option value="dd/MM/yyyy">DD/MM/YYYY (European)</option>
+                  <option value="MM/dd/yyyy">MM/DD/YYYY (US)</option>
+                  <option value="yyyy-MM-dd">YYYY-MM-DD (ISO)</option>
+                  <option value="dd.MM.yyyy">DD.MM.YYYY (German)</option>
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">
                   {t('settings.general.dateFormatHelp')}

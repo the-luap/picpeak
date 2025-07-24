@@ -84,7 +84,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     event_type: 'wedding',
     event_name: '',
-    event_date: format(new Date(), 'yyyy-MM-dd'),
+    event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
     host_name: '',
     host_email: '',
     admin_email: '',
