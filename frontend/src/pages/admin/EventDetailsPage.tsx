@@ -24,11 +24,12 @@ import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { archiveService } from '../../services/archive.service';
 import { photosService, AdminPhoto } from '../../services/photos.service';
+import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
 export const EventDetailsPage: React.FC = () => {
@@ -55,6 +56,15 @@ export const EventDetailsPage: React.FC = () => {
     hero_photo_id: null as number | null,
     host_name: '',
   });
+  const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
+    feedback_enabled: false,
+    allow_ratings: true,
+    allow_likes: true,
+    allow_comments: true,
+    allow_favorites: true,
+    require_moderation: true,
+    show_public_stats: false
+  });
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'photos' | 'categories'>('overview');
@@ -76,6 +86,16 @@ export const EventDetailsPage: React.FC = () => {
     queryKey: ['admin-event', id],
     queryFn: () => eventsService.getEvent(parseInt(id!)),
     enabled: !!id,
+  });
+
+  // Fetch feedback settings
+  const { data: eventFeedbackSettings } = useQuery({
+    queryKey: ['admin-event-feedback-settings', id],
+    queryFn: () => feedbackService.getEventFeedbackSettings(id!),
+    enabled: !!id,
+    onSuccess: (data) => {
+      setFeedbackSettings(data);
+    }
   });
 
   // Statistics are now fetched with the event details from the admin API
@@ -198,7 +218,7 @@ export const EventDetailsPage: React.FC = () => {
     setIsEditing(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     // Prepare color_theme - if we have a custom theme, serialize it
     let themeToSave = editForm.color_theme;
     if (currentTheme && currentPresetName === 'custom') {
@@ -240,7 +260,16 @@ export const EventDetailsPage: React.FC = () => {
     
     console.log('Updating event with data:', updateData);
     console.log('Theme length:', updateData.color_theme ? updateData.color_theme.length : 0);
+    
+    // Update event details
     updateMutation.mutate(updateData);
+    
+    // Update feedback settings separately
+    try {
+      await feedbackService.updateEventFeedbackSettings(id!, feedbackSettings);
+    } catch (error) {
+      console.error('Failed to update feedback settings:', error);
+    }
   };
 
   const handleCopyLink = async () => {
@@ -518,6 +547,15 @@ export const EventDetailsPage: React.FC = () => {
                     </p>
                   </div>
                 )}
+                
+                {/* Feedback Settings */}
+                <div className="mt-4 pt-4 border-t border-neutral-200">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings', 'Feedback Settings')}</h3>
+                  <FeedbackSettings
+                    settings={feedbackSettings}
+                    onChange={setFeedbackSettings}
+                  />
+                </div>
               </div>
             ) : (
               <dl className="space-y-4">
@@ -786,6 +824,15 @@ export const EventDetailsPage: React.FC = () => {
                 showDetails={true}
               />
             </Card>
+          )}
+
+          {/* Feedback Moderation Panel */}
+          {!event.is_archived && feedbackSettings?.feedback_enabled && (
+            <FeedbackModerationPanel 
+              eventId={parseInt(id!)} 
+              compact={true}
+              maxItems={3}
+            />
           )}
 
           {/* Archive Status */}

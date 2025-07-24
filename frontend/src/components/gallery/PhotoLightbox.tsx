@@ -10,6 +10,7 @@ interface PhotoLightboxProps {
   initialIndex: number;
   onClose: () => void;
   slug: string;
+  feedbackEnabled?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -17,6 +18,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   initialIndex,
   onClose,
   slug,
+  feedbackEnabled = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -227,13 +229,15 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               <Download className="w-5 h-5 text-white" />
             </button>
             
-            <button
-              onClick={() => setShowFeedback(!showFeedback)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Toggle feedback"
-            >
-              <MessageSquare className="w-5 h-5 text-white" />
-            </button>
+            {feedbackEnabled && (
+              <button
+                onClick={() => setShowFeedback(!showFeedback)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Toggle feedback"
+              >
+                <MessageSquare className="w-5 h-5 text-white" />
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -28,3 +28,4 @@ export { BackupConfiguration } from './BackupConfiguration';
 export { BackupHistory } from './BackupHistory';
 export { RestoreWizard } from './RestoreWizard';
 export { FeedbackSettings } from './FeedbackSettings';
+export { FeedbackModerationPanel } from './FeedbackModerationPanel';
