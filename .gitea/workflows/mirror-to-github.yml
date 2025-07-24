@@ -47,6 +47,12 @@ jobs:
           rm -rf frontend/.claudedocs/ || true
           rm -rf test-maintenance.sh || true
           rm -rf storage/ || true
+          rm -rf clean-git-history.sh || true
+          rm -rf frontend/.swarm/ || true
+          rm -rf backend/.hive-mind/ || true
+          rm -rf data/ || true
+          rm -rf certbot/ || true
+
           
           echo "Sensitive files removal completed"
           
