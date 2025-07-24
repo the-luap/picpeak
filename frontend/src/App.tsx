@@ -16,6 +16,7 @@ import {
   EventsListPage,
   CreateEventPageEnhanced as CreateEventPage,
   EventDetailsPage,
+  EventFeedbackPage,
   EmailConfigPage,
   ArchivesPage,
   AnalyticsPage,
@@ -120,6 +121,7 @@ function App() {
                       <Route path="events" element={<EventsListPage />} />
                       <Route path="events/new" element={<CreateEventPage />} />
                       <Route path="events/:id" element={<EventDetailsPage />} />
+                      <Route path="events/:id/feedback" element={<EventFeedbackPage />} />
                       <Route path="archives" element={<ArchivesPage />} />
                       <Route path="email" element={<EmailConfigPage />} />
                       <Route path="analytics" element={<AnalyticsPage />} />
