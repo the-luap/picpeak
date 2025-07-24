@@ -1,6 +1,6 @@
 # Production Deployment Guide
 
-This guide addresses all known production deployment issues and provides solutions.
+This comprehensive guide addresses all production deployment scenarios and common issues.
 
 ## Pre-Deployment Checklist
 
@@ -8,42 +8,79 @@ This guide addresses all known production deployment issues and provides solutio
 Create a `.env` file with ALL required variables:
 
 ```bash
-# Required
+# CRITICAL - Must change these!
 JWT_SECRET=<generate-with-openssl-rand-base64-32>
 DB_PASSWORD=<strong-password>
+
+# Application URLs (your actual domain)
 ADMIN_URL=https://yourdomain.com
 FRONTEND_URL=https://yourdomain.com
+BACKEND_URL=https://yourdomain.com
 
-# Database
+# Database (PostgreSQL)
+DATABASE_CLIENT=pg
+DB_HOST=postgres  # or external host
+DB_PORT=5432
 DB_USER=picpeak
 DB_NAME=picpeak
 
-# Email (Optional but recommended)
+# Email Configuration (required for notifications)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-EMAIL_FROM=noreply@yourdomain.com
+SMTP_PASS=your-app-password  # Use app-specific password
+EMAIL_FROM=PicPeak <noreply@yourdomain.com>
 
-# Umami Analytics (Optional)
-UMAMI_URL=https://analytics.yourdomain.com
-UMAMI_WEBSITE_ID=your-website-id
-UMAMI_HASH_SALT=<generate-random-string>
+# Port Configuration
+PORT=3001
+
+# Performance Tuning
+DB_POOL_MIN=5
+DB_POOL_MAX=25
+NODE_ENV=production
+LOG_LEVEL=info
+
+# Optional: Umami Analytics (configured via Admin UI)
+# UMAMI_URL=https://analytics.yourdomain.com
+# UMAMI_WEBSITE_ID=your-website-id
 ```
 
 ### 2. Generate Secrets
 
 ```bash
-# Generate JWT Secret
+# Generate JWT Secret (REQUIRED)
 openssl rand -base64 32
 
 # Generate Database Password
 openssl rand -base64 24
-
-# Generate Umami Hash Salt
-openssl rand -hex 32
 ```
+
+## Frontend Configuration
+
+For production deployment behind a reverse proxy:
+
+### Frontend Environment
+```bash
+# frontend/.env.production
+VITE_API_URL=/api  # Uses relative path for reverse proxy
+
+# Optional: Umami fallback (primary config via Admin UI)
+# VITE_UMAMI_URL=https://analytics.yourdomain.com
+# VITE_UMAMI_WEBSITE_ID=your-website-id
+```
+
+This ensures all API calls use the same domain/protocol as the frontend.
+
+### Nginx Proxy Configuration
+
+The frontend nginx configuration already includes proper proxy settings for:
+- `/api` → Backend API
+- `/photos` → Protected photo access
+- `/thumbnails` → Thumbnail images
+- `/uploads` → Public uploads (logos, favicons)
+
+All static assets are served through the nginx proxy, inheriting authentication headers.
 
 ## Deployment Steps
 
@@ -96,23 +133,30 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.prod.yml logs -f backend
 ```
 
-### 4. Create Admin User
+### 4. Initial Admin Setup
 
-After deployment, create the first admin user:
+The admin user is automatically created during database migration:
 
 ```bash
-# Enter backend container
-docker-compose -f docker-compose.prod.yml exec backend sh
+# Run migrations (this creates admin user)
+docker-compose -f docker-compose.prod.yml exec backend npm run migrate
 
-# Create admin
-node scripts/create-admin.js \
-  --username admin \
-  --email admin@yourdomain.com \
-  --password <your-secure-password>
+# Admin credentials will be displayed in console and saved to ADMIN_CREDENTIALS.txt
+# Example output:
+# ========================================
+# ✅ Admin user created successfully!
+# ========================================
+# Username: admin
+# Password: SwiftEagle3847!
+# 
+# ⚠️  IMPORTANT: Change password on first login
+# ========================================
 
-# Exit container
-exit
+# Retrieve credentials if needed
+docker-compose -f docker-compose.prod.yml exec backend cat ADMIN_CREDENTIALS.txt
 ```
+
+**Important**: You MUST change the auto-generated password on first login.
 
 ### 5. Configure Email (if using database config)
 
@@ -188,6 +232,23 @@ docker-compose -f docker-compose.prod.yml logs backend | grep email
 ```
 
 ## SSL/HTTPS Setup
+
+### Option 1: Using Traefik (Recommended)
+
+Add these labels to your docker-compose override:
+
+```yaml
+services:
+  frontend:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.picpeak.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.picpeak.entrypoints=websecure"
+      - "traefik.http.routers.picpeak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.picpeak.loadbalancer.server.port=80"
+```
+
+### Option 2: Using Certbot
 
 1. Update `nginx/sites-enabled/default` with your domain
 2. Run certbot:
@@ -294,13 +355,18 @@ docker-compose -f docker-compose.prod.yml up -d
 
 - [ ] Strong JWT_SECRET (min 32 chars)
 - [ ] Strong database password
+- [ ] Admin password changed from auto-generated one
 - [ ] SSL/HTTPS enabled
 - [ ] Firewall configured (only 80/443 open)
 - [ ] Regular security updates
 - [ ] Backup encryption
 - [ ] Access logs monitored
-- [ ] Rate limiting enabled
+- [ ] Rate limiting enabled (built-in)
 - [ ] File upload restrictions configured
+- [ ] Password complexity requirements configured (Admin > Settings)
+- [ ] Session timeout configured (default 60 min)
+- [ ] Umami analytics configured (if using)
+- [ ] SMTP credentials secured with app-specific password
 
 ## Support
 

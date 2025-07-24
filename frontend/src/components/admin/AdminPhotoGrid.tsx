@@ -23,7 +23,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
+  const [deletingPhotos, setDeletingPhotos] = useState<Set<number>>(new Set());
 
   const handlePhotoSelect = (photoId: number, e?: React.MouseEvent) => {
     if (e) {
@@ -54,15 +54,18 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       return;
     }
 
-    setDeletingPhotoId(photo.id);
+    setDeletingPhotos(prev => new Set(prev).add(photo.id));
     try {
       await photosService.deletePhoto(eventId, photo.id);
       toast.success('Photo deleted successfully');
       onPhotosDeleted();
     } catch (error) {
       toast.error('Failed to delete photo');
-    } finally {
-      setDeletingPhotoId(null);
+      setDeletingPhotos(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(photo.id);
+        return newSet;
+      });
     }
   };
 
@@ -75,14 +78,18 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
     }
 
     setIsDeleting(true);
+    const selectedIds = Array.from(selectedPhotos);
+    setDeletingPhotos(new Set(selectedIds));
+    
     try {
-      await photosService.deletePhotos(eventId, Array.from(selectedPhotos));
+      await photosService.deletePhotos(eventId, selectedIds);
       toast.success(`${count} photo${count > 1 ? 's' : ''} deleted successfully`);
       setSelectedPhotos(new Set());
       setIsSelectionMode(false);
       onPhotosDeleted();
     } catch (error) {
       toast.error('Failed to delete photos');
+      setDeletingPhotos(new Set());
     } finally {
       setIsDeleting(false);
     }
@@ -155,13 +162,15 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
 
       {/* Photo Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {photos.map((photo, index) => (
-          <div
-            key={photo.id}
-            className={`relative group cursor-pointer rounded-lg overflow-hidden bg-neutral-100 ${
-              isSelectionMode ? 'ring-2 ring-offset-2 ' + (selectedPhotos.has(photo.id) ? 'ring-primary-500' : 'ring-transparent') : ''
-            }`}
-            onClick={() => isSelectionMode ? handlePhotoSelect(photo.id) : onPhotoClick(photo, index)}
+        {photos.map((photo, index) => {
+          const isDeleting = deletingPhotos.has(photo.id);
+          return (
+            <div
+              key={photo.id}
+              className={`relative group cursor-pointer rounded-lg overflow-hidden bg-neutral-100 transition-opacity ${
+                isSelectionMode ? 'ring-2 ring-offset-2 ' + (selectedPhotos.has(photo.id) ? 'ring-primary-500' : 'ring-transparent') : ''
+              } ${isDeleting ? 'opacity-50' : ''}`}
+              onClick={() => !isDeleting && (isSelectionMode ? handlePhotoSelect(photo.id) : onPhotoClick(photo, index))}
           >
             {/* Selection Checkbox */}
             {isSelectionMode && (
@@ -219,8 +228,8 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                     </button>
                     <button
                       onClick={(e) => handleDeleteSingle(photo, e)}
-                      className="p-1 text-white hover:bg-white/20 rounded"
-                      disabled={deletingPhotoId === photo.id}
+                      className="p-1 text-white hover:bg-white/20 rounded disabled:opacity-50"
+                      disabled={isDeleting}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -238,7 +247,8 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {photos.length === 0 && (

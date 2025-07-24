@@ -40,10 +40,10 @@ const config = {
       keepAliveInitialDelayMillis: 0
     },
     pool: {
-      min: 2,
-      max: 10,
-      acquireTimeoutMillis: 30000,
-      createTimeoutMillis: 30000,
+      min: 5,
+      max: 25,
+      acquireTimeoutMillis: 60000,
+      createTimeoutMillis: 60000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
       createRetryIntervalMillis: 200,

@@ -42,7 +42,7 @@ router.post('/', adminAuth, [
     } = req.body;
     
     // Validate password strength for gallery
-    const passwordValidation = validatePasswordInContext(password, 'gallery', {
+    const passwordValidation = await validatePasswordInContext(password, 'gallery', {
       eventName: event_name
     });
     

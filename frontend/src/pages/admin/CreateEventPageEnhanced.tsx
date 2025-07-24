@@ -10,14 +10,14 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { format, addDays } from 'date-fns';
-import { enUS, de } from 'date-fns/locale';
+import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
 
 import { Button, Input, Card } from '../../components/common';
-import { ThemeCustomizerEnhanced, GalleryPreview, WelcomeMessageEditor } from '../../components/admin';
+import { ThemeCustomizerEnhanced, GalleryPreview, WelcomeMessageEditor, FeedbackSettings } from '../../components/admin';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,19 @@ interface FormData {
   expires_in_days: number;
   allow_user_uploads: boolean;
   upload_category_id: number | null;
+  feedback_settings: {
+    feedback_enabled: boolean;
+    allow_ratings: boolean;
+    allow_likes: boolean;
+    allow_comments: boolean;
+    allow_favorites: boolean;
+    require_name_email: boolean;
+    moderate_comments: boolean;
+    show_feedback_to_guests: boolean;
+    enable_rate_limiting: boolean;
+    rate_limit_window_minutes?: number;
+    rate_limit_max_requests?: number;
+  };
 }
 
 const EVENT_TYPE_PRESETS: Record<string, string> = {
@@ -57,6 +70,7 @@ const EVENT_TYPES = [
 export const CreateEventPageEnhanced: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const { format } = useLocalizedDate();
   const isMountedRef = useRef(true);
   const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);
   // const [showPreview, setShowPreview] = useState(false);
@@ -70,7 +84,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     event_type: 'wedding',
     event_name: '',
-    event_date: format(new Date(), 'yyyy-MM-dd'),
+    event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
     host_name: '',
     host_email: '',
     admin_email: '',
@@ -82,6 +96,19 @@ export const CreateEventPageEnhanced: React.FC = () => {
     expires_in_days: 30,
     allow_user_uploads: false,
     upload_category_id: null,
+    feedback_settings: {
+      feedback_enabled: false,
+      allow_ratings: true,
+      allow_likes: true,
+      allow_comments: true,
+      allow_favorites: true,
+      require_name_email: false,
+      moderate_comments: true,
+      show_feedback_to_guests: true,
+      enable_rate_limiting: true,
+      rate_limit_window_minutes: 15,
+      rate_limit_max_requests: 10,
+    },
   });
   
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -217,6 +244,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
       expiration_days: formData.expires_in_days,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
+      feedback_settings: formData.feedback_settings,
     };
     
     console.log('Submitting payload:', payload);
@@ -499,7 +527,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
               </div>
               {formData.event_date && (
                 <p className="mt-2 text-sm text-neutral-500">
-                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days), 'PPP', { locale: i18n.language === 'de' ? de : enUS })}
+                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
                 </p>
               )}
             </div>
@@ -551,6 +579,12 @@ export const CreateEventPageEnhanced: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {/* Feedback Settings */}
+        <FeedbackSettings
+          settings={formData.feedback_settings}
+          onChange={(settings) => setFormData(prev => ({ ...prev, feedback_settings: settings }))}
+        />
 
         {/* Form Actions */}
         <div className="flex items-center justify-end gap-3">

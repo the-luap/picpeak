@@ -48,9 +48,15 @@ coverage/
 *.tmp
 *.temp
 
+# Backup and test directories
+backups/
+test-archiver/
+
 # Keep directory structure
 !storage/events/active/.gitkeep
 !storage/events/archived/.gitkeep
 !storage/thumbnails/.gitkeep
 !data/.gitkeep
 !logs/.gitkeep
+
+PRODUCTION_DEPLOYMENT_GUIDE.md

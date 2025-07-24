@@ -11,6 +11,8 @@ const photosRoutes = require('./adminPhotos');
 const categoriesRoutes = require('./adminCategories');
 const cmsRoutes = require('./adminCMS');
 const notificationsRoutes = require('./adminNotifications');
+const backupRoutes = require('./adminBackup');
+const restoreRoutes = require('./adminRestore');
 
 // Mount sub-routers
 router.use('/dashboard', dashboardRoutes);
@@ -22,5 +24,7 @@ router.use('/events', photosRoutes);
 router.use('/categories', categoriesRoutes);
 router.use('/cms', cmsRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/backup', backupRoutes);
+router.use('/restore', restoreRoutes);
 
 module.exports = router;

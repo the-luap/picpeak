@@ -162,7 +162,19 @@ export const settingsService = {
 
   // Update multiple settings at once
   async updateSettings(settings: Record<string, any>): Promise<void> {
-    await api.put('/admin/settings/general', settings);
+    // Determine the endpoint based on setting keys
+    const firstKey = Object.keys(settings)[0];
+    let endpoint = '/admin/settings/general';
+    
+    if (firstKey?.startsWith('security_')) {
+      endpoint = '/admin/settings/security';
+    } else if (firstKey?.startsWith('analytics_')) {
+      endpoint = '/admin/settings/analytics';
+    } else if (firstKey?.startsWith('branding_')) {
+      endpoint = '/admin/settings/branding';
+    }
+    
+    await api.put(endpoint, settings);
   },
 
   // Get storage information

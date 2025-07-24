@@ -60,6 +60,7 @@ async function processEmailQueue() {
 }
 
 // Start email queue processor
-setInterval(processEmailQueue, 60000); // Process every minute
+// DISABLED: Using emailProcessor.js instead to prevent duplicate connections
+// setInterval(processEmailQueue, 60000); // Process every minute
 
 module.exports = { sendEmail, processEmailQueue };

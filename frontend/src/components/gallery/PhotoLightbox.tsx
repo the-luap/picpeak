@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare } from 'lucide-react';
 import type { Photo } from '../../types';
 import { useDownloadPhoto } from '../../hooks/useGallery';
 import { AuthenticatedImage } from '../common';
+import { PhotoFeedback } from './PhotoFeedback';
 
 interface PhotoLightboxProps {
   photos: Photo[];
   initialIndex: number;
   onClose: () => void;
   slug: string;
+  feedbackEnabled?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -16,6 +18,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   initialIndex,
   onClose,
   slug,
+  feedbackEnabled = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -23,6 +26,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
@@ -224,6 +228,16 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             >
               <Download className="w-5 h-5 text-white" />
             </button>
+            
+            {feedbackEnabled && (
+              <button
+                onClick={() => setShowFeedback(!showFeedback)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Toggle feedback"
+              >
+                <MessageSquare className="w-5 h-5 text-white" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -259,6 +273,29 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
       <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-white text-sm opacity-50 pointer-events-none md:hidden z-20">
         Swipe to navigate
       </div>
+
+      {/* Feedback Panel */}
+      {showFeedback && (
+        <div className="absolute right-0 top-0 bottom-0 w-96 bg-white shadow-xl z-20 overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
+            <h3 className="font-semibold text-neutral-900">Photo Feedback</h3>
+            <button
+              onClick={() => setShowFeedback(false)}
+              className="p-1 hover:bg-neutral-100 rounded transition-colors"
+              aria-label="Close feedback"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-4">
+            <PhotoFeedback
+              photoId={currentPhoto.id}
+              gallerySlug={slug}
+              showComments={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

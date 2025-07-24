@@ -256,7 +256,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           <div className="flex justify-between text-sm text-neutral-600 mb-1">
             <span>
               {t('upload.uploading')}
-              {totalChunks > 1 && ` (${t('common.chunk') || 'Chunk'} ${currentChunk}/${totalChunks})`}
+              {totalChunks > 1 && ` (${t('common.chunk')} ${currentChunk}/${totalChunks})`}
             </span>
             <span>{uploadProgress}%</span>
           </div>
@@ -268,7 +268,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           </div>
           {totalChunks > 1 && (
             <p className="text-xs text-neutral-500 mt-1">
-              {t('upload.uploadingChunks') || `Uploading ${selectedFiles.length} files in ${totalChunks} batches...`}
+              {t('upload.uploadingChunks', { count: selectedFiles.length, total: totalChunks })}
             </p>
           )}
         </div>

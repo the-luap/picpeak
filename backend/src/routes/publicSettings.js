@@ -1,14 +1,20 @@
 const express = require('express');
-const { db } = require('../database/db');
+const { db, withRetry } = require('../database/db');
 const router = express.Router();
 
 // Get public settings (branding and theme)
 router.get('/', async (req, res) => {
   try {
-    // Fetch branding, theme, general, and select security settings
-    const settings = await db('app_settings')
-      .whereIn('setting_type', ['branding', 'theme', 'general', 'security'])
-      .select('setting_key', 'setting_value');
+    // Fetch branding, theme, general, and security settings
+    // Note: We include analytics in the query but it might not exist yet
+    const settings = await withRetry(async () => {
+      return await db('app_settings')
+        .where(function() {
+          this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
+            .orWhere('setting_key', 'like', 'analytics_%');
+        })
+        .select('setting_key', 'setting_value');
+    });
     
     // Convert to object format
     const settingsObject = {};
@@ -39,9 +45,15 @@ router.get('/', async (req, res) => {
       theme_config: settingsObject.theme_config || null,
       default_language: settingsObject.general_default_language || 'en',
       enable_analytics: settingsObject.general_enable_analytics !== false,
+      general_date_format: settingsObject.general_date_format || 'PPP',
       enable_recaptcha: settingsObject.security_enable_recaptcha === true || settingsObject.security_enable_recaptcha === 'true',
       recaptcha_site_key: settingsObject.security_recaptcha_site_key || null,
-      maintenance_mode: settingsObject.general_maintenance_mode === true || settingsObject.general_maintenance_mode === 'true'
+      maintenance_mode: settingsObject.general_maintenance_mode === true || settingsObject.general_maintenance_mode === 'true',
+      // Umami analytics configuration (only if enabled)
+      umami_enabled: settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true',
+      umami_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_url || null) : null,
+      umami_website_id: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_website_id || null) : null,
+      umami_share_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_share_url || null) : null
     };
 
     res.json(publicSettings);

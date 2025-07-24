@@ -496,6 +496,43 @@ router.put('/security', adminAuth, async (req, res) => {
   }
 });
 
+// Update analytics settings
+router.put('/analytics', adminAuth, async (req, res) => {
+  try {
+    const settings = req.body;
+
+    // Update or insert each setting
+    for (const [key, value] of Object.entries(settings)) {
+      await db('app_settings')
+        .insert({
+          setting_key: key,
+          setting_value: JSON.stringify(value),
+          setting_type: 'analytics',
+          updated_at: new Date()
+        })
+        .onConflict('setting_key')
+        .merge({
+          setting_value: JSON.stringify(value),
+          updated_at: new Date()
+        });
+    }
+
+    // Log activity
+    await db('activity_logs').insert({
+      activity_type: 'analytics_settings_updated',
+      actor_type: 'admin',
+      actor_id: req.admin.id,
+      actor_name: req.admin.username,
+      metadata: JSON.stringify({ settings_count: Object.keys(settings).length })
+    });
+
+    res.json({ message: 'Analytics settings updated successfully' });
+  } catch (error) {
+    console.error('Analytics settings update error:', error);
+    res.status(500).json({ error: 'Failed to update analytics settings' });
+  }
+});
+
 // Get storage info
 router.get('/storage/info', adminAuth, async (req, res) => {
   try {

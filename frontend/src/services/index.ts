@@ -8,3 +8,4 @@ export { emailService } from './email.service';
 export { settingsService } from './settings.service';
 export { cmsService } from './cms.service';
 export { notificationsService } from './notifications.service';
+export { feedbackService } from './feedback.service';

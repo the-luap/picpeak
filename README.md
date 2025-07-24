@@ -94,6 +94,20 @@ Perfect for:
 - **Email**: SMTP with customizable templates
 - **Analytics**: Privacy-focused with Umami integration
 
+## 💻 System Requirements
+
+### Minimum Requirements
+- **CPU**: 2 CPU cores
+- **RAM**: 2GB minimum
+- **Storage**: 20GB minimum (plus photo storage needs)
+- **OS**: Linux (Ubuntu 20.04+), macOS, or Windows with WSL2
+- **Node.js**: v18.0.0 or higher
+- **Database**: SQLite (included) or PostgreSQL 12+
+
+### Docker Requirements (Recommended)
+- **Docker**: v20.10.0+
+- **Docker Compose**: v2.0.0+
+
 ## 🤝 Contributing
 
 We love contributions! PicPeak is built by photographers, for photographers. Whether you're fixing bugs, adding features, or improving documentation, your help is welcome.
@@ -158,6 +172,20 @@ Organize and manage your photo galleries with intuitive event management tools.
 - **🎯 Client-Focused**: Intuitive gallery experience for your clients
 
 </details>
+
+## 🗺️ Roadmap
+
+We're constantly improving PicPeak and welcome contributions from our community! If you have ideas for new features or want to help implement existing ones, please open an issue or submit a pull request. Your contributions help make PicPeak better for everyone.
+
+| Feature | Description | Priority | Status |
+|---------|-------------|----------|---------|
+| **Backup & Restore** | Comprehensive backup system with S3/MinIO support, automated scheduling, and safe restore functionality | High | ✅ Implemented |
+| **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
+| **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
+| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | 🔄 Open |
+| **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
+
+**Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
 
 ## 🙏 Acknowledgments
 

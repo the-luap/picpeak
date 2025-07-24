@@ -9,7 +9,8 @@ import {
   Settings,
   X,
   Palette,
-  FileText
+  FileText,
+  HardDrive
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,7 @@ const navigation: NavItem[] = [
   { nameKey: 'navigation.emailSettings', href: '/admin/email', icon: Mail },
   { nameKey: 'navigation.branding', href: '/admin/branding', icon: Palette },
   { nameKey: 'navigation.settings', href: '/admin/settings', icon: Settings },
+  { nameKey: 'navigation.backup', href: '/admin/backup', icon: HardDrive },
   { nameKey: 'navigation.cmsPages', href: '/admin/cms', icon: FileText },
 ];
 

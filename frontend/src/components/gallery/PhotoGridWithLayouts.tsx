@@ -34,6 +34,7 @@ interface PhotoGridWithLayoutsProps {
   eventLogo?: string | null;
   eventDate?: string;
   expiresAt?: string;
+  feedbackEnabled?: boolean;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({ 
@@ -42,6 +43,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   categoryId,
   isSelectionMode: parentSelectionMode,
   selectedPhotos: parentSelectedPhotos,
+  feedbackEnabled,
   onSelectionChange,
   onToggleSelectionMode: parentToggleSelectionMode,
   showSelectionControls = true,
@@ -259,6 +261,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           initialIndex={selectedPhotoIndex}
           onClose={() => setSelectedPhotoIndex(null)}
           slug={slug}
+          feedbackEnabled={feedbackEnabled || false}
         />
       )}
     </>

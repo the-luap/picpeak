@@ -10,7 +10,7 @@ const DEFAULT_SESSION_TIMEOUT = 60 * 60 * 1000;
 // Cache for session timeout setting
 let cachedTimeout = null;
 let cacheExpiry = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes - reduced DB queries
 
 // Clean up expired sessions every 5 minutes
 setInterval(() => {

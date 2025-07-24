@@ -18,6 +18,7 @@ import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { api } from '../../config/api';
 import { Upload, Menu } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
+import { feedbackService } from '../../services/feedback.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
 
 interface GalleryViewProps {
@@ -48,6 +49,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
+  const [feedbackEnabled, setFeedbackEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { watermarkEnabled } = useWatermarkSettings();
   
@@ -74,6 +76,25 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Fetch feedback settings
+  const { data: feedbackSettings } = useQuery({
+    queryKey: ['gallery-feedback-settings', event.id],
+    queryFn: async () => {
+      try {
+        // Use public endpoint to get feedback settings
+        const response = await api.get(`/gallery/${slug}/feedback-settings`);
+        return response.data;
+      } catch (error) {
+        // If endpoint doesn't exist or returns error, default to disabled
+        return { feedback_enabled: false };
+      }
+    },
+    onSuccess: (data) => {
+      setFeedbackEnabled(data?.feedback_enabled || false);
+    },
+    enabled: !!event.id,
   });
 
   // Apply branding settings
@@ -429,6 +450,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             photos={filteredPhotos} 
             slug={slug} 
             categoryId={selectedCategoryId}
+            feedbackEnabled={feedbackEnabled}
             isSelectionMode={isSelectionMode}
             selectedPhotos={selectedPhotos}
             onSelectionChange={setSelectedPhotos}

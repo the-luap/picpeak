@@ -114,25 +114,100 @@ function validatePassword(password, options = {}) {
 }
 
 /**
+ * Get complexity settings from database
+ * @returns {Object} - Password complexity configuration
+ */
+async function getPasswordComplexitySettings() {
+  try {
+    const { db, withRetry } = require('../database/db');
+    
+    // Use retry wrapper to handle connection failures
+    const settings = await withRetry(async () => {
+      return await db('app_settings')
+        .where('setting_key', 'security_password_complexity_level')
+        .first();
+    });
+    
+    if (!settings || !settings.setting_value) {
+      return 'moderate'; // Default
+    }
+    
+    const value = typeof settings.setting_value === 'string' 
+      ? JSON.parse(settings.setting_value)
+      : settings.setting_value;
+    
+    return value;
+  } catch (error) {
+    logger.error('Failed to get password complexity settings:', error);
+    return 'moderate'; // Default on error - ensures app continues working
+  }
+}
+
+/**
+ * Get password configuration based on complexity level
+ * @param {string} complexityLevel - Complexity level (simple, moderate, strong, very_strong)
+ * @returns {Object} - Password configuration
+ */
+function getPasswordConfigForComplexity(complexityLevel) {
+  const configs = {
+    simple: {
+      minLength: 6,
+      requireUppercase: false,
+      requireLowercase: false,
+      requireNumbers: false,
+      requireSpecialChars: false,
+      preventCommonPasswords: true,
+      minStrengthScore: 0
+    },
+    moderate: {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: false,
+      preventCommonPasswords: true,
+      minStrengthScore: 2
+    },
+    strong: {
+      minLength: 12,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: false,
+      preventCommonPasswords: true,
+      minStrengthScore: 3
+    },
+    very_strong: {
+      minLength: 12,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumbers: true,
+      requireSpecialChars: true,
+      preventCommonPasswords: true,
+      minStrengthScore: 3
+    }
+  };
+  
+  return configs[complexityLevel] || configs.moderate;
+}
+
+/**
  * Validate password for specific contexts (admin, gallery)
  * @param {string} password - Password to validate
  * @param {string} context - Context ('admin' or 'gallery')
  * @param {Object} userData - Additional user data for context-aware validation
  * @returns {Object} - Validation result
  */
-function validatePasswordInContext(password, context, userData = {}) {
-  // For gallery context, use more lenient validation
+async function validatePasswordInContext(password, context, userData = {}) {
+  // For gallery context, use dynamic complexity settings
   if (context === 'gallery') {
-    // Gallery-specific validation options
+    // Get complexity settings from database
+    const complexityLevel = await getPasswordComplexitySettings();
+    
+    // Get configuration for the complexity level
     const galleryOptions = {
-      minLength: 6, // Reduced minimum length
-      requireUppercase: false, // Don't require uppercase for galleries
-      requireLowercase: false, // Don't require lowercase for galleries
-      requireNumbers: false, // Numbers are optional
-      requireSpecialChars: false, // Special chars are optional
-      preventCommonPasswords: true, // Still prevent common passwords
-      minStrengthScore: 0, // Accept any score for galleries
-      skipStrengthCheck: true // Skip zxcvbn strength analysis for galleries
+      ...getPasswordConfigForComplexity(complexityLevel),
+      skipStrengthCheck: complexityLevel === 'simple' // Skip zxcvbn for simple passwords
     };
     
     // Base validation with gallery-specific options
@@ -281,5 +356,7 @@ module.exports = {
   generateSecurePassword,
   getBcryptRounds,
   logPasswordValidationFailure,
+  getPasswordComplexitySettings,
+  getPasswordConfigForComplexity,
   PASSWORD_CONFIG
 };

@@ -4,6 +4,33 @@ const knexConfig = require('../../knexfile');
 // Create database connection with built-in retry logic
 const db = knex(knexConfig);
 
+// Connection retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+// Wrapper function to handle connection retries
+async function withRetry(queryFn, retries = MAX_RETRIES) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await queryFn();
+    } catch (error) {
+      const isConnectionError = error.message && (
+        error.message.includes('Connection terminated unexpectedly') ||
+        error.message.includes('Connection ended unexpectedly') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ETIMEDOUT')
+      );
+      
+      if (isConnectionError && i < retries - 1) {
+        console.log(`Database connection error, retrying in ${RETRY_DELAY}ms... (attempt ${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 async function initializeDatabase() {
   // Events table
   const hasEventsTable = await db.schema.hasTable('events');
@@ -225,4 +252,4 @@ async function logActivity(activityType, metadata = {}, eventId = null, actor = 
   }
 }
 
-module.exports = { db, initializeDatabase, logActivity };
+module.exports = { db, initializeDatabase, logActivity, withRetry };

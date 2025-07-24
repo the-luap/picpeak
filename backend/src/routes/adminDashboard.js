@@ -48,9 +48,9 @@ router.get('/stats', adminAuth, async (req, res) => {
       .count('id as count')
       .first();
 
-    // Get total downloads (last 30 days)
+    // Get total downloads (last 30 days) - include both single and bulk downloads
     const totalDownloads = await db('access_logs')
-      .where('action', 'download')
+      .whereIn('action', ['download', 'download_all'])
       .where('timestamp', '>=', thirtyDaysAgo.toISOString())
       .count('id as count')
       .first();
@@ -73,7 +73,7 @@ router.get('/stats', adminAuth, async (req, res) => {
       .first();
 
     const previousDownloads = await db('access_logs')
-      .where('action', 'download')
+      .whereIn('action', ['download', 'download_all'])
       .where('timestamp', '>=', sixtyDaysAgo.toISOString())
       .where('timestamp', '<', thirtyDaysAgo.toISOString())
       .count('id as count')
@@ -243,10 +243,10 @@ router.get('/analytics', adminAuth, async (req, res) => {
       .where('timestamp', '>=', startDateStr)
       .groupByRaw('DATE(timestamp)');
 
-    // Get downloads per day
+    // Get downloads per day - include both single and bulk downloads
     const downloadsData = await db('access_logs')
       .select(db.raw('DATE(timestamp) as date'), db.raw('COUNT(*) as count'))
-      .where('action', 'download')
+      .whereIn('action', ['download', 'download_all'])
       .where('timestamp', '>=', startDateStr)
       .groupByRaw('DATE(timestamp)');
 
@@ -272,14 +272,15 @@ router.get('/analytics', adminAuth, async (req, res) => {
       if (dateObj) dateObj.uniqueVisitors = row.count;
     });
 
-    // Get top galleries by views
+    // Get top galleries by views with additional metrics
     const topGalleries = await db('access_logs')
-      .select('events.event_name', 'events.slug')
-      .select(db.raw('COUNT(*) as views'))
+      .select('events.id', 'events.event_name', 'events.slug')
+      .select(db.raw('COUNT(CASE WHEN action = \'view\' THEN 1 END) as views'))
+      .select(db.raw('COUNT(DISTINCT CASE WHEN action = \'view\' THEN ip_address END) as uniqueVisitors'))
+      .select(db.raw('COUNT(CASE WHEN action IN (\'download\', \'download_all\') THEN 1 END) as downloads'))
       .join('events', 'access_logs.event_id', 'events.id')
-      .where('access_logs.action', 'view')
       .where('access_logs.timestamp', '>=', startDateStr)
-      .groupBy('events.id')
+      .groupBy('events.id', 'events.event_name', 'events.slug')
       .orderBy('views', 'desc')
       .limit(5);
 
@@ -309,10 +310,33 @@ router.get('/analytics', adminAuth, async (req, res) => {
       devices[d.device_type] = Math.round((d.count / totalDevices) * 100);
     });
 
+    // Calculate totals for the period (matching /stats logic)
+    const totalViews = await db('access_logs')
+      .where('action', 'view')
+      .where('timestamp', '>=', startDateStr)
+      .count('id as count')
+      .first();
+
+    const totalDownloadsCount = await db('access_logs')
+      .whereIn('action', ['download', 'download_all'])
+      .where('timestamp', '>=', startDateStr)
+      .count('id as count')
+      .first();
+
+    const totalUniqueVisitors = await db('access_logs')
+      .where('timestamp', '>=', startDateStr)
+      .countDistinct('ip_address as count')
+      .first();
+
     res.json({
       chartData: dates,
       topGalleries,
-      devices
+      devices,
+      totals: {
+        views: totalViews?.count || 0,
+        downloads: totalDownloadsCount?.count || 0,
+        uniqueVisitors: totalUniqueVisitors?.count || 0
+      }
     });
   } catch (error) {
     console.error('Analytics error:', error);

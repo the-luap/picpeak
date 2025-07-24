@@ -15,9 +15,10 @@ interface PhotoGridProps {
   photos: Photo[];
   slug: string;
   categoryId?: number | null;
+  feedbackEnabled?: boolean;
 }
 
-export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId }) => {
+export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId, feedbackEnabled = false }) => {
   const { t } = useTranslation();
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
@@ -204,6 +205,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId }
           initialIndex={selectedPhotoIndex}
           onClose={() => setSelectedPhotoIndex(null)}
           slug={slug}
+          feedbackEnabled={feedbackEnabled}
         />
       )}
     </>

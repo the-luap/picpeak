@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, AlertCircle, Clock } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../hooks/useLocalizedDate';
@@ -289,13 +289,9 @@ export const GalleryPage: React.FC = () => {
               alt={settingsData?.branding_company_name || 'PicPeak'}
               className="h-12 sm:h-16 lg:h-20 w-auto object-contain mx-auto mb-3 sm:mb-4"
             />
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 px-2" style={{ color: 'var(--color-text, #171717)' }}>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 px-2" style={{ color: 'var(--color-primary, #5C8762)' }}>
               {galleryInfo?.event_name}
             </h1>
-            <div className="flex items-center justify-center text-xs sm:text-sm" style={{ color: 'var(--color-text, #171717)', opacity: 0.7 }}>
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span className="truncate">{format(parseISO(galleryInfo!.event_date), 'PP')}</span>
-            </div>
           </div>
 
           {/* Expiration Warning */}

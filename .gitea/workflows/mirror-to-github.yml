@@ -13,55 +13,60 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Full history needed for mirroring
+          fetch-depth: 0  # Full history for proper mirroring
 
       - name: Setup Git
         run: |
           git config --global user.name "the-luap"
           git config --global user.email "paul-nothaft@hotmail.de"
 
-      - name: Debug - Show current branch and status
+      - name: Remove sensitive files and directories
         run: |
-          echo "Current branch:"
-          git branch -a
-          echo "Git status:"
-          git status
-          echo "Remote info:"
-          git remote -v
-
-      - name: Create filtered branch
-        run: |
-          # Clean up any existing github-mirror branch
-          git branch -D github-mirror || true
+          echo "Current files before cleanup:"
+          ls -la | head -10 || true
+          echo "..."
           
-          # Create a new branch for GitHub
-          git checkout --orphan github-mirror
-          
-          # Remove sensitive files/directories
-          # Example: Remove .env files, private configs, etc.
-          git rm -r --cached .env* || true
-          git rm -r --cached backend/.env* || true
-          git rm -r --cached frontend/.env* || true
-          git rm -r --cached docker-compose.prod.yml || true
-          git rm -r --cached .claudedocs/ || true
-          git rm -r --cached backend/data/ || true
-          git rm -r --cached backend/storage/ || true
-          git rm -r --cached .gitea/ || true
-          git rm -r --cached scripts/install-gitea-runner.sh || true
-          git rm -r --cached .drone* || true
-          git rm -r --cached .github-mirror-exclude || true
-          git rm -r --cached .gitattributes-github || true
-          git rm -r --cached photo-sharing-prd.md || true
-          git rm -r --cached CLAUDE.md || true
-          git rm -r --cached PRODUCTION_DEPLOYMENT_GUIDE.md || true
-          git rm -r --cached logs/ || true
-          git rm -r --cached frontend/.claudedocs/ || true
-          git rm -r --cached test-maintenance.sh || true
-          git rm -r --cached storage/ || true
+          # Remove sensitive files/directories if they exist
+          echo "Removing sensitive files..."
+          rm -rf .env || true
+          rm -rf backend/.env* || true
+          rm -rf frontend/.env* || true
+          rm -rf docker-compose.prod.yml || true
+          rm -rf .claudedocs/ || true
+          rm -rf backend/data/ || true
+          rm -rf backend/storage/ || true
+          rm -rf .gitea/ || true
+          rm -rf scripts/install-gitea-runner.sh || true
+          rm -rf .drone* || true
+          rm -rf .github-mirror-exclude || true
+          rm -rf .gitattributes-github || true
+          rm -rf photo-sharing-prd.md || true
+          rm -rf CLAUDE.md || true
+          rm -rf PRODUCTION_DEPLOYMENT_GUIDE.md || true
+          rm -rf logs/ || true
+          rm -rf frontend/.claudedocs/ || true
+          rm -rf test-maintenance.sh || true
+          rm -rf storage/ || true
+          rm -rf clean-git-history.sh || true
+          rm -rf frontend/.swarm/ || true
+          rm -rf backend/.hive-mind/ || true
+          rm -rf data/ || true
+          rm -rf certbot/ || true
 
-        
-          # Commit the changes
-          git commit -m "Remove sensitive files for GitHub mirror" || true
+          
+          echo "Sensitive files removal completed"
+          
+          # Add and commit the cleanup if there are changes
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: remove sensitive files for GitHub mirror"
+            echo "✅ Committed cleanup of sensitive files"
+          else
+            echo "✅ No sensitive files to remove"
+          fi
+          
+          echo "Final file structure (top level):"
+          ls -la | head -10 || true
 
       - name: Check GitHub token
         env:
@@ -88,12 +93,13 @@ jobs:
           echo "GitHub remote added:"
           git remote -v
           
-          # Force push the filtered branch to GitHub main
+          # Push to GitHub main branch
           echo "Pushing to GitHub..."
-          git push github github-mirror:main --force
-          echo "Push completed successfully!"
+          git push github main --force
+          echo "✅ Push to GitHub completed!"
 
       - name: Workflow completed
         run: |
           echo "✅ Mirror to GitHub workflow completed successfully!"
-          echo "Check https://github.com/the-luap/picpeak to verify the mirror."
+          echo "📊 Repository mirrored to: https://github.com/the-luap/picpeak"
+          echo "🔒 Sensitive files have been removed from the mirror"

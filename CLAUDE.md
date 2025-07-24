@@ -39,6 +39,12 @@ docker-compose -f docker-compose.prod.yml up -d  # Production deployment
 pm2 start ecosystem.config.js                     # Alternative: PM2 deployment
 ```
 
+**⚠️ CRITICAL PRODUCTION NOTICE:**
+- Production runs on a SEPARATE SERVER - never assume local changes affect production
+- ALWAYS request production server details before any troubleshooting
+- NO trial-and-error approaches in production - data loss is unacceptable
+- Every change must be thoroughly analyzed and tested locally first
+
 ## Key Product Requirements (from PRD)
 
 ### Core Features
@@ -111,6 +117,7 @@ Background services run as separate processes:
 - **archiveService**: Creates ZIP archives of expired events
 - **expirationChecker**: Cron job for expiration warnings
 - **fileWatcher**: Monitors for new photo uploads
+- **backupService**: Scheduled backups with checksum-based change detection
 
 ### API Structure
 - `/api/admin/*` - Admin panel endpoints (requires adminAuth)
@@ -126,6 +133,41 @@ Background services run as separate processes:
 4. **File Processing**: Sharp library for thumbnail generation (300x300)
 5. **Frontend Status**: Only skeleton exists - requires full implementation based on PRD
 6. **Umami Analytics**: Track password entries, downloads, views, expiration warnings
+
+## Troubleshooting Guidelines
+
+### Before ANY Production Troubleshooting:
+1. **ALWAYS request specific details**:
+   - Production server URL/IP
+   - Current error messages/logs
+   - Recent changes or deployments
+   - Affected users/galleries
+   - Time of issue occurrence
+
+2. **Thorough Analysis Required**:
+   - Use detailed thinking/analysis for EVERY troubleshooting task
+   - Review all related code before suggesting changes
+   - Consider all potential side effects
+   - Never make assumptions about production environment
+
+3. **Safe Troubleshooting Steps**:
+   - First, reproduce issue in local/dev environment
+   - Analyze logs without modifying production
+   - Create detailed action plan before any changes
+   - Always have rollback strategy ready
+   - Document every step taken
+
+### Common Issues & Safe Approaches:
+- **Email not sending**: Check email_queue table, SMTP settings, service status
+- **Photos not loading**: Verify file permissions, storage paths, nginx config
+- **Gallery access issues**: Check JWT tokens, expiration dates, access_logs
+- **Performance problems**: Analyze with monitoring tools first, never experiment
+
+### Data Safety Rules:
+- NEVER delete or modify production data without explicit backup confirmation
+- ALWAYS verify backups exist before any data operations
+- NO direct database modifications without transaction safety
+- Log all actions for audit trail
 
 ## Environment Variables
 
@@ -253,9 +295,71 @@ const { theme, setTheme, setThemeByName } = useTheme();
 --border-radius: 0.5rem;
 ```
 
+## Backup Service
+
+### Overview
+The backup service provides automated, scheduled backups of all photo data with checksum-based change detection to minimize transfer overhead.
+
+### Features
+- **Multiple Destinations**: Local directory, remote server (rsync), S3-compatible storage
+- **Change Detection**: SHA256 checksums track file changes, only modified files are backed up
+- **Scheduled Execution**: Configurable cron-based scheduling (default: 2 AM daily)
+- **Email Notifications**: Alerts on backup failure, optional success notifications
+- **Retention Management**: Automatic cleanup of old backup runs based on retention policy
+- **Progress Tracking**: Database storage of backup history, file states, and statistics
+
+### Configuration
+Backup settings are stored in `app_settings` table with `backup_` prefix:
+- `backup_enabled`: Enable/disable the service
+- `backup_schedule`: Cron expression (e.g., '0 2 * * *')
+- `backup_destination_type`: 'local', 'rsync', or 's3'
+- `backup_retention_days`: How long to keep backup history
+- `backup_include_archived`: Whether to backup archived events
+- `backup_exclude_patterns`: File patterns to exclude
+
+### API Endpoints
+- `GET /api/admin/backup/config` - Get current configuration
+- `PUT /api/admin/backup/config` - Update configuration
+- `GET /api/admin/backup/status` - Get backup status and history
+- `POST /api/admin/backup/run` - Trigger manual backup
+- `POST /api/admin/backup/test-connection` - Test destination connectivity
+
+### Testing
+Run backup service test: `npm run test-backup`
+
+### Database Tables
+- `backup_runs`: Tracks each backup execution with statistics
+- `backup_file_states`: Stores file checksums for change detection
+
 ## Success Metrics (from PRD)
 - Time to generate gallery: <2 minutes
 - Guest satisfaction: >90%
 - System uptime: 99.9%
 - Email delivery rate: >98%
 - Successful archiving: 100%
+
+## Documentation & Development Practices
+
+### Documentation Guidelines:
+- **NEVER create new documentation files for simple tasks**
+- **ALWAYS update existing documentation (like this CLAUDE.md)**
+- Only create new .md files when explicitly requested
+- Avoid creating temporary scripts for one-off tasks
+
+### Development Best Practices:
+- Test all changes thoroughly in local environment first
+- Use version control for all changes
+- Keep commits atomic and well-described
+- Review impact on all integrated services
+- Consider backward compatibility
+- Update tests when changing functionality
+
+### Production Deployment Checklist:
+- [ ] All tests passing locally
+- [ ] Linting and type checks pass
+- [ ] Database migrations tested with rollback plan
+- [ ] Environment variables documented
+- [ ] Backup strategy confirmed
+- [ ] Monitoring alerts configured
+- [ ] Rollback procedure documented
+- [ ] Stakeholders notified of maintenance window
