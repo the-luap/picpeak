@@ -66,13 +66,16 @@ openssl rand -base64 32
 ```
 
 Update `.env` with:
-- `JWT_SECRET` - Authentication secret
+- `JWT_SECRET` - Authentication secret (REQUIRED - generate a secure random value)
 - `DB_PASSWORD` - PostgreSQL password
 - `REDIS_PASSWORD` - Redis password
 - `SMTP_*` - Email configuration
-- `FRONTEND_URL` - Your domain URL
-- `ADMIN_URL` - Backend admin URL
-- `VITE_API_URL` - API URL for frontend
+- **CRITICAL URL Configuration** (must match your deployment):
+  - `FRONTEND_URL` - Frontend URL with port (e.g., `http://yourdomain.com:3000`)
+  - `ADMIN_URL` - Backend URL with port (e.g., `http://yourdomain.com:3001`)
+  - `VITE_API_URL` - Backend API URL (e.g., `http://yourdomain.com:3001/api`)
+
+⚠️ **IMPORTANT**: These URLs MUST include the correct ports and match exactly how users will access your site. Mismatched URLs will cause CORS errors and login failures!
 
 ### Email Configuration Examples
 
@@ -370,6 +373,53 @@ docker exec picpeak-backend npm run migrate
 ## 🚨 Troubleshooting
 
 ### Common Issues
+
+#### 502 Bad Gateway / Login Failures
+**This is the most common deployment issue!** Usually caused by misconfigured URLs or network problems:
+
+1. **CORS Configuration Errors**:
+   ```bash
+   # WRONG - Missing port will cause CORS errors
+   FRONTEND_URL=http://10.0.252.12
+   
+   # CORRECT - Include the port you're accessing from
+   FRONTEND_URL=http://10.0.252.12:3000
+   ```
+   
+   The backend validates Origin headers against `FRONTEND_URL` for CORS. If they don't match exactly, you'll get 500 errors on login.
+
+2. **After Container Restarts**:
+   - Nginx may have cached old container IPs
+   - Solution: `docker restart picpeak-frontend`
+   - Always wait 30-60 seconds for health checks
+
+3. **Backend Not Starting After Migrations**:
+   - The logs may only show migrations completed
+   - Check if server is actually running: `docker exec picpeak-backend ps aux | grep node`
+   - Should see `node server.js` process
+
+4. **Login After Fresh Install**:
+   - Check migration logs for generated credentials
+   - Username: `admin` or the email shown in logs
+   - Password: Shown during first migration (e.g., `SharpPhoenix9920$`)
+
+5. **Complete Fix Sequence**:
+   ```bash
+   # 1. Fix your .env file URLs
+   # 2. Full restart
+   docker-compose down
+   docker-compose up -d
+   
+   # 3. Wait for healthy status
+   sleep 60
+   docker ps  # All should show (healthy)
+   
+   # 4. Test backend directly
+   curl http://localhost:3001/health
+   
+   # 5. Test through frontend
+   curl http://localhost:3000/api/public/settings
+   ```
 
 #### Port Already in Use
 ```bash
