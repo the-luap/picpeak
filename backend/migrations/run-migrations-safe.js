@@ -36,8 +36,8 @@ async function detectExistingSchema() {
   console.log('Detecting existing schema...');
   
   const tableChecks = [
-    { table: 'events', migration: 'init.js' },
-    { table: 'photos', migration: 'init.js' },
+    { table: 'events', migration: '001_init.js' },
+    { table: 'photos', migration: '001_init.js' },
     { table: 'photo_categories', migration: '004_add_categories_and_cms.js' },
     { table: 'cms_pages', migration: '004_add_categories_and_cms.js' },
     { table: 'login_attempts', migration: '015_add_login_attempts_table.js' },
