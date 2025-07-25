@@ -30,6 +30,7 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - ADMIN_URL=${ADMIN_URL:-http://localhost:3001}
       - TZ=${TZ:-UTC}
+      - STORAGE_PATH=/app/storage
     volumes:
       - ./events:/app/events
       - ./data:/app/data
