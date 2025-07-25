@@ -18,9 +18,13 @@ exports.up = async function(knex) {
       const generatedPassword = generateReadablePassword();
       const passwordHash = await bcrypt.hash(generatedPassword, 12); // Increased rounds for better security
       
+      // Get admin credentials from environment or use defaults
+      const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+      
       await knex('admin_users').insert({
-        username: 'admin',
-        email: 'admin@example.com',
+        username: adminUsername,
+        email: adminEmail,
         password_hash: passwordHash,
         created_at: new Date()
       });
@@ -36,7 +40,7 @@ PicPeak Admin Credentials
 
 Your admin account has been created with these credentials:
 
-Username: admin
+Email: ${adminEmail}
 Password: ${generatedPassword}
 
 IMPORTANT SECURITY NOTES:
@@ -46,6 +50,8 @@ IMPORTANT SECURITY NOTES:
 4. Delete this file after noting the password
 
 Login URL: ${process.env.ADMIN_URL || 'http://localhost:3001'}/admin
+
+Login with the email address shown above
 
 Generated on: ${new Date().toISOString()}
 ========================================
@@ -65,7 +71,7 @@ Generated on: ${new Date().toISOString()}
       console.log('\n========================================');
       console.log('✅ Admin user created successfully!');
       console.log('========================================');
-      console.log('Username: admin');
+      console.log(`Email: ${adminEmail}`);
       console.log(`Password: ${generatedPassword}`);
       console.log('\n⚠️  IMPORTANT:');
       console.log('1. Save these credentials securely');

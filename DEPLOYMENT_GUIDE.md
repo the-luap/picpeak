@@ -23,8 +23,8 @@ This guide covers deploying PicPeak using Docker Compose with direct port exposu
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/wedding-photo-sharing.git
-   cd wedding-photo-sharing
+   git clone https://github.com/the-luap/picpeak.git
+   cd picpeak
    ```
 
 2. **Set up environment**
@@ -119,19 +119,65 @@ By default, services are exposed on:
 
 ### Initial Admin Setup
 
-The admin credentials are generated during first startup. Check the logs:
+When deploying for the first time, an admin account is automatically created with a secure random password. You need to retrieve this password to access the admin panel.
 
+#### Finding the Admin Password
+
+**Option 1: Check the backend logs** (recommended)
 ```bash
-docker compose logs backend | grep -A 5 "Admin user created"
+# View the initial setup logs
+docker compose logs backend | grep -A 10 "Admin user created"
 ```
 
-Or use the helper script:
+You should see output like:
+```
+========================================
+✅ Admin user created successfully!
+========================================
+Email: admin@example.com
+Password: BraveTiger6231!
+
+⚠️  IMPORTANT:
+1. Save these credentials securely
+2. Please change the password after first login
+========================================
+```
+
+**Note**: You login with the **email address**, not a username!
+
+**Option 2: Check the saved credentials file**
 ```bash
+# The password is saved in the backend container
+docker exec picpeak-backend cat data/ADMIN_CREDENTIALS.txt
+```
+
+**Option 3: Use the helper script**
+```bash
+# Show current admin username and email (password is hidden)
 docker exec picpeak-backend node scripts/show-admin-credentials.js
 
-# To reset password
+# Reset the admin password to a new random password
 docker exec picpeak-backend node scripts/show-admin-credentials.js --reset
 ```
+
+#### Important Notes
+
+- **Login requires the email address**, not username
+- The admin password is only shown once during initial setup
+- If you lose the password, use the `--reset` option to generate a new one
+- You must change the password on first login (enforced by the system)
+- Password requirements: minimum 12 characters, mixed case, numbers, and special characters
+
+#### Configuring Admin Email
+
+By default, the admin email is `admin@example.com`. To use a different email address, set it in your `.env` file before first deployment:
+
+```env
+# .env
+ADMIN_EMAIL=your-email@yourdomain.com
+```
+
+**Note**: This only works on first deployment. To change the admin email after deployment, you'll need to update it in the database or create a new admin user through the admin panel.
 
 ## 🔒 Reverse Proxy Setup
 
