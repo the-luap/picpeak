@@ -25,16 +25,10 @@ exports.up = async function(knex) {
         created_at: new Date()
       });
       
-      // Save the generated password to a file for the user to retrieve
+      // Try to save credentials to file, but don't fail if we can't
       const dataDir = path.join(__dirname, '..', '..', 'data');
       const setupInfoPath = path.join(dataDir, 'ADMIN_CREDENTIALS.txt');
       
-      // Ensure data directory exists
-      try {
-        await fs.mkdir(dataDir, { recursive: true });
-      } catch (error) {
-        // Directory might already exist, that's okay
-      }
       const setupInfo = `
 ========================================
 PicPeak Admin Credentials
@@ -57,7 +51,16 @@ Generated on: ${new Date().toISOString()}
 ========================================
 `;
       
-      await fs.writeFile(setupInfoPath, setupInfo, 'utf8');
+      try {
+        // Try to create directory and write file
+        await fs.mkdir(dataDir, { recursive: true });
+        await fs.writeFile(setupInfoPath, setupInfo, 'utf8');
+        console.log(`📁 Credentials also saved to: data/ADMIN_CREDENTIALS.txt`);
+      } catch (error) {
+        // If we can't write the file, that's okay - credentials are shown in console
+        console.log('⚠️  Could not save credentials to file (permission denied)');
+        console.log('   Please copy the credentials shown above');
+      }
       
       console.log('\n========================================');
       console.log('✅ Admin user created successfully!');
@@ -67,7 +70,6 @@ Generated on: ${new Date().toISOString()}
       console.log('\n⚠️  IMPORTANT:');
       console.log('1. Save these credentials securely');
       console.log('2. Please change the password after first login');
-      console.log('3. Credentials are also saved in: data/ADMIN_CREDENTIALS.txt');
       console.log('========================================\n');
     }
     
