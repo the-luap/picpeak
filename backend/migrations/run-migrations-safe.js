@@ -134,7 +134,13 @@ async function runMigrations() {
       migrationFiles = coreFiles
         .filter(f => f.match(/^\d{3}_.*\.js$/))
         .map(f => path.join('core', f))
-        .sort();
+        .sort((a, b) => {
+          const baseA = path.basename(a);
+          const baseB = path.basename(b);
+          const numA = parseInt(baseA.split('_')[0]);
+          const numB = parseInt(baseB.split('_')[0]);
+          return numA - numB;
+        });
     } else {
       // For existing deployments, run all migrations (legacy + core)
       console.log('Existing deployment detected - checking all migrations');
