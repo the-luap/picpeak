@@ -180,7 +180,7 @@ docker-compose up -d
 # Run database migrations
 docker-compose exec backend npm run migrate
 
-# Admin credentials will be displayed and saved to ADMIN_CREDENTIALS.txt
+# Admin credentials will be displayed and saved to /data/ADMIN_CREDENTIALS.txt
 ```
 
 #### Step 4: Configure Nginx

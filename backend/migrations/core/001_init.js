@@ -26,7 +26,15 @@ exports.up = async function(knex) {
       });
       
       // Save the generated password to a file for the user to retrieve
-      const setupInfoPath = path.join(__dirname, '..', '..', 'ADMIN_CREDENTIALS.txt');
+      const dataDir = path.join(__dirname, '..', '..', 'data');
+      const setupInfoPath = path.join(dataDir, 'ADMIN_CREDENTIALS.txt');
+      
+      // Ensure data directory exists
+      try {
+        await fs.mkdir(dataDir, { recursive: true });
+      } catch (error) {
+        // Directory might already exist, that's okay
+      }
       const setupInfo = `
 ========================================
 PicPeak Admin Credentials
@@ -58,8 +66,8 @@ Generated on: ${new Date().toISOString()}
       console.log(`Password: ${generatedPassword}`);
       console.log('\n⚠️  IMPORTANT:');
       console.log('1. Save these credentials securely');
-      console.log('2. You will be required to change the password on first login');
-      console.log('3. Credentials are also saved in: ADMIN_CREDENTIALS.txt');
+      console.log('2. Please change the password after first login');
+      console.log('3. Credentials are also saved in: data/ADMIN_CREDENTIALS.txt');
       console.log('========================================\n');
     }
     
