@@ -4,8 +4,8 @@ const { generateReadablePassword } = require('../../src/utils/passwordGenerator'
 const fs = require('fs').promises;
 const path = require('path');
 
-async function runMigrations() {
-  console.log('Running database migrations...');
+exports.up = async function(knex) {
+  console.log('Initializing database schema...');
   
   try {
     // Initialize tables
@@ -116,11 +116,13 @@ Generated on: ${new Date().toISOString()}
     }
 
     console.log('Migrations completed successfully');
-    process.exit(0);
   } catch (error) {
-    console.error('Migration failed:', error);
-    process.exit(1);
+    console.error('Initial setup failed:', error);
+    throw error;
   }
-}
+};
 
-runMigrations();
+exports.down = async function(knex) {
+  // This migration cannot be rolled back as it creates the initial schema
+  console.log('Initial setup cannot be rolled back');
+};

@@ -141,6 +141,7 @@ async function runMigrations() {
           const numB = parseInt(baseB.split('_')[0]);
           return numA - numB;
         });
+      console.log('Migration files in order:', migrationFiles.map(f => path.basename(f)));
     } else {
       // For existing deployments, run all migrations (legacy + core)
       console.log('Existing deployment detected - checking all migrations');
