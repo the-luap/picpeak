@@ -71,7 +71,7 @@ docker-compose up -d
 
 ## 📖 Documentation
 
-- 📘 [**Deployment Guide**](DEPLOYMENT.md) - Detailed installation instructions
+- 📘 [**Deployment Guide**](DEPLOYMENT_GUIDE.md) - Detailed installation instructions
 - 🤝 [**Contributing**](CONTRIBUTING.md) - How to contribute
 - 📜 [**License**](LICENSE) - MIT License
 - 🔒 [**Security**](SECURITY.md) - Security policies
@@ -209,7 +209,7 @@ PicPeak is released under the [MIT License](LICENSE). Use it freely for personal
 ## 🚀 Ready to Get Started?
 
 1. ⭐ **Star this repository** to show your support
-2. 📖 Read the [Deployment Guide](DEPLOYMENT.md)
+2. 📖 Read the [Deployment Guide](DEPLOYMENT_GUIDE.md)
 3. 🐛 Report issues or request features
 4. 🤝 Join our community and contribute!
 
@@ -219,6 +219,6 @@ PicPeak is released under the [MIT License](LICENSE). Use it freely for personal
   Made with ❤️ by photographers, for photographers
   <br>
   <a href="https://github.com/the-luap/picpeak">GitHub</a> •
-  <a href="DEPLOYMENT.md">Documentation</a> •
+  <a href="DEPLOYMENT_GUIDE.md">Documentation</a> •
   <a href="https://github.com/the-luap/picpeak/issues">Support</a>
 </p>
