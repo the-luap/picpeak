@@ -156,9 +156,8 @@ async function up() {
   const backupEmailTemplates = [
     {
       template_key: 'backup_failed',
-      subject_en: 'Backup Failed - Immediate Attention Required',
-      subject_de: 'Backup fehlgeschlagen - Sofortige Aufmerksamkeit erforderlich',
-      body_html_en: `<h2>Backup Failed</h2>
+      subject: 'Backup Failed - Immediate Attention Required',
+      body_html: `<h2>Backup Failed</h2>
 <p>The scheduled backup has failed and requires immediate attention.</p>
 <p><strong>Error Details:</strong></p>
 <ul>
@@ -167,24 +166,13 @@ async function up() {
   <li>Error: {{error_message}}</li>
 </ul>
 <p>Please check the system logs for more details and resolve the issue as soon as possible.</p>`,
-      body_html_de: `<h2>Backup fehlgeschlagen</h2>
-<p>Das geplante Backup ist fehlgeschlagen und erfordert sofortige Aufmerksamkeit.</p>
-<p><strong>Fehlerdetails:</strong></p>
-<ul>
-  <li>Startzeit: {{start_time}}</li>
-  <li>Backup-Typ: {{backup_type}}</li>
-  <li>Fehler: {{error_message}}</li>
-</ul>
-<p>Bitte überprüfen Sie die Systemprotokolle für weitere Details und beheben Sie das Problem so schnell wie möglich.</p>`,
-      body_text_en: 'Backup Failed\n\nThe scheduled backup has failed and requires immediate attention.\n\nStart Time: {{start_time}}\nBackup Type: {{backup_type}}\nError: {{error_message}}\n\nPlease check the system logs for more details.',
-      body_text_de: 'Backup fehlgeschlagen\n\nDas geplante Backup ist fehlgeschlagen und erfordert sofortige Aufmerksamkeit.\n\nStartzeit: {{start_time}}\nBackup-Typ: {{backup_type}}\nFehler: {{error_message}}\n\nBitte überprüfen Sie die Systemprotokolle für weitere Details.',
+      body_text: 'Backup Failed\n\nThe scheduled backup has failed and requires immediate attention.\n\nStart Time: {{start_time}}\nBackup Type: {{backup_type}}\nError: {{error_message}}\n\nPlease check the system logs for more details.',
       variables: JSON.stringify(['start_time', 'backup_type', 'error_message'])
     },
     {
       template_key: 'backup_completed',
-      subject_en: 'Backup Completed Successfully',
-      subject_de: 'Backup erfolgreich abgeschlossen',
-      body_html_en: `<h2>Backup Completed</h2>
+      subject: 'Backup Completed Successfully',
+      body_html: `<h2>Backup Completed</h2>
 <p>The scheduled backup has been completed successfully.</p>
 <p><strong>Backup Summary:</strong></p>
 <ul>
@@ -194,18 +182,7 @@ async function up() {
   <li>Total Size: {{total_size}}</li>
   <li>Backup Type: {{backup_type}}</li>
 </ul>`,
-      body_html_de: `<h2>Backup abgeschlossen</h2>
-<p>Das geplante Backup wurde erfolgreich abgeschlossen.</p>
-<p><strong>Backup-Zusammenfassung:</strong></p>
-<ul>
-  <li>Startzeit: {{start_time}}</li>
-  <li>Dauer: {{duration}}</li>
-  <li>Gesicherte Dateien: {{files_count}}</li>
-  <li>Gesamtgröße: {{total_size}}</li>
-  <li>Backup-Typ: {{backup_type}}</li>
-</ul>`,
-      body_text_en: 'Backup Completed\n\nThe scheduled backup has been completed successfully.\n\nStart Time: {{start_time}}\nDuration: {{duration}}\nFiles Backed Up: {{files_count}}\nTotal Size: {{total_size}}\nBackup Type: {{backup_type}}',
-      body_text_de: 'Backup abgeschlossen\n\nDas geplante Backup wurde erfolgreich abgeschlossen.\n\nStartzeit: {{start_time}}\nDauer: {{duration}}\nGesicherte Dateien: {{files_count}}\nGesamtgröße: {{total_size}}\nBackup-Typ: {{backup_type}}',
+      body_text: 'Backup Completed\n\nThe scheduled backup has been completed successfully.\n\nStart Time: {{start_time}}\nDuration: {{duration}}\nFiles Backed Up: {{files_count}}\nTotal Size: {{total_size}}\nBackup Type: {{backup_type}}',
       variables: JSON.stringify(['start_time', 'duration', 'files_count', 'total_size', 'backup_type'])
     }
   ];

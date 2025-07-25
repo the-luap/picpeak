@@ -40,7 +40,7 @@ async function up() {
   // Add language preference to app_settings for global default
   await db('app_settings').insert({
     setting_key: 'default_language',
-    setting_value: 'en',
+    setting_value: JSON.stringify('en'),
     setting_type: 'general',
     updated_at: new Date()
   });
