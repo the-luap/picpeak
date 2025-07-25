@@ -11,6 +11,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Docker override file
+docker-compose.override.yml
+
 # Security - Never commit credentials
 ADMIN_CREDENTIALS.txt
 ADMIN_PASSWORD_RESET.txt

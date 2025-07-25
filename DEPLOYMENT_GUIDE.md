@@ -38,6 +38,13 @@ For local development, use `docker-compose.dev.yml` which includes Mailhog for e
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
+### Production Customization
+For local production customizations, copy `docker-compose.override.yml.example` to `docker-compose.override.yml`:
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+# Edit docker-compose.override.yml with your customizations
+```
+
 ## 🔐 Security Requirements
 
 ### Critical: JWT Secret Setup
@@ -90,10 +97,10 @@ mkdir -p storage/events/active storage/events/archived storage/thumbnails storag
 mkdir -p data logs certbot/conf certbot/www
 
 # 6. Deploy
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 
 # 7. Check logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker-compose logs -f
 ```
 
 ## 📦 Deployment Methods
@@ -165,13 +172,13 @@ services:
 chmod -R 755 storage data logs
 
 # Build images
-docker-compose -f docker-compose.prod.yml build
+docker-compose build
 
 # Start services
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 
 # Run database migrations
-docker-compose -f docker-compose.prod.yml exec backend npm run migrate
+docker-compose exec backend npm run migrate
 
 # Admin credentials will be displayed and saved to ADMIN_CREDENTIALS.txt
 ```
@@ -523,7 +530,7 @@ When you run migrations for the first time, an admin account is automatically cr
 
 ```bash
 # Docker
-docker-compose -f docker-compose.prod.yml exec backend npm run migrate
+docker-compose exec backend npm run migrate
 
 # PM2/Manual
 cd backend && npm run migrate
@@ -555,7 +562,7 @@ Password: SwiftEagle3847!
 
 ```bash
 # Docker
-docker-compose -f docker-compose.prod.yml exec backend node scripts/reset-admin-password.js
+docker-compose exec backend node scripts/reset-admin-password.js
 
 # PM2/Manual
 cd backend && node scripts/reset-admin-password.js
@@ -567,7 +574,7 @@ cd backend && node scripts/reset-admin-password.js
 
 ```bash
 # Initial certificate
-docker-compose -f docker-compose.prod.yml run --rm certbot certonly \
+docker-compose run --rm certbot certonly \
   --webroot --webroot-path=/var/www/certbot \
   -d your-domain.com -d www.your-domain.com
 
@@ -612,7 +619,7 @@ BACKUP_DIR="./backups/$DATE"
 mkdir -p $BACKUP_DIR
 
 # Database backup
-docker-compose -f docker-compose.prod.yml exec -T db \
+docker-compose exec -T db \
   pg_dump -U picpeak picpeak > $BACKUP_DIR/database.sql
 
 # Files backup
@@ -634,8 +641,8 @@ The application includes a built-in backup service. Configure via Admin Panel:
 ```bash
 # Docker method
 git pull
-docker-compose -f docker-compose.prod.yml build
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose build
+docker-compose up -d
 
 # PM2 method
 git pull
@@ -652,17 +659,17 @@ pm2 restart picpeak
 curl https://your-domain.com/api/health
 
 # Database connection
-docker-compose -f docker-compose.prod.yml exec backend \
+docker-compose exec backend \
   psql -U picpeak -d picpeak -c "SELECT 1"
 
 # Service status
-docker-compose -f docker-compose.prod.yml ps
+docker-compose ps
 ```
 
 #### Logs
 ```bash
 # Docker logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker-compose logs -f
 
 # PM2 logs
 pm2 logs picpeak
@@ -720,13 +727,13 @@ chmod -R 755 storage
 
 ```bash
 # Check all services
-docker-compose -f docker-compose.prod.yml ps
+docker-compose ps
 
 # Backend shell access
-docker-compose -f docker-compose.prod.yml exec backend sh
+docker-compose exec backend sh
 
 # Database access
-docker-compose -f docker-compose.prod.yml exec db psql -U picpeak
+docker-compose exec db psql -U picpeak
 
 # Test API
 curl -I http://localhost:3001/api/health

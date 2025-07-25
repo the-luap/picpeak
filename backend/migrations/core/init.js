@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
-const { db, initializeDatabase } = require('../src/database/db');
-const { generateReadablePassword } = require('../src/utils/passwordGenerator');
+const { db, initializeDatabase } = require('../../src/database/db');
+const { generateReadablePassword } = require('../../src/utils/passwordGenerator');
 const fs = require('fs').promises;
 const path = require('path');
 

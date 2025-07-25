@@ -1,5 +1,5 @@
-const { db } = require('../src/database/db');
-const logger = require('../src/utils/logger');
+const { db } = require('../../src/database/db');
+const logger = require('../../src/utils/logger');
 
 async function up() {
   console.log('Adding backup manifest columns...');

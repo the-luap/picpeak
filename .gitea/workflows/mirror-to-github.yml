@@ -33,6 +33,7 @@ jobs:
           rm -rf .drone* || true
           rm -rf photo-sharing-prd.md || true
           rm -rf CLAUDE.md || true
+          rm -rf storage/ || true
 
 
           

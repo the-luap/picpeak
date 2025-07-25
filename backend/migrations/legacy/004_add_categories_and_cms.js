@@ -1,4 +1,4 @@
-const { db } = require('../src/database/db');
+const { db } = require('../../src/database/db');
 
 async function up() {
   console.log('Adding photo categories and CMS tables...');
