@@ -58,12 +58,17 @@ Generate secure values:
 # JWT Secret
 openssl rand -base64 64
 
-# Database Password
-openssl rand -base64 32
+# Database Password (avoid $ character - see warning below)
+openssl rand -base64 32 | tr -d '$'
 
-# Redis Password
-openssl rand -base64 32
+# Redis Password (avoid $ character - see warning below)
+openssl rand -base64 32 | tr -d '$'
 ```
+
+⚠️ **PASSWORD WARNING**: Docker Compose interprets `$` as variable substitution. Either:
+- Avoid `$` in passwords (recommended - use the commands above)
+- Escape `$` as `$$` (e.g., `Pass$$word` instead of `Pass$word`)
+- Quote the entire value: `DB_PASSWORD='Pass$word'` (less reliable)
 
 Update `.env` with:
 - `JWT_SECRET` - Authentication secret (REQUIRED - generate a secure random value)
@@ -431,6 +436,17 @@ sudo lsof -i :3001
 FRONTEND_PORT=3002
 BACKEND_PORT=3003
 ```
+
+#### Docker Compose Variable Substitution Errors
+If you see warnings like:
+```
+WARN[0000] The "fgbf" variable is not set. Defaulting to a blank string.
+```
+
+This means your password contains `$` which Docker Compose interprets as a variable. Solutions:
+1. **Best**: Generate passwords without `$`: `openssl rand -base64 32 | tr -d '$'`
+2. **Alternative**: Escape `$` as `$$` in your .env file
+3. **Example**: `DB_PASSWORD=Pass@#$$fgbf` instead of `DB_PASSWORD=Pass@#$fgbf`
 
 #### Permission Errors
 ```bash
