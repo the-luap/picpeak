@@ -104,15 +104,24 @@ async function runMigrations() {
     // Create migrations tracking table
     await ensureMigrationsTable();
     
-    // Detect and mark existing schema
-    await detectExistingSchema();
+    // Check if essential tables exist to determine if this is truly a new deployment
+    const hasEventsTable = await db.schema.hasTable('events');
+    const hasPhotosTable = await db.schema.hasTable('photos');
+    const hasAdminTable = await db.schema.hasTable('admin_users');
+    const hasActivityLogsTable = await db.schema.hasTable('activity_logs');
     
     // Get applied migrations
     const appliedMigrations = await db('migrations').select('filename');
     const appliedFilenames = appliedMigrations.map(m => m.filename);
     
-    // Check if this is a new deployment (no migrations have been applied)
-    const isNewDeployment = appliedFilenames.length === 0;
+    // Check if this is a new deployment
+    // It's new if no essential tables exist OR no migrations have been applied
+    const isNewDeployment = (!hasEventsTable || !hasPhotosTable || !hasAdminTable || !hasActivityLogsTable) || appliedFilenames.length === 0;
+    
+    // Only detect existing schema for truly existing deployments
+    if (!isNewDeployment) {
+      await detectExistingSchema();
+    }
     
     // Get migration files from appropriate directories
     let migrationFiles = [];
@@ -123,7 +132,7 @@ async function runMigrations() {
       const coreDir = path.join(__dirname, 'core');
       const coreFiles = await fs.readdir(coreDir);
       migrationFiles = coreFiles
-        .filter(f => f.match(/^\d{3}_.*\.js$/) || f === 'init.js')
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
         .map(f => path.join('core', f))
         .sort();
     } else {
@@ -141,7 +150,7 @@ async function runMigrations() {
       const coreDir = path.join(__dirname, 'core');
       const coreFiles = await fs.readdir(coreDir);
       const coreMigrations = coreFiles
-        .filter(f => f.match(/^\d{3}_.*\.js$/) || f === 'init.js')
+        .filter(f => f.match(/^\d{3}_.*\.js$/))
         .map(f => path.join('core', f));
       
       // Combine and sort by number
@@ -149,9 +158,6 @@ async function runMigrations() {
         .sort((a, b) => {
           const baseA = path.basename(a);
           const baseB = path.basename(b);
-          // Ensure init.js runs first
-          if (baseA === 'init.js') return -1;
-          if (baseB === 'init.js') return 1;
           const numA = parseInt(baseA.split('_')[0]);
           const numB = parseInt(baseB.split('_')[0]);
           return numA - numB;
