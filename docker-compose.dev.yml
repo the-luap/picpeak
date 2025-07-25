@@ -1,100 +1,128 @@
-# docker-compose.dev.yml - Development configuration with Mailhog
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: picpeak-postgres-dev
-    environment:
-      POSTGRES_DB: ${DB_NAME:-picpeak}
-      POSTGRES_USER: ${DB_USER:-picpeak}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-picpeak}
-    volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # Expose for local development tools
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-picpeak}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Backend API
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: picpeak-backend-dev
-    depends_on:
-      db:
-        condition: service_healthy
+    restart: unless-stopped
     environment:
-      NODE_ENV: development
-      PORT: 3001
-      DATABASE_CLIENT: pg
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-picpeak}
-      DB_USER: ${DB_USER:-picpeak}
-      DB_PASSWORD: ${DB_PASSWORD:-picpeak}
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-DO-NOT-USE-IN-PRODUCTION}
-      ADMIN_URL: ${ADMIN_URL:-http://localhost:3005}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3005}
-      BACKEND_URL: ${BACKEND_URL:-http://localhost:3001}
-      # Email via Mailhog
-      SMTP_HOST: mailhog
-      SMTP_PORT: 1025
-      SMTP_SECURE: "false"
-      SMTP_USER: ""
-      SMTP_PASS: ""
-      EMAIL_FROM: ${EMAIL_FROM:-noreply@localhost}
+      - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DB_TYPE=postgresql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@picpeak.local}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - ADMIN_URL=${ADMIN_URL:-http://localhost:3001}
+      - TZ=${TZ:-UTC}
     volumes:
-      - ./backend:/app
-      - /app/node_modules  # Prevent node_modules from being overwritten
-      - ./storage:/app/storage
+      - ./events:/app/events
       - ./data:/app/data
+      - ./logs:/app/logs
+      - ./backup:/backup
     ports:
       - "3001:3001"
-    restart: unless-stopped
-    command: npm run dev
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - picpeak-network
 
-  # Frontend
+  postgres:
+    image: postgres:15-alpine
+    container_name: picpeak-postgres-dev
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - TZ=${TZ:-UTC}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - picpeak-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: picpeak-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-picpeak_redis_pass}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - picpeak-network
+
   frontend:
-    build: 
+    build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001/api}
+        - VITE_UMAMI_URL=${VITE_UMAMI_URL:-}
+        - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID:-}
+        - VITE_UMAMI_SHARE_URL=${VITE_UMAMI_SHARE_URL:-}
     container_name: picpeak-frontend-dev
-    depends_on:
-      - backend
+    restart: unless-stopped
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001/api}
-      - VITE_UMAMI_URL=${VITE_UMAMI_URL}
-      - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID}
+      - NODE_ENV=development
     volumes:
       - ./frontend:/app
-      - /app/node_modules  # Prevent node_modules from being overwritten
+      - /app/node_modules
     ports:
-      - "3005:3005"
-    restart: unless-stopped
-    command: npm run dev -- --host 0.0.0.0 --port 3005
-
-  # Mailhog - Email testing for development
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: picpeak-mailhog
-    ports:
-      - "1025:1025"  # SMTP server
-      - "8025:8025"  # Web UI
-    restart: unless-stopped
+      - "3000:3000"
+    command: npm run dev
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - picpeak-network
 
 volumes:
-  postgres_data_dev:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
 
 networks:
-  default:
-    name: picpeak-dev-network
+  picpeak-network:
+    driver: bridge

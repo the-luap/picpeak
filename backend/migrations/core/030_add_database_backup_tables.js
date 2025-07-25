@@ -96,9 +96,8 @@ async function up() {
   const databaseBackupEmailTemplates = [
     {
       template_key: 'database_backup_failed',
-      subject_en: 'Database Backup Failed - Critical Alert',
-      subject_de: 'Datenbank-Backup fehlgeschlagen - Kritische Warnung',
-      body_html_en: `<h2>Database Backup Failed</h2>
+      subject: 'Database Backup Failed - Critical Alert',
+      body_html: `<h2>Database Backup Failed</h2>
 <p>The scheduled database backup has failed and requires immediate attention.</p>
 <p><strong>Error Details:</strong></p>
 <ul>
@@ -107,24 +106,13 @@ async function up() {
   <li>Error: {{error_message}}</li>
 </ul>
 <p>This is a critical issue that could affect disaster recovery. Please investigate immediately.</p>`,
-      body_html_de: `<h2>Datenbank-Backup fehlgeschlagen</h2>
-<p>Das geplante Datenbank-Backup ist fehlgeschlagen und erfordert sofortige Aufmerksamkeit.</p>
-<p><strong>Fehlerdetails:</strong></p>
-<ul>
-  <li>Backup-Typ: {{backup_type}}</li>
-  <li>Zeitstempel: {{timestamp}}</li>
-  <li>Fehler: {{error_message}}</li>
-</ul>
-<p>Dies ist ein kritisches Problem, das die Disaster-Recovery beeinträchtigen könnte. Bitte untersuchen Sie es sofort.</p>`,
-      body_text_en: 'Database Backup Failed\n\nThe scheduled database backup has failed.\n\nBackup Type: {{backup_type}}\nTimestamp: {{timestamp}}\nError: {{error_message}}\n\nThis is critical - please investigate immediately.',
-      body_text_de: 'Datenbank-Backup fehlgeschlagen\n\nDas geplante Datenbank-Backup ist fehlgeschlagen.\n\nBackup-Typ: {{backup_type}}\nZeitstempel: {{timestamp}}\nFehler: {{error_message}}\n\nDies ist kritisch - bitte sofort untersuchen.',
+      body_text: 'Database Backup Failed\n\nThe scheduled database backup has failed.\n\nBackup Type: {{backup_type}}\nTimestamp: {{timestamp}}\nError: {{error_message}}\n\nThis is critical - please investigate immediately.',
       variables: JSON.stringify(['backup_type', 'timestamp', 'error_message'])
     },
     {
       template_key: 'database_backup_completed',
-      subject_en: 'Database Backup Completed Successfully',
-      subject_de: 'Datenbank-Backup erfolgreich abgeschlossen',
-      body_html_en: `<h2>Database Backup Completed</h2>
+      subject: 'Database Backup Completed Successfully',
+      body_html: `<h2>Database Backup Completed</h2>
 <p>The scheduled database backup has been completed successfully.</p>
 <p><strong>Backup Summary:</strong></p>
 <ul>
@@ -134,18 +122,7 @@ async function up() {
   <li>Compression Ratio: {{compression_ratio}}</li>
   <li>File Path: {{file_path}}</li>
 </ul>`,
-      body_html_de: `<h2>Datenbank-Backup abgeschlossen</h2>
-<p>Das geplante Datenbank-Backup wurde erfolgreich abgeschlossen.</p>
-<p><strong>Backup-Zusammenfassung:</strong></p>
-<ul>
-  <li>Backup-Typ: {{backup_type}}</li>
-  <li>Dauer: {{duration}}</li>
-  <li>Dateigröße: {{file_size}}</li>
-  <li>Komprimierungsverhältnis: {{compression_ratio}}</li>
-  <li>Dateipfad: {{file_path}}</li>
-</ul>`,
-      body_text_en: 'Database Backup Completed\n\nThe scheduled database backup has been completed successfully.\n\nBackup Type: {{backup_type}}\nDuration: {{duration}}\nFile Size: {{file_size}}\nCompression Ratio: {{compression_ratio}}\nFile Path: {{file_path}}',
-      body_text_de: 'Datenbank-Backup abgeschlossen\n\nDas geplante Datenbank-Backup wurde erfolgreich abgeschlossen.\n\nBackup-Typ: {{backup_type}}\nDauer: {{duration}}\nDateigröße: {{file_size}}\nKomprimierungsverhältnis: {{compression_ratio}}\nDateipfad: {{file_path}}',
+      body_text: 'Database Backup Completed\n\nThe scheduled database backup has been completed successfully.\n\nBackup Type: {{backup_type}}\nDuration: {{duration}}\nFile Size: {{file_size}}\nCompression Ratio: {{compression_ratio}}\nFile Path: {{file_path}}',
       variables: JSON.stringify(['backup_type', 'duration', 'file_size', 'compression_ratio', 'file_path'])
     }
   ];
