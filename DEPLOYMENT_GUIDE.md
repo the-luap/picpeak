@@ -1,198 +1,150 @@
-# 🚀 PicPeak Complete Deployment Guide
+# 🚀 PicPeak Deployment Guide
 
-This comprehensive guide covers all deployment methods for PicPeak, including Docker, PM2, manual installation, and deployment without a reverse proxy.
+This guide covers deploying PicPeak using Docker Compose with direct port exposure. For internet-facing deployments, you'll need to add a reverse proxy (nginx, Traefik, Caddy, etc.) for SSL/HTTPS.
 
 ## 📋 Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Security Requirements](#security-requirements)
-- [Quick Start (Docker)](#quick-start-docker)
-- [Deployment Methods](#deployment-methods)
-  - [Method 1: Docker Compose (Recommended)](#method-1-docker-compose-recommended)
-  - [Method 2: PM2 (Node.js Process Manager)](#method-2-pm2-nodejs-process-manager)
-  - [Method 3: Manual Installation](#method-3-manual-installation)
-  - [Method 4: Without Nginx (Direct Access)](#method-4-without-nginx-direct-access)
-- [Environment Configuration](#environment-configuration)
-- [Admin Setup](#admin-setup)
-- [SSL/HTTPS Configuration](#sslhttps-configuration)
-- [Maintenance & Operations](#maintenance--operations)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Reverse Proxy Setup](#reverse-proxy-setup)
+- [Maintenance](#maintenance)
 - [Troubleshooting](#troubleshooting)
-- [Security Checklist](#security-checklist)
 
 ## Prerequisites
 
-### Basic Requirements
-- Linux server (Ubuntu 20.04+ or similar)
-- Domain name (for SSL certificates)
-- SMTP credentials for email notifications
-- Basic command line knowledge
+- Docker and Docker Compose installed
+- Domain name (for production)
+- SMTP server credentials for emails
+- At least 2GB RAM and 20GB storage
 
-### Software Requirements (varies by method)
-- **Docker method**: Docker and Docker Compose
-- **PM2 method**: Node.js 18+, PostgreSQL 14+
-- **Manual method**: Node.js 18+, PostgreSQL 14+, nginx (optional)
+## 🚀 Quick Start
 
-### Development Setup
-For local development, use `docker-compose.dev.yml` which includes Mailhog for email testing:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/wedding-photo-sharing.git
+   cd wedding-photo-sharing
+   ```
+
+2. **Set up environment**
+   ```bash
+   cp .env.example .env
+   nano .env  # Edit with your values
+   ```
+
+3. **Create required directories**
+   ```bash
+   mkdir -p events/active events/archived data logs backup storage
+   chmod -R 755 events data logs backup storage
+   ```
+
+4. **Deploy**
+   ```bash
+   docker compose up -d
+   ```
+
+5. **Check logs**
+   ```bash
+   docker compose logs -f
+   ```
+
+## 🔧 Configuration
+
+### Essential Environment Variables
+
+Generate secure values:
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-### Production Customization
-For local production customizations, copy `docker-compose.override.yml.example` to `docker-compose.override.yml`:
-```bash
-cp docker-compose.override.yml.example docker-compose.override.yml
-# Edit docker-compose.override.yml with your customizations
-```
-
-## 🔐 Security Requirements
-
-### Critical: JWT Secret Setup
-
-**NEVER use the default JWT secret in production!** The application will refuse to start if JWT_SECRET is not properly configured.
-
-Generate a secure JWT secret:
-```bash
-# Generate a 64-character secret
-openssl rand -base64 32
-
-# Or for even more security (recommended)
+# JWT Secret
 openssl rand -base64 64
 
-# Or use the included script
-./scripts/generate-jwt-secret.sh
+# Database Password
+openssl rand -base64 32
+
+# Redis Password
+openssl rand -base64 32
 ```
 
-### Critical: Database Password
+Update `.env` with:
+- `JWT_SECRET` - Authentication secret
+- `DB_PASSWORD` - PostgreSQL password
+- `REDIS_PASSWORD` - Redis password
+- `SMTP_*` - Email configuration
+- `FRONTEND_URL` - Your domain URL
+- `ADMIN_URL` - Backend admin URL
+- `VITE_API_URL` - API URL for frontend
 
-Generate a strong database password:
-```bash
-openssl rand -base64 24
-```
+### Email Configuration Examples
 
-## 🚀 Quick Start (Docker)
-
-The fastest way to deploy PicPeak in production:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/the-luap/picpeak.git
-cd picpeak
-
-# 2. Use the automated install script (recommended)
-sudo ./scripts/install.sh
-
-# Or manually:
-# 2. Copy production environment template
-cp .env.production.example .env
-
-# 3. Generate and add JWT secret
-echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
-
-# 4. Edit configuration
-nano .env  # Update all required values
-
-# 5. Create directories
-mkdir -p storage/events/active storage/events/archived storage/thumbnails storage/uploads
-mkdir -p data logs certbot/conf certbot/www
-
-# 6. Deploy
-docker-compose up -d
-
-# 7. Check logs
-docker-compose logs -f
-```
-
-## 📦 Deployment Methods
-
-### Method 1: Docker Compose (Recommended)
-
-#### Step 1: Environment Configuration
-
-Create `.env` file with all required variables:
-
+#### Gmail
 ```env
-# SECURITY - MUST CHANGE ALL!
-JWT_SECRET=<your-64-character-secret-from-openssl>
-DB_PASSWORD=<your-secure-database-password>
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-specific-password
+```
 
-# Application URLs
-FRONTEND_URL=https://your-domain.com
-BACKEND_URL=https://your-domain.com
-ADMIN_URL=https://your-domain.com
-
-# Database (PostgreSQL for Docker)
-DATABASE_CLIENT=pg
-DB_HOST=db
-DB_PORT=5432
-DB_NAME=picpeak
-DB_USER=picpeak
-
-# Email (Example: SendGrid)
+#### SendGrid
+```env
 SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=apikey
 SMTP_PASS=your-sendgrid-api-key
-EMAIL_FROM=PicPeak <noreply@your-domain.com>
-
-# Application
-NODE_ENV=production
-PORT=3001
-LOG_LEVEL=info
-
-# Backend URL (if different from frontend)
-# BACKEND_URL=https://api.your-domain.com
 ```
 
-#### Step 2: Docker Volume Permissions
+## 📦 Deployment
 
-Create `docker-compose.override.yml` for proper permissions:
-
-```yaml
-version: '3.8'
-
-services:
-  backend:
-    volumes:
-      - ./storage:/app/storage:delegated
-      - ./data:/app/data:delegated
-      - ./logs:/app/logs:delegated
-    user: "1001:1001"  # nodejs user
-
-  db:
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-```
-
-#### Step 3: Build and Deploy
+### Build and Start Services
 
 ```bash
-# Set correct permissions
-chmod -R 755 storage data logs
-
 # Build images
-docker-compose build
+docker compose build
 
-# Start services
-docker-compose up -d
+# Start all services
+docker compose up -d
 
-# Run database migrations
-docker-compose exec backend npm run migrate
-
-# Admin credentials will be displayed and saved to /data/ADMIN_CREDENTIALS.txt
+# View running containers
+docker compose ps
 ```
 
-#### Step 4: Configure Nginx
+### Access Points
 
-Update `nginx/sites-enabled/default` with your domain:
+By default, services are exposed on:
+- Frontend: http://localhost:3000
+- Backend/API: http://localhost:3001
+- PostgreSQL: localhost:5432 (if needed)
+- Redis: localhost:6379 (if needed)
+
+### Initial Admin Setup
+
+The admin credentials are generated during first startup. Check the logs:
+
+```bash
+docker compose logs backend | grep -A 5 "Admin user created"
+```
+
+Or use the helper script:
+```bash
+docker exec picpeak-backend node scripts/show-admin-credentials.js
+
+# To reset password
+docker exec picpeak-backend node scripts/show-admin-credentials.js --reset
+```
+
+## 🔒 Reverse Proxy Setup
+
+For production deployments, you should use a reverse proxy for SSL/HTTPS. The application exposes ports directly, allowing you to use any reverse proxy solution.
+
+### Option 1: Nginx
+
+Install nginx and create `/etc/nginx/sites-available/picpeak`:
 
 ```nginx
 server {
     listen 80;
     server_name your-domain.com;
-
-    # Redirect to HTTPS
     return 301 https://$server_name$request_uri;
 }
 
@@ -200,149 +152,42 @@ server {
     listen 443 ssl http2;
     server_name your-domain.com;
 
-    # SSL configuration (managed by Certbot)
     ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
 
     # Frontend
     location / {
-        proxy_pass http://frontend:80;
+        proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # API proxy
+    # Backend API
     location /api {
-        proxy_pass http://backend:3000;
+        proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Protected images
-    location /photos {
-        proxy_pass http://backend:3000;
-        proxy_set_header Host $host;
-    }
-
-    # Thumbnails
-    location /thumbnails {
-        proxy_pass http://backend:3000;
-        proxy_set_header Host $host;
-    }
-
-    # Public uploads
-    location /uploads {
-        proxy_pass http://backend:3000;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-### Method 2: PM2 (Node.js Process Manager)
-
-#### Step 1: Install Dependencies
-
-```bash
-# Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Install PostgreSQL
-sudo apt-get install -y postgresql postgresql-contrib
-
-# Install PM2 globally
-sudo npm install -g pm2
-
-# Install nginx (if using reverse proxy)
-sudo apt-get install -y nginx
-```
-
-#### Step 2: Setup Database
-
-```bash
-# Create database and user
-sudo -u postgres psql
-CREATE DATABASE picpeak;
-CREATE USER picpeak WITH ENCRYPTED PASSWORD 'your-secure-password';
-GRANT ALL PRIVILEGES ON DATABASE picpeak TO picpeak;
-\q
-```
-
-#### Step 3: Clone and Configure
-
-```bash
-# Clone repository
-git clone https://github.com/the-luap/picpeak.git
-cd picpeak
-
-# Install dependencies
-cd backend && npm install
-cd ../frontend && npm install
-
-# Configure environment
-cd ..
-cp .env.production.example .env
-nano .env  # Update all values
-```
-
-#### Step 4: Build Frontend
-
-```bash
-cd frontend
-npm run build
-cd ..
-```
-
-#### Step 5: Start with PM2
-
-```bash
-cd backend
-
-# Start application
-pm2 start ecosystem.config.js
-
-# Save PM2 configuration
-pm2 save
-
-# Setup startup script
-pm2 startup
-```
-
-#### Step 6: Configure Nginx
-
-Create `/etc/nginx/sites-available/picpeak`:
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    # Frontend (static files)
-    location / {
-        root /path/to/picpeak/frontend/dist;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # API proxy
-    location /api {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Protected photos
-    location /photos {
+    # Protected photos and uploads
+    location ~ ^/(photos|thumbnails|uploads) {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # Other proxied paths
-    location ~ ^/(thumbnails|uploads) {
+    # Admin routes
+    location /admin {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
@@ -351,241 +196,16 @@ Enable the site:
 ```bash
 sudo ln -s /etc/nginx/sites-available/picpeak /etc/nginx/sites-enabled/
 sudo nginx -t
-sudo systemctl restart nginx
+sudo systemctl reload nginx
 ```
 
-### Method 3: Manual Installation
+### Option 2: Traefik
 
-Similar to PM2 method but using systemd instead:
-
-#### Create Systemd Service
-
-Create `/etc/systemd/system/picpeak.service`:
-
-```ini
-[Unit]
-Description=PicPeak Photo Sharing
-After=network.target
-
-[Service]
-Type=simple
-User=picpeak
-WorkingDirectory=/home/picpeak/picpeak/backend
-ExecStart=/usr/bin/node server.js
-Restart=on-failure
-Environment="NODE_ENV=production"
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Start the service:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable picpeak
-sudo systemctl start picpeak
-```
-
-### Method 4: Without Nginx (Direct Access)
-
-For deployments without a reverse proxy:
-
-#### Option A: Direct Backend Access
-
-1. **Configure environment for direct access**:
-```env
-# .env
-FRONTEND_URL=http://your-domain.com:5173
-BACKEND_URL=http://your-domain.com:3001
-ADMIN_URL=http://your-domain.com:5173
-
-# Enable CORS for direct access
-CORS_ENABLED=true
-```
-
-2. **Run backend directly**:
-```bash
-cd backend
-NODE_ENV=production node server.js
-```
-
-3. **Run frontend development server** (not recommended for production):
-```bash
-cd frontend
-VITE_API_URL=http://your-domain.com:3001/api npm run dev -- --host
-```
-
-#### Option B: Backend Serves Frontend
-
-1. **Build frontend**:
-```bash
-cd frontend
-VITE_API_URL=/api npm run build
-```
-
-2. **Configure backend to serve frontend**:
-```javascript
-// Add to backend/server.js after API routes
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-  });
-}
-```
-
-3. **Access everything on backend port**:
-```bash
-# Application available at http://your-domain.com:3001
-NODE_ENV=production node server.js
-```
-
-#### Option C: Using Node.js HTTP Proxy
-
-Create a simple proxy server:
-
-```javascript
-// proxy-server.js
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const path = require('path');
-
-const app = express();
-
-// Serve frontend static files
-app.use(express.static(path.join(__dirname, 'frontend/dist')));
-
-// Proxy API requests
-app.use('/api', createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true
-}));
-
-// Proxy other backend routes
-app.use(['/photos', '/thumbnails', '/uploads'], createProxyMiddleware({
-  target: 'http://localhost:3001',
-  changeOrigin: true
-}));
-
-// Catch all - serve frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
-});
-
-app.listen(80);
-```
-
-## 🔧 Environment Configuration
-
-### Required Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `JWT_SECRET` | **CRITICAL** - Authentication secret (min 32 chars) | Use `openssl rand -base64 32` |
-| `DATABASE_CLIENT` | Database type | `pg` for PostgreSQL, `sqlite3` for SQLite |
-| `DB_HOST` | Database host | `localhost` or `db` (Docker) |
-| `DB_PORT` | Database port | `5432` |
-| `DB_NAME` | Database name | `picpeak` |
-| `DB_USER` | Database user | `picpeak` |
-| `DB_PASSWORD` | Database password | Strong password |
-| `SMTP_HOST` | Email server | `smtp.gmail.com` |
-| `SMTP_PORT` | Email port | `587` |
-| `SMTP_USER` | Email username | `your-email@gmail.com` |
-| `SMTP_PASS` | Email password | App-specific password |
-| `EMAIL_FROM` | From address | `PicPeak <noreply@domain.com>` |
-| `FRONTEND_URL` | Frontend URL | `https://your-domain.com` |
-| `BACKEND_URL` | Backend URL | `https://your-domain.com` |
-| `ADMIN_URL` | Admin panel URL | `https://your-domain.com` |
-
-### Optional Configuration
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Environment | `production` |
-| `PORT` | Backend port | `3001` |
-| `LOG_LEVEL` | Logging level | `info` |
-| `SESSION_TIMEOUT_MINUTES` | Session timeout | `60` |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window | `900000` (15 min) |
-| `RATE_LIMIT_MAX_REQUESTS` | Max requests | `100` |
-| `DB_POOL_MIN` | Min DB connections | `5` |
-| `DB_POOL_MAX` | Max DB connections | `25` |
-| `DEFAULT_EXPIRATION_DAYS` | Gallery expiration | `30` |
-| `WARNING_DAYS_BEFORE_EXPIRY` | Warning period | `7` |
-
-### Frontend Environment
-
-For production builds:
-```bash
-# frontend/.env.production
-VITE_API_URL=/api  # For reverse proxy
-# or
-VITE_API_URL=https://api.your-domain.com  # For direct access
-```
-
-## 👤 Admin Setup
-
-### Automatic Admin Creation
-
-When you run migrations for the first time, an admin account is automatically created:
-
-```bash
-# Docker
-docker-compose exec backend npm run migrate
-
-# PM2/Manual
-cd backend && npm run migrate
-```
-
-Output:
-```
-========================================
-✅ Admin user created successfully!
-========================================
-Username: admin
-Password: SwiftEagle3847!
-
-⚠️  IMPORTANT: Change password on first login
-========================================
-```
-
-### Important Admin Notes
-
-1. **Credentials are saved** to `backend/ADMIN_CREDENTIALS.txt`
-2. **Must change password** on first login (enforced)
-3. **Password requirements**:
-   - Minimum 12 characters
-   - Uppercase and lowercase letters
-   - Numbers and special characters
-   - Not a common password
-
-### Lost Admin Password
-
-```bash
-# Docker
-docker-compose exec backend node scripts/reset-admin-password.js
-
-# PM2/Manual
-cd backend && node scripts/reset-admin-password.js
-```
-
-## 🔒 SSL/HTTPS Configuration
-
-### Option 1: Let's Encrypt with Certbot
-
-```bash
-# Initial certificate
-docker-compose run --rm certbot certonly \
-  --webroot --webroot-path=/var/www/certbot \
-  -d your-domain.com -d www.your-domain.com
-
-# Auto-renewal is handled by certbot container
-```
-
-### Option 2: Using Traefik
-
-Add to `docker-compose.override.yml`:
+Add labels to `docker-compose.override.yml`:
 
 ```yaml
+version: '3.8'
+
 services:
   frontend:
     labels:
@@ -593,186 +213,203 @@ services:
       - "traefik.http.routers.picpeak.rule=Host(`your-domain.com`)"
       - "traefik.http.routers.picpeak.entrypoints=websecure"
       - "traefik.http.routers.picpeak.tls.certresolver=letsencrypt"
+      - "traefik.http.services.picpeak.loadbalancer.server.port=80"
+
+  backend:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.picpeak-api.rule=Host(`your-domain.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.picpeak-api.entrypoints=websecure"
+      - "traefik.http.routers.picpeak-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.picpeak-api.loadbalancer.server.port=3001"
 ```
 
-### Option 3: CloudFlare or Other CDN
+### Option 3: Caddy
 
-1. Set up your domain in CloudFlare
-2. Enable "Full SSL/TLS encryption mode"
-3. Use CloudFlare's origin certificates
+Create a `Caddyfile`:
 
-## 🔧 Maintenance & Operations
+```caddyfile
+your-domain.com {
+    # Frontend
+    handle /* {
+        reverse_proxy localhost:3000
+    }
 
-### Backup Procedures
+    # Backend API and admin
+    handle /api/* {
+        reverse_proxy localhost:3001
+    }
+    
+    handle /admin/* {
+        reverse_proxy localhost:3001
+    }
 
-Use the included backup script or create your own:
+    # Protected resources
+    handle /photos/* {
+        reverse_proxy localhost:3001
+    }
+
+    handle /thumbnails/* {
+        reverse_proxy localhost:3001
+    }
+
+    handle /uploads/* {
+        reverse_proxy localhost:3001
+    }
+}
+```
+
+### SSL Certificates
+
+For any reverse proxy, you can use Let's Encrypt:
 
 ```bash
-# Use the provided backup script
-./scripts/backup.sh
+# With Certbot
+sudo certbot certonly --webroot -w /var/www/certbot -d your-domain.com
 
-# Or create custom backup script:
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="./backups/$DATE"
-
-mkdir -p $BACKUP_DIR
-
-# Database backup
-docker-compose exec -T db \
-  pg_dump -U picpeak picpeak > $BACKUP_DIR/database.sql
-
-# Files backup
-tar -czf $BACKUP_DIR/storage.tar.gz storage/
-
-echo "Backup completed: $BACKUP_DIR"
+# Or use your reverse proxy's built-in ACME support
 ```
 
-### Automated Backups
+## 🔧 Maintenance
 
-The application includes a built-in backup service. Configure via Admin Panel:
-- Settings → Backup Configuration
-- Set schedule (cron expression)
-- Configure destination (local, rsync, S3)
-- Enable email notifications
+### Viewing Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+### Backup
+
+#### Manual Backup
+```bash
+# Database backup
+docker exec picpeak-postgres pg_dump -U picpeak picpeak_prod > backup/db_$(date +%Y%m%d_%H%M%S).sql
+
+# Files backup
+tar -czf backup/photos_$(date +%Y%m%d_%H%M%S).tar.gz events/
+```
+
+#### Automated Backup
+The application includes a built-in backup service. Configure it in the admin panel:
+1. Login to admin panel
+2. Go to Settings → Backup
+3. Configure destination and schedule
+4. Enable backup service
 
 ### Updates
 
 ```bash
-# Docker method
+# Pull latest changes
 git pull
-docker-compose build
-docker-compose up -d
 
-# PM2 method
-git pull
-cd backend && npm install
-cd ../frontend && npm install && npm run build
-pm2 restart picpeak
+# Rebuild and restart
+docker compose down
+docker compose build
+docker compose up -d
 ```
 
-### Monitoring
+### Database Migrations
 
-#### Health Checks
+Migrations run automatically on startup, but you can run them manually:
+
 ```bash
-# API health
-curl https://your-domain.com/api/health
-
-# Database connection
-docker-compose exec backend \
-  psql -U picpeak -d picpeak -c "SELECT 1"
-
-# Service status
-docker-compose ps
-```
-
-#### Logs
-```bash
-# Docker logs
-docker-compose logs -f
-
-# PM2 logs
-pm2 logs picpeak
-
-# System logs
-tail -f /var/log/nginx/error.log
+docker exec picpeak-backend npm run migrate
 ```
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
-#### JWT Secret Errors
-**Error**: "Missing required environment variable: JWT_SECRET"
-- **Solution**: Set JWT_SECRET in your .env file
-- **Generate**: `openssl rand -base64 32`
+#### Port Already in Use
+```bash
+# Check what's using the port
+sudo lsof -i :3000
+sudo lsof -i :3001
 
-**Error**: "JWT_SECRET is set to the insecure default value"
-- **Solution**: Change from default to secure value
-
-#### Database Connection Failed
-**Error**: "connect ECONNREFUSED"
-- **Check**: Database is running
-- **Check**: Correct host/port in .env
-- **Docker**: Use `db` as host, not `localhost`
+# Change ports in .env
+FRONTEND_PORT=3002
+BACKEND_PORT=3003
+```
 
 #### Permission Errors
-**Error**: "EACCES: permission denied"
 ```bash
-# Fix Docker permissions
-sudo chown -R 1001:1001 storage data logs
+# Fix ownership
+sudo chown -R 1000:1000 events data logs backup storage
+chmod -R 755 events data logs backup storage
+```
 
-# Fix PM2/Manual permissions
-sudo chown -R $USER:$USER storage data logs
-chmod -R 755 storage
+#### Database Connection Issues
+```bash
+# Check if database is running
+docker compose ps
+docker compose logs postgres
+
+# Test connection
+docker exec picpeak-postgres pg_isready
 ```
 
 #### Email Not Sending
-- **Check**: SMTP credentials are correct
-- **Gmail**: Use app-specific password
-- **Test**: Admin Panel → Settings → Email → Test Email
-- **Logs**: Check `email_queue` table for errors
+- Verify SMTP settings in .env
+- Check email queue: `docker exec picpeak-backend psql -U picpeak -d picpeak_prod -c "SELECT * FROM email_queue ORDER BY created_at DESC LIMIT 10;"`
+- For Gmail, use app-specific password
+- Check logs: `docker compose logs backend | grep email`
 
-#### Photos Not Appearing
-- **Check**: File watcher is running
-- **Permissions**: `chmod -R 755 storage/`
-- **Logs**: `grep watcher` in backend logs
-
-#### Frontend Can't Connect to Backend
-- **CORS**: Ensure FRONTEND_URL matches in backend .env
-- **Proxy**: Check nginx configuration
-- **Direct**: Set CORS_ENABLED=true for non-proxy setup
-
-### Debug Commands
+### Health Checks
 
 ```bash
-# Check all services
-docker-compose ps
+# Backend health
+curl http://localhost:3001/api/health
 
-# Backend shell access
-docker-compose exec backend sh
+# Frontend health
+curl http://localhost:3000
 
-# Database access
-docker-compose exec db psql -U picpeak
-
-# Test API
-curl -I http://localhost:3001/api/health
-
-# Check disk space
-df -h storage/
-
-# View running processes
-ps aux | grep node
+# Database health
+docker exec picpeak-postgres pg_isready
 ```
 
-## ✅ Security Checklist
+### Useful Commands
 
-- [ ] **JWT_SECRET** is randomly generated (min 32 chars)
-- [ ] **Database password** is strong and unique
-- [ ] **Admin password** changed from auto-generated
-- [ ] **SSL/HTTPS** enabled and working
-- [ ] **Firewall** configured (only 80/443 open)
-- [ ] **File permissions** set correctly (755 for storage)
-- [ ] **Rate limiting** enabled (default: 100 req/15min)
-- [ ] **CORS** properly configured
-- [ ] **Environment files** not in version control
-- [ ] **Backups** configured and tested
-- [ ] **Monitoring** alerts set up
-- [ ] **Updates** scheduled regularly
-- [ ] **Access logs** being monitored
-- [ ] **Email** using app-specific passwords
-- [ ] **Umami analytics** configured (optional)
+```bash
+# Enter backend container
+docker exec -it picpeak-backend sh
 
-## 📞 Support
+# Enter database
+docker exec -it picpeak-postgres psql -U picpeak picpeak_prod
 
-- 📘 [Documentation](https://github.com/the-luap/picpeak)
-- 🐛 [Report Issues](https://github.com/the-luap/picpeak/issues)
-- 💬 [Discussions](https://github.com/the-luap/picpeak/discussions)
+# Reset admin password
+docker exec picpeak-backend node scripts/show-admin-credentials.js --reset
 
----
+# Check disk usage
+df -h
+du -sh events/ storage/ backup/
 
-**Need help?** Check the logs first, then open an issue with:
-- Deployment method used
-- Error messages
-- Relevant log output
-- Environment (without secrets)
+# View running processes
+docker compose top
+```
+
+## Security Recommendations
+
+1. **Use HTTPS**: Always use a reverse proxy with SSL in production
+2. **Firewall**: Only expose necessary ports (80, 443)
+3. **Secure passwords**: Use strong, unique passwords for all services
+4. **Regular updates**: Keep Docker images and system packages updated
+5. **Backup strategy**: Set up automated backups and test restoration
+6. **Monitor logs**: Regularly check logs for suspicious activity
+7. **Rate limiting**: The app includes built-in rate limiting, configure as needed
+
+## Support
+
+For issues and questions:
+- Check logs first: `docker compose logs`
+- Review documentation in the repository
+- Check existing issues on GitHub
+- Create a new issue with:
+  - Error messages
+  - Log output
+  - Environment details (without secrets)
+  - Steps to reproduce

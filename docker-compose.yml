@@ -1,125 +1,127 @@
-# docker-compose.yml - Production configuration
-# 
-# For development, use: docker-compose -f docker-compose.dev.yml up -d
-# For local customizations, create docker-compose.override.yml (see docker-compose.override.yml.example)
-#
 version: '3.8'
 
 services:
   backend:
-    image: picpeak-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: picpeak-backend
     restart: unless-stopped
-    depends_on:
-      - db
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
-      - ADMIN_URL=${ADMIN_URL}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - BACKEND_URL=${BACKEND_URL}
-      # Database
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
       - DATABASE_CLIENT=pg
-      - DB_HOST=db
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - DB_TYPE=postgresql
+      - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-picpeak}
+      - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME:-picpeak}
-      # Email
+      - DB_NAME=${DB_NAME}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SECURE=${SMTP_SECURE}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
-      - EMAIL_FROM=${EMAIL_FROM}
-      # Analytics
-      - UMAMI_URL=${UMAMI_URL}
-      - UMAMI_WEBSITE_ID=${UMAMI_WEBSITE_ID}
-      # Storage paths
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@picpeak.local}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - ADMIN_URL=${ADMIN_URL:-http://localhost:3001}
+      - TZ=${TZ:-UTC}
       - STORAGE_PATH=/app/storage
-      - EVENTS_PATH=/app/storage/events
-      - ARCHIVE_PATH=/app/storage/events/archived
     volumes:
-      - ./storage:/app/storage
+      - ./events:/app/events
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./backup:/backup
+      - ./storage:/app/storage
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
-      - picpeak
+      - picpeak-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: picpeak-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - TZ=${TZ:-UTC}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - picpeak-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: picpeak-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-picpeak_redis_pass}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - picpeak-network
 
   frontend:
-    image: picpeak-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=/api
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001/api}
+        - VITE_UMAMI_URL=${VITE_UMAMI_URL:-}
+        - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID:-}
+        - VITE_UMAMI_SHARE_URL=${VITE_UMAMI_SHARE_URL:-}
+    container_name: picpeak-frontend
     restart: unless-stopped
-    depends_on:
-      - backend
-    networks:
-      - picpeak
-
-  nginx:
-    image: nginx:alpine
-    restart: unless-stopped
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/sites-enabled:/etc/nginx/sites-enabled
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
-      - frontend
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
-      - picpeak
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-
-  certbot:
-    image: certbot/certbot
-    restart: unless-stopped
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
-  db:
-    image: postgres:15-alpine
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=${DB_USER:-picpeak}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME:-picpeak}
-      # Allow connections from any host with password authentication
-      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
-      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=trust
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - picpeak
-    # Allow connections without SSL requirement from Docker network
-    command: postgres -c ssl=off
-
-  umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-picpeak}:${DB_PASSWORD}@db:5432/umami
-      DATABASE_TYPE: postgresql
-      HASH_SALT: ${UMAMI_HASH_SALT}
-    depends_on:
-      - db
-    networks:
-      - picpeak
-
-networks:
-  picpeak:
-    driver: bridge
+      - picpeak-network
 
 volumes:
-  postgres_data:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  picpeak-network:
+    driver: bridge
