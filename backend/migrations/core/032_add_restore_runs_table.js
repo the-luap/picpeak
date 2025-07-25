@@ -5,7 +5,9 @@
  */
 exports.up = async function(knex) {
   // Create restore_runs table
-  await knex.schema.createTable('restore_runs', table => {
+  const hasRestoreRunsTable = await knex.schema.hasTable('restore_runs');
+  if (!hasRestoreRunsTable) {
+    await knex.schema.createTable('restore_runs', table => {
     table.increments('id').primary();
     
     // Timing
@@ -44,10 +46,13 @@ exports.up = async function(knex) {
     
     table.index(['status', 'started_at']);
     table.index(['restore_type', 'started_at']);
-  });
+    });
+  }
   
   // Create restore_file_operations table for tracking individual file operations
-  await knex.schema.createTable('restore_file_operations', table => {
+  const hasRestoreFileOperationsTable = await knex.schema.hasTable('restore_file_operations');
+  if (!hasRestoreFileOperationsTable) {
+    await knex.schema.createTable('restore_file_operations', table => {
     table.increments('id').primary();
     
     table.integer('restore_run_id').notNullable()
@@ -67,10 +72,13 @@ exports.up = async function(knex) {
     
     table.index(['restore_run_id', 'status']);
     table.index(['file_path']);
-  });
+    });
+  }
   
   // Create restore_validation_results table
-  await knex.schema.createTable('restore_validation_results', table => {
+  const hasRestoreValidationResultsTable = await knex.schema.hasTable('restore_validation_results');
+  if (!hasRestoreValidationResultsTable) {
+    await knex.schema.createTable('restore_validation_results', table => {
     table.increments('id').primary();
     
     table.integer('restore_run_id').notNullable()
@@ -86,10 +94,11 @@ exports.up = async function(knex) {
     table.timestamp('validated_at').notNullable().defaultTo(knex.fn.now());
     
     table.index(['restore_run_id', 'validation_type']);
-  });
+    });
+  }
   
   // Add restore-related settings to app_settings
-  await knex('app_settings').insert([
+  const restoreSettings = [
     {
       setting_key: 'restore_allow_force',
       setting_value: JSON.stringify(false),
@@ -120,15 +129,24 @@ exports.up = async function(knex) {
       setting_value: '30',
       setting_type: 'restore'
     }
-  ]);
+  ];
+
+  for (const setting of restoreSettings) {
+    const exists = await knex('app_settings')
+      .where('setting_key', setting.setting_key)
+      .first();
+    
+    if (!exists) {
+      await knex('app_settings').insert(setting);
+    }
+  }
   
   // Add new email templates for restore notifications
   const emailTemplates = [
     {
       template_key: 'restore_completed',
-      subject_en: '✅ Restore Completed Successfully',
-      subject_de: '✅ Wiederherstellung erfolgreich abgeschlossen',
-      body_html_en: `<h2>Restore Operation Completed</h2>
+      subject: '✅ Restore Completed Successfully',
+      body_html: `<h2>Restore Operation Completed</h2>
 <p>A restore operation has completed successfully.</p>
 
 <h3>Details:</h3>
@@ -141,20 +159,7 @@ exports.up = async function(knex) {
 </ul>
 
 <p>Please verify that all systems are functioning correctly after the restore.</p>`,
-      body_html_de: `<h2>Wiederherstellungsvorgang abgeschlossen</h2>
-<p>Ein Wiederherstellungsvorgang wurde erfolgreich abgeschlossen.</p>
-
-<h3>Details:</h3>
-<ul>
-  <li><strong>Wiederherstellungstyp:</strong> {{restore_type}}</li>
-  <li><strong>Dauer:</strong> {{duration}}</li>
-  <li><strong>Wiederhergestellte Dateien:</strong> {{files_restored}}</li>
-  <li><strong>Backup-ID:</strong> {{backup_id}}</li>
-  <li><strong>Zeitstempel:</strong> {{timestamp}}</li>
-</ul>
-
-<p>Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemäß funktionieren.</p>`,
-      body_text_en: `Restore Operation Completed
+      body_text: `Restore Operation Completed
 
 A restore operation has completed successfully.
 
@@ -166,25 +171,12 @@ Details:
 - Timestamp: {{timestamp}}
 
 Please verify that all systems are functioning correctly after the restore.`,
-      body_text_de: `Wiederherstellungsvorgang abgeschlossen
-
-Ein Wiederherstellungsvorgang wurde erfolgreich abgeschlossen.
-
-Details:
-- Wiederherstellungstyp: {{restore_type}}
-- Dauer: {{duration}}
-- Wiederhergestellte Dateien: {{files_restored}}
-- Backup-ID: {{backup_id}}
-- Zeitstempel: {{timestamp}}
-
-Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemäß funktionieren.`,
       variables: JSON.stringify(['restore_type', 'duration', 'files_restored', 'backup_id', 'timestamp'])
     },
     {
       template_key: 'restore_failed',
-      subject_en: '❌ Restore Operation Failed',
-      subject_de: '❌ Wiederherstellungsvorgang fehlgeschlagen',
-      body_html_en: `<h2>Restore Operation Failed</h2>
+      subject: '❌ Restore Operation Failed',
+      body_html: `<h2>Restore Operation Failed</h2>
 <p>A restore operation has failed and requires attention.</p>
 
 <h3>Details:</h3>
@@ -197,20 +189,7 @@ Bitte überprüfen Sie, ob alle Systeme nach der Wiederherstellung ordnungsgemä
 <p>Please check the system logs for more details and take appropriate action.</p>
 
 <p><strong>Important:</strong> If a pre-restore backup was created, it may be used for recovery.</p>`,
-      body_html_de: `<h2>Wiederherstellungsvorgang fehlgeschlagen</h2>
-<p>Ein Wiederherstellungsvorgang ist fehlgeschlagen und erfordert Ihre Aufmerksamkeit.</p>
-
-<h3>Details:</h3>
-<ul>
-  <li><strong>Wiederherstellungstyp:</strong> {{restore_type}}</li>
-  <li><strong>Fehler:</strong> {{error_message}}</li>
-  <li><strong>Zeitstempel:</strong> {{timestamp}}</li>
-</ul>
-
-<p>Bitte überprüfen Sie die Systemprotokolle für weitere Details und ergreifen Sie entsprechende Maßnahmen.</p>
-
-<p><strong>Wichtig:</strong> Falls ein Backup vor der Wiederherstellung erstellt wurde, kann es zur Wiederherstellung verwendet werden.</p>`,
-      body_text_en: `Restore Operation Failed
+      body_text: `Restore Operation Failed
 
 A restore operation has failed and requires attention.
 
@@ -222,23 +201,19 @@ Details:
 Please check the system logs for more details and take appropriate action.
 
 Important: If a pre-restore backup was created, it may be used for recovery.`,
-      body_text_de: `Wiederherstellungsvorgang fehlgeschlagen
-
-Ein Wiederherstellungsvorgang ist fehlgeschlagen und erfordert Ihre Aufmerksamkeit.
-
-Details:
-- Wiederherstellungstyp: {{restore_type}}
-- Fehler: {{error_message}}
-- Zeitstempel: {{timestamp}}
-
-Bitte überprüfen Sie die Systemprotokolle für weitere Details und ergreifen Sie entsprechende Maßnahmen.
-
-Wichtig: Falls ein Backup vor der Wiederherstellung erstellt wurde, kann es zur Wiederherstellung verwendet werden.`,
       variables: JSON.stringify(['restore_type', 'error_message', 'timestamp'])
     }
   ];
   
-  await knex('email_templates').insert(emailTemplates);
+  for (const template of emailTemplates) {
+    const exists = await knex('email_templates')
+      .where('template_key', template.template_key)
+      .first();
+    
+    if (!exists) {
+      await knex('email_templates').insert(template);
+    }
+  }
 };
 
 exports.down = async function(knex) {
