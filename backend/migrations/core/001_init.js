@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const { db, initializeDatabase } = require('../../src/database/db');
+const { initializeDatabase } = require('../../src/database/db');
 const { generateReadablePassword } = require('../../src/utils/passwordGenerator');
 const fs = require('fs').promises;
 const path = require('path');
@@ -12,17 +12,16 @@ exports.up = async function(knex) {
     await initializeDatabase();
     
     // Create default admin user if none exists
-    const adminExists = await db('admin_users').first();
+    const adminExists = await knex('admin_users').first();
     if (!adminExists) {
       // Generate a secure random password
       const generatedPassword = generateReadablePassword();
       const passwordHash = await bcrypt.hash(generatedPassword, 12); // Increased rounds for better security
       
-      await db('admin_users').insert({
+      await knex('admin_users').insert({
         username: 'admin',
         email: 'admin@example.com',
         password_hash: passwordHash,
-        must_change_password: true, // Flag for forcing password change
         created_at: new Date()
       });
       
@@ -39,7 +38,7 @@ Username: admin
 Password: ${generatedPassword}
 
 IMPORTANT SECURITY NOTES:
-1. You MUST change this password on first login
+1. Please change this password after first login
 2. This file will be created only once
 3. Store these credentials securely
 4. Delete this file after noting the password
@@ -65,9 +64,9 @@ Generated on: ${new Date().toISOString()}
     }
     
     // Create default email templates if none exist
-    const templateExists = await db('email_templates').first();
+    const templateExists = await knex('email_templates').first();
     if (!templateExists) {
-      await db('email_templates').insert([
+      await knex('email_templates').insert([
         {
           template_key: 'gallery_created',
           subject: 'Your Photo Gallery is Ready!',
@@ -101,9 +100,9 @@ Generated on: ${new Date().toISOString()}
     }
 
     // Create default email config if none exists
-    const emailConfig = await db('email_configs').first();
+    const emailConfig = await knex('email_configs').first();
     if (!emailConfig) {
-      await db('email_configs').insert({
+      await knex('email_configs').insert({
         smtp_host: process.env.SMTP_HOST || 'mailhog',
         smtp_port: process.env.SMTP_PORT || 1025,
         smtp_secure: process.env.SMTP_SECURE === 'true',
