@@ -27,8 +27,12 @@ async function isMigrationApplied(filename) {
 
 // Mark migration as applied without running it (for existing schema)
 async function markMigrationAsApplied(filename) {
-  await db('migrations').insert({ filename });
-  console.log(`Marked migration ${filename} as applied`);
+  // Check if already marked to avoid duplicate key error
+  const isApplied = await isMigrationApplied(filename);
+  if (!isApplied) {
+    await db('migrations').insert({ filename });
+    console.log(`Marked migration ${filename} as applied`);
+  }
 }
 
 // Detect existing schema and mark migrations as applied
