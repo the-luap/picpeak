@@ -534,8 +534,7 @@ router.post('/:id/reset-password', adminAuth, async (req, res) => {
     await db('events')
       .where('id', id)
       .update({
-        password_hash: passwordHash,
-        updated_at: new Date()
+        password_hash: passwordHash
       });
 
     // Log activity
