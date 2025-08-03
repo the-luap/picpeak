@@ -526,8 +526,8 @@ router.post('/:id/reset-password', adminAuth, async (req, res) => {
     }
 
     // Generate new password
-    const { generatePassword } = require('../utils/passwordGenerator');
-    const newPassword = generatePassword();
+    const { generateReadablePassword } = require('../utils/passwordGenerator');
+    const newPassword = generateReadablePassword();
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     // Update event with new password
