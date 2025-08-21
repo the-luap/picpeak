@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
+const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth-enhanced-v2');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -12,7 +13,6 @@ const { queueEmail } = require('../services/emailProcessor');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 // formatDate import removed - dates are formatted by email processor
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
-const { formatBoolean } = require('../utils/dbCompat');
 
 // Create new event
 router.post('/', adminAuth, [
@@ -27,7 +27,11 @@ router.post('/', adminAuth, [
   body('color_theme').optional().trim(),
   body('allow_user_uploads').optional().isBoolean().toBoolean(),
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
-  body('host_name').notEmpty().trim()
+  body('host_name').notEmpty().trim(),
+  body('allow_downloads').optional().isBoolean(),
+  body('disable_right_click').optional().isBoolean(),
+  body('watermark_downloads').optional().isBoolean(),
+  body('watermark_text').optional().trim()
 ], async (req, res) => {
   try {
     console.log('Create event request body:', req.body);
@@ -49,8 +53,25 @@ router.post('/', adminAuth, [
       color_theme = null,
       expiration_days = 30,
       allow_user_uploads = false,
-      upload_category_id = null
+      upload_category_id = null,
+      allow_downloads = true,
+      disable_right_click = false,
+      watermark_downloads = false,
+      watermark_text = null
     } = req.body;
+    
+    // Debug logging
+    console.log('Download control values:', {
+      allow_downloads,
+      disable_right_click,
+      watermark_downloads,
+      watermark_text,
+      types: {
+        allow_downloads: typeof allow_downloads,
+        disable_right_click: typeof disable_right_click,
+        watermark_downloads: typeof watermark_downloads
+      }
+    });
     
     // Validate password strength
     const passwordValidation = await validatePasswordInContext(password, 'gallery', {
@@ -121,7 +142,11 @@ router.post('/', adminAuth, [
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
       allow_user_uploads,
-      upload_category_id
+      upload_category_id,
+      allow_downloads: formatBoolean(allow_downloads !== undefined ? allow_downloads : true),
+      disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
+      watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
+      watermark_text
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -341,7 +366,11 @@ router.put('/:id', adminAuth, [
     // Check if it's a number or can be converted to a valid integer
     const num = Number(value);
     return !isNaN(num) && Number.isInteger(num);
-  }).withMessage('hero_photo_id must be an integer or null')
+  }).withMessage('hero_photo_id must be an integer or null'),
+  body('allow_downloads').optional().isBoolean(),
+  body('disable_right_click').optional().isBoolean(),
+  body('watermark_downloads').optional().isBoolean(),
+  body('watermark_text').optional().trim()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

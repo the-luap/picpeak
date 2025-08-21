@@ -46,7 +46,8 @@ router.get('/:slug/info', async (req, res) => {
     
     const event = await db('events')
       .where({ slug })
-      .select('event_name', 'event_type', 'event_date', 'expires_at', 'is_active', 'is_archived', 'share_link')
+      .select('event_name', 'event_type', 'event_date', 'expires_at', 'is_active', 'is_archived', 'share_link', 
+              'allow_downloads', 'disable_right_click', 'watermark_downloads', 'watermark_text')
       .first();
     
     if (!event) {
@@ -78,7 +79,11 @@ router.get('/:slug/info', async (req, res) => {
       is_active: event.is_active,
       is_expired: !event.is_active || new Date(event.expires_at) < new Date(),
       requires_password: true,
-      color_theme: event.color_theme
+      color_theme: event.color_theme,
+      allow_downloads: event.allow_downloads !== false,
+      disable_right_click: event.disable_right_click === true,
+      watermark_downloads: event.watermark_downloads === true,
+      watermark_text: event.watermark_text
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -125,7 +130,11 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         welcome_message: req.event.welcome_message,
         color_theme: req.event.color_theme,
         expires_at: req.event.expires_at,
-        hero_photo_id: req.event.hero_photo_id
+        hero_photo_id: req.event.hero_photo_id,
+        allow_downloads: req.event.allow_downloads !== false,
+        disable_right_click: req.event.disable_right_click === true,
+        watermark_downloads: req.event.watermark_downloads === true,
+        watermark_text: req.event.watermark_text
       },
       categories: categories.map(cat => ({
         id: cat.id,
@@ -156,6 +165,11 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
 router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => {
   try {
     const { photoId } = req.params;
+    
+    // Check if downloads are allowed for this event
+    if (req.event.allow_downloads === false) {
+      return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
+    }
     
     const photo = await db('photos')
       .where({ id: photoId, event_id: req.event.id })
@@ -205,6 +219,11 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
 // Download all photos as ZIP
 router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
   try {
+    // Check if downloads are allowed for this event
+    if (req.event.allow_downloads === false) {
+      return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
+    }
+    
     // Fetch photos with category information
     const photos = await db('photos')
       .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
