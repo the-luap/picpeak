@@ -479,7 +479,11 @@ export const EventsListPage: React.FC = () => {
                                 </button>
                                 {event.share_link ? (
                                   <a
-                                    href={event.share_link}
+                                    href={
+                                      event.share_link.startsWith('http') 
+                                        ? event.share_link
+                                        : `/gallery/${event.share_link}`
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100 flex items-center gap-2"
