@@ -1,4 +1,4 @@
-# 🚀 PicPeak Beta Setup Guide
+# 🚀 Simple Setup Guide
 
 This guide helps non-technical users install PicPeak on Raspberry Pi or VPS systems using the automated setup script.
 
@@ -8,18 +8,18 @@ This guide helps non-technical users install PicPeak on Raspberry Pi or VPS syst
 
 ```bash
 # Download PicPeak
-wget -O setup-picpeak.sh https://raw.githubusercontent.com/the-luap/picpeak/main/setup-picpeak.sh
+wget -O simple-setup.sh https://raw.githubusercontent.com/the-luap/picpeak/main/simple-setup.sh
 
 # Make it executable
-chmod +x setup-picpeak.sh
+chmod +x simple-setup.sh
 
 # Run the setup
-bash setup-picpeak.sh
+bash simple-setup.sh
 ```
 
 **Or in one command:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/setup-picpeak.sh | bash
+curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/simple-setup.sh | bash
 ```
 
 ### Step 2: Follow the Interactive Prompts
@@ -197,7 +197,7 @@ docker compose up -d
 
 #### "Permission denied" when running script
 ```bash
-chmod +x setup-picpeak.sh
+chmod +x simple-setup.sh
 ```
 
 #### "Docker command not found" after installation

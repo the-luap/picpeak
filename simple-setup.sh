@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# PicPeak Setup Script for Raspberry Pi and VPS
+# Simple Setup Script for PicPeak
 # ============================================================================
 # 
 # This script helps non-technical users install PicPeak, a secure photo 
@@ -10,7 +10,7 @@
 # Supported Systems: Ubuntu, Debian, Raspberry Pi OS, CentOS, Fedora
 # Requirements: At least 2GB RAM and 20GB free storage
 #
-# Usage: bash setup-picpeak.sh
+# Usage: bash simple-setup.sh
 # ============================================================================
 
 set -e  # Exit on any error
