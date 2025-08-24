@@ -166,7 +166,7 @@ router.get('/health', adminAuth, async (req, res) => {
     
     const [failedEmails] = await db('email_queue')
       .where('status', 'failed')
-      .where('created_at', '>=', twentyFourHoursAgo.toISOString())
+      .where('scheduled_at', '>=', twentyFourHoursAgo.toISOString())
       .count('* as count');
 
     const emailStatus = failedEmails.count > 10 ? 'warning' : 'healthy';

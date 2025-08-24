@@ -40,6 +40,7 @@ Unlike expensive SaaS solutions, PicPeak gives you:
 - ⬇️ **Bulk Downloads** - Download all photos with one click
 - 🔍 **Smart Search** - Find photos quickly
 - 📤 **Guest Uploads** - Optional client photo uploads
+- 🛡️ **Download Protection** - Advanced image protection with watermarking and right-click prevention
 
 ### Technical Excellence
 - 🐳 **Docker Ready** - Deploy in minutes
@@ -176,6 +177,17 @@ Organize and manage your photo galleries with intuitive event management tools.
 ## 🗺️ Roadmap
 
 We're constantly improving PicPeak and welcome contributions from our community! If you have ideas for new features or want to help implement existing ones, please open an issue or submit a pull request. Your contributions help make PicPeak better for everyone.
+
+### 🚧 Beta Features (Use at your own risk)
+
+These features are currently in beta testing and may have limited functionality or stability:
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Download Protection** | Advanced image protection system with canvas rendering, invisible watermarking, and right-click prevention to protect your photos from unauthorized downloads | 🧪 Beta |
+| **Simple Deployment Script** | One-click deployment script for quick server setup with automated configuration and dependency installation | 🧪 Beta |
+
+### 📋 Future Enhancements
 
 | Feature | Description | Priority | Status |
 |---------|-------------|----------|---------|

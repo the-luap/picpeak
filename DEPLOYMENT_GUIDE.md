@@ -8,6 +8,7 @@ This guide covers deploying PicPeak using Docker Compose with direct port exposu
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [Deployment](#deployment)
+- [First Login](#first-login)
 - [Reverse Proxy Setup](#reverse-proxy-setup)
 - [Maintenance](#maintenance)
 - [Troubleshooting](#troubleshooting)
@@ -70,17 +71,33 @@ openssl rand -base64 32 | tr -d '$'
 - Escape `$` as `$$` (e.g., `Pass$$word` instead of `Pass$word`)
 - Quote the entire value: `DB_PASSWORD='Pass$word'` (less reliable)
 
+### Backend Configuration (.env)
 Update `.env` with:
 - `JWT_SECRET` - Authentication secret (REQUIRED - generate a secure random value)
 - `DB_PASSWORD` - PostgreSQL password
 - `REDIS_PASSWORD` - Redis password
 - `SMTP_*` - Email configuration
-- **CRITICAL URL Configuration** (must match your deployment):
-  - `FRONTEND_URL` - Frontend URL with port (e.g., `http://yourdomain.com:3000`)
-  - `ADMIN_URL` - Backend URL with port (e.g., `http://yourdomain.com:3001`)
-  - `VITE_API_URL` - Backend API URL (e.g., `http://yourdomain.com:3001/api`)
+- **URL Configuration** (for backend CORS):
+  - `FRONTEND_URL` - Frontend URL (e.g., `http://localhost:3000` for Docker)
+  - `ADMIN_URL` - Admin URL (e.g., `http://localhost:3000` for Docker)
 
-⚠️ **IMPORTANT**: These URLs MUST include the correct ports and match exactly how users will access your site. Mismatched URLs will cause CORS errors and login failures!
+### Frontend Configuration (frontend/.env)
+Create `frontend/.env` from `frontend/.env.example`:
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+Update `frontend/.env` with:
+- `VITE_API_URL` - Backend API URL
+  - For Docker deployment: `http://localhost:3001/api`
+  - For non-Docker local dev: `http://localhost:3001`
+  - For production with reverse proxy: `/api`
+
+⚠️ **IMPORTANT PORT CONFIGURATION**: 
+- The frontend runs on port **3000** in Docker (exposed via nginx)
+- The backend API runs on port **3001**
+- The frontend `.env` file MUST point to the correct backend port (3001)
+- Default `.env.example` is configured for Docker deployment
 
 ### Email Configuration Examples
 
@@ -127,39 +144,36 @@ By default, services are exposed on:
 
 ### Initial Admin Setup
 
-When deploying for the first time, an admin account is automatically created with a secure random password. You need to retrieve this password to access the admin panel.
+When deploying for the first time, an admin account is automatically created with a secure, randomly generated password. This password is displayed in the Docker logs during initialization and **must be changed** on first login.
 
-#### Finding the Admin Password
+#### Finding the Auto-Generated Admin Password
 
-**Option 1: Check the backend logs** (recommended)
+The admin password is automatically generated during the first startup and displayed in the backend container logs. Here's how to find it:
+
+**Option 1: Search Docker logs for admin password** (recommended)
 ```bash
-# View the initial setup logs
-docker compose logs backend | grep -A 10 "Admin user created"
+# Find the auto-generated admin password in logs
+docker compose logs backend | grep "Admin password"
 ```
 
 You should see output like:
 ```
-========================================
-✅ Admin user created successfully!
-========================================
-Email: admin@example.com
-Password: BraveTiger6231!
-
-⚠️  IMPORTANT:
-1. Save these credentials securely
-2. Please change the password after first login
-========================================
+✅ Admin password generated: BraveTiger6231!
 ```
 
-**Note**: You login with the **email address**, not a username!
-
-**Option 2: Check the saved credentials file**
+**Option 2: View the complete initialization logs**
 ```bash
-# The password is saved in the backend container
+# View the complete admin setup logs
+docker compose logs backend | grep -A 10 "Admin user created"
+```
+
+**Option 3: Check the saved credentials file**
+```bash
+# The password is also saved in the backend container
 docker exec picpeak-backend cat data/ADMIN_CREDENTIALS.txt
 ```
 
-**Option 3: Use the helper script**
+**Option 4: Use the helper script**
 ```bash
 # Show current admin username and email (password is hidden)
 docker exec picpeak-backend node scripts/show-admin-credentials.js
@@ -168,13 +182,64 @@ docker exec picpeak-backend node scripts/show-admin-credentials.js
 docker exec picpeak-backend node scripts/show-admin-credentials.js --reset
 ```
 
-#### Important Notes
+#### Important Security Notes
 
 - **Login requires the email address**, not username
-- The admin password is only shown once during initial setup
-- If you lose the password, use the `--reset` option to generate a new one
-- You must change the password on first login (enforced by the system)
-- Password requirements: minimum 12 characters, mixed case, numbers, and special characters
+- The admin password is only displayed once during initial setup
+- **Password change is MANDATORY** on first login - the system will force you to change it
+- If you lose the password before first login, use the `--reset` option to generate a new one
+- New password requirements: minimum 12 characters, mixed case, numbers, and special characters
+
+## 🔐 First Login
+
+After deployment, you must complete the first login process which includes mandatory password change for security.
+
+### Step 1: Locate Your Admin Password
+
+1. **Find the auto-generated password** from the credentials file:
+   ```bash
+   # Docker deployment
+   docker compose exec backend cat /app/data/ADMIN_CREDENTIALS.txt
+   
+   # Or directly from the host (if you have access)
+   cat data/ADMIN_CREDENTIALS.txt
+   ```
+
+2. **Note the admin email** (default: `admin@example.com` unless customized)
+
+### Step 2: Access Admin Panel
+
+1. Navigate to your admin panel URL (e.g., `http://your-domain.com:3001/admin` or `https://your-domain.com/admin`)
+2. Login using:
+   - **Email**: `admin@example.com` (or your custom admin email)
+   - **Password**: The auto-generated password from the logs
+
+### Step 3: Mandatory Password Change
+
+Upon first login, the system will **automatically redirect** you to change your password:
+
+1. **You cannot skip this step** - it's enforced for security
+2. Enter the current auto-generated password
+3. Create a new secure password meeting these requirements:
+   - Minimum 12 characters
+   - At least one uppercase letter
+   - At least one lowercase letter
+   - At least one number
+   - At least one special character (!@#$%^&*)
+
+### Security Best Practices for New Password
+
+- **Use a unique password** not used elsewhere
+- **Consider a password manager** for generation and storage
+- **Include mixed characters**: `MySecureP@ssw0rd2024!`
+- **Avoid personal information** (names, dates, etc.)
+- **Save securely** - you cannot recover this password easily
+
+### If You Lose Access
+
+If you lose your admin credentials after the first login, you'll need to manually reset the password in the database or create a new admin user through the database.
+
+**Note**: The credentials file (`ADMIN_CREDENTIALS.txt`) is only created during initial deployment and contains the first admin password. After changing the password, this file becomes outdated but is kept for reference.
 
 #### Configuring Admin Email
 
@@ -404,9 +469,10 @@ docker exec picpeak-backend npm run migrate
    - Should see `node server.js` process
 
 4. **Login After Fresh Install**:
-   - Check migration logs for generated credentials
-   - Username: `admin` or the email shown in logs
-   - Password: Shown during first migration (e.g., `SharpPhoenix9920$`)
+   - Check backend logs for auto-generated admin password: `docker compose logs backend | grep "Admin password"`
+   - Email: `admin@example.com` (or your custom admin email from .env)
+   - Password: Auto-generated and shown in logs (e.g., `BraveTiger6231!`)
+   - Remember: Password MUST be changed on first login
 
 5. **Complete Fix Sequence**:
    ```bash
