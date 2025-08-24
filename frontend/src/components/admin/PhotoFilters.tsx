@@ -6,11 +6,11 @@ interface PhotoFiltersProps {
   categories: Array<{ id: number; name: string; slug: string }>;
   selectedCategory: number | null | undefined;
   searchTerm: string;
-  sortBy: 'date' | 'name' | 'size';
+  sortBy: 'date' | 'name' | 'size' | 'rating';
   sortOrder: 'asc' | 'desc';
   onCategoryChange: (categoryId: number | null | undefined) => void;
   onSearchChange: (search: string) => void;
-  onSortChange: (sort: 'date' | 'name' | 'size', order: 'asc' | 'desc') => void;
+  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating', order: 'asc' | 'desc') => void;
 }
 
 export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
@@ -63,12 +63,13 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
         <div className="flex items-center gap-2">
           <select
             value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as 'date' | 'name' | 'size', sortOrder)}
+            onChange={(e) => onSortChange(e.target.value as 'date' | 'name' | 'size' | 'rating', sortOrder)}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="date">Sort by Date</option>
             <option value="name">Sort by Name</option>
             <option value="size">Sort by Size</option>
+            <option value="rating">Sort by Rating</option>
           </select>
           
           <button

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Maximize2, Check } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -13,6 +13,11 @@ interface GridPhotoProps {
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
   animationType?: string;
+  allowDownloads?: boolean;
+  slug?: string;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
+  feedbackEnabled?: boolean;
 }
 
 const GridPhoto: React.FC<GridPhotoProps> = ({
@@ -21,7 +26,12 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
-  animationType = 'fade'
+  animationType = 'fade',
+  allowDownloads = true,
+  slug,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
+  feedbackEnabled = false
 }) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -51,6 +61,22 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             className="w-full h-full object-cover rounded-lg"
             loading="lazy"
             isGallery={true}
+            slug={slug}
+            photoId={photo.id}
+            requiresToken={photo.requires_token}
+            secureUrlTemplate={photo.secure_url_template}
+            protectFromDownload={!allowDownloads || useEnhancedProtection}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={useEnhancedProtection}
+            useCanvasRendering={protectionLevel === 'maximum'}
+            fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            blockKeyboardShortcuts={useEnhancedProtection}
+            detectPrintScreen={useEnhancedProtection}
+            detectDevTools={protectionLevel === 'maximum'}
+            watermarkText={useEnhancedProtection ? 'Protected' : undefined}
+            onProtectionViolation={(violationType) => {
+              console.warn(`Protection violation on grid photo ${photo.id}: ${violationType}`);
+            }}
           />
           
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
@@ -66,13 +92,15 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                 >
                   <Maximize2 className="w-5 h-5 text-neutral-800" />
                 </button>
-                <button
-                  className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                  onClick={onDownload}
-                  aria-label="Download photo"
-                >
-                  <Download className="w-5 h-5 text-neutral-800" />
-                </button>
+                {allowDownloads && (
+                  <button
+                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    onClick={onDownload}
+                    aria-label="Download photo"
+                  >
+                    <Download className="w-5 h-5 text-neutral-800" />
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -82,6 +110,30 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
               <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/80 border-white'} flex items-center justify-center transition-colors`}>
                 {isSelected && <Check className="w-4 h-4 text-white" />}
               </div>
+            </div>
+          )}
+
+          {/* Feedback Indicators */}
+          {feedbackEnabled && (photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+            <div className="absolute top-2 left-2 flex gap-1 z-10">
+              {photo.comment_count > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+                </div>
+              )}
+              {photo.average_rating > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+                  <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                </div>
+              )}
+              {photo.like_count > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.like_count} likes`}>
+                  <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                  <span className="text-xs font-medium text-neutral-700">{photo.like_count}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -102,11 +154,16 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
 
 export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
+  slug,
   onPhotoClick,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
-  onPhotoSelect
+  onPhotoSelect,
+  allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
+  feedbackEnabled = false
 }) => {
   const { theme } = useTheme();
   const gallerySettings = theme.gallerySettings || {};
@@ -139,6 +196,11 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           }}
           onDownload={(e) => onDownload(photo, e)}
           animationType={animation}
+          allowDownloads={allowDownloads}
+          slug={slug}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          feedbackEnabled={feedbackEnabled}
         />
       ))}
     </div>

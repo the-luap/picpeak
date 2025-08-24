@@ -22,8 +22,8 @@ interface PhotoFilterBarProps {
   onCategoryChange: (categoryId: number | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  sortBy: 'date' | 'name' | 'size';
-  onSortChange: (sort: 'date' | 'name' | 'size') => void;
+  sortBy: 'date' | 'name' | 'size' | 'rating';
+  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating') => void;
   photoCount: number;
 }
 
@@ -67,7 +67,10 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
             className="w-full sm:w-auto text-sm sm:text-base"
           >
             <span className="hidden sm:inline">{t('common.sortBy')} </span>
-            {sortBy === 'date' ? t('gallery.sortByDate').replace('Sort by ', '') : sortBy === 'name' ? t('gallery.sortByName').replace('Sort by ', '') : t('gallery.sortBySize').replace('Sort by ', '')}
+            {sortBy === 'date' ? t('gallery.sortByDate').replace('Sort by ', '') : 
+             sortBy === 'name' ? t('gallery.sortByName').replace('Sort by ', '') : 
+             sortBy === 'size' ? t('gallery.sortBySize').replace('Sort by ', '') :
+             t('gallery.sortByRating', 'Rating')}
           </Button>
           
           {showSortMenu && (
@@ -104,6 +107,17 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                 }`}
               >
                 {t('gallery.sortBySize')}
+              </button>
+              <button
+                onClick={() => {
+                  onSortChange('rating');
+                  setShowSortMenu(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
+                  sortBy === 'rating' ? 'text-primary-600 bg-primary-50' : 'text-neutral-700'
+                }`}
+              >
+                {t('gallery.sortByRating', 'Sort by Rating')}
               </button>
             </div>
           )}

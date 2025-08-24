@@ -7,9 +7,12 @@ const path = require('path');
 const router = express.Router();
 const watermarkService = require('../services/watermarkService');
 const { verifyGalleryAccess } = require('../middleware/gallery');
+const secureImageService = require('../services/secureImageService');
+const secureImageMiddleware = require('../middleware/secureImageMiddleware');
+const logger = require('../utils/logger');
 
 // Get storage path from environment or default
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
 
 // Verify share token
 router.get('/:slug/verify-token/:token', async (req, res) => {
@@ -17,7 +20,7 @@ router.get('/:slug/verify-token/:token', async (req, res) => {
     const { slug, token } = req.params;
     
     const event = await db('events')
-      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .where({ share_link: slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
       .select('id', 'share_link')
       .first();
     
@@ -45,7 +48,7 @@ router.get('/:slug/info', async (req, res) => {
     const { token } = req.query;
     
     const event = await db('events')
-      .where({ slug })
+      .where({ slug: slug })
       .select('event_name', 'event_type', 'event_date', 'expires_at', 'is_active', 'is_archived', 'share_link', 
               'allow_downloads', 'disable_right_click', 'watermark_downloads', 'watermark_text')
       .first();
@@ -94,24 +97,41 @@ router.get('/:slug/info', async (req, res) => {
 // Get all photos
 router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
+    // First get all photos
     const photos = await db('photos')
-      .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .where('photos.event_id', req.event.id)
-      .select(
-        'photos.*',
-        'photo_categories.name as category_name',
-        'photo_categories.slug as category_slug'
-      )
+      .select('photos.*')
       .orderBy('photos.uploaded_at', 'desc');
     
-    // Get all categories for this event
-    const categories = await db('photo_categories')
-      .where(function() {
-        this.where('is_global', formatBoolean(true))
-          .orWhere('event_id', req.event.id);
-      })
-      .orderBy('is_global', 'desc')
-      .orderBy('name', 'asc');
+    // Then get comment counts separately
+    const commentCounts = await db('photo_feedback')
+      .whereIn('photo_id', photos.map(p => p.id))
+      .where('feedback_type', 'comment')
+      .where('is_approved', true)
+      .where('is_hidden', false)
+      .groupBy('photo_id')
+      .select('photo_id', db.raw('COUNT(*) as comment_count'));
+    
+    // Create a map for quick lookup
+    const commentMap = {};
+    commentCounts.forEach(c => {
+      commentMap[c.photo_id] = parseInt(c.comment_count);
+    });
+    
+    // Get distinct photo types for this event
+    const categoryResults = await db('photos')
+      .where('event_id', req.event.id)
+      .select('type')
+      .distinct('type')
+      .orderBy('type', 'asc');
+    
+    // Convert types to category-like objects
+    const categories = categoryResults.map(result => ({
+      id: result.type,
+      name: result.type === 'individual' ? 'Individual Photos' : 'Collages',
+      slug: result.type,
+      is_global: false
+    }));
     
     // Log view
     await db('access_logs').insert({
@@ -121,6 +141,23 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       action: 'view'
     });
     
+    // Include protection settings in response
+    const protectionSettings = {
+      protection_level: req.event.protection_level || 'standard',
+      image_quality: req.event.image_quality || 85,
+      use_canvas_rendering: req.event.use_canvas_rendering === true,
+      fragmentation_level: req.event.fragmentation_level || 3,
+      overlay_protection: req.event.overlay_protection !== false
+    };
+    
+    console.log('[Gallery Photos] Event data:', {
+      id: req.event.id,
+      slug: req.params.slug,
+      protection_level: req.event.protection_level,
+      calculated_protection: protectionSettings.protection_level,
+      is_basic_or_standard: (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard')
+    });
+
     res.json({
       event: {
         id: req.event.id,
@@ -134,26 +171,41 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         allow_downloads: req.event.allow_downloads !== false,
         disable_right_click: req.event.disable_right_click === true,
         watermark_downloads: req.event.watermark_downloads === true,
-        watermark_text: req.event.watermark_text
+        watermark_text: req.event.watermark_text,
+        ...protectionSettings
       },
-      categories: categories.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        is_global: cat.is_global
-      })),
-      photos: photos.map(photo => ({
-        id: photo.id,
-        filename: photo.filename,
-        url: `/api/gallery/${req.params.slug}/photo/${photo.id}`,
-        thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}` : null,
-        type: photo.type,
-        category_id: photo.category_id,
-        category_name: photo.category_name,
-        category_slug: photo.category_slug,
-        size: photo.size_bytes,
-        uploaded_at: photo.uploaded_at
-      }))
+      categories: categories,
+      photos: photos.map(photo => {
+        const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
+        const photoUrl = useJwtUrl ? 
+          `/api/gallery/${req.params.slug}/photo/${photo.id}` : 
+          `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`;
+        
+        console.log(`[Photo ${photo.id}] Protection: ${protectionSettings.protection_level}, Use JWT: ${useJwtUrl}, URL: ${photoUrl}`);
+        
+        return {
+          id: photo.id,
+          filename: photo.filename,
+          url: photoUrl,
+          thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}` : null,
+          secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
+          download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
+          type: photo.type,
+          category_id: photo.type,
+          category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
+          category_slug: photo.type,
+          size: photo.size_bytes,
+          uploaded_at: photo.uploaded_at,
+          // Fixed: Use the calculated useJwtUrl variable instead of recalculating
+          requires_token: !useJwtUrl,
+          // Feedback data
+          has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
+          average_rating: photo.average_rating || 0,
+          comment_count: commentMap[photo.id] || 0,
+          like_count: photo.like_count || 0,
+          favorite_count: photo.favorite_count || 0
+        };
+      })
     });
   } catch (error) {
     console.error('Error fetching photos:', error);
@@ -191,7 +243,17 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       photo_id: photoId
     });
     
-    const filePath = path.join(getStoragePath(), 'events/active', photo.path);
+    // Photo path should be in storage/events/active directory
+    // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
+    const storagePath = getStoragePath();
+    let filePath;
+    if (photo.path.startsWith('events/active/')) {
+      // New format: path already includes events/active/ prefix
+      filePath = path.join(storagePath, photo.path);
+    } else {
+      // Legacy format: path is just slug/filename
+      filePath = path.join(storagePath, 'events/active', photo.path);
+    }
     
     // Get watermark settings
     const watermarkSettings = await watermarkService.getWatermarkSettings();
@@ -224,25 +286,20 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
     }
     
-    // Fetch photos with category information
+    // Fetch photos
     const photos = await db('photos')
-      .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .where('photos.event_id', req.event.id)
-      .select(
-        'photos.*',
-        'photo_categories.name as category_name',
-        'photo_categories.slug as category_slug'
-      )
-      .orderBy('photo_categories.name', 'asc')
+      .select('photos.*')
+      .orderBy('photos.type', 'asc')
       .orderBy('photos.uploaded_at', 'desc');
     
     if (photos.length === 0) {
       return res.status(404).json({ error: 'No photos found' });
     }
     
-    // Count unique categories (excluding null)
-    const uniqueCategories = new Set(photos.filter(p => p.category_id).map(p => p.category_id)).size;
-    const hasMultipleCategories = uniqueCategories > 1;
+    // Count unique types
+    const uniqueTypes = new Set(photos.map(p => p.type)).size;
+    const hasMultipleTypes = uniqueTypes > 1;
     
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
@@ -259,19 +316,24 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     
     // Add photos to archive
     for (const photo of photos) {
-      const filePath = path.join(getStoragePath(), 'events/active', photo.path);
+      // Photo path should be in storage/events/active directory
+      // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
+      const storagePath = getStoragePath();
+      let filePath;
+      if (photo.path.startsWith('events/active/')) {
+        // New format: path already includes events/active/ prefix
+        filePath = path.join(storagePath, photo.path);
+      } else {
+        // Legacy format: path is just slug/filename
+        filePath = path.join(storagePath, 'events/active', photo.path);
+      }
       
       // Determine the file name in the archive
       let archiveName;
-      if (hasMultipleCategories) {
-        if (photo.category_name) {
-          // Use category name as folder (sanitize for filesystem)
-          const folderName = photo.category_name.replace(/[^a-zA-Z0-9-_ ]/g, '').trim();
-          archiveName = path.join(folderName, photo.filename);
-        } else {
-          // Put uncategorized photos in 'Uncategorized' folder
-          archiveName = path.join('Uncategorized', photo.filename);
-        }
+      if (hasMultipleTypes) {
+        // Use photo type as folder
+        const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
+        archiveName = path.join(folderName, photo.filename);
       } else {
         // No folders, just the filename
         archiveName = photo.filename;
@@ -301,77 +363,173 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
   }
 });
 
-// View single photo (with watermark if enabled)
-router.get('/:slug/photo/:photoId', verifyGalleryAccess, async (req, res) => {
-  try {
-    const { photoId } = req.params;
-    
-    const photo = await db('photos')
-      .where({ id: photoId, event_id: req.event.id })
-      .first();
-    
-    if (!photo) {
-      return res.status(404).json({ error: 'Photo not found' });
-    }
-    
-    const filePath = path.join(getStoragePath(), 'events/active', photo.path);
-    
-    // Get watermark settings
-    const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
-    if (watermarkSettings && watermarkSettings.enabled) {
-      // Apply watermark and send
-      const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-      
-      res.set({
-        'Content-Type': photo.mime_type || 'image/jpeg',
-        'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
-      });
-      
-      res.send(watermarkedBuffer);
-    } else {
-      // Send original file
-      res.sendFile(filePath);
-    }
-  } catch (error) {
-    console.error('Error serving photo:', error);
-    res.status(500).json({ error: 'Failed to serve photo' });
+// Test route
+router.get('/:slug/photo-test/:photoId', 
+  verifyGalleryAccess,
+  (req, res) => {
+    console.log('TEST ROUTE EXECUTED!');
+    res.json({ message: 'Test route works!', photoId: req.params.photoId });
   }
-});
+);
+
+// View single photo (with watermark if enabled)
+router.get('/:slug/photo/:photoId', 
+  verifyGalleryAccess, 
+  async (req, res) => {
+    try {
+      const { photoId } = req.params;
+      
+      const photo = await db('photos')
+        .where({ id: photoId, event_id: req.event.id })
+        .first();
+      
+      
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Check protection level - basic and standard protection allow direct JWT access
+      const protectionLevel = req.event.protection_level || 'standard';
+      
+      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
+        // For enhanced/maximum protection, redirect to secure endpoint
+        return res.status(302).json({ 
+          error: 'Secure access required',
+          secureEndpoint: `/api/secure-images/${req.params.slug}/generate-token`,
+          photoId: photoId
+        });
+      }
+      
+      // Photo path should be in storage/events/active directory
+      // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
+      const storagePath = getStoragePath();
+      
+      let filePath;
+      if (photo.path.startsWith('events/active/')) {
+        // New format: path already includes events/active/ prefix
+        filePath = path.join(storagePath, photo.path);
+      } else {
+        // Legacy format: path is just slug/filename
+        filePath = path.join(storagePath, 'events/active', photo.path);
+      }
+      
+      
+      // Log access - temporarily disabled for debugging
+      // await secureImageService.logImageAccess(
+      //   photoId,
+      //   req.event.id,
+      //   req.clientInfo,
+      //   'view_basic'
+      // );
+      
+      // Get watermark settings
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+      
+      if (watermarkSettings && watermarkSettings.enabled) {
+        // Apply watermark and send
+        const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+        
+        res.set({
+          'Content-Type': photo.mime_type || 'image/jpeg',
+          'Cache-Control': 'private, max-age=1800', // Cache for 30 minutes
+          'X-Protection-Level': 'basic'
+        });
+        
+        res.send(watermarkedBuffer);
+      } else {
+        // Send original file with basic protection headers
+        res.set({
+          'Cache-Control': 'private, max-age=1800',
+          'X-Protection-Level': 'basic'
+        });
+        // Ensure absolute path for res.sendFile
+        const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+        res.sendFile(absolutePath);
+      }
+    } catch (error) {
+      logger.error('Error serving photo:', {
+        error: error.message,
+        stack: error.stack,
+        photoId: req.params.photoId,
+        eventId: req.event?.id
+      });
+      res.status(500).json({ error: 'Failed to serve photo', details: error.message });
+    }
+  }
+);
 
 // Serve thumbnail
-router.get('/:slug/thumbnail/:photoId', verifyGalleryAccess, async (req, res) => {
-  try {
-    const { photoId } = req.params;
-    
-    const photo = await db('photos')
-      .where({ id: photoId, event_id: req.event.id })
-      .first();
-    
-    if (!photo || !photo.thumbnail_path) {
-      return res.status(404).json({ error: 'Thumbnail not found' });
-    }
-    
-    const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
-    
-    // Check if file exists
-    const fs = require('fs').promises;
+router.get('/:slug/thumbnail/:photoId', 
+  verifyGalleryAccess, 
+  async (req, res) => {
     try {
-      await fs.access(thumbPath);
+      const { photoId } = req.params;
+      
+      const photo = await db('photos')
+        .where({ id: photoId, event_id: req.event.id })
+        .first();
+      
+      if (!photo || !photo.thumbnail_path) {
+        return res.status(404).json({ error: 'Thumbnail not found' });
+      }
+      
+      const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
+      
+      // Check if file exists
+      const fs = require('fs').promises;
+      try {
+        await fs.access(thumbPath);
+      } catch (error) {
+        return res.status(404).json({ error: 'Thumbnail file not found' });
+      }
+
+      // Log thumbnail access
+      await secureImageService.logImageAccess(
+        photoId,
+        req.event.id,
+        req.clientInfo,
+        'thumbnail'
+      );
+      
+      // Set appropriate headers with enhanced security
+      res.set({
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'private, max-age=1800', // Reduced cache time
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Protected-Thumbnail': 'true'
+      });
+      
+      // Send file
+      res.sendFile(path.resolve(thumbPath));
     } catch (error) {
-      return res.status(404).json({ error: 'Thumbnail file not found' });
+      logger.error('Error serving thumbnail:', {
+        error: error.message,
+        photoId: req.params.photoId,
+        eventId: req.event?.id
+      });
+      res.status(500).json({ error: 'Failed to serve thumbnail' });
     }
+  }
+);
+
+// Get feedback settings for gallery
+router.get('/:slug/feedback-settings', verifyGalleryAccess, async (req, res) => {
+  try {
+    const feedbackService = require('../services/feedbackService');
+    const settings = await feedbackService.getEventFeedbackSettings(req.event.id);
     
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
-    // Send file
-    res.sendFile(path.resolve(thumbPath));
+    res.json({
+      feedback_enabled: settings.feedback_enabled || false,
+      allow_ratings: settings.allow_ratings,
+      allow_likes: settings.allow_likes, 
+      allow_comments: settings.allow_comments,
+      allow_favorites: settings.allow_favorites,
+      show_feedback_to_guests: settings.show_feedback_to_guests
+    });
   } catch (error) {
-    console.error('Error serving thumbnail:', error);
-    res.status(500).json({ error: 'Failed to serve thumbnail' });
+    console.error('Error fetching feedback settings:', error);
+    res.status(500).json({ error: 'Failed to fetch feedback settings' });
   }
 });
 

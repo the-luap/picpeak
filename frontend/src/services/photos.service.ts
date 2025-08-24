@@ -14,6 +14,12 @@ export interface AdminPhoto {
   uploaded_at: string;
   view_count?: number;
   download_count?: number;
+  // Feedback fields
+  has_feedback?: boolean;
+  average_rating?: number;
+  comment_count?: number;
+  like_count?: number;
+  favorite_count?: number;
 }
 
 export interface PhotoFilters {

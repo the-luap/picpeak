@@ -1,5 +1,6 @@
 import React from 'react';
 import { Download, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DownloadProgressProps {
   isDownloading: boolean;
@@ -14,6 +15,8 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({
   fileName,
   onCancel,
 }) => {
+  const { t } = useTranslation();
+  
   if (!isDownloading) return null;
 
   return (
@@ -22,7 +25,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({
         <div className="flex items-center gap-2">
           <Download className="w-5 h-5 text-primary-600 animate-bounce" />
           <div>
-            <p className="text-sm font-medium text-neutral-900">Downloading...</p>
+            <p className="text-sm font-medium text-neutral-900">{t('download.downloading')}</p>
             {fileName && (
               <p className="text-xs text-neutral-500 truncate max-w-[200px]">{fileName}</p>
             )}
@@ -46,7 +49,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({
       </div>
       
       {progress > 0 && (
-        <p className="text-xs text-neutral-500 mt-1">{Math.round(progress)}% complete</p>
+        <p className="text-xs text-neutral-500 mt-1">{Math.round(progress)}{t('download.percentComplete')}</p>
       )}
     </div>
   );

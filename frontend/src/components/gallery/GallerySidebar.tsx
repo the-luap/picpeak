@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Upload } from 'lucide-react';
+import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Upload, Star } from 'lucide-react';
 import { Button } from '../common';
 import { PhotoCategory } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -12,14 +12,16 @@ interface GallerySidebarProps {
   onCategoryChange: (categoryId: number | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  sortBy: 'date' | 'name' | 'size';
-  onSortChange: (sort: 'date' | 'name' | 'size') => void;
+  sortBy: 'date' | 'name' | 'size' | 'rating';
+  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating') => void;
   isSelectionMode: boolean;
   onToggleSelectionMode: () => void;
   selectedCount: number;
   onDownloadAll: () => void;
   onDownloadSelected: () => void;
   isDownloading: boolean;
+  isExpired?: boolean;
+  allowDownloads?: boolean;
   photoCounts?: Record<number, number>;
   totalPhotos: number;
   isMobile: boolean;
@@ -44,6 +46,8 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   onDownloadAll,
   onDownloadSelected,
   isDownloading,
+  isExpired = false,
+  allowDownloads = true,
   photoCounts = {},
   totalPhotos,
   isMobile,
@@ -81,7 +85,8 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   const sortOptions = [
     { value: 'date', label: t('gallery.sortByDate'), icon: Calendar },
     { value: 'name', label: t('gallery.sortByName'), icon: Type },
-    { value: 'size', label: t('gallery.sortBySize'), icon: HardDrive }
+    { value: 'size', label: t('gallery.sortBySize'), icon: HardDrive },
+    { value: 'rating', label: t('gallery.sortByRating', 'Rating'), icon: Star }
   ];
 
   return (
@@ -151,48 +156,50 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
             </div>
           )}
 
-          {/* Download Section */}
-          <div className="p-4 border-b border-neutral-200">
-            <h3 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              {t('gallery.download')}
-            </h3>
-            
-            <div className="space-y-2">
-              <Button
-                variant="primary"
-                size="sm"
-                leftIcon={<Download className="w-4 h-4" />}
-                onClick={onDownloadAll}
-                disabled={isDownloading || totalPhotos === 0}
-                className="w-full"
-              >
-                {t('gallery.downloadAll')} ({totalPhotos})
-              </Button>
-
-              <Button
-                variant={isSelectionMode ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={onToggleSelectionMode}
-                className="w-full"
-              >
-                {isSelectionMode ? t('gallery.cancelSelection') : t('gallery.selectPhotos')}
-              </Button>
-
-              {isSelectionMode && selectedCount > 0 && (
+          {/* Download Section - Hidden if gallery is expired or downloads disabled */}
+          {allowDownloads && (
+            <div className="p-4 border-b border-neutral-200">
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                {t('gallery.download')}
+              </h3>
+              
+              <div className="space-y-2">
                 <Button
                   variant="primary"
                   size="sm"
                   leftIcon={<Download className="w-4 h-4" />}
-                  onClick={onDownloadSelected}
-                  disabled={isDownloading}
+                  onClick={onDownloadAll}
+                  disabled={isDownloading || totalPhotos === 0}
                   className="w-full"
                 >
-                  {t('gallery.downloadSelected')} ({selectedCount})
+                  {t('gallery.downloadAll')} ({totalPhotos})
                 </Button>
-              )}
+
+                <Button
+                  variant={isSelectionMode ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={onToggleSelectionMode}
+                  className="w-full"
+                >
+                  {isSelectionMode ? t('gallery.cancelSelection') : t('gallery.selectPhotos')}
+                </Button>
+
+                {isSelectionMode && selectedCount > 0 && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Download className="w-4 h-4" />}
+                    onClick={onDownloadSelected}
+                    disabled={isDownloading}
+                    className="w-full"
+                  >
+                    {t('gallery.downloadSelected')} ({selectedCount})
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Categories Section - Hidden for carousel layout */}
           {galleryLayout !== 'carousel' && categories.length > 0 && (
@@ -268,7 +275,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                     <button
                       key={option.value}
                       onClick={() => {
-                        onSortChange(option.value as 'date' | 'name' | 'size');
+                        onSortChange(option.value as 'date' | 'name' | 'size' | 'rating');
                         if (isMobile) onClose();
                       }}
                       className={`

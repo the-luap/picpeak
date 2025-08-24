@@ -6,9 +6,10 @@ import { useSessionTimeout } from '../../hooks/useSessionTimeout';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminHeader } from './AdminHeader';
 import { MaintenanceBanner } from './MaintenanceBanner';
+import { MandatoryPasswordChangeModal } from './MandatoryPasswordChangeModal';
 
 export const AdminLayout: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAdminAuth();
+  const { isAuthenticated, isLoading, mustChangePassword } = useAdminAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Handle session timeout
@@ -31,6 +32,9 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div className="h-screen bg-neutral-50 flex overflow-hidden">
+      {/* Mandatory Password Change Modal */}
+      {mustChangePassword && <MandatoryPasswordChangeModal />}
+      
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -39,19 +43,23 @@ export const AdminLayout: React.FC = () => {
         />
       )}
 
-      {/* Sidebar */}
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Sidebar - disabled when password change required */}
+      <div className={mustChangePassword ? 'pointer-events-none opacity-50' : ''}>
+        <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen">
-        {/* Header */}
-        <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+        {/* Header - disabled when password change required */}
+        <div className={mustChangePassword ? 'pointer-events-none opacity-50' : ''}>
+          <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+        </div>
         
         {/* Maintenance mode banner */}
         <MaintenanceBanner />
 
-        {/* Page content */}
-        <main id="main-content" className="flex-1 px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
+        {/* Page content - disabled when password change required */}
+        <main id="main-content" className={`flex-1 px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto ${mustChangePassword ? 'opacity-50 pointer-events-none' : ''}`}>
           <Outlet />
         </main>
       </div>

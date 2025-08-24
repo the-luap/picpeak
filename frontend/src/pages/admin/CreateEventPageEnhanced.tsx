@@ -13,7 +13,7 @@ import {
 import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
 
-import { Button, Input, Card } from '../../components/common';
+import { Button, Input, Card, PasswordGenerator } from '../../components/common';
 import { ThemeCustomizerEnhanced, GalleryPreview, WelcomeMessageEditor, FeedbackSettings } from '../../components/admin';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
@@ -157,16 +157,11 @@ export const CreateEventPageEnhanced: React.FC = () => {
       }
     },
     onError: (error: any) => {
-      console.error('Create event error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Full error object:', JSON.stringify(error.response, null, 2));
       const errorMessage = error.response?.data?.error || error.message || t('errors.eventCreationFailed');
       
       // If validation errors exist, show them
       if (error.response?.data?.errors) {
         const validationErrors = error.response.data.errors;
-        console.error('Validation errors:', validationErrors);
         validationErrors.forEach((err: any) => {
           toast.error(`${err.param}: ${err.msg}`);
         });
@@ -247,7 +242,6 @@ export const CreateEventPageEnhanced: React.FC = () => {
       feedback_settings: formData.feedback_settings,
     };
     
-    console.log('Submitting payload:', payload);
     createMutation.mutate(payload);
   };
 
@@ -272,6 +266,23 @@ export const CreateEventPageEnhanced: React.FC = () => {
         ...prev,
         theme_preset: presetName,
         theme_config: preset.config
+      }));
+    }
+  };
+
+  const handlePasswordGenerated = (password: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      password: password,
+      confirm_password: password 
+    }));
+    
+    // Clear password errors since we generated a valid one
+    if (errors.password || errors.confirm_password) {
+      setErrors(prev => ({ 
+        ...prev, 
+        password: undefined,
+        confirm_password: undefined 
       }));
     }
   };
@@ -476,25 +487,39 @@ export const CreateEventPageEnhanced: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                label={t('events.galleryPassword')}
-                placeholder={t('events.passwordPlaceholder')}
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                error={errors.password}
-                helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
-                leftIcon={<Lock className="w-5 h-5" />}
-                rightIcon={
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-1"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                }
-              />
+              <div>
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  label={t('events.galleryPassword')}
+                  placeholder={t('events.passwordPlaceholder')}
+                  value={formData.password}
+                  onChange={handleInputChange('password')}
+                  error={errors.password}
+                  helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
+                  leftIcon={<Lock className="w-5 h-5" />}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  }
+                />
+                
+                {/* Password Generator */}
+                <div className="mt-2">
+                  <PasswordGenerator
+                    eventName={formData.event_name}
+                    eventDate={formData.event_date}
+                    eventType={formData.event_type}
+                    onPasswordGenerated={handlePasswordGenerated}
+                    passwordComplexity="moderate"
+                    className="w-full"
+                  />
+                </div>
+              </div>
 
               <Input
                 type={showPassword ? 'text' : 'password'}

@@ -39,8 +39,9 @@ async function showAdminCredentials(resetPassword = false) {
           updated_at: new Date()
         });
       
-      console.log(`Password: ${newPassword} (NEWLY RESET)`);
-      console.log('\n⚠️  IMPORTANT: Please save this password securely!');
+      // Password logging removed for security - check logs or database if needed
+      console.log('Password: [NEWLY RESET - stored in database]');
+      console.log('\n⚠️  IMPORTANT: New password has been set in database!');
     } else {
       console.log('Password: [hidden - use --reset flag to generate new password]');
     }

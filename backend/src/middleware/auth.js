@@ -22,7 +22,19 @@ async function adminAuth(req, res, next) {
     
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Try to verify with issuer first, fallback to no issuer for backward compatibility
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET, {
+          issuer: 'picpeak-auth'
+        });
+      } catch (issuerError) {
+        // If verification fails with issuer, try without issuer (backward compatibility)
+        if (issuerError.name === 'JsonWebTokenError' && issuerError.message.includes('jwt issuer invalid')) {
+          decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } else {
+          throw issuerError;
+        }
+      }
     } catch (jwtError) {
       const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
                      req.headers['x-real-ip'] || 

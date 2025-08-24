@@ -334,6 +334,23 @@ Run backup service test: `npm run test-backup`
 - `backup_runs`: Tracks each backup execution with statistics
 - `backup_file_states`: Stores file checksums for change detection
 
+## Thumbnail Generation
+
+### Square Thumbnail Implementation (Issue #12 Fix)
+The system now generates **square 300x300px thumbnails** to prevent blurry/stretched images in the gallery grid:
+
+- **Problem**: Previously generated 300px width with proportional height (e.g., 300x200 for 3:2 photos), but CSS forced square display causing distortion
+- **Solution**: Thumbnails now use `cover` fit mode to crop to exact 300x300px dimensions with center positioning
+- **Configuration**: Settings stored in `app_settings` table with keys: `thumbnail_width`, `thumbnail_height`, `thumbnail_fit`, `thumbnail_quality`, `thumbnail_format`
+- **Migration**: Run `040_add_thumbnail_settings.js` to add default square thumbnail settings
+- **Regeneration Script**: Use `scripts/regenerate-square-thumbnails.js` to update existing thumbnails
+
+### Thumbnail Settings API
+- `GET /api/admin/thumbnails/settings` - Get current thumbnail configuration
+- `PUT /api/admin/thumbnails/settings` - Update thumbnail settings (requires regeneration)
+- `POST /api/admin/thumbnails/regenerate` - Regenerate all thumbnails with new settings
+- `GET /api/admin/thumbnails/regenerate/status` - Check regeneration progress
+
 ## Success Metrics (from PRD)
 - Time to generate gallery: <2 minutes
 - Guest satisfaction: >90%
@@ -366,3 +383,4 @@ Run backup service test: `npm run test-backup`
 - [ ] Monitoring alerts configured
 - [ ] Rollback procedure documented
 - [ ] Stakeholders notified of maintenance window
+- always use docker deployment for testing

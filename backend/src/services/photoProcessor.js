@@ -21,39 +21,29 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
     const trx = await db.transaction();
     
     try {
-      // Get category info if provided
-      let category = null;
+      // Count existing photos to generate sequence number
       let counter = 1;
-      const parsedCategoryId = categoryId ? parseInt(categoryId) : null;
+      let photoType = 'individual'; // default type
       
-      if (parsedCategoryId) {
-        // Get category and update counter
-        category = await trx('photo_categories')
-          .where({ id: parsedCategoryId })
-          .first();
-        
-        if (category) {
-          counter = (category.photo_counter || 0) + 1;
-          await trx('photo_categories')
-            .where({ id: parsedCategoryId })
-            .update({ photo_counter: counter });
-        }
-      } else {
-        // For uncategorized photos, count existing uncategorized photos
-        const uncategorizedCount = await trx('photos')
-          .where({ event_id: eventId })
-          .whereNull('category_id')
-          .count('id as count')
-          .first();
-        
-        counter = (uncategorizedCount.count || 0) + 1;
+      // If categoryId is provided and matches photo types, use it as type
+      if (categoryId === 'collage') {
+        photoType = 'collage';
       }
+      
+      // Count existing photos of the same type for numbering
+      const existingCount = await trx('photos')
+        .where({ event_id: eventId, type: photoType })
+        .count('id as count')
+        .first();
+      
+      counter = (existingCount.count || 0) + 1;
       
       // Generate new filename
       const extension = path.extname(file.originalname);
+      const categoryName = photoType === 'collage' ? 'collages' : 'individual';
       const newFilename = generatePhotoFilename(
         event.event_name,
-        category ? category.name : 'uncategorized',
+        categoryName,
         counter,
         extension
       );
@@ -81,10 +71,8 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         filename: newFilename,
         path: relativePath,
         thumbnail_path: relativeThumbPath,
-        category_id: parsedCategoryId || null,
-        type: 'individual',
-        size_bytes: file.size,
-        uploaded_by: uploadedBy
+        type: photoType,
+        size_bytes: file.size
       });
       
       // Commit transaction
@@ -94,8 +82,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         id: photoId,
         filename: newFilename,
         size: file.size,
-        category_id: parsedCategoryId || null,
-        uploaded_by: uploadedBy
+        type: photoType
       });
     } catch (error) {
       console.error(`Error processing file ${file.originalname}:`, error);

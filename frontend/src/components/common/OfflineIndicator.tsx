@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 
 export const OfflineIndicator: React.FC = () => {
+  const { t } = useTranslation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showIndicator, setShowIndicator] = useState(false);
 
@@ -56,12 +58,12 @@ export const OfflineIndicator: React.FC = () => {
         {isOnline ? (
           <>
             <Wifi className="w-5 h-5" />
-            <span className="text-sm font-medium">Back online</span>
+            <span className="text-sm font-medium">{t('offline.backOnline')}</span>
           </>
         ) : (
           <>
             <WifiOff className="w-5 h-5" />
-            <span className="text-sm font-medium">No internet connection</span>
+            <span className="text-sm font-medium">{t('offline.noConnection')}</span>
           </>
         )}
       </div>

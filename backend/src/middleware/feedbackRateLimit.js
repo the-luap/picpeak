@@ -24,7 +24,10 @@ async function getRateLimitSettings() {
       .first();
     
     if (settings && settings.setting_value) {
-      return JSON.parse(settings.setting_value);
+      // setting_value is already a JSON object in PostgreSQL
+      return typeof settings.setting_value === 'string' 
+        ? JSON.parse(settings.setting_value)
+        : settings.setting_value;
     }
     
     // Default settings
@@ -120,8 +123,8 @@ async function recordAction(identifier, eventId, actionType) {
 function feedbackRateLimit(actionType) {
   return async (req, res, next) => {
     try {
-      // Extract event ID from params or body
-      const eventId = req.params.eventId || req.body?.event_id;
+      // Extract event ID from params, body or event object (set by verifyGalleryAccess)
+      const eventId = req.params.eventId || req.body?.event_id || req.event?.id;
       if (!eventId) {
         return res.status(400).json({ error: 'Event ID required' });
       }

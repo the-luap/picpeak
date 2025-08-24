@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Maximize2, Check } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
@@ -12,6 +12,8 @@ interface MasonryPhotoProps {
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
   style?: React.CSSProperties;
+  allowDownloads?: boolean;
+  feedbackEnabled?: boolean;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -20,7 +22,9 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
-  style
+  style,
+  allowDownloads = true,
+  feedbackEnabled = false
 }) => {
   const [imageHeight, setImageHeight] = useState<number>(200);
 
@@ -47,7 +51,32 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         className="w-full h-full object-cover rounded-lg"
         loading="lazy"
         isGallery={true}
+        protectFromDownload={!allowDownloads}
       />
+      
+      {/* Feedback Indicators */}
+      {feedbackEnabled && (photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+        <div className="absolute top-2 left-2 flex gap-1 z-10">
+          {photo.comment_count > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+              <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+              <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+            </div>
+          )}
+          {photo.average_rating > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+              <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+              <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+            </div>
+          )}
+          {photo.like_count > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.like_count} likes`}>
+              <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+              <span className="text-xs font-medium text-neutral-700">{photo.like_count}</span>
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
         {!isSelectionMode && (
@@ -62,13 +91,15 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
             >
               <Maximize2 className="w-5 h-5 text-neutral-800" />
             </button>
-            <button
-              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-              onClick={onDownload}
-              aria-label="Download photo"
-            >
-              <Download className="w-5 h-5 text-neutral-800" />
-            </button>
+            {allowDownloads && (
+              <button
+                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                onClick={onDownload}
+                aria-label="Download photo"
+              >
+                <Download className="w-5 h-5 text-neutral-800" />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -98,7 +129,9 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
-  onPhotoSelect
+  onPhotoSelect,
+  allowDownloads = true,
+  feedbackEnabled = false
 }) => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +190,8 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   }
                 }}
                 onDownload={(e) => onDownload(photo, e)}
+                allowDownloads={allowDownloads}
+                feedbackEnabled={feedbackEnabled}
               />
             );
           })}

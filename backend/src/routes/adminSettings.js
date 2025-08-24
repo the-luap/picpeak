@@ -135,6 +135,27 @@ router.get('/:type', adminAuth, async (req, res) => {
   }
 });
 
+// Get password complexity settings for frontend
+router.get('/password/complexity', adminAuth, async (req, res) => {
+  try {
+    const { getPasswordComplexitySettings, getPasswordConfigForComplexity } = require('../utils/passwordValidation');
+    
+    // Get current complexity level from database
+    const complexityLevel = await getPasswordComplexitySettings();
+    
+    // Get configuration for the complexity level
+    const config = getPasswordConfigForComplexity(complexityLevel);
+    
+    res.json({
+      complexityLevel,
+      config
+    });
+  } catch (error) {
+    console.error('Password complexity settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch password complexity settings' });
+  }
+});
+
 // Update branding settings
 router.put('/branding', adminAuth, async (req, res) => {
   try {

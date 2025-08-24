@@ -29,6 +29,7 @@ interface GalleryLayoutProps {
   showDownloadAll?: boolean;
   onDownloadAll?: () => void;
   isDownloading?: boolean;
+  isExpired?: boolean;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
   children: React.ReactNode;
@@ -42,6 +43,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   showDownloadAll = false,
   onDownloadAll,
   isDownloading = false,
+  isExpired = false,
   headerExtra,
   menuButton,
   children,

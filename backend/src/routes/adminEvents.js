@@ -57,7 +57,16 @@ router.post('/', adminAuth, [
       allow_downloads = true,
       disable_right_click = false,
       watermark_downloads = false,
-      watermark_text = null
+      watermark_text = null,
+      // Feedback settings
+      feedback_enabled = false,
+      allow_ratings = true,
+      allow_likes = true,
+      allow_comments = true,
+      allow_favorites = true,
+      require_name_email = false,
+      moderate_comments = true,
+      show_feedback_to_guests = true
     } = req.body;
     
     // Debug logging
@@ -151,6 +160,23 @@ router.post('/', adminAuth, [
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
     const eventId = insertResult[0]?.id || insertResult[0];
+    
+    // Insert feedback settings if feedback is enabled
+    if (feedback_enabled) {
+      await db('event_feedback_settings').insert({
+        event_id: eventId,
+        feedback_enabled: formatBoolean(feedback_enabled),
+        allow_ratings: formatBoolean(allow_ratings),
+        allow_likes: formatBoolean(allow_likes),
+        allow_comments: formatBoolean(allow_comments),
+        allow_favorites: formatBoolean(allow_favorites),
+        require_name_email: formatBoolean(require_name_email),
+        moderate_comments: formatBoolean(moderate_comments),
+        show_feedback_to_guests: formatBoolean(show_feedback_to_guests),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
     
     // Log activity
     await logActivity('event_created', 
@@ -443,10 +469,7 @@ router.delete('/:id', adminAuth, async (req, res) => {
       // 4. Delete photos (this will also handle hero_photo_id foreign key)
       await trx('photos').where('event_id', id).del();
 
-      // 5. Delete categories (photo_categories has CASCADE delete for event_id)
-      await trx('photo_categories').where('event_id', id).del();
-
-      // 6. Finally delete the event
+      // 5. Finally delete the event
       await trx('events').where('id', id).del();
 
       // Delete event folder from storage if it exists

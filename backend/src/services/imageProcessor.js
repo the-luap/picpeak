@@ -2,20 +2,68 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
+const { db } = require('../database/db');
 
 // Configure sharp for better memory management with large batches
 sharp.cache(false); // Disable cache to prevent memory buildup
 sharp.concurrency(2); // Limit concurrent operations
 
-const THUMBNAIL_WIDTH = 300;
+// Default thumbnail settings
+const DEFAULT_THUMBNAIL_WIDTH = 300;
+const DEFAULT_THUMBNAIL_HEIGHT = 300;
+const DEFAULT_THUMBNAIL_FIT = 'cover'; // 'cover' for square crops
+const DEFAULT_THUMBNAIL_QUALITY = 85;
+const DEFAULT_THUMBNAIL_FORMAT = 'jpeg';
+
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 const getThumbnailPath = () => path.join(getStoragePath(), 'thumbnails');
+
+// Get thumbnail settings from database
+async function getThumbnailSettings() {
+  try {
+    const settings = await db('app_settings')
+      .whereIn('setting_key', [
+        'thumbnail_width',
+        'thumbnail_height',
+        'thumbnail_fit',
+        'thumbnail_quality',
+        'thumbnail_format'
+      ])
+      .select('setting_key', 'setting_value');
+    
+    const settingsMap = {};
+    settings.forEach(s => {
+      settingsMap[s.setting_key] = s.setting_value;
+    });
+    
+    return {
+      width: parseInt(settingsMap.thumbnail_width) || DEFAULT_THUMBNAIL_WIDTH,
+      height: parseInt(settingsMap.thumbnail_height) || DEFAULT_THUMBNAIL_HEIGHT,
+      fit: settingsMap.thumbnail_fit || DEFAULT_THUMBNAIL_FIT,
+      quality: parseInt(settingsMap.thumbnail_quality) || DEFAULT_THUMBNAIL_QUALITY,
+      format: settingsMap.thumbnail_format || DEFAULT_THUMBNAIL_FORMAT
+    };
+  } catch (error) {
+    // If database is not ready or settings don't exist, use defaults
+    logger.warn('Could not fetch thumbnail settings, using defaults:', error.message);
+    return {
+      width: DEFAULT_THUMBNAIL_WIDTH,
+      height: DEFAULT_THUMBNAIL_HEIGHT,
+      fit: DEFAULT_THUMBNAIL_FIT,
+      quality: DEFAULT_THUMBNAIL_QUALITY,
+      format: DEFAULT_THUMBNAIL_FORMAT
+    };
+  }
+}
 
 async function generateThumbnail(imagePath, options = {}) {
   const filename = path.basename(imagePath);
   const thumbnailFilename = `thumb_${filename}`;
   const thumbnailDir = getThumbnailPath();
   const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
+  
+  // Get thumbnail settings
+  const settings = await getThumbnailSettings();
   
   // Ensure thumbnail directory exists
   await fs.mkdir(thumbnailDir, { recursive: true });
@@ -38,22 +86,43 @@ async function generateThumbnail(imagePath, options = {}) {
       throw new Error('Invalid image metadata - file may be incomplete');
     }
     
-    // Generate thumbnail with memory-efficient settings and error handling
-    await sharp(imagePath, { 
+    // Create sharp instance with memory-efficient settings
+    let sharpInstance = sharp(imagePath, { 
       limitInputPixels: 268402689, // ~16k x 16k max
       sequentialRead: true, // More memory efficient for large images
       failOnError: false // Don't fail on minor issues
-    })
-      .resize(THUMBNAIL_WIDTH, null, {
-        withoutEnlargement: true,
-        fit: 'inside'
-      })
-      .jpeg({ 
-        quality: 80,
+    });
+    
+    // Apply resize with configured settings
+    // For square thumbnails with 'cover' fit, we crop to center
+    sharpInstance = sharpInstance.resize(settings.width, settings.height, {
+      withoutEnlargement: true,
+      fit: settings.fit, // 'cover' will crop to fill the exact dimensions
+      position: 'center' // Center the crop for better composition
+    });
+    
+    // Apply format-specific options
+    if (settings.format === 'jpeg') {
+      sharpInstance = sharpInstance.jpeg({ 
+        quality: settings.quality,
         progressive: true, // Progressive JPEG for better loading
         mozjpeg: true // Better compression
-      })
-      .toFile(thumbnailPath);
+      });
+    } else if (settings.format === 'png') {
+      sharpInstance = sharpInstance.png({
+        quality: settings.quality,
+        compressionLevel: 9,
+        progressive: true
+      });
+    } else if (settings.format === 'webp') {
+      sharpInstance = sharpInstance.webp({
+        quality: settings.quality,
+        effort: 4 // Balance between speed and compression
+      });
+    }
+    
+    // Save the thumbnail
+    await sharpInstance.toFile(thumbnailPath);
     
     // Verify the thumbnail was created successfully
     const stats = await fs.stat(thumbnailPath);

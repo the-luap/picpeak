@@ -101,8 +101,8 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
           photoId={photoId}
           gallerySlug={gallerySlug}
           currentRating={currentRating}
-          averageRating={feedbackData?.summary.average_rating}
-          totalRatings={feedbackData?.summary.total_ratings}
+          averageRating={Number(feedbackData?.summary?.average_rating) || 0}
+          totalRatings={Number(feedbackData?.summary?.total_ratings) || 0}
           isEnabled={true}
           onRatingChange={handleRatingChange}
         />
@@ -140,7 +140,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
           <PhotoComments
             photoId={photoId}
             gallerySlug={gallerySlug}
-            comments={feedbackData?.feedback || []}
+            comments={feedbackData?.feedback?.filter(f => f.feedback_type === 'comment') || []}
             isEnabled={true}
             requireNameEmail={settings.require_name_email || false}
             showToGuests={settings.show_feedback_to_guests || false}

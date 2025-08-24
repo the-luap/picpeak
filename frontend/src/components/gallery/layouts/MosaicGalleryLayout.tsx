@@ -12,6 +12,7 @@ interface MosaicPhotoProps {
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
   className?: string;
+  allowDownloads?: boolean;
 }
 
 const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
@@ -20,7 +21,8 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
-  className = ''
+  className = '',
+  allowDownloads = true
 }) => {
   return (
     <div
@@ -37,6 +39,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
           loading="lazy"
           isGallery={true}
+          protectFromDownload={!allowDownloads}
         />
       </div>
       
@@ -53,13 +56,15 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
             >
               <Maximize2 className="w-5 h-5 text-neutral-800" />
             </button>
-            <button
-              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-              onClick={onDownload}
-              aria-label="Download photo"
-            >
-              <Download className="w-5 h-5 text-neutral-800" />
-            </button>
+            {allowDownloads && (
+              <button
+                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                onClick={onDownload}
+                aria-label="Download photo"
+              >
+                <Download className="w-5 h-5 text-neutral-800" />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -89,7 +94,8 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
-  onPhotoSelect
+  onPhotoSelect,
+  allowDownloads = true
 }) => {
   // const { theme } = useTheme();
   // const gallerySettings = theme.gallerySettings || {};
@@ -133,6 +139,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onClick={() => handlePhotoClick(idx0, photo0.id)}
                 onDownload={(e) => onDownload(photo0, e)}
                 className="col-span-1"
+                allowDownloads={allowDownloads}
               />
             )}
             <div className="grid grid-rows-2 gap-2">
@@ -144,6 +151,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   onClick={() => handlePhotoClick(idx1, photo1.id)}
                   onDownload={(e) => onDownload(photo1, e)}
                   className=""
+                  allowDownloads={allowDownloads}
                 />
               )}
               {photo2 && (
@@ -154,6 +162,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   onClick={() => handlePhotoClick(idx2, photo2.id)}
                   onDownload={(e) => onDownload(photo2, e)}
                   className=""
+                  allowDownloads={allowDownloads}
                 />
               )}
             </div>
@@ -176,6 +185,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   onClick={() => handlePhotoClick(currentIndex, photo.id)}
                   onDownload={(e) => onDownload(photo, e)}
                   className=""
+                  allowDownloads={allowDownloads}
                 />
               ) : null;
             })}
@@ -202,6 +212,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onClick={() => handlePhotoClick(idx0, photo0.id)}
                 onDownload={(e) => onDownload(photo0, e)}
                 className="col-span-2"
+                allowDownloads={allowDownloads}
               />
             )}
             <div className="grid grid-rows-2 gap-2">
@@ -213,6 +224,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   onClick={() => handlePhotoClick(idx1, photo1.id)}
                   onDownload={(e) => onDownload(photo1, e)}
                   className=""
+                  allowDownloads={allowDownloads}
                 />
               )}
               {photo2 && (
@@ -223,6 +235,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   onClick={() => handlePhotoClick(idx2, photo2.id)}
                   onDownload={(e) => onDownload(photo2, e)}
                   className=""
+                  allowDownloads={allowDownloads}
                 />
               )}
             </div>
@@ -253,6 +266,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onClick={() => handlePhotoClick(index, photo.id)}
                 onDownload={(e) => onDownload(photo, e)}
                 className="aspect-square"
+                allowDownloads={allowDownloads}
               />
             );
           })}

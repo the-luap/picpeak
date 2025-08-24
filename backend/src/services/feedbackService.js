@@ -120,7 +120,7 @@ class FeedbackService {
       }
       
       // Insert new feedback
-      const [id] = await db('photo_feedback').insert({
+      const result = await db('photo_feedback').insert({
         photo_id: photoId,
         event_id: eventId,
         feedback_type,
@@ -134,7 +134,9 @@ class FeedbackService {
         is_approved: feedback_type !== 'comment' || !feedbackData.moderate_comments,
         created_at: new Date(),
         updated_at: new Date()
-      });
+      }).returning('id');
+      
+      const id = result[0]?.id || result[0];
       
       // Update photo stats
       await this.updatePhotoFeedbackStats(photoId);
@@ -175,7 +177,7 @@ class FeedbackService {
       
       const feedback = await query
         .orderBy('created_at', 'desc')
-        .select('id', 'feedback_type', 'rating', 'comment_text', 'guest_name', 'created_at');
+        .select('id', 'feedback_type', 'rating', 'comment_text', 'guest_name', 'created_at', 'is_approved', 'is_hidden');
       
       return feedback;
     } catch (error) {

@@ -139,9 +139,9 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
 
       {/* Comment Form */}
       {showCommentForm && (
-        <form onSubmit={handleSubmitComment} className="space-y-3 p-3 bg-neutral-50 rounded-lg">
+        <form onSubmit={handleSubmitComment} className="space-y-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
           {requireNameEmail && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 placeholder={t('feedback.yourName', 'Your name')}
                 value={guestName}
@@ -166,10 +166,10 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder={t('feedback.writeComment', 'Write a comment...')}
-              className={`w-full px-3 py-2 text-sm border rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              className={`w-full px-3 py-2 text-sm border rounded-lg resize-vertical min-h-[100px] focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.comment_text ? 'border-red-500' : 'border-neutral-300'
               }`}
-              rows={2}
+              rows={4}
               maxLength={500}
             />
             {errors.comment_text && (

@@ -25,6 +25,19 @@ export interface ThemeSettings {
   customCss?: string;
 }
 
+export interface PasswordComplexitySettings {
+  complexityLevel: 'simple' | 'moderate' | 'strong' | 'very_strong';
+  config: {
+    minLength: number;
+    requireUppercase: boolean;
+    requireLowercase: boolean;
+    requireNumbers: boolean;
+    requireSpecialChars: boolean;
+    preventCommonPasswords: boolean;
+    minStrengthScore: number;
+  };
+}
+
 export interface StorageInfo {
   total_used: number;
   archive_storage: number;
@@ -218,5 +231,11 @@ export const settingsService = {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  },
+
+  // Get password complexity settings
+  async getPasswordComplexitySettings(): Promise<PasswordComplexitySettings> {
+    const response = await api.get<PasswordComplexitySettings>('/admin/settings/password/complexity');
+    return response.data;
   }
 };

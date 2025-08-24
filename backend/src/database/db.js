@@ -1,5 +1,6 @@
 const knex = require('knex');
 const knexConfig = require('../../knexfile');
+const logger = require('../utils/logger');
 
 // Create database connection with built-in retry logic
 const db = knex(knexConfig);
@@ -22,7 +23,7 @@ async function withRetry(queryFn, retries = MAX_RETRIES) {
       );
       
       if (isConnectionError && i < retries - 1) {
-        console.log(`Database connection error, retrying in ${RETRY_DELAY}ms... (attempt ${i + 1}/${retries})`);
+        logger.info(`Database connection error, retrying in ${RETRY_DELAY}ms... (attempt ${i + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
         continue;
       }
@@ -91,7 +92,7 @@ async function initializeDatabase() {
         await db.raw('ALTER TABLE events_new RENAME TO events');
       } catch (error) {
         // If the migration fails, it might already have been applied
-        console.log('Color theme migration may have already been applied');
+        logger.debug('Color theme migration may have already been applied');
       }
     }
   }
@@ -153,9 +154,12 @@ async function initializeDatabase() {
       table.string('email').unique().notNullable();
       table.string('password_hash').notNullable();
       table.boolean('is_active').defaultTo(true);
+      table.boolean('must_change_password').defaultTo(false);
+      table.datetime('password_changed_at');
       table.datetime('created_at').defaultTo(db.fn.now());
       table.datetime('updated_at').defaultTo(db.fn.now());
       table.datetime('last_login');
+      table.string('last_login_ip');
     });
   } else {
     // Check if updated_at column exists
@@ -167,6 +171,62 @@ async function initializeDatabase() {
       // Set default value for existing rows
       await db('admin_users').update({ updated_at: new Date() });
     }
+    
+    // Check if must_change_password column exists
+    const hasMustChangePassword = await db.schema.hasColumn('admin_users', 'must_change_password');
+    if (!hasMustChangePassword) {
+      await db.schema.table('admin_users', (table) => {
+        table.boolean('must_change_password').defaultTo(false);
+      });
+    }
+    
+    // Check if password_changed_at column exists
+    const hasPasswordChangedAt = await db.schema.hasColumn('admin_users', 'password_changed_at');
+    if (!hasPasswordChangedAt) {
+      await db.schema.table('admin_users', (table) => {
+        table.datetime('password_changed_at');
+      });
+    }
+    
+    // Check if last_login_ip column exists
+    const hasLastLoginIp = await db.schema.hasColumn('admin_users', 'last_login_ip');
+    if (!hasLastLoginIp) {
+      await db.schema.table('admin_users', (table) => {
+        table.string('last_login_ip');
+      });
+    }
+  }
+
+  // Token revocation tables
+  const hasRevokedTokensTable = await db.schema.hasTable('revoked_tokens');
+  if (!hasRevokedTokensTable) {
+    await db.schema.createTable('revoked_tokens', (table) => {
+      table.increments('id').primary();
+      table.string('token_id').notNullable().unique(); // JWT ID or generated ID
+      table.integer('user_id').nullable(); // User who owned the token
+      table.string('token_type', 20); // admin, gallery, etc.
+      table.timestamp('revoked_at').defaultTo(db.fn.now());
+      table.timestamp('expires_at').notNullable(); // When token would have expired
+      table.string('reason', 100); // password_change, logout, compromised, etc.
+      table.text('metadata'); // Additional JSON data
+      
+      // Indexes for performance
+      table.index('token_id');
+      table.index('user_id');
+      table.index('expires_at'); // For cleanup
+    });
+  }
+
+  const hasUserTokenRevocationsTable = await db.schema.hasTable('user_token_revocations');
+  if (!hasUserTokenRevocationsTable) {
+    await db.schema.createTable('user_token_revocations', (table) => {
+      table.integer('user_id').primary();
+      table.timestamp('revoked_at').notNullable();
+      table.string('reason', 100);
+      
+      // Index for quick lookups
+      table.index('revoked_at');
+    });
   }
 
   // Email configuration table
@@ -248,7 +308,7 @@ async function logActivity(activityType, metadata = {}, eventId = null, actor = 
       event_id: eventId
     });
   } catch (error) {
-    console.error('Failed to log activity:', error);
+    logger.error('Failed to log activity:', { error: error.message });
   }
 }
 

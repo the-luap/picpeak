@@ -80,18 +80,24 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
             
-            {/* Date display */}
-            <div className="hidden lg:block">
+            {/* Date display - hidden on small screens */}
+            <div className="hidden xl:block">
               <p className="text-base text-neutral-700">
                 {format(new Date(), 'PPPP')}
               </p>
             </div>
           </div>
 
-          {/* Center - Logo and PicPeak text */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
+          {/* Center - Logo and PicPeak text - hidden on small screens to prevent overlap */}
+          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-3">
             <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-10 w-auto object-contain" />
             <span className="text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
+          </div>
+          
+          {/* Mobile Logo - shown only on small screens */}
+          <div className="flex lg:hidden items-center gap-2 mx-auto">
+            <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-8 w-auto object-contain" />
+            <span className="text-xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
           </div>
 
           {/* Right side actions */}

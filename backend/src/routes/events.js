@@ -47,9 +47,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link
+    // Generate share link (just slug/token, not full URL)
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const shareLink = `${process.env.FRONTEND_URL}/gallery/${slug}/${shareToken}`;
+    const shareLink = `${slug}/${shareToken}`;
     
     // Hash password
     const password_hash = await bcrypt.hash(password, 10);

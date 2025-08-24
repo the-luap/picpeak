@@ -152,18 +152,25 @@ const validateFeedbackSubmission = [
   
   body('guest_name')
     .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Name must be less than 100 characters')
-    .matches(/^[a-zA-Z0-9\s\-'.]+$/)
-    .withMessage('Name contains invalid characters'),
+    .custom((value) => {
+      // Allow empty or whitespace-only strings
+      if (!value || value.trim() === '') return true;
+      // If not empty, check length and pattern
+      const trimmed = value.trim();
+      if (trimmed.length > 100) throw new Error('Name must be less than 100 characters');
+      if (!/^[a-zA-Z0-9\s\-'.]+$/.test(trimmed)) throw new Error('Name contains invalid characters');
+      return true;
+    }),
   
   body('guest_email')
     .optional()
-    .trim()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Invalid email address')
+    .custom((value) => {
+      // Allow empty or whitespace-only strings
+      if (!value || value.trim() === '') return true;
+      // If not empty, validate as email
+      if (!validator.isEmail(value.trim())) throw new Error('Invalid email address');
+      return true;
+    })
 ];
 
 /**

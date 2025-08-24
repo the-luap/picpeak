@@ -29,3 +29,4 @@ export { BackupHistory } from './BackupHistory';
 export { RestoreWizard } from './RestoreWizard';
 export { FeedbackSettings } from './FeedbackSettings';
 export { FeedbackModerationPanel } from './FeedbackModerationPanel';
+export { WordFilterManager } from './WordFilterManager';

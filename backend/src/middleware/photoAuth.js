@@ -24,7 +24,20 @@ async function photoAuth(req, res, next) {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '');
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Try to verify with issuer first, fallback to no issuer for backward compatibility
+        let decoded;
+        try {
+          decoded = jwt.verify(token, process.env.JWT_SECRET, {
+            issuer: 'picpeak-auth'
+          });
+        } catch (issuerError) {
+          // If verification fails with issuer, try without issuer (backward compatibility)
+          if (issuerError.name === 'JsonWebTokenError' && issuerError.message.includes('jwt issuer invalid')) {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+          } else {
+            throw issuerError;
+          }
+        }
         
         // Check if it's a gallery token
         if (decoded.type === 'gallery') {

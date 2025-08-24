@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
+/* Import image protection styles */
+@import './styles/image-protection.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

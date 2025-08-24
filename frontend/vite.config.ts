@@ -20,11 +20,11 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://backend:3000',
+        target: 'http://localhost:3002',
         changeOrigin: true,
       },
       '/photos': {
-        target: 'http://backend:3000',
+        target: 'http://localhost:3002',
         changeOrigin: true,
       },
     },

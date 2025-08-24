@@ -1,17 +1,28 @@
-exports.up = function(knex) {
+exports.up = async function(knex) {
+  // Check if columns already exist to avoid conflicts
+  const hasPasswordChangedAt = await knex.schema.hasColumn('admin_users', 'password_changed_at');
+  const hasLastLoginIp = await knex.schema.hasColumn('admin_users', 'last_login_ip');
+  const hasTwoFactorEnabled = await knex.schema.hasColumn('admin_users', 'two_factor_enabled');
+  const hasTwoFactorSecret = await knex.schema.hasColumn('admin_users', 'two_factor_secret');
+  
   return knex.schema.table('admin_users', table => {
     // Add password change tracking
-    table.timestamp('password_changed_at').nullable();
+    if (!hasPasswordChangedAt) {
+      table.timestamp('password_changed_at').nullable();
+    }
     
-    // Add last login IP for security monitoring
-    table.string('last_login_ip', 45).nullable();
+    // Add last login IP for security monitoring  
+    if (!hasLastLoginIp) {
+      table.string('last_login_ip', 45).nullable();
+    }
     
     // Add account security flags
-    table.boolean('two_factor_enabled').defaultTo(false);
-    table.string('two_factor_secret').nullable();
-    
-    // Add index for performance
-    table.index('password_changed_at');
+    if (!hasTwoFactorEnabled) {
+      table.boolean('two_factor_enabled').defaultTo(false);
+    }
+    if (!hasTwoFactorSecret) {
+      table.string('two_factor_secret').nullable();
+    }
   });
 };
 

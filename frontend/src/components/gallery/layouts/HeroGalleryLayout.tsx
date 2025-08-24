@@ -26,7 +26,8 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   eventName,
   eventLogo,
   eventDate,
-  expiresAt
+  expiresAt,
+  allowDownloads = true
 }) => {
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
@@ -83,6 +84,7 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
           alt={heroPhoto.filename}
           className="w-full h-full object-cover"
           isGallery={true}
+          protectFromDownload={!allowDownloads}
         />
         
         {/* Overlay */}
@@ -164,6 +166,7 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                 className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
                 isGallery={true}
+                protectFromDownload={!allowDownloads}
               />
               
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
@@ -179,16 +182,18 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                     >
                       <Maximize2 className="w-5 h-5 text-neutral-800" />
                     </button>
-                    <button
-                      className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDownload(photo, e);
-                      }}
-                      aria-label="Download photo"
-                    >
-                      <Download className="w-5 h-5 text-neutral-800" />
-                    </button>
+                    {allowDownloads && (
+                      <button
+                        className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownload(photo, e);
+                        }}
+                        aria-label="Download photo"
+                      >
+                        <Download className="w-5 h-5 text-neutral-800" />
+                      </button>
+                    )}
                   </>
                 )}
               </div>

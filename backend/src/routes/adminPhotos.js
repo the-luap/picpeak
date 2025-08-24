@@ -160,21 +160,22 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
     // Parse category_id to number if provided
     const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
     
-    // Get category details if provided
-    let category = null;
-    if (parsedCategoryId) {
-      category = await db('photo_categories').where({ id: parsedCategoryId }).first();
-      if (!category) {
-        // Clean up temp files
-        if (req.tempUploadPath) {
-          try {
-            await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-          } catch (e) {
-            console.error('Failed to clean up temp path:', e);
-          }
-        }
-        return res.status(400).json({ error: 'Invalid category' });
-      }
+    // Determine photo type from category_id parameter (for backwards compatibility)
+    let photoType = 'individual'; // default
+    let categoryName = 'individual';
+    
+    if (parsedCategoryId === 1 || category_id === 'collage') {
+      photoType = 'collage';
+      categoryName = 'collages';
+    } else if (parsedCategoryId === 2 || category_id === 'individual') {
+      photoType = 'individual';
+      categoryName = 'individual';
+    }
+    
+    // For backwards compatibility, accept string values
+    if (category_id === 'collage') {
+      photoType = 'collage';
+      categoryName = 'collages';
     }
     
     // Create final destination directory
@@ -194,22 +195,12 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
       const trx = await db.transaction();
       
       try {
-        // Get initial counter for this batch
-        let batchCounter = 1;
-        if (category) {
-          const categoryData = await trx('photo_categories')
-            .where({ id: parsedCategoryId })
-            .forUpdate()
-            .first();
-          batchCounter = (categoryData.photo_counter || 0) + 1;
-        } else {
-          const uncategorizedCount = await trx('photos')
-            .where({ event_id: eventId })
-            .whereNull('category_id')
-            .count('id as count')
-            .first();
-          batchCounter = (parseInt(uncategorizedCount.count) || 0) + 1;
-        }
+        // Get initial counter for this batch based on photo type
+        const existingCount = await trx('photos')
+          .where({ event_id: eventId, type: photoType })
+          .count('id as count')
+          .first();
+        let batchCounter = (parseInt(existingCount.count) || 0) + 1;
         
         const batchPhotos = [];
         const fileRenameOperations = []; // Store rename operations to do after commit
@@ -231,7 +222,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
             const extension = path.extname(file.originalname);
             const newFilename = generatePhotoFilename(
               event.event_name,
-              category ? category.name : 'uncategorized',
+              categoryName,
               counter,
               extension
             );
@@ -247,8 +238,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
               filename: newFilename,
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
-              category_id: parsedCategoryId ? parseInt(parsedCategoryId) : null,
-              type: 'individual',
+              type: photoType,
               size_bytes: tempStats.size // Use actual file size from stat
             };
             
@@ -269,18 +259,11 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
         
         // Insert all photos in this batch
         if (batchPhotos.length > 0) {
-          console.log(`Inserting batch of ${batchPhotos.length} photos with category_id: ${parsedCategoryId}`);
+          console.log(`Inserting batch of ${batchPhotos.length} photos with type: ${photoType}`);
           
           const insertedIds = await trx('photos').insert(batchPhotos).returning('id');
           
-          // Update category counter if needed
-          if (category && parsedCategoryId) {
-            const newCounter = batchCounter + batchPhotos.length - 1;
-            await trx('photo_categories')
-              .where({ id: parsedCategoryId })
-              .update({ photo_counter: newCounter });
-            console.log(`Updated category ${parsedCategoryId} counter to ${newCounter}`);
-          }
+          // No need to update counter as we calculate it dynamically
           
           // Commit the transaction first
           await trx.commit();
@@ -648,20 +631,16 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
     
     let query = db('photos')
-      .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .where({ 'photos.event_id': eventId })
-      .select(
-        'photos.*',
-        'photo_categories.name as category_name',
-        'photo_categories.slug as category_slug'
-      );
+      .select('photos.*');
     
-    // Filter by category (including uncategorized)
+    // Filter by type (individual/collage) - category_id maps to type
     if (category_id !== undefined) {
       if (category_id === '' || category_id === '0') {
-        query = query.whereNull('photos.category_id');
-      } else {
-        query = query.where({ 'photos.category_id': category_id });
+        // For backwards compatibility, empty category means no filter
+        // Don't filter anything
+      } else if (category_id === 'individual' || category_id === 'collage') {
+        query = query.where({ 'photos.type': category_id });
       }
     }
     
@@ -686,6 +665,21 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     
     const photos = await query.orderBy(orderByColumn, order);
     
+    // Get comment counts separately
+    const commentCounts = await db('photo_feedback')
+      .whereIn('photo_id', photos.map(p => p.id))
+      .where('feedback_type', 'comment')
+      .where('is_approved', true)
+      .where('is_hidden', false)
+      .groupBy('photo_id')
+      .select('photo_id', db.raw('COUNT(*) as comment_count'));
+    
+    // Create a map for quick lookup
+    const commentMap = {};
+    commentCounts.forEach(c => {
+      commentMap[c.photo_id] = parseInt(c.comment_count);
+    });
+    
     res.json({
       photos: photos.map(photo => ({
         id: photo.id,
@@ -693,11 +687,17 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
         url: `/admin/events/${eventId}/photo/${photo.id}`,
         thumbnail_url: photo.thumbnail_path ? `/admin/events/${eventId}/thumbnail/${photo.id}` : null,
         type: photo.type,
-        category_id: photo.category_id,
-        category_name: photo.category_name,
-        category_slug: photo.category_slug,
+        category_id: photo.type,
+        category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
+        category_slug: photo.type,
         size: photo.size_bytes,
-        uploaded_at: photo.uploaded_at
+        uploaded_at: photo.uploaded_at,
+        // Feedback data
+        has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
+        average_rating: photo.average_rating || 0,
+        comment_count: commentMap[photo.id] || 0,
+        like_count: photo.like_count || 0,
+        favorite_count: photo.favorite_count || 0
       }))
     });
   } catch (error) {

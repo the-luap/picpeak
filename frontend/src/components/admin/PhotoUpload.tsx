@@ -106,7 +106,6 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           });
 
           totalUploaded += chunk.length;
-          console.log(`Chunk ${chunkIndex + 1}/${chunks.length} uploaded:`, response.data);
         } catch (error: any) {
           console.error(`Error uploading chunk ${chunkIndex + 1}:`, error);
           failedFiles.push(...chunk.map(f => f.name));

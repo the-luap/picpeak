@@ -8,6 +8,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
   onPhotoClick,
   onDownload,
+  allowDownloads = true,
   // selectedPhotos = new Set(),
   // isSelectionMode = false
 }) => {
@@ -68,6 +69,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           alt={currentPhoto.filename}
           className="w-full h-full object-contain"
           isGallery={true}
+          protectFromDownload={!allowDownloads}
         />
         
         {/* Navigation Controls */}
@@ -123,15 +125,17 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
               <Maximize2 className="w-5 h-5" />
             </Button>
             
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => onDownload(currentPhoto, e)}
-              className="text-white hover:bg-white/20"
-              title="Download photo"
-            >
-              <Download className="w-5 h-5" />
-            </Button>
+            {allowDownloads && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => onDownload(currentPhoto, e)}
+                className="text-white hover:bg-white/20"
+                title="Download photo"
+              >
+                <Download className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
         
@@ -169,6 +173,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   className="w-full h-full object-cover"
                   loading="lazy"
                   isGallery={true}
+                  protectFromDownload={!allowDownloads}
                 />
               </button>
             ))}

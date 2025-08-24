@@ -24,6 +24,8 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
   isEnabled,
   onRatingChange
 }) => {
+  // Ensure averageRating is a valid number
+  const safeAverageRating = typeof averageRating === 'number' && !isNaN(averageRating) ? averageRating : 0;
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -102,7 +104,7 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
       {/* Average Rating Display */}
       {totalRatings > 0 && (
         <div className="text-sm text-neutral-600">
-          <span className="font-medium">{averageRating.toFixed(1)}</span>
+          <span className="font-medium">{safeAverageRating.toFixed(1)}</span>
           <span className="text-neutral-400 ml-1">
             ({t('feedback.ratingsCount', '{{count}} ratings', { count: totalRatings })})
           </span>

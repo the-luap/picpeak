@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare } from 'lucide-react';
 import type { Photo } from '../../types';
 import { useDownloadPhoto } from '../../hooks/useGallery';
@@ -11,6 +12,9 @@ interface PhotoLightboxProps {
   onClose: () => void;
   slug: string;
   feedbackEnabled?: boolean;
+  allowDownloads?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -19,6 +23,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   onClose,
   slug,
   feedbackEnabled = false,
+  allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -28,8 +35,36 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   
+  // Debug logging
+  console.log('PhotoLightbox feedbackEnabled:', feedbackEnabled);
+  
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
+  
+  // DevTools protection for the lightbox when enhanced protection is enabled
+  useDevToolsProtection({
+    enabled: useEnhancedProtection && (protectionLevel === 'enhanced' || protectionLevel === 'maximum'),
+    detectionSensitivity: protectionLevel === 'maximum' ? 'high' : 'medium',
+    onDevToolsDetected: () => {
+      console.warn('DevTools detected in photo lightbox');
+      
+      // Track analytics
+      if (typeof window !== 'undefined' && (window as any).umami) {
+        (window as any).umami.track('lightbox_devtools_detected', {
+          photoId: currentPhoto.id,
+          protectionLevel,
+          zoom,
+          gallery: slug
+        });
+      }
+      
+      // Close lightbox immediately for maximum protection
+      if (protectionLevel === 'maximum') {
+        onClose();
+      }
+    },
+    redirectOnDetection: false, // Don't redirect, just close lightbox
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,17 +88,29 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           break;
         case 'd':
         case 'D':
-          handleDownload();
+          if (allowDownloads) {
+            handleDownload();
+          }
           break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     document.body.style.overflow = 'hidden';
+    
+    // Add protection class to body for maximum security
+    if (protectionLevel === 'maximum') {
+      document.body.classList.add('protection-maximum');
+    } else if (protectionLevel === 'enhanced') {
+      document.body.classList.add('protection-enhanced');
+    }
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      
+      // Remove protection classes from body
+      document.body.classList.remove('protection-maximum', 'protection-enhanced');
     };
   }, [currentIndex]);
 
@@ -94,6 +141,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   };
 
   const handleDownload = () => {
+    if (!allowDownloads) return;
     downloadPhotoMutation.mutate({
       slug,
       photoId: currentPhoto.id,
@@ -161,8 +209,13 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     setTouchDistance(null);
   };
 
+  // Apply protection class to the lightbox container
+  const lightboxClass = useEnhancedProtection ? 
+    `fixed inset-0 bg-black z-50 flex items-center justify-center protected-image protection-${protectionLevel}` :
+    'fixed inset-0 bg-black z-50 flex items-center justify-center';
+
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+    <div className={lightboxClass}>
       {/* Close button */}
       <button
         onClick={onClose}
@@ -221,21 +274,33 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             
             <div className="w-px h-6 bg-white/20 mx-2" />
             
-            <button
-              onClick={handleDownload}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Download photo"
-            >
-              <Download className="w-5 h-5 text-white" />
-            </button>
+            {allowDownloads && (
+              <button
+                onClick={handleDownload}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Download photo"
+              >
+                <Download className="w-5 h-5 text-white" />
+              </button>
+            )}
             
+            {/* Feedback button with indicator */}
             {feedbackEnabled && (
               <button
-                onClick={() => setShowFeedback(!showFeedback)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                onClick={() => {
+                  console.log('Feedback button clicked, current feedbackEnabled:', feedbackEnabled);
+                  setShowFeedback(!showFeedback);
+                }}
+                className="relative p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
                 aria-label="Toggle feedback"
+                title={`Photo feedback${currentPhoto.comment_count > 0 ? ` (${currentPhoto.comment_count} comments)` : ''}`}
               >
                 <MessageSquare className="w-5 h-5 text-white" />
+                {(currentPhoto.comment_count > 0 || currentPhoto.average_rating > 0) && (
+                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {currentPhoto.comment_count > 0 ? currentPhoto.comment_count : '★'}
+                  </span>
+                )}
               </button>
             )}
           </div>
@@ -264,8 +329,40 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             transition: isDragging ? 'none' : 'transform 0.2s',
           }}
           draggable={false}
-          useWatermark={true}
+          useWatermark={useEnhancedProtection}
+          watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
           isGallery={true}
+          slug={slug}
+          photoId={currentPhoto.id}
+          requiresToken={currentPhoto.requires_token}
+          secureUrlTemplate={currentPhoto.secure_url_template}
+          protectFromDownload={!allowDownloads || useEnhancedProtection}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={protectionLevel === 'maximum'}
+          fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+          blockKeyboardShortcuts={useEnhancedProtection}
+          detectPrintScreen={useEnhancedProtection}
+          detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+          onProtectionViolation={(violationType) => {
+            console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
+            
+            // Track analytics
+            if (typeof window !== 'undefined' && (window as any).umami) {
+              (window as any).umami.track('lightbox_protection_violation', {
+                photoId: currentPhoto.id,
+                violationType,
+                protectionLevel,
+                zoom
+              });
+            }
+            
+            // For maximum protection, close lightbox on violation
+            if (protectionLevel === 'maximum' && 
+                ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
+              onClose();
+            }
+          }}
         />
       </div>
 
@@ -276,7 +373,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
       {/* Feedback Panel */}
       {showFeedback && (
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-white shadow-xl z-20 overflow-y-auto">
+        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-96 lg:w-[28rem] bg-white shadow-xl z-20 overflow-y-auto">
           <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
             <h3 className="font-semibold text-neutral-900">Photo Feedback</h3>
             <button
@@ -292,6 +389,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               photoId={currentPhoto.id}
               gallerySlug={slug}
               showComments={true}
+              className="space-y-4"
             />
           </div>
         </div>

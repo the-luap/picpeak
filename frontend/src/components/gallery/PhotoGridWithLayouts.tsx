@@ -35,6 +35,9 @@ interface PhotoGridWithLayoutsProps {
   eventDate?: string;
   expiresAt?: string;
   feedbackEnabled?: boolean;
+  allowDownloads?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({ 
@@ -44,6 +47,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   isSelectionMode: parentSelectionMode,
   selectedPhotos: parentSelectedPhotos,
   feedbackEnabled,
+  allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
   onSelectionChange,
   onToggleSelectionMode: parentToggleSelectionMode,
   showSelectionControls = true,
@@ -58,7 +64,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   const [localSelectedPhotos, setLocalSelectedPhotos] = useState<Set<number>>(new Set());
   const [localSelectionMode, setLocalSelectionMode] = useState(false);
   const downloadPhotoMutation = useDownloadPhoto();
-
+  
   // Use parent state if provided, otherwise use local state
   const selectedPhotos = parentSelectedPhotos ?? localSelectedPhotos;
   const isSelectionMode = parentSelectionMode ?? localSelectionMode;
@@ -162,12 +168,16 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     onPhotoClick: handlePhotoClick,
     onDownload: handleDownload,
     selectedPhotos,
+    allowDownloads,
+    protectionLevel,
+    useEnhancedProtection,
     isSelectionMode,
     onPhotoSelect: handlePhotoSelect,
     eventName,
     eventLogo,
     eventDate,
     expiresAt,
+    feedbackEnabled,
   };
 
   let LayoutComponent;
@@ -262,6 +272,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           onClose={() => setSelectedPhotoIndex(null)}
           slug={slug}
           feedbackEnabled={feedbackEnabled || false}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
         />
       )}
     </>

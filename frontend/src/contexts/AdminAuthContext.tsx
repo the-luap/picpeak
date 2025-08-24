@@ -11,6 +11,8 @@ interface AdminAuthContextType {
   logout: () => void;
   isLoading: boolean;
   error: string | null;
+  mustChangePassword: boolean;
+  updatePasswordChanged: () => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -32,6 +34,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
     // Check if user has a valid token on mount
@@ -59,12 +62,24 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     setUser(user);
     setError(null);
     setIsAuthenticated(true);
+    setMustChangePassword(user.mustChangePassword || false);
   };
 
   const logout = () => {
     authService.adminLogout();
     setIsAuthenticated(false);
     setUser(null);
+    setMustChangePassword(false);
+  };
+
+  const updatePasswordChanged = () => {
+    setMustChangePassword(false);
+    if (user) {
+      setUser({
+        ...user,
+        mustChangePassword: false
+      });
+    }
   };
 
   return (
@@ -76,6 +91,8 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         logout,
         isLoading,
         error,
+        mustChangePassword,
+        updatePasswordChanged,
       }}
     >
       {children}

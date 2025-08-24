@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Input, Card } from '../common';
 import { adminService } from '../../services/admin.service';
@@ -12,6 +13,7 @@ interface PasswordChangeModalProps {
 }
 
 export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -27,7 +29,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
   const changePasswordMutation = useMutation({
     mutationFn: adminService.changePassword,
     onSuccess: () => {
-      toast.success('Password changed successfully');
+      toast.success(t('passwordChange.success'));
       onClose();
       // Reset form
       setFormData({
@@ -41,7 +43,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
       if (error.response?.data?.error) {
         toast.error(error.response.data.error);
       } else {
-        toast.error('Failed to change password');
+        toast.error(t('passwordChange.failed'));
       }
     }
   });
@@ -50,23 +52,23 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
     const newErrors: Record<string, string> = {};
 
     if (!formData.currentPassword) {
-      newErrors.currentPassword = 'Current password is required';
+      newErrors.currentPassword = t('passwordChange.currentRequired');
     }
 
     if (!formData.newPassword) {
-      newErrors.newPassword = 'New password is required';
+      newErrors.newPassword = t('passwordChange.newRequired');
     } else if (formData.newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
+      newErrors.newPassword = t('passwordChange.minLengthError');
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your new password';
+      newErrors.confirmPassword = t('passwordChange.confirmRequired');
     } else if (formData.newPassword !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = t('passwordChange.noMatch');
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      newErrors.newPassword = 'New password must be different from current password';
+      newErrors.newPassword = t('passwordChange.mustBeDifferent');
     }
 
     setErrors(newErrors);
@@ -101,7 +103,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
       <Card className="w-full max-w-md">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-neutral-900">Change Password</h2>
+            <h2 className="text-xl font-semibold text-neutral-900">{t('passwordChange.title')}</h2>
             <button
               onClick={onClose}
               className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
@@ -114,7 +116,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
             {/* Current Password */}
             <div>
               <label htmlFor="currentPassword" className="block text-sm font-medium text-neutral-700 mb-1">
-                Current Password
+                {t('passwordChange.currentPassword')}
               </label>
               <div className="relative">
                 <Input
@@ -123,7 +125,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
                   value={formData.currentPassword}
                   onChange={handleInputChange('currentPassword')}
                   error={errors.currentPassword}
-                  placeholder="Enter current password"
+                  placeholder={t('passwordChange.currentPasswordPlaceholder')}
                   leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
                 />
                 <button
@@ -142,7 +144,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
             {/* New Password */}
             <div>
               <label htmlFor="newPassword" className="block text-sm font-medium text-neutral-700 mb-1">
-                New Password
+                {t('passwordChange.newPassword')}
               </label>
               <div className="relative">
                 <Input
@@ -151,7 +153,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
                   value={formData.newPassword}
                   onChange={handleInputChange('newPassword')}
                   error={errors.newPassword}
-                  placeholder="Enter new password"
+                  placeholder={t('passwordChange.newPasswordPlaceholder')}
                   leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
                 />
                 <button
@@ -170,7 +172,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-neutral-700 mb-1">
-                Confirm New Password
+                {t('passwordChange.confirmPassword')}
               </label>
               <div className="relative">
                 <Input
@@ -179,7 +181,7 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
                   value={formData.confirmPassword}
                   onChange={handleInputChange('confirmPassword')}
                   error={errors.confirmPassword}
-                  placeholder="Confirm new password"
+                  placeholder={t('passwordChange.confirmPasswordPlaceholder')}
                   leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
                 />
                 <button
@@ -200,10 +202,10 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-blue-800">
-                  <p className="font-medium">Password Requirements:</p>
+                  <p className="font-medium">{t('passwordChange.requirements')}</p>
                   <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>At least 6 characters long</li>
-                    <li>Must be different from current password</li>
+                    <li>{t('passwordChange.minLength')}</li>
+                    <li>{t('passwordChange.mustDiffer')}</li>
                   </ul>
                 </div>
               </div>
@@ -216,14 +218,14 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
                 variant="outline"
                 onClick={onClose}
               >
-                Cancel
+                {t('passwordChange.cancel')}
               </Button>
               <Button
                 type="submit"
                 variant="primary"
                 isLoading={changePasswordMutation.isPending}
               >
-                Change Password
+                {t('passwordChange.title')}
               </Button>
             </div>
           </form>

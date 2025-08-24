@@ -14,6 +14,7 @@ import { GallerySidebar } from './GallerySidebar';
 import { PhotoFilterBar } from './PhotoFilterBar';
 import { UserPhotoUpload } from './UserPhotoUpload';
 import { analyticsService } from '../../services/analytics.service';
+import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { api } from '../../config/api';
 import { Upload, Menu } from 'lucide-react';
@@ -34,6 +35,7 @@ interface GalleryViewProps {
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;
+    allow_downloads?: boolean;
   };
 }
 
@@ -43,7 +45,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { setTheme, theme } = useTheme();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,9 +54,44 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [feedbackEnabled, setFeedbackEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { watermarkEnabled } = useWatermarkSettings();
+  const [protectionLevel, setProtectionLevel] = useState<'basic' | 'standard' | 'enhanced' | 'maximum'>('standard');
   
   // Fetch photos
   const { data, isLoading, error, refetch } = useGalleryPhotos(slug);
+  
+  // Set protection level when data is available
+  useEffect(() => {
+    if (data?.event?.protection_level) {
+      setProtectionLevel(data.event.protection_level);
+    }
+  }, [data?.event?.protection_level]);
+  
+  // DevTools protection for enhanced and maximum levels
+  useDevToolsProtection({
+    enabled: protectionLevel === 'enhanced' || protectionLevel === 'maximum',
+    detectionSensitivity: protectionLevel === 'maximum' ? 'high' : 'medium',
+    onDevToolsDetected: () => {
+      console.warn('DevTools detected in gallery view');
+      
+      // Track analytics
+      if (typeof window !== 'undefined' && (window as any).umami) {
+        (window as any).umami.track('gallery_devtools_detected', {
+          gallery: slug,
+          protectionLevel,
+          eventId: data?.event?.id
+        });
+      }
+      
+      // For maximum protection, redirect away from gallery
+      if (protectionLevel === 'maximum') {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
+      }
+    },
+    redirectOnDetection: protectionLevel === 'maximum',
+    redirectUrl: '/'
+  });
   
   // Data updates are handled by React Query
   const downloadAllMutation = useDownloadAllPhotos();
@@ -85,17 +122,24 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       try {
         // Use public endpoint to get feedback settings
         const response = await api.get(`/gallery/${slug}/feedback-settings`);
+        console.log('Feedback settings response:', response.data);
         return response.data;
       } catch (error) {
+        console.error('Error fetching feedback settings:', error);
         // If endpoint doesn't exist or returns error, default to disabled
         return { feedback_enabled: false };
       }
     },
-    onSuccess: (data) => {
-      setFeedbackEnabled(data?.feedback_enabled || false);
-    },
     enabled: !!event.id,
   });
+
+  // Update feedbackEnabled when settings change
+  useEffect(() => {
+    if (feedbackSettings) {
+      console.log('Setting feedbackEnabled to:', feedbackSettings.feedback_enabled);
+      setFeedbackEnabled(feedbackSettings.feedback_enabled || false);
+    }
+  }, [feedbackSettings]);
 
   // Apply branding settings
   useEffect(() => {
@@ -170,6 +214,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   // Calculate days until expiration
   const daysUntilExpiration = differenceInDays(parseISO(event.expires_at), new Date());
   const showUrgentWarning = daysUntilExpiration <= 7;
+  const isExpired = daysUntilExpiration < 0;
 
   // Filter and sort photos
   const filteredPhotos = useMemo(() => {
@@ -197,6 +242,15 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           return a.filename.localeCompare(b.filename);
         case 'size':
           return b.size - a.size;
+        case 'rating':
+          // Sort by rating (highest first), then by comment count
+          const ratingA = a.average_rating || 0;
+          const ratingB = b.average_rating || 0;
+          if (ratingA !== ratingB) {
+            return ratingB - ratingA;
+          }
+          // If ratings are equal, sort by comment count
+          return (b.comment_count || 0) - (a.comment_count || 0);
         case 'date':
         default:
           return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
@@ -215,7 +269,15 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     return photos;
   }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug]);
 
+  // Check if downloads are allowed (both event setting and not expired)
+  const allowDownloads = !isExpired && (data?.event?.allow_downloads === true);
+
   const handleDownloadAll = () => {
+    // Prevent downloads if gallery is expired or downloads disabled
+    if (!allowDownloads) {
+      return;
+    }
+    
     downloadAllMutation.mutate(slug);
     
     // Track download all action
@@ -228,6 +290,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
 
   const handleDownloadSelected = async () => {
     if (selectedPhotos.size === 0) return;
+    
+    // Prevent downloads if gallery is expired or downloads disabled
+    if (!allowDownloads) {
+      return;
+    }
     
     const selectedPhotosList = filteredPhotos.filter(p => selectedPhotos.has(p.id));
     
@@ -349,6 +416,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           onDownloadAll={handleDownloadAll}
           onDownloadSelected={handleDownloadSelected}
           isDownloading={downloadAllMutation.isPending}
+          isExpired={isExpired}
+          allowDownloads={allowDownloads}
           photoCounts={photoCounts}
           totalPhotos={data?.photos.length || 0}
           isMobile={isMobile}
@@ -363,9 +432,10 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         brandingSettings={brandingSettings}
         showLogout={true}
         onLogout={logout}
-        showDownloadAll={!showSidebar}
+        showDownloadAll={!showSidebar && allowDownloads}
         onDownloadAll={handleDownloadAll}
         isDownloading={downloadAllMutation.isPending}
+        isExpired={isExpired}
         menuButton={showSidebar ? (
           <Button
             variant="ghost"
@@ -460,6 +530,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             eventLogo={brandingSettings?.logo_url}
             eventDate={event.event_date}
             expiresAt={event.expires_at}
+            allowDownloads={allowDownloads}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={protectionLevel !== 'basic'}
           />
         </div>
 

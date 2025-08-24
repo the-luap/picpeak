@@ -12,7 +12,8 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
-  onPhotoSelect
+  onPhotoSelect,
+  allowDownloads = true
 }) => {
   const { theme } = useTheme();
   const gallerySettings = theme.gallerySettings || {};
@@ -103,6 +104,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                       className="w-full h-full object-cover rounded-lg"
                       loading="lazy"
                       isGallery={true}
+                      protectFromDownload={!allowDownloads}
                     />
                     
                     {/* Time label */}
@@ -123,16 +125,18 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                           >
                             <Maximize2 className="w-5 h-5 text-neutral-800" />
                           </button>
-                          <button
-                            className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDownload(photo, e);
-                            }}
-                            aria-label="Download photo"
-                          >
-                            <Download className="w-5 h-5 text-neutral-800" />
-                          </button>
+                          {allowDownloads && (
+                            <button
+                              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDownload(photo, e);
+                              }}
+                              aria-label="Download photo"
+                            >
+                              <Download className="w-5 h-5 text-neutral-800" />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>

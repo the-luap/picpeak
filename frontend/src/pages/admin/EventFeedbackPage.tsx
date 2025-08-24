@@ -466,7 +466,7 @@ export const EventFeedbackPage: React.FC = () => {
                               ))}
                             </div>
                             <span className="text-sm text-neutral-600">
-                              {photo.average_rating.toFixed(1)} ({photo.feedback_count})
+                              {Number(photo.average_rating).toFixed(1)} ({photo.feedback_count})
                             </span>
                           </div>
                         </div>

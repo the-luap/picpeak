@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Input, Card, ReCaptcha } from '../../components/common';
 import { useAdminAuth } from '../../contexts';
@@ -10,6 +11,7 @@ import { authService } from '../../services/auth.service';
 import { getAuthToken, api } from '../../config/api';
 
 export const AdminLoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, login } = useAdminAuth();
   const [searchParams] = useSearchParams();
   
@@ -36,9 +38,9 @@ export const AdminLoginPage: React.FC = () => {
   // Check for session expired message
   useEffect(() => {
     if (searchParams.get('session') === 'expired') {
-      toast.info('Your session has expired. Please log in again.');
+      toast.info(t('adminLogin.sessionExpired'));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   // Redirect if already authenticated or login successful
   if (isAuthenticated || loginSuccess) {
@@ -49,15 +51,15 @@ export const AdminLoginPage: React.FC = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('adminLogin.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = t('adminLogin.invalidEmail');
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('adminLogin.passwordRequired');
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = t('adminLogin.passwordMinLength');
     }
 
     setErrors(newErrors);
@@ -80,7 +82,7 @@ export const AdminLoginPage: React.FC = () => {
         recaptchaToken
       });
       login(response.token, response.user);
-      toast.success('Login successful!');
+      toast.success(t('adminLogin.loginSuccess'));
       setLoginSuccess(true);
     } catch (error: any) {
       // Login error handled by UI notification
@@ -94,13 +96,13 @@ export const AdminLoginPage: React.FC = () => {
           setLoginSuccess(true);
           return;
         }
-        toast.error('Network error. Please check your connection and try again.');
+        toast.error(t('adminLogin.networkError'));
       } else if (error.response?.status === 429) {
-        toast.error('Too many login attempts. Please try again later.');
+        toast.error(t('adminLogin.tooManyAttempts'));
       } else if (error.response?.status === 401) {
-        setErrors({ form: 'Invalid email or password' });
+        setErrors({ form: t('adminLogin.invalidCredentials') });
       } else {
-        toast.error('An error occurred. Please try again.');
+        toast.error(t('adminLogin.generalError'));
       }
     } finally {
       setIsLoading(false);
@@ -130,8 +132,8 @@ export const AdminLoginPage: React.FC = () => {
               className="w-[180px] h-[130px] object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text, #171717)' }}>Admin Login</h1>
-          <p className="mt-2" style={{ color: 'var(--color-text, #171717)', opacity: 0.7 }}>Sign in to manage your photo galleries</p>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text, #171717)' }}>{t('adminLogin.title')}</h1>
+          <p className="mt-2" style={{ color: 'var(--color-text, #171717)', opacity: 0.7 }}>{t('adminLogin.subtitle')}</p>
         </div>
 
         {/* Login Form */}
@@ -148,7 +150,7 @@ export const AdminLoginPage: React.FC = () => {
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
-                Email Address
+                {t('adminLogin.emailLabel')}
               </label>
               <Input
                 id="email"
@@ -156,7 +158,7 @@ export const AdminLoginPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 error={errors.email}
-                placeholder="admin@example.com"
+                placeholder={t('adminLogin.emailPlaceholder')}
                 leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
                 autoComplete="email"
                 autoFocus
@@ -166,7 +168,7 @@ export const AdminLoginPage: React.FC = () => {
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
-                Password
+                {t('adminLogin.passwordLabel')}
               </label>
               <div className="relative">
                 <Input
@@ -175,7 +177,7 @@ export const AdminLoginPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange('password')}
                   error={errors.password}
-                  placeholder="Enter your password"
+                  placeholder={t('adminLogin.passwordPlaceholder')}
                   leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
                   autoComplete="current-password"
                 />
@@ -201,10 +203,10 @@ export const AdminLoginPage: React.FC = () => {
                   type="checkbox"
                   className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
                 />
-                <span className="ml-2 text-sm text-neutral-700">Remember me</span>
+                <span className="ml-2 text-sm text-neutral-700">{t('adminLogin.rememberMe')}</span>
               </label>
               <a href="#" className="text-sm text-primary-600 hover:text-primary-700">
-                Forgot password?
+                {t('adminLogin.forgotPassword')}
               </a>
             </div>
 
@@ -222,7 +224,7 @@ export const AdminLoginPage: React.FC = () => {
               isLoading={isLoading}
               className="w-full"
             >
-              Sign In
+              {t('adminLogin.signIn')}
             </Button>
           </form>
         </Card>
@@ -230,7 +232,7 @@ export const AdminLoginPage: React.FC = () => {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-sm" style={{ color: 'var(--color-text, #171717)', opacity: 0.7 }}>
-            Need help? Contact{' '}
+            {t('adminLogin.needHelp')}{' '}
             <a 
               href={`mailto:${settingsData?.branding_support_email || 'support@example.com'}`} 
               className="hover:underline"
@@ -240,7 +242,7 @@ export const AdminLoginPage: React.FC = () => {
             </a>
           </p>
           <p className="text-xs mt-2" style={{ color: 'var(--color-text, #171717)', opacity: 0.5 }}>
-            Powered by <span className="font-semibold">PicPeak</span>
+            {t('adminLogin.poweredBy')}
           </p>
         </div>
 
@@ -248,7 +250,7 @@ export const AdminLoginPage: React.FC = () => {
         {import.meta.env.DEV && (
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 text-center">
-              <strong>Development Mode:</strong> Use email: admin@example.com, password: admin123
+              {t('adminLogin.devModeHint')}
             </p>
           </div>
         )}

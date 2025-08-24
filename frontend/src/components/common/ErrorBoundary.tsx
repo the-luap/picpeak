@@ -25,10 +25,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    console.error('Component stack:', errorInfo.componentStack);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error caught by boundary:', error, errorInfo);
+      console.error('Component stack:', errorInfo.componentStack);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
   }
 
   handleReset = () => {
@@ -79,7 +81,9 @@ export class PageErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Page error:', error, errorInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Page error:', error, errorInfo);
+    }
   }
 
   handleReset = () => {

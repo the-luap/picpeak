@@ -16,12 +16,13 @@ import { toast } from 'react-toastify';
 
 import { Button, Card, Input, Loading } from '../../components/common';
 import { CategoryManager } from '../../components/admin/CategoryManager';
+import { WordFilterManager } from '../../components/admin/WordFilterManager';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
 
@@ -255,6 +256,16 @@ export const SettingsPage: React.FC = () => {
             }`}
           >
             {t('settings.analytics.title')}
+          </button>
+          <button
+            onClick={() => setActiveTab('moderation')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'moderation'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            {t('settings.moderation.title', 'Moderation')}
           </button>
         </nav>
       </div>
@@ -946,6 +957,13 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Moderation Tab */}
+      {activeTab === 'moderation' && (
+        <div className="space-y-6">
+          <WordFilterManager />
         </div>
       )}
     </div>

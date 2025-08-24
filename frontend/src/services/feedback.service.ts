@@ -141,22 +141,22 @@ class FeedbackService {
 
   // Word filter management
   async getWordFilters() {
-    const response = await api.get('/admin/feedback/feedback/word-filters');
+    const response = await api.get('/admin/feedback/word-filters');
     return response.data;
   }
 
-  async addWordFilter(word: string, severity: 'low' | 'moderate' | 'high' = 'moderate') {
-    const response = await api.post('/admin/feedback/feedback/word-filters', { word, severity });
+  async addWordFilter(word: string, severity: string) {
+    const response = await api.post('/admin/feedback/word-filters', { word, severity });
     return response.data;
   }
 
-  async updateWordFilter(id: string, updates: { word?: string; severity?: string; is_active?: boolean }) {
-    const response = await api.put(`/admin/feedback/feedback/word-filters/${id}`, updates);
+  async updateWordFilter(id: number, updates: { word?: string; severity?: string; is_active?: boolean }) {
+    const response = await api.put(`/admin/feedback/word-filters/${id}`, updates);
     return response.data;
   }
 
-  async deleteWordFilter(id: string) {
-    const response = await api.delete(`/admin/feedback/feedback/word-filters/${id}`);
+  async deleteWordFilter(id: number) {
+    const response = await api.delete(`/admin/feedback/word-filters/${id}`);
     return response.data;
   }
 

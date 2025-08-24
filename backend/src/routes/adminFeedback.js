@@ -111,7 +111,29 @@ router.get('/events/:eventId/feedback',
       
       // Pagination
       const offset = (page - 1) * limit;
-      const totalCount = await query.clone().count('photo_feedback.id as count').first();
+      
+      // Create a separate count query
+      let countQuery = db('photo_feedback')
+        .where('photo_feedback.event_id', eventId);
+      
+      if (type) {
+        countQuery = countQuery.where('photo_feedback.feedback_type', type);
+      }
+      
+      if (status === 'pending') {
+        countQuery = countQuery.where('photo_feedback.is_approved', false)
+                               .where('photo_feedback.is_hidden', false);
+      } else if (status === 'approved') {
+        countQuery = countQuery.where('photo_feedback.is_approved', true);
+      } else if (status === 'hidden') {
+        countQuery = countQuery.where('photo_feedback.is_hidden', true);
+      }
+      
+      if (photoId) {
+        countQuery = countQuery.where('photo_feedback.photo_id', photoId);
+      }
+      
+      const totalCount = await countQuery.count('photo_feedback.id as count').first();
       
       const feedback = await query
         .orderBy('photo_feedback.created_at', 'desc')
@@ -314,7 +336,7 @@ router.get('/feedback/pending-moderation',
 );
 
 // Word filter management
-router.get('/feedback/word-filters',
+router.get('/word-filters',
   adminAuth,
   async (req, res) => {
     try {
@@ -327,7 +349,7 @@ router.get('/feedback/word-filters',
   }
 );
 
-router.post('/feedback/word-filters',
+router.post('/word-filters',
   adminAuth,
   validateWordFilter,
   checkValidation,
@@ -339,8 +361,8 @@ router.post('/feedback/word-filters',
       
       await logActivity('word_filter_added', { word, severity }, null, {
         type: 'admin',
-        id: req.user.id,
-        name: req.user.username
+        id: req.user?.id || req.admin?.id,
+        name: req.user?.username || req.admin?.username
       });
       
       res.json({ success: true });
@@ -354,7 +376,7 @@ router.post('/feedback/word-filters',
   }
 );
 
-router.put('/feedback/word-filters/:id',
+router.put('/word-filters/:id',
   adminAuth,
   async (req, res) => {
     try {
@@ -371,7 +393,7 @@ router.put('/feedback/word-filters/:id',
   }
 );
 
-router.delete('/feedback/word-filters/:id',
+router.delete('/word-filters/:id',
   adminAuth,
   async (req, res) => {
     try {

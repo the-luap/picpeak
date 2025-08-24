@@ -13,6 +13,10 @@ export interface BaseGalleryLayoutProps {
   eventLogo?: string | null;
   eventDate?: string;
   expiresAt?: string;
+  allowDownloads?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
+  feedbackEnabled?: boolean;
 }
 
 export abstract class BaseGalleryLayout<T extends BaseGalleryLayoutProps = BaseGalleryLayoutProps> extends React.Component<T> {

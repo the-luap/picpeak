@@ -26,6 +26,7 @@ exports.up = async function(knex) {
         username: adminUsername,
         email: adminEmail,
         password_hash: passwordHash,
+        must_change_password: true,
         created_at: new Date()
       });
       

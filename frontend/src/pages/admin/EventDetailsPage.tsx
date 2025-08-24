@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -77,7 +77,7 @@ export const EventDetailsPage: React.FC = () => {
   const [photoFilters, setPhotoFilters] = useState({
     category_id: undefined as number | null | undefined,
     search: '',
-    sort: 'date' as 'date' | 'name' | 'size',
+    sort: 'date' as 'date' | 'name' | 'size' | 'rating',
     order: 'desc' as 'asc' | 'desc'
   });
 
@@ -93,10 +93,14 @@ export const EventDetailsPage: React.FC = () => {
     queryKey: ['admin-event-feedback-settings', id],
     queryFn: () => feedbackService.getEventFeedbackSettings(id!),
     enabled: !!id,
-    onSuccess: (data) => {
-      setFeedbackSettings(data);
-    }
   });
+
+  // Update local feedback settings when fetched from server
+  useEffect(() => {
+    if (eventFeedbackSettings) {
+      setFeedbackSettings(eventFeedbackSettings);
+    }
+  }, [eventFeedbackSettings]);
 
   // Statistics are now fetched with the event details from the admin API
 
@@ -126,9 +130,7 @@ export const EventDetailsPage: React.FC = () => {
       setIsEditing(false);
     },
     onError: (error: any) => {
-      console.error('Update event error:', error.response?.data || error);
       if (error.response?.data?.errors) {
-        console.error('Validation errors:', error.response.data.errors);
         const errorMessage = error.response.data.errors[0].msg + ' (field: ' + error.response.data.errors[0].path + ')';
         toast.error(errorMessage);
       } else {
@@ -186,6 +188,11 @@ export const EventDetailsPage: React.FC = () => {
       host_name: event.host_name || '',
     });
     
+    // Set feedback settings if available
+    if (eventFeedbackSettings) {
+      setFeedbackSettings(eventFeedbackSettings);
+    }
+    
     // Parse theme configuration
     if (event.color_theme) {
       try {
@@ -206,7 +213,6 @@ export const EventDetailsPage: React.FC = () => {
           }
         }
       } catch (e) {
-        console.error('Failed to parse theme:', e);
         setCurrentTheme(GALLERY_THEME_PRESETS.default.config);
         setCurrentPresetName('default');
       }
@@ -258,8 +264,7 @@ export const EventDetailsPage: React.FC = () => {
       }
     });
     
-    console.log('Updating event with data:', updateData);
-    console.log('Theme length:', updateData.color_theme ? updateData.color_theme.length : 0);
+    // Event update with validation
     
     // Update event details
     updateMutation.mutate(updateData);
@@ -268,7 +273,7 @@ export const EventDetailsPage: React.FC = () => {
     try {
       await feedbackService.updateEventFeedbackSettings(id!, feedbackSettings);
     } catch (error) {
-      console.error('Failed to update feedback settings:', error);
+      // Error already handled by mutation
     }
   };
 
@@ -316,7 +321,7 @@ export const EventDetailsPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             {!event.is_archived && (
               <>
                 {isEditing ? (
@@ -340,28 +345,30 @@ export const EventDetailsPage: React.FC = () => {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<Edit2 className="w-4 h-4" />}
-                    onClick={handleStartEdit}
-                  >
-                    {t('common.edit')}
-                  </Button>
-                )}
-                {feedbackSettings?.feedback_enabled && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<MessageSquare className="w-4 h-4" />}
-                    onClick={() => navigate(`/admin/events/${id}/feedback`)}
-                  >
-                    {t('feedback.manage', 'Manage Feedback')}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Edit2 className="w-4 h-4" />}
+                      onClick={handleStartEdit}
+                    >
+                      {t('common.edit')}
+                    </Button>
+                    {feedbackSettings?.feedback_enabled && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<MessageSquare className="w-4 h-4" />}
+                        onClick={() => navigate(`/admin/events/${id}/feedback`)}
+                      >
+                        {t('feedback.manage', 'Manage Feedback')}
+                      </Button>
+                    )}
+                  </>
                 )}
               </>
             )}
-            {event.share_link && (
+            {event.share_link && !isEditing && (
               <a
                 href={
                   event.share_link.startsWith('http') 

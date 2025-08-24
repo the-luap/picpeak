@@ -49,12 +49,22 @@ export interface Photo {
   filename: string;
   url: string;
   thumbnail_url?: string;
+  secure_url_template?: string;
+  download_url_template?: string;
+  requires_token?: boolean;
   type: 'collage' | 'individual';
   category_id?: number;
   category_name?: string;
   category_slug?: string;
   size: number;
   uploaded_at: string;
+  // Feedback fields
+  has_feedback?: boolean;
+  average_rating?: number;
+  total_ratings?: number;
+  comment_count?: number;
+  like_count?: number;
+  favorite_count?: number;
 }
 
 export interface PhotoCategory {
@@ -76,6 +86,15 @@ export interface GalleryData {
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;
+    allow_downloads?: boolean;
+    disable_right_click?: boolean;
+    watermark_downloads?: boolean;
+    watermark_text?: string;
+    protection_level?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+    image_quality?: number;
+    use_canvas_rendering?: boolean;
+    fragmentation_level?: number;
+    overlay_protection?: boolean;
   };
   categories?: PhotoCategory[];
   photos: Photo[];
@@ -93,6 +112,7 @@ export interface AdminUser {
   id: number;
   username: string;
   email: string;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {
@@ -125,3 +145,6 @@ export interface ApiError {
     location: string;
   }>;
 }
+
+// Export protection types
+export * from './protection';

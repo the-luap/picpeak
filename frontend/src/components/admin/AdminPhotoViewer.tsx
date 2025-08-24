@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Download, Trash2, Tag, Calendar, HardDrive, Eye, MousePointer } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, Trash2, Tag, Calendar, HardDrive, Eye, MousePointer, MessageSquare, Star, Heart, ThumbsUp, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { AdminPhoto } from '../../services/photos.service';
 import { photosService } from '../../services/photos.service';
+import { feedbackService } from '../../services/feedback.service';
 import { Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
 
@@ -28,8 +30,20 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [expandedComments, setExpandedComments] = useState(false);
+  const queryClient = useQueryClient();
   
   const currentPhoto = photos[currentIndex];
+
+  // Fetch feedback for current photo
+  const { data: feedbackData } = useQuery({
+    queryKey: ['admin-photo-feedback', eventId, currentPhoto?.id],
+    queryFn: () => feedbackService.getEventFeedback(eventId.toString(), {
+      photoId: currentPhoto?.id.toString(),
+      status: 'all' // Get all comments including unapproved
+    }),
+    enabled: !!currentPhoto
+  });
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
@@ -87,6 +101,30 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
       toast.error('Failed to update category');
     }
   };
+
+  // Mutations for feedback moderation
+  const moderateFeedbackMutation = useMutation({
+    mutationFn: ({ feedbackId, action }: { feedbackId: string; action: 'approve' | 'hide' | 'reject' }) =>
+      feedbackService.moderateFeedback(feedbackId, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-photo-feedback', eventId, currentPhoto?.id] });
+      toast.success('Feedback moderated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to moderate feedback');
+    }
+  });
+
+  const deleteFeedbackMutation = useMutation({
+    mutationFn: (feedbackId: string) => feedbackService.deleteFeedback(feedbackId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-photo-feedback', eventId, currentPhoto?.id] });
+      toast.success('Feedback deleted successfully');
+    },
+    onError: () => {
+      toast.error('Failed to delete feedback');
+    }
+  });
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -255,6 +293,177 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
               </div>
             )}
           </div>
+
+          {/* Feedback Section */}
+          {feedbackData && (
+            <div className="mt-6 pt-6 border-t border-neutral-700">
+              <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Feedback & Comments
+              </h4>
+              
+              {/* Feedback Stats */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {currentPhoto.average_rating > 0 && (
+                  <div className="bg-neutral-800 rounded-lg p-3">
+                    <div className="flex items-center gap-1 text-yellow-400 mb-1">
+                      <Star className="w-4 h-4" fill="currentColor" />
+                      <span className="text-white font-medium">{Number(currentPhoto.average_rating).toFixed(1)}</span>
+                    </div>
+                    <p className="text-xs text-neutral-400">Avg Rating</p>
+                  </div>
+                )}
+                
+                {currentPhoto.like_count > 0 && (
+                  <div className="bg-neutral-800 rounded-lg p-3">
+                    <div className="flex items-center gap-1 text-red-400 mb-1">
+                      <Heart className="w-4 h-4" fill="currentColor" />
+                      <span className="text-white font-medium">{currentPhoto.like_count}</span>
+                    </div>
+                    <p className="text-xs text-neutral-400">Likes</p>
+                  </div>
+                )}
+                
+                {currentPhoto.favorite_count > 0 && (
+                  <div className="bg-neutral-800 rounded-lg p-3">
+                    <div className="flex items-center gap-1 text-blue-400 mb-1">
+                      <Star className="w-4 h-4" />
+                      <span className="text-white font-medium">{currentPhoto.favorite_count}</span>
+                    </div>
+                    <p className="text-xs text-neutral-400">Favorites</p>
+                  </div>
+                )}
+                
+                {feedbackData.feedback && (
+                  <div className="bg-neutral-800 rounded-lg p-3">
+                    <div className="flex items-center gap-1 text-green-400 mb-1">
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="text-white font-medium">{feedbackData.feedback.filter(f => f.feedback_type === 'comment').length}</span>
+                    </div>
+                    <p className="text-xs text-neutral-400">Comments</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Comments List */}
+              {feedbackData.feedback && feedbackData.feedback.filter(f => f.feedback_type === 'comment').length > 0 && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setExpandedComments(!expandedComments)}
+                    className="text-xs text-primary-400 hover:text-primary-300 mb-2"
+                  >
+                    {expandedComments ? 'Hide' : 'Show'} Comments ({feedbackData.feedback.filter(f => f.feedback_type === 'comment').length})
+                  </button>
+                  
+                  {expandedComments && (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {feedbackData.feedback
+                        .filter(f => f.feedback_type === 'comment')
+                        .map((comment) => (
+                          <div key={comment.id} className="bg-neutral-800 rounded-lg p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-white">
+                                  {comment.guest_name || 'Anonymous'}
+                                </p>
+                                <p className="text-xs text-neutral-400">
+                                  {format(new Date(comment.created_at), 'MMM d, yyyy h:mm a')}
+                                </p>
+                              </div>
+                              
+                              {/* Comment Status Badge */}
+                              <div className="flex items-center gap-1">
+                                {!comment.is_approved && !comment.is_hidden && (
+                                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
+                                    Pending
+                                  </span>
+                                )}
+                                {comment.is_approved && !comment.is_hidden && (
+                                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" />
+                                    Approved
+                                  </span>
+                                )}
+                                {comment.is_hidden && (
+                                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded flex items-center gap-1">
+                                    <XCircle className="w-3 h-3" />
+                                    Hidden
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <p className="text-sm text-neutral-300 mb-3">
+                              {comment.comment_text}
+                            </p>
+                            
+                            {/* Moderation Actions */}
+                            <div className="flex gap-2">
+                              {!comment.is_approved && (
+                                <button
+                                  onClick={() => moderateFeedbackMutation.mutate({ 
+                                    feedbackId: comment.id.toString(), 
+                                    action: 'approve' 
+                                  })}
+                                  disabled={moderateFeedbackMutation.isPending}
+                                  className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              
+                              {!comment.is_hidden && (
+                                <button
+                                  onClick={() => moderateFeedbackMutation.mutate({ 
+                                    feedbackId: comment.id.toString(), 
+                                    action: 'hide' 
+                                  })}
+                                  disabled={moderateFeedbackMutation.isPending}
+                                  className="text-xs px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded"
+                                >
+                                  Hide
+                                </button>
+                              )}
+                              
+                              {comment.is_hidden && (
+                                <button
+                                  onClick={() => moderateFeedbackMutation.mutate({ 
+                                    feedbackId: comment.id.toString(), 
+                                    action: 'approve' 
+                                  })}
+                                  disabled={moderateFeedbackMutation.isPending}
+                                  className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded"
+                                >
+                                  Unhide
+                                </button>
+                              )}
+                              
+                              <button
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to delete this comment?')) {
+                                    deleteFeedbackMutation.mutate(comment.id.toString());
+                                  }
+                                }}
+                                disabled={deleteFeedbackMutation.isPending}
+                                className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* No feedback message */}
+              {(!feedbackData.feedback || feedbackData.feedback.length === 0) && (
+                <p className="text-neutral-400 text-sm">No feedback for this photo yet.</p>
+              )}
+            </div>
+          )}
 
           {/* Navigation info */}
           <div className="mt-6 pt-6 border-t border-neutral-700">

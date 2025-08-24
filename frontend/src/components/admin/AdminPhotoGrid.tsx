@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Download, Trash2, Eye, Package } from 'lucide-react';
+import { Check, Download, Trash2, Eye, Package, MessageSquare, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { AdminPhoto } from '../../services/photos.service';
@@ -244,6 +244,24 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                 <span className="px-2 py-1 text-xs font-medium bg-white/90 text-neutral-700 rounded">
                   {photo.category_name}
                 </span>
+              </div>
+            )}
+            
+            {/* Feedback Indicators */}
+            {(photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+              <div className="absolute top-2 left-2 flex gap-1 z-10" style={{ left: isSelectionMode ? '40px' : '8px' }}>
+                {photo.comment_count > 0 && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                    <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+                  </div>
+                )}
+                {photo.average_rating > 0 && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+                    <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                    <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Maximize2, Check, Package } from 'lucide-react';
+import { Download, Maximize2, Check, Package, MessageSquare, Star } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { toast as toastify } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -16,9 +16,20 @@ interface PhotoGridProps {
   slug: string;
   categoryId?: number | null;
   feedbackEnabled?: boolean;
+  allowDownloads?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
 }
 
-export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId, feedbackEnabled = false }) => {
+export const PhotoGrid: React.FC<PhotoGridProps> = ({ 
+  photos, 
+  slug, 
+  categoryId, 
+  feedbackEnabled = false, 
+  allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false
+}) => {
   const { t } = useTranslation();
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
@@ -194,6 +205,10 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId, 
             isSelectionMode={isSelectionMode}
             onClick={(e) => handlePhotoClick(index, e)}
             onDownload={(e) => handleDownload(photo, e)}
+            allowDownloads={allowDownloads}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={useEnhancedProtection}
+            slug={slug}
           />
         ))}
       </div>
@@ -206,6 +221,9 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({ photos, slug, categoryId, 
           onClose={() => setSelectedPhotoIndex(null)}
           slug={slug}
           feedbackEnabled={feedbackEnabled}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
         />
       )}
     </>
@@ -218,6 +236,10 @@ interface PhotoThumbnailProps {
   isSelectionMode: boolean;
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
+  allowDownloads?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
+  slug: string; // Add slug as required prop
 }
 
 const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
@@ -226,6 +248,10 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
+  allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
+  slug
 }) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -246,7 +272,48 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
             className="w-full h-full object-cover rounded-lg transition-transform duration-200 group-hover:scale-105"
             loading="lazy"
             isGallery={true}
+            slug={slug}
+            photoId={photo.id}
+            requiresToken={photo.requires_token}
+            secureUrlTemplate={photo.secure_url_template}
+            protectFromDownload={!allowDownloads || useEnhancedProtection}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={useEnhancedProtection}
+            useCanvasRendering={protectionLevel === 'maximum'}
+            fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            blockKeyboardShortcuts={useEnhancedProtection}
+            detectPrintScreen={useEnhancedProtection}
+            detectDevTools={protectionLevel === 'maximum'}
+            watermarkText={useEnhancedProtection ? 'Protected' : undefined}
+            onProtectionViolation={(violationType) => {
+              // Track analytics
+              if (typeof window !== 'undefined' && (window as any).umami) {
+                (window as any).umami.track('thumbnail_protection_violation', {
+                  photoId: photo.id,
+                  violationType,
+                  protectionLevel
+                });
+              }
+            }}
           />
+          
+          {/* Feedback Indicators */}
+          {feedbackEnabled && (photo.has_feedback || photo.average_rating > 0 || photo.comment_count > 0) && (
+            <div className="absolute top-2 left-2 flex gap-1 z-10">
+              {photo.comment_count > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+                </div>
+              )}
+              {photo.average_rating > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+                  <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Overlay on hover/tap - Always visible on mobile for better UX */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
@@ -262,13 +329,15 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
                 >
                   <Maximize2 className="w-5 h-5 text-neutral-800" />
                 </button>
-                <button
-                  className="p-2 sm:p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                  onClick={onDownload}
-                  aria-label="Download photo"
-                >
-                  <Download className="w-5 h-5 text-neutral-800" />
-                </button>
+                {allowDownloads && (
+                  <button
+                    className="p-2 sm:p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    onClick={onDownload}
+                    aria-label="Download photo"
+                  >
+                    <Download className="w-5 h-5 text-neutral-800" />
+                  </button>
+                )}
               </>
             )}
           </div>

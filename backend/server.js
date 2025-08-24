@@ -32,6 +32,7 @@ const eventRoutes = require('./src/routes/events');
 const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
 const adminAuthRoutes = require('./src/routes/adminAuth');
+const secureImagesRoutes = require('./src/routes/secureImages');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -199,22 +200,36 @@ app.get('/health', async (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
+// Gallery routes - main routes first, then feedback routes
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/gallery', require('./src/routes/galleryFeedback'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
 app.use('/api/admin/backup', require('./src/routes/adminBackup'));
 app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
-app.use('/api/gallery', require('./src/routes/galleryFeedback'));
+app.use('/api/admin/image-security', require('./src/routes/adminImageSecurity'));
+app.use('/api/admin/thumbnails', require('./src/routes/adminThumbnails'));
+app.use('/api/admin/photos', require('./src/routes/adminPhotos'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
+app.use('/api/secure-images', secureImagesRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  logger.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('EXPRESS ERROR HANDLER:', err);
+  console.error('Error stack:', err.stack);
+  console.error('Request URL:', req.url);
+  console.error('Request method:', req.method);
+  logger.error('Express error handler:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method
+  });
+  res.status(500).json({ error: 'Something went wrong!', details: err.message });
 });
 
 // Initialize services

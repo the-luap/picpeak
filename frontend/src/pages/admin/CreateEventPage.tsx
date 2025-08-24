@@ -14,10 +14,11 @@ import {
 import { format, addDays } from 'date-fns';
 import { toast } from 'react-toastify';
 
-import { Button, Input, Card } from '../../components/common';
+import { Button, Input, Card, PasswordGenerator } from '../../components/common';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { categoriesService } from '../../services/categories.service';
+import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
 interface FormData {
@@ -140,6 +141,13 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => categoriesService.getGlobalCategories()
   });
 
+  // Fetch password complexity settings
+  const { data: passwordComplexity } = useQuery({
+    queryKey: ['password-complexity'],
+    queryFn: () => settingsService.getPasswordComplexitySettings(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const createMutation = useMutation({
     mutationFn: eventsService.createEvent,
     onSuccess: (data) => {
@@ -254,6 +262,23 @@ export const CreateEventPage: React.FC = () => {
     // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handlePasswordGenerated = (password: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      password: password,
+      confirm_password: password 
+    }));
+    
+    // Clear password errors since we generated a valid one
+    if (errors.password || errors.confirm_password) {
+      setErrors(prev => ({ 
+        ...prev, 
+        password: '',
+        confirm_password: '' 
+      }));
     }
   };
 
@@ -431,6 +456,18 @@ export const CreateEventPage: React.FC = () => {
                     <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
                   )}
                 </button>
+              </div>
+              
+              {/* Password Generator */}
+              <div className="mt-2">
+                <PasswordGenerator
+                  eventName={formData.event_name}
+                  eventDate={formData.event_date}
+                  eventType={formData.event_type}
+                  onPasswordGenerated={handlePasswordGenerated}
+                  passwordComplexity={passwordComplexity?.complexityLevel || 'moderate'}
+                  className="w-full"
+                />
               </div>
             </div>
 

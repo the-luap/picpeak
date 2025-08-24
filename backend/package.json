@@ -8,11 +8,8 @@
     "dev": "nodemon server.js",
     "migrate": "node migrations/run-migrations.js",
     "migrate:safe": "node migrations/run-migrations-safe.js",
-    "fix-temp-photos": "node scripts/fix-temp-photos.js",
     "test": "jest",
-    "lint": "eslint src/",
-    "test-backup": "node scripts/test-backup-service.js",
-    "test-restore": "node scripts/test-restore-service.js"
+    "lint": "eslint src/"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",

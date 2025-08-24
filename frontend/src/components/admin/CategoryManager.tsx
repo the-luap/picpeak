@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { categoriesService, type PhotoCategory } from '../../services/categories.service';
 import { Button } from '../common';
 
 export const CategoryManager: React.FC = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -24,12 +26,12 @@ export const CategoryManager: React.FC = () => {
       categoriesService.createCategory({ name, is_global: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-categories'] });
-      toast.success('Category created successfully');
+      toast.success(t('categories.categoryCreatedSuccess'));
       setNewCategoryName('');
       setIsAdding(false);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to create category');
+      toast.error(error.response?.data?.error || t('categories.failedToCreateCategory'));
     },
   });
 
@@ -39,12 +41,12 @@ export const CategoryManager: React.FC = () => {
       categoriesService.updateCategory(id, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-categories'] });
-      toast.success('Category updated successfully');
+      toast.success(t('toast.categoryUpdated'));
       setEditingId(null);
       setEditingName('');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to update category');
+      toast.error(error.response?.data?.error || t('toast.saveError'));
     },
   });
 
@@ -53,10 +55,10 @@ export const CategoryManager: React.FC = () => {
     mutationFn: categoriesService.deleteCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-categories'] });
-      toast.success('Category deleted successfully');
+      toast.success(t('categories.categoryDeletedSuccess'));
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to delete category');
+      toast.error(error.response?.data?.error || t('categories.failedToDeleteCategory'));
     },
   });
 
@@ -73,7 +75,7 @@ export const CategoryManager: React.FC = () => {
   };
 
   const handleDelete = (category: PhotoCategory) => {
-    if (window.confirm(`Are you sure you want to delete "${category.name}"?`)) {
+    if (window.confirm(t('categories.deleteConfirm', { name: category.name }))) {
       deleteMutation.mutate(category.id);
     }
   };
@@ -99,7 +101,7 @@ export const CategoryManager: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-neutral-900">Photo Categories</h3>
+        <h3 className="text-lg font-semibold text-neutral-900">{t('categories.title')}</h3>
         {!isAdding && (
           <Button
             variant="primary"
@@ -107,7 +109,7 @@ export const CategoryManager: React.FC = () => {
             onClick={() => setIsAdding(true)}
             leftIcon={<Plus className="w-4 h-4" />}
           >
-            Add Category
+            {t('categories.addCategory')}
           </Button>
         )}
       </div>
@@ -120,7 +122,7 @@ export const CategoryManager: React.FC = () => {
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
-            placeholder="Category name"
+            placeholder={t('categories.categoryName')}
             className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500"
             autoFocus
           />
@@ -133,7 +135,7 @@ export const CategoryManager: React.FC = () => {
             {createMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              'Create'
+              t('common.save')
             )}
           </Button>
           <Button
@@ -144,7 +146,7 @@ export const CategoryManager: React.FC = () => {
               setNewCategoryName('');
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       )}
@@ -153,7 +155,7 @@ export const CategoryManager: React.FC = () => {
       <div className="space-y-2">
         {categories.length === 0 ? (
           <p className="text-neutral-500 text-center py-8">
-            No categories yet. Create your first category to organize photos.
+            {t('categories.noCategoriesYet')}
           </p>
         ) : (
           categories.map((category) => (
@@ -183,7 +185,7 @@ export const CategoryManager: React.FC = () => {
                     {updateMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Save'
+                      t('common.save')
                     )}
                   </Button>
                   <Button
@@ -191,7 +193,7 @@ export const CategoryManager: React.FC = () => {
                     size="sm"
                     onClick={cancelEdit}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               ) : (
@@ -204,14 +206,14 @@ export const CategoryManager: React.FC = () => {
                     <button
                       onClick={() => startEdit(category)}
                       className="p-1.5 text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                      title="Edit category"
+                      title={t('common.edit')}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(category)}
                       className="p-1.5 text-neutral-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Delete category"
+                      title={t('common.delete')}
                       disabled={deleteMutation.isPending}
                     >
                       {deleteMutation.isPending ? (
