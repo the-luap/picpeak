@@ -1,6 +1,17 @@
 # Build stage
 FROM node:20-alpine AS builder
 
+# Add build arguments
+ARG CACHEBUST=1
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Add labels for GitHub Container Registry
+LABEL org.opencontainers.image.source="https://github.com/the-luap/picpeak"
+LABEL org.opencontainers.image.description="PicPeak Frontend Application"
+LABEL org.opencontainers.image.licenses="MIT"
+
 # Set working directory
 WORKDIR /app
 

@@ -1,7 +1,15 @@
 FROM node:18-alpine AS builder
 
-# Add build argument for cache busting
+# Add build arguments
 ARG CACHEBUST=1
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Add labels for GitHub Container Registry
+LABEL org.opencontainers.image.source="https://github.com/the-luap/picpeak"
+LABEL org.opencontainers.image.description="PicPeak Backend Service"
+LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app
 
