@@ -1,6 +1,30 @@
 # 🚀 PicPeak Deployment Guide
 
-This guide covers deploying PicPeak using Docker Compose with direct port exposure. For internet-facing deployments, you'll need to add a reverse proxy (nginx, Traefik, Caddy, etc.) for SSL/HTTPS.
+This guide covers multiple deployment options for PicPeak, from simple local setups to production-ready configurations.
+
+## 🎯 Quick Start - Simple Setup (Recommended for Beginners)
+
+For the easiest installation without Docker or complex configurations, use our **simple setup script**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yourusername/wedding-photo-sharing/main/scripts/simple-setup.sh -o setup.sh && \
+chmod +x setup.sh && \
+sudo ./setup.sh
+```
+
+This automated script handles everything including OS detection, dependencies, database setup, and service configuration. Perfect for:
+- Small to medium deployments
+- Local or VPS installations  
+- Users who prefer avoiding Docker complexity
+- Quick testing and evaluation
+
+👉 **See [SIMPLE_SETUP_GUIDE.md](./SIMPLE_SETUP_GUIDE.md) for detailed instructions.**
+
+---
+
+## 🐳 Docker Compose Deployment
+
+This section covers deploying PicPeak using Docker Compose with direct port exposure. For internet-facing deployments, you'll need to add a reverse proxy (nginx, Traefik, Caddy, etc.) for SSL/HTTPS.
 
 ## 📋 Table of Contents
 
