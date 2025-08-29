@@ -4,27 +4,62 @@ This guide covers multiple deployment options for PicPeak, from simple local set
 
 ## 🎯 Quick Start - Simple Setup (Recommended for Beginners)
 
-For the easiest installation without Docker or complex configurations, use our **simple setup script**:
+For the easiest installation without Docker or complex configurations, use our **unified setup script**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/wedding-photo-sharing/main/scripts/simple-setup.sh -o setup.sh && \
+curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
 sudo ./setup.sh
 ```
 
-This automated script handles everything including OS detection, dependencies, database setup, and service configuration. Perfect for:
+This automated script handles everything including:
+- Choice between Docker or Native installation
+- OS detection and dependency installation
+- Database setup and service configuration
+- SSL/HTTPS setup (optional)
+
+Perfect for:
 - Small to medium deployments
 - Local or VPS installations  
-- Users who prefer avoiding Docker complexity
+- Users new to server management
 - Quick testing and evaluation
 
-👉 **See [SIMPLE_SETUP_GUIDE.md](./SIMPLE_SETUP_GUIDE.md) for detailed instructions.**
+👉 **See [SIMPLE_SETUP.md](./SIMPLE_SETUP.md) for detailed instructions.**
 
 ---
 
 ## 🐳 Docker Compose Deployment
 
-This section covers deploying PicPeak using Docker Compose with direct port exposure. For internet-facing deployments, you'll need to add a reverse proxy (nginx, Traefik, Caddy, etc.) for SSL/HTTPS.
+### Option 1: Using Pre-built Images (Recommended)
+
+PicPeak provides official Docker images via GitHub Container Registry for quick deployment without building:
+
+```bash
+# Clone repository for configuration files
+git clone https://github.com/the-luap/picpeak.git
+cd picpeak
+
+# Copy and configure environment
+cp .env.example .env
+nano .env  # Edit with your values
+
+# Use pre-built images deployment
+docker compose -f docker-compose.production.yml up -d
+```
+
+The production compose file uses:
+- **Backend**: `ghcr.io/the-luap/picpeak/backend:latest`
+- **Frontend**: `ghcr.io/the-luap/picpeak/frontend:latest`
+
+Available tags:
+- `latest` - Latest stable release
+- `main` - Latest main branch build
+- `develop` - Development branch (may be unstable)
+- `v1.0.0` - Specific version tags
+
+### Option 2: Building from Source
+
+If you need to customize the application or the pre-built images aren't available, you can build locally:
 
 ## 📋 Table of Contents
 
@@ -46,6 +81,38 @@ This section covers deploying PicPeak using Docker Compose with direct port expo
 
 ## 🚀 Quick Start
 
+### Method 1: Using Pre-built Images (Fastest)
+
+1. **Clone the repository for configs**
+   ```bash
+   git clone https://github.com/the-luap/picpeak.git
+   cd picpeak
+   ```
+
+2. **Set up environment**
+   ```bash
+   cp .env.example .env
+   nano .env  # Edit with your values
+   ```
+
+3. **Create required directories**
+   ```bash
+   mkdir -p events/active events/archived data logs backup storage
+   chmod -R 755 events data logs backup storage
+   ```
+
+4. **Deploy using pre-built images**
+   ```bash
+   docker compose -f docker-compose.production.yml up -d
+   ```
+
+5. **Check logs**
+   ```bash
+   docker compose -f docker-compose.production.yml logs -f
+   ```
+
+### Method 2: Building from Source
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/the-luap/picpeak.git
@@ -64,8 +131,9 @@ This section covers deploying PicPeak using Docker Compose with direct port expo
    chmod -R 755 events data logs backup storage
    ```
 
-4. **Deploy**
+4. **Build and deploy**
    ```bash
+   docker compose build
    docker compose up -d
    ```
 
@@ -145,11 +213,28 @@ SMTP_PASS=your-sendgrid-api-key
 
 ## 📦 Deployment
 
-### Build and Start Services
+### Using Pre-built Images (Fastest)
 
 ```bash
-# Build images
+# Pull latest images from GitHub Container Registry
+docker pull ghcr.io/the-luap/picpeak/backend:latest
+docker pull ghcr.io/the-luap/picpeak/frontend:latest
+
+# Start services using production compose file
+docker compose -f docker-compose.production.yml up -d
+
+# View running containers
+docker compose ps
+```
+
+### Building from Source (For Customization)
+
+```bash
+# Build images locally
 docker compose build
+
+# Or build with no cache for clean build
+docker compose build --no-cache
 
 # Start all services
 docker compose up -d
@@ -446,14 +531,50 @@ The application includes a built-in backup service. Configure it in the admin pa
 
 ### Updates
 
+#### Method 1: Using Pre-built Images (Recommended)
+
+```bash
+# Pull latest changes (for configuration updates)
+git pull
+
+# Pull latest images from GitHub Container Registry
+docker compose -f docker-compose.production.yml pull
+
+# Restart with new images
+docker compose -f docker-compose.production.yml down
+docker compose -f docker-compose.production.yml up -d
+
+# Verify services are healthy
+docker compose -f docker-compose.production.yml ps
+```
+
+#### Method 2: Building from Source
+
 ```bash
 # Pull latest changes
 git pull
 
 # Rebuild and restart
 docker compose down
-docker compose build
+docker compose build --no-cache
 docker compose up -d
+
+# Verify services are healthy
+docker compose ps
+```
+
+#### Specific Version Updates
+
+To use a specific version of the images:
+
+```bash
+# Edit docker-compose.production.yml to specify version tags
+# Change: ghcr.io/the-luap/picpeak/backend:latest
+# To:     ghcr.io/the-luap/picpeak/backend:v1.0.0
+
+# Then pull and restart
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
 ```
 
 ### Database Migrations
