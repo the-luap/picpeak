@@ -33,7 +33,7 @@ jobs:
           # Remove sensitive files/directories if they exist
           echo "Removing sensitive files..."
           rm -rf .gitea/ || true
-          rm -rf scripts/gitea-runner.sh || true
+          rm -rf scripts/install-gitea-runner.sh || true
           rm -rf .drone* || true
           rm -rf photo-sharing-prd.md || true
           rm -rf CLAUDE.md || true
