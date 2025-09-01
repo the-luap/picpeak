@@ -1,7 +1,11 @@
+
 version: '3.8'
 
+# PicPeak Production Docker Compose
+# Redis is required. Backend and frontend use pre-built images. Nginx is optional (see comments).
+
 services:
-  postgres:
+  postgres: # Can be replaced with an external database by configuring the .env file
     image: postgres:15-alpine
     container_name: picpeak-postgres
     environment:
@@ -35,26 +39,26 @@ services:
       retries: 5
 
   backend:
-    # Use pre-built image from GitHub Container Registry
     image: ghcr.io/the-luap/picpeak/backend:latest
     container_name: picpeak-backend
     env_file: .env
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
+      - DB_HOST=${DB_HOST:-postgres}
       - REDIS_HOST=redis
       - PHOTOS_DIR=/app/storage/events
     volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
-      - ./data:/app/data
+      - ${APP_STORAGE}:/app/storage
+      - ${APP_STORAGE}:/storage
+      - ${LOGS}:/app/logs
+      - ${LOGS}:/logs
+      - ${APP_DATA}:/app/data
+      - ${APP_DATA}:/data
     ports:
       - "${BACKEND_PORT:-3001}:3000"
     networks:
       - picpeak-network
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -65,7 +69,6 @@ services:
       retries: 3
 
   frontend:
-    # Use pre-built image from GitHub Container Registry
     image: ghcr.io/the-luap/picpeak/frontend:latest
     container_name: picpeak-frontend
     environment:

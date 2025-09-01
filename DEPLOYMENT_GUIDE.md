@@ -43,13 +43,16 @@ cd picpeak
 cp .env.example .env
 nano .env  # Edit with your values
 
-# Use pre-built images deployment
+# Use production Compose file (pre-built images)
 docker compose -f docker-compose.production.yml up -d
 ```
 
-The production compose file uses:
+The recommended production Compose file is `docker-compose.production.yml` and uses:
 - **Backend**: `ghcr.io/the-luap/picpeak/backend:latest`
 - **Frontend**: `ghcr.io/the-luap/picpeak/frontend:latest`
+- **Redis**: Required and always enabled
+- **PostgreSQL**: Optional—uncomment the section in `docker-compose.production.yml` if you want to run your own database container
+- **Nginx**: Optional—uncomment for built-in HTTPS reverse proxy
 
 Available tags:
 - `latest` - Latest stable release
@@ -81,6 +84,7 @@ If you need to customize the application or the pre-built images aren't availabl
 
 ## 🚀 Quick Start
 
+
 ### Method 1: Using Pre-built Images (Fastest)
 
 1. **Clone the repository for configs**
@@ -108,7 +112,7 @@ If you need to customize the application or the pre-built images aren't availabl
 
 5. **Check logs**
    ```bash
-   docker compose -f docker-compose.production.yml logs -f
+   docker compose logs -f
    ```
 
 ### Method 2: Building from Source
@@ -145,6 +149,7 @@ If you need to customize the application or the pre-built images aren't availabl
 ## 🔧 Configuration
 
 ### Essential Environment Variables
+
 
 Generate secure values:
 ```bash
@@ -224,7 +229,7 @@ docker pull ghcr.io/the-luap/picpeak/frontend:latest
 docker compose -f docker-compose.production.yml up -d
 
 # View running containers
-docker compose ps
+docker compose -f docker-compose.production.yml ps
 ```
 
 ### Building from Source (For Customization)

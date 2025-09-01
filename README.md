@@ -51,6 +51,7 @@ Unlike expensive SaaS solutions, PicPeak gives you:
 
 ## 🚀 Quick Start
 
+
 Get PicPeak running in under 5 minutes:
 
 ```bash
@@ -64,11 +65,24 @@ cp .env.example .env
 # Edit configuration (required: JWT_SECRET)
 nano .env
 
-# Start with Docker Compose
-docker-compose up -d
+# Start with Docker Compose (production setup)
+docker compose -f docker-compose.production.yml up -d
 
-# Access at http://localhost:3005
+# Access at http://localhost:3000 (frontend)
+# Access backend at http://localhost:3001
 ```
+
+**Note:**
+- The recommended production Compose file is `docker-compose.production.yml` and uses pre-built images for backend and frontend for fast, reliable deployment.
+- Redis is required and always enabled.
+- PostgreSQL and Nginx are optional—uncomment their sections in `docker-compose.production.yml` if you want to run those containers.
+- All environment variables are set via `.env`. **Avoid using `$` in passwords** (see below).
+
+**Password Warning:**
+Docker Compose interprets `$` as variable substitution. Either:
+- Avoid `$` in passwords (recommended)
+- Escape `$` as `$$` (e.g., `Pass$$word` instead of `Pass$word`)
+- Quote the entire value (less reliable)
 
 ## 📖 Documentation
 
