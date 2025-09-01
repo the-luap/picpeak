@@ -118,7 +118,12 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
                           </span>
                           <span className="text-neutral-500">•</span>
                           <span className="text-neutral-500">
-                            {format(parseISO(item.created_at), 'MMM d, h:mm a')}
+                            {format(
+                              typeof item.created_at === 'string' 
+                                ? parseISO(item.created_at) 
+                                : new Date(item.created_at), 
+                              'MMM d, h:mm a'
+                            )}
                           </span>
                         </div>
                         <p className="mt-1 text-sm text-neutral-700">{item.comment}</p>

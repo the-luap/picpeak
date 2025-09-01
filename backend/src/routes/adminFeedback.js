@@ -60,8 +60,8 @@ router.put('/events/:eventId/feedback-settings',
         settings: updatedSettings
       }, eventId, {
         type: 'admin',
-        id: req.user.id,
-        name: req.user.username
+        id: req.admin.id,
+        name: req.admin.username
       });
       
       res.json(updatedSettings);
@@ -167,7 +167,7 @@ router.put('/feedback/:feedbackId/:action',
         return res.status(400).json({ error: 'Invalid action' });
       }
       
-      await feedbackService.moderateFeedback(feedbackId, action, req.user.id);
+      await feedbackService.moderateFeedback(feedbackId, action, req.admin.id);
       
       res.json({ success: true });
     } catch (error) {
@@ -184,7 +184,7 @@ router.delete('/feedback/:feedbackId',
     try {
       const { feedbackId } = req.params;
       
-      await feedbackService.deleteFeedback(feedbackId, req.user.id);
+      await feedbackService.deleteFeedback(feedbackId, req.admin.id);
       
       res.json({ success: true });
     } catch (error) {

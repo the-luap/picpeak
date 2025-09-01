@@ -279,12 +279,38 @@ export const EventDetailsPage: React.FC = () => {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(event.share_link);
+      // Check if share_link exists
+      if (!event.share_link) {
+        toast.error(t('errors.noShareLink', 'No share link available'));
+        return;
+      }
+
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(event.share_link);
+      } else {
+        // Fallback for non-HTTPS contexts or older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = event.share_link;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!successful) {
+          throw new Error('Copy failed');
+        }
+      }
+      
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
       toast.success(t('toast.linkCopied'));
     } catch (err) {
-      toast.error(t('errors.somethingWentWrong'));
+      console.error('Copy failed:', err);
+      toast.error(t('errors.copyFailed', 'Failed to copy link. Please copy manually.'));
     }
   };
 

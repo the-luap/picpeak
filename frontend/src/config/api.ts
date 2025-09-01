@@ -48,10 +48,25 @@ api.interceptors.request.use(
       const galleryMatch = config.url?.match(/gallery\/([^\/]+)/);
       
       if (galleryMatch && galleryMatch[1]) {
-        const gallerySlug = galleryMatch[1];
+        const galleryIdOrSlug = galleryMatch[1];
         // Remove any query parameters from the slug
-        const cleanSlug = gallerySlug.split('?')[0];
-        const token = localStorage.getItem(`gallery_token_${cleanSlug}`);
+        const cleanIdOrSlug = galleryIdOrSlug.split('?')[0];
+        
+        // Check if it's a numeric ID (for upload endpoints)
+        let token = null;
+        if (/^\d+$/.test(cleanIdOrSlug)) {
+          // It's an event ID - try to find the token from current page slug
+          const pathParts = window.location.pathname.split('/');
+          if (pathParts[1] === 'gallery' && pathParts[2]) {
+            const gallerySlug = pathParts[2];
+            const cleanSlug = gallerySlug.split('?')[0];
+            token = localStorage.getItem(`gallery_token_${cleanSlug}`);
+          }
+        } else {
+          // It's a slug - use it directly
+          token = localStorage.getItem(`gallery_token_${cleanIdOrSlug}`);
+        }
+        
         if (token) {
           if (!config.headers) {
             config.headers = {};
