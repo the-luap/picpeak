@@ -250,11 +250,17 @@ export const EventFeedbackPage: React.FC = () => {
               {feedbackData?.feedback?.map((item: PhotoFeedback) => (
                 <Card key={item.id} className="overflow-hidden">
                   <div className="p-4 flex items-start gap-4">
-                    <img
-                      src={`/thumbnails/${item.path}`}
-                      alt={item.filename}
-                      className="w-16 h-16 object-cover rounded"
-                    />
+                    {item.photo_id && (
+                      <img
+                        src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
+                        alt={item.filename || 'Photo'}
+                        className="w-16 h-16 object-cover rounded"
+                        onError={(e) => {
+                          // Hide image if thumbnail fails to load
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    )}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>

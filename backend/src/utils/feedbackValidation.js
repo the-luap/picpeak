@@ -233,11 +233,11 @@ async function validateGuestRequirements(settings, guestData) {
     errors.push('Name is required');
   }
   
-  // Check for email - handle both undefined and empty strings
+  // Check for email - handle both undefined and empty strings  
   const email = guestData.guest_email;
   if (!email || (typeof email === 'string' && email.trim().length === 0)) {
-    errors.push('Valid email is required');
-  } else if (email && !validator.isEmail(email.trim())) {
+    errors.push('Email is required');
+  } else if (email && typeof email === 'string' && !validator.isEmail(email.trim())) {
     errors.push('Valid email is required');
   }
   

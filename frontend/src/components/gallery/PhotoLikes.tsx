@@ -36,8 +36,8 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
     mutationFn: (data: { guest_name?: string; guest_email?: string } = {}) => 
       feedbackService.submitFeedback(gallerySlug, photoId, {
         feedback_type: 'like',
-        guest_name: data.guest_name,
-        guest_email: data.guest_email
+        guest_name: data.guest_name || undefined,
+        guest_email: data.guest_email || undefined
       }),
     onMutate: async () => {
       setIsSubmitting(true);

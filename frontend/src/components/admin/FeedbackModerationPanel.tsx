@@ -126,11 +126,22 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
                             )}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-neutral-700">{item.comment}</p>
-                        {item.photo_filename && (
-                          <p className="mt-1 text-xs text-neutral-500">
-                            {t('feedback.onPhoto', 'On photo')}: {item.photo_filename}
-                          </p>
+                        <p className="mt-1 text-sm text-neutral-700">{item.comment_text || item.comment}</p>
+                        {item.photo_id && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <img 
+                              src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
+                              alt={item.filename || 'Photo'}
+                              className="w-16 h-16 object-cover rounded"
+                              onError={(e) => {
+                                // Hide image if thumbnail fails to load
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <p className="text-xs text-neutral-500">
+                              {t('feedback.onPhoto', 'On photo')}: {item.filename || item.photo_filename || `#${item.photo_id}`}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>

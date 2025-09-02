@@ -103,8 +103,8 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
 
     submitCommentMutation.mutate({
       comment_text: commentText.trim(),
-      guest_name: guestName.trim(),
-      guest_email: guestEmail.trim()
+      guest_name: guestName.trim() || undefined,
+      guest_email: guestEmail.trim() || undefined
     });
   };
 

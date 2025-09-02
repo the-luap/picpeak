@@ -42,8 +42,8 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
       feedbackService.submitFeedback(gallerySlug, photoId, {
         feedback_type: 'rating',
         rating: data.rating,
-        guest_name: data.guest_name,
-        guest_email: data.guest_email
+        guest_name: data.guest_name || undefined,
+        guest_email: data.guest_email || undefined
       }),
     onMutate: async (data) => {
       setIsSubmitting(true);
