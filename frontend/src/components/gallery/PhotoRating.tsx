@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackService } from '../../services/feedback.service';
 import { toast } from 'react-toastify';
+import { FeedbackIdentityModal } from './FeedbackIdentityModal';
 
 interface PhotoRatingProps {
   photoId: string;
@@ -12,6 +13,7 @@ interface PhotoRatingProps {
   averageRating?: number;
   totalRatings?: number;
   isEnabled: boolean;
+  requireNameEmail?: boolean;
   onRatingChange?: (rating: number) => void;
 }
 
@@ -22,6 +24,7 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
   averageRating = 0,
   totalRatings = 0,
   isEnabled,
+  requireNameEmail = false,
   onRatingChange
 }) => {
   // Ensure averageRating is a valid number
@@ -30,18 +33,23 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
   const queryClient = useQueryClient();
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [pendingRating, setPendingRating] = useState(0);
+  const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
   const submitRatingMutation = useMutation({
-    mutationFn: (rating: number) => 
+    mutationFn: (data: { rating: number; guest_name?: string; guest_email?: string }) => 
       feedbackService.submitFeedback(gallerySlug, photoId, {
         feedback_type: 'rating',
-        rating
+        rating: data.rating,
+        guest_name: data.guest_name,
+        guest_email: data.guest_email
       }),
-    onMutate: async (rating) => {
+    onMutate: async (data) => {
       setIsSubmitting(true);
       // Optimistic update
       if (onRatingChange) {
-        onRatingChange(rating);
+        onRatingChange(data.rating);
       }
     },
     onSuccess: () => {
@@ -69,47 +77,75 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
     
     // If clicking the same rating, remove it
     const newRating = rating === currentRating ? 0 : rating;
-    submitRatingMutation.mutate(newRating);
+    
+    if (requireNameEmail && !savedIdentity) {
+      setPendingRating(newRating);
+      setShowIdentityModal(true);
+    } else {
+      submitRatingMutation.mutate({ 
+        rating: newRating, 
+        guest_name: savedIdentity?.name,
+        guest_email: savedIdentity?.email
+      });
+    }
+  };
+
+  const handleIdentitySubmit = (name: string, email: string) => {
+    setSavedIdentity({ name, email });
+    setShowIdentityModal(false);
+    submitRatingMutation.mutate({ 
+      rating: pendingRating,
+      guest_name: name,
+      guest_email: email
+    });
   };
 
   if (!isEnabled) return null;
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      {/* Star Rating Input */}
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            onClick={() => handleRatingClick(star)}
-            onMouseEnter={() => setHoveredRating(star)}
-            onMouseLeave={() => setHoveredRating(0)}
-            disabled={isSubmitting}
-            className={`p-1 transition-all ${
-              isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-110'
-            }`}
-            aria-label={t('feedback.rateStar', 'Rate {{count}} stars', { count: star })}
-          >
-            <Star
-              className={`w-6 h-6 transition-colors ${
-                star <= (hoveredRating || currentRating)
-                  ? 'fill-yellow-500 text-yellow-500'
-                  : 'text-neutral-300 hover:text-yellow-400'
+    <>
+      <div className="flex flex-col items-center gap-2">
+        {/* Star Rating Input */}
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => handleRatingClick(star)}
+              onMouseEnter={() => setHoveredRating(star)}
+              onMouseLeave={() => setHoveredRating(0)}
+              disabled={isSubmitting}
+              className={`p-1 transition-all ${
+                isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:scale-110'
               }`}
-            />
-          </button>
-        ))}
-      </div>
-
-      {/* Average Rating Display */}
-      {totalRatings > 0 && (
-        <div className="text-sm text-neutral-600">
-          <span className="font-medium">{safeAverageRating.toFixed(1)}</span>
-          <span className="text-neutral-400 ml-1">
-            ({t('feedback.ratingsCount', '{{count}} ratings', { count: totalRatings })})
-          </span>
+              aria-label={t('feedback.rateStar', 'Rate {{count}} stars', { count: star })}
+            >
+              <Star
+                className={`w-6 h-6 transition-colors ${
+                  star <= (hoveredRating || currentRating)
+                    ? 'fill-yellow-500 text-yellow-500'
+                    : 'text-neutral-300 hover:text-yellow-400'
+                }`}
+              />
+            </button>
+          ))}
         </div>
-      )}
-    </div>
+
+        {/* Average Rating Display */}
+        {totalRatings > 0 && (
+          <div className="text-sm text-neutral-600">
+            <span className="font-medium">{safeAverageRating.toFixed(1)}</span>
+            <span className="text-neutral-400 ml-1">
+              ({t('feedback.ratingsCount', '{{count}} ratings', { count: totalRatings })})
+            </span>
+          </div>
+        )}
+      </div>
+      <FeedbackIdentityModal
+        isOpen={showIdentityModal}
+        onClose={() => setShowIdentityModal(false)}
+        onSubmit={handleIdentitySubmit}
+        feedbackType={t('feedback.rating', 'rating')}
+      />
+    </>
   );
 };

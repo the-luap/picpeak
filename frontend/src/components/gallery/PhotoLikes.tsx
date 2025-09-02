@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackService } from '../../services/feedback.service';
 import { toast } from 'react-toastify';
+import { FeedbackIdentityModal } from './FeedbackIdentityModal';
 
 interface PhotoLikesProps {
   photoId: string;
@@ -11,6 +12,7 @@ interface PhotoLikesProps {
   isLiked: boolean;
   likeCount: number;
   isEnabled: boolean;
+  requireNameEmail?: boolean;
   onLikeChange?: (liked: boolean) => void;
 }
 
@@ -20,17 +22,22 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
   isLiked,
   likeCount,
   isEnabled,
+  requireNameEmail = false,
   onLikeChange
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
   const submitLikeMutation = useMutation({
-    mutationFn: () => 
+    mutationFn: (data: { guest_name?: string; guest_email?: string } = {}) => 
       feedbackService.submitFeedback(gallerySlug, photoId, {
-        feedback_type: 'like'
+        feedback_type: 'like',
+        guest_name: data.guest_name,
+        guest_email: data.guest_email
       }),
     onMutate: async () => {
       setIsSubmitting(true);
@@ -62,13 +69,25 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
 
   const handleLikeClick = () => {
     if (!isEnabled || isSubmitting) return;
-    submitLikeMutation.mutate();
+    
+    if (requireNameEmail && !savedIdentity) {
+      setShowIdentityModal(true);
+    } else {
+      submitLikeMutation.mutate(savedIdentity || {});
+    }
+  };
+
+  const handleIdentitySubmit = (name: string, email: string) => {
+    setSavedIdentity({ name, email });
+    setShowIdentityModal(false);
+    submitLikeMutation.mutate({ guest_name: name, guest_email: email });
   };
 
   if (!isEnabled) return null;
 
   return (
-    <button
+    <>
+      <button
       onClick={handleLikeClick}
       disabled={isSubmitting}
       className={`group flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
@@ -88,6 +107,13 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
       <span className="text-sm font-medium">
         {likeCount > 0 ? likeCount : ''}
       </span>
-    </button>
+      </button>
+      <FeedbackIdentityModal
+        isOpen={showIdentityModal}
+        onClose={() => setShowIdentityModal(false)}
+        onSubmit={handleIdentitySubmit}
+        feedbackType={t('feedback.like', 'like')}
+      />
+    </>
   );
 };

@@ -26,7 +26,11 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
   // Fetch feedback settings for the gallery
   const { data: settings, isLoading: settingsLoading } = useQuery({
     queryKey: ['gallery-feedback-settings', gallerySlug],
-    queryFn: () => feedbackService.getGalleryFeedbackSettings(gallerySlug),
+    queryFn: async () => {
+      const data = await feedbackService.getGalleryFeedbackSettings(gallerySlug);
+      console.log('PhotoFeedback received settings:', data);
+      return data;
+    },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
@@ -104,6 +108,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
           averageRating={Number(feedbackData?.summary?.average_rating) || 0}
           totalRatings={Number(feedbackData?.summary?.total_ratings) || 0}
           isEnabled={true}
+          requireNameEmail={settings.require_name_email || false}
           onRatingChange={handleRatingChange}
         />
       )}
@@ -118,6 +123,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
               isLiked={isLiked}
               likeCount={likeCount}
               isEnabled={true}
+              requireNameEmail={settings.require_name_email || false}
               onLikeChange={handleLikeChange}
             />
           )}
@@ -128,6 +134,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
               isFavorited={isFavorited}
               favoriteCount={favoriteCount}
               isEnabled={true}
+              requireNameEmail={settings.require_name_email || false}
               onFavoriteChange={handleFavoriteChange}
             />
           )}

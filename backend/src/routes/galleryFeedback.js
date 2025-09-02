@@ -24,14 +24,15 @@ router.get('/:slug/feedback-settings',
       const settings = await feedbackService.getEventFeedbackSettings(event.id);
       
       // Only send relevant settings to guests
+      // Convert SQLite boolean values (0/1) to proper booleans
       const guestSettings = {
-        feedback_enabled: settings.feedback_enabled,
-        allow_ratings: settings.allow_ratings,
-        allow_likes: settings.allow_likes,
-        allow_comments: settings.allow_comments,
-        allow_favorites: settings.allow_favorites,
-        require_name_email: settings.require_name_email,
-        show_feedback_to_guests: settings.show_feedback_to_guests
+        feedback_enabled: Boolean(settings.feedback_enabled),
+        allow_ratings: Boolean(settings.allow_ratings),
+        allow_likes: Boolean(settings.allow_likes),
+        allow_comments: Boolean(settings.allow_comments),
+        allow_favorites: Boolean(settings.allow_favorites),
+        require_name_email: Boolean(settings.require_name_email),
+        show_feedback_to_guests: Boolean(settings.show_feedback_to_guests)
       };
       
       res.json(guestSettings);

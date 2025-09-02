@@ -227,11 +227,17 @@ async function validateGuestRequirements(settings, guestData) {
   
   const errors = [];
   
-  if (!guestData.guest_name || guestData.guest_name.trim().length === 0) {
+  // Check for name - handle both undefined and empty strings
+  const name = guestData.guest_name;
+  if (!name || (typeof name === 'string' && name.trim().length === 0)) {
     errors.push('Name is required');
   }
   
-  if (!guestData.guest_email || !validator.isEmail(guestData.guest_email)) {
+  // Check for email - handle both undefined and empty strings
+  const email = guestData.guest_email;
+  if (!email || (typeof email === 'string' && email.trim().length === 0)) {
+    errors.push('Valid email is required');
+  } else if (email && !validator.isEmail(email.trim())) {
     errors.push('Valid email is required');
   }
   
