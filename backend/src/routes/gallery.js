@@ -97,11 +97,41 @@ router.get('/:slug/info', async (req, res) => {
 // Get all photos
 router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
+    // Get filter parameters from query
+    const { filter, guest_id } = req.query;
+    const feedbackService = require('../services/feedbackService');
+    
     // First get all photos
-    const photos = await db('photos')
+    let photos = await db('photos')
       .where('photos.event_id', req.event.id)
       .select('photos.*')
       .orderBy('photos.uploaded_at', 'desc');
+    
+    // Apply filtering if requested
+    if (filter && guest_id) {
+      let filters = {};
+      
+      // Parse filter parameter
+      if (filter === 'liked') {
+        filters.liked = true;
+      } else if (filter === 'favorited') {
+        filters.favorited = true;
+      } else if (filter === 'liked,favorited' || filter === 'favorited,liked') {
+        filters.liked = true;
+        filters.favorited = true;
+        filters.operator = 'OR';
+      }
+      
+      // Get filtered photo IDs
+      const filteredPhotoIds = await feedbackService.getFilteredPhotos(
+        req.event.id,
+        guest_id,
+        filters
+      );
+      
+      // Filter photos to only include those with feedback
+      photos = photos.filter(photo => filteredPhotoIds.includes(photo.id));
+    }
     
     // Then get comment counts separately
     const commentCounts = await db('photo_feedback')
@@ -150,13 +180,6 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       overlay_protection: req.event.overlay_protection !== false
     };
     
-    console.log('[Gallery Photos] Event data:', {
-      id: req.event.id,
-      slug: req.params.slug,
-      protection_level: req.event.protection_level,
-      calculated_protection: protectionSettings.protection_level,
-      is_basic_or_standard: (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard')
-    });
 
     res.json({
       event: {
@@ -180,8 +203,6 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         const photoUrl = useJwtUrl ? 
           `/api/gallery/${req.params.slug}/photo/${photo.id}` : 
           `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`;
-        
-        console.log(`[Photo ${photo.id}] Protection: ${protectionSettings.protection_level}, Use JWT: ${useJwtUrl}, URL: ${photoUrl}`);
         
         return {
           id: photo.id,
@@ -363,14 +384,6 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
   }
 });
 
-// Test route
-router.get('/:slug/photo-test/:photoId', 
-  verifyGalleryAccess,
-  (req, res) => {
-    console.log('TEST ROUTE EXECUTED!');
-    res.json({ message: 'Test route works!', photoId: req.params.photoId });
-  }
-);
 
 // View single photo (with watermark if enabled)
 router.get('/:slug/photo/:photoId', 

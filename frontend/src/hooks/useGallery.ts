@@ -11,10 +11,10 @@ export const useGalleryInfo = (slug: string, token?: string) => {
   });
 };
 
-export const useGalleryPhotos = (slug: string, enabled: boolean = true) => {
+export const useGalleryPhotos = (slug: string, filter?: 'liked' | 'favorited' | 'all', guestId?: string, enabled: boolean = true) => {
   return useQuery({
-    queryKey: ['gallery-photos', slug],
-    queryFn: () => galleryService.getGalleryPhotos(slug),
+    queryKey: ['gallery-photos', slug, filter, guestId],
+    queryFn: () => galleryService.getGalleryPhotos(slug, filter, guestId),
     enabled,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes

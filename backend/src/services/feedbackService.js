@@ -390,6 +390,76 @@ class FeedbackService {
       throw error;
     }
   }
+
+  /**
+   * Get filtered photos based on feedback criteria
+   * @param {number} eventId - Event ID
+   * @param {string} guestIdentifier - Guest identifier
+   * @param {object} filters - Filter criteria
+   * @param {boolean} filters.liked - Include liked photos
+   * @param {boolean} filters.favorited - Include favorited photos
+   * @param {string} filters.operator - 'AND' or 'OR' for multiple filters
+   * @returns {Promise<number[]>} Array of photo IDs that match criteria
+   */
+  async getFilteredPhotos(eventId, guestIdentifier, filters = {}) {
+    try {
+      const { liked, favorited, operator = 'OR' } = filters;
+      
+      // If no filters specified, return all photos
+      if (!liked && !favorited) {
+        const allPhotos = await db('photos')
+          .where('event_id', eventId)
+          .select('id');
+        return allPhotos.map(p => p.id);
+      }
+      
+      // Build query based on filters
+      let query = db('photo_feedback')
+        .where('event_id', eventId)
+        .where('guest_identifier', guestIdentifier)
+        .where('is_hidden', false);
+      
+      // Apply filter logic
+      if (operator === 'AND' && liked && favorited) {
+        // For AND operation, we need photos that have both types of feedback
+        const likedPhotos = await db('photo_feedback')
+          .where('event_id', eventId)
+          .where('guest_identifier', guestIdentifier)
+          .where('feedback_type', 'like')
+          .where('is_hidden', false)
+          .select('photo_id');
+        
+        const favoritedPhotos = await db('photo_feedback')
+          .where('event_id', eventId)
+          .where('guest_identifier', guestIdentifier)
+          .where('feedback_type', 'favorite')
+          .where('is_hidden', false)
+          .select('photo_id');
+        
+        const likedIds = new Set(likedPhotos.map(p => p.photo_id));
+        const favoritedIds = new Set(favoritedPhotos.map(p => p.photo_id));
+        
+        // Return intersection of both sets
+        return Array.from(likedIds).filter(id => favoritedIds.has(id));
+      } else {
+        // OR operation or single filter
+        const feedbackTypes = [];
+        if (liked) feedbackTypes.push('like');
+        if (favorited) feedbackTypes.push('favorite');
+        
+        query.whereIn('feedback_type', feedbackTypes);
+      }
+      
+      const filteredPhotos = await query
+        .distinct('photo_id')
+        .select('photo_id');
+      
+      return filteredPhotos.map(p => p.photo_id);
+    } catch (error) {
+      logger.error('Error getting filtered photos:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new FeedbackService();

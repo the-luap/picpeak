@@ -35,9 +35,6 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   
-  // Debug logging
-  console.log('PhotoLightbox feedbackEnabled:', feedbackEnabled);
-  
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
   
@@ -288,7 +285,6 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             {feedbackEnabled && (
               <button
                 onClick={() => {
-                  console.log('Feedback button clicked, current feedbackEnabled:', feedbackEnabled);
                   setShowFeedback(!showFeedback);
                 }}
                 className="relative p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"

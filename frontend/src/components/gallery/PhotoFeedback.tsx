@@ -28,7 +28,6 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
     queryKey: ['gallery-feedback-settings', gallerySlug],
     queryFn: async () => {
       const data = await feedbackService.getGalleryFeedbackSettings(gallerySlug);
-      console.log('PhotoFeedback received settings:', data);
       return data;
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes

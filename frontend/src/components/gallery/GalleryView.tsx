@@ -13,6 +13,7 @@ import { GalleryLayout } from './GalleryLayout';
 import { GallerySidebar } from './GallerySidebar';
 import { PhotoFilterBar } from './PhotoFilterBar';
 import { UserPhotoUpload } from './UserPhotoUpload';
+import type { FilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
@@ -55,9 +56,22 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { watermarkEnabled } = useWatermarkSettings();
   const [protectionLevel, setProtectionLevel] = useState<'basic' | 'standard' | 'enhanced' | 'maximum'>('standard');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [guestId, setGuestId] = useState<string>('');
   
-  // Fetch photos
-  const { data, isLoading, error, refetch } = useGalleryPhotos(slug);
+  // Generate a unique guest ID for this session
+  useEffect(() => {
+    // Use existing guest ID from localStorage or generate new one
+    let storedGuestId = localStorage.getItem('gallery_guest_id');
+    if (!storedGuestId) {
+      storedGuestId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('gallery_guest_id', storedGuestId);
+    }
+    setGuestId(storedGuestId);
+  }, []);
+  
+  // Fetch photos with filter support
+  const { data, isLoading, error, refetch } = useGalleryPhotos(slug, filterType, guestId);
   
   // Set protection level when data is available
   useEffect(() => {
@@ -122,7 +136,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       try {
         // Use public endpoint to get feedback settings
         const response = await api.get(`/gallery/${slug}/feedback-settings`);
-        console.log('Feedback settings response:', response.data);
         return response.data;
       } catch (error) {
         console.error('Error fetching feedback settings:', error);
@@ -136,7 +149,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   // Update feedbackEnabled when settings change
   useEffect(() => {
     if (feedbackSettings) {
-      console.log('Setting feedbackEnabled to:', feedbackSettings.feedback_enabled);
       setFeedbackEnabled(feedbackSettings.feedback_enabled || false);
     }
   }, [feedbackSettings]);
@@ -424,6 +436,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           galleryLayout={theme.galleryLayout}
           allowUploads={data?.event?.allow_user_uploads || event?.allow_user_uploads || false}
           onUploadClick={() => setShowUploadModal(true)}
+          feedbackEnabled={feedbackEnabled}
+          filterType={filterType}
+          onFilterChange={setFilterType}
+          likeCount={data?.photos?.filter(p => p.like_count > 0).length || 0}
+          favoriteCount={data?.photos?.filter(p => p.favorite_count > 0).length || 0}
         />
       ) : null}
 
@@ -510,6 +527,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
               sortBy={sortBy}
               onSortChange={setSortBy}
               photoCount={filteredPhotos.length}
+              // Feedback filter props
+              feedbackEnabled={feedbackEnabled}
+              currentFilter={filterType}
+              onFilterChange={setFilterType}
+              likeCount={data?.photos?.filter(p => p.like_count > 0).length || 0}
+              favoriteCount={data?.photos?.filter(p => p.favorite_count > 0).length || 0}
             />
           </div>
         ) : null}
