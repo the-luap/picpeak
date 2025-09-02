@@ -144,6 +144,21 @@ export const BrandingPage: React.FC = () => {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const logoUrl = await settingsService.uploadLogo(file);
+        setBrandingSettings(prev => ({ ...prev, logo_url: logoUrl }));
+        setCurrentTheme(prev => ({ ...prev, logoUrl }));
+        toast.success(t('toast.uploadSuccess'));
+      } catch (error) {
+        console.error('Failed to upload logo:', error);
+        toast.error(t('toast.uploadError'));
+      }
+    }
+  };
+
   const handleWatermarkLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -312,6 +327,166 @@ export const BrandingPage: React.FC = () => {
                   </Button>
                   <p className="text-xs text-neutral-600 mt-1">{t('branding.faviconHelp')}</p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Logo Customization Settings */}
+          <div className="mt-6 pt-6 border-t border-neutral-200">
+            <h3 className="text-md font-semibold text-neutral-900 mb-4">{t('branding.logoCustomization', 'Logo Customization')}</h3>
+            
+            <div className="space-y-4">
+              {/* Logo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {t('branding.logo', 'Logo')}
+                </label>
+                <div className="flex items-center gap-4">
+                  {brandingSettings.logo_url && (
+                    <div className="relative">
+                      <img 
+                        src={brandingSettings.logo_url.startsWith('http') ? brandingSettings.logo_url : buildResourceUrl(brandingSettings.logo_url)} 
+                        alt="Logo"
+                        className="h-16 object-contain bg-neutral-100 rounded p-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleBrandingChange('logo_url', '')}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <span className="btn-secondary inline-flex items-center">
+                      <Upload className="w-4 h-4 mr-2" />
+                      {brandingSettings.logo_url ? t('branding.changeLogo', 'Change Logo') : t('branding.uploadLogo', 'Upload Logo')}
+                    </span>
+                  </label>
+                </div>
+                <p className="text-xs text-neutral-600 mt-1">
+                  {t('branding.logoHelp', 'PNG, JPG or SVG format, recommended width: 200px')}
+                </p>
+              </div>
+              {/* Logo Size */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {t('branding.logoSize', 'Logo Size')}
+                </label>
+                <select
+                  value={brandingSettings.logo_size || 'medium'}
+                  onChange={(e) => handleBrandingChange('logo_size', e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="small">{t('branding.logoSizeSmall', 'Small (32px)')}</option>
+                  <option value="medium">{t('branding.logoSizeMedium', 'Medium (48px)')}</option>
+                  <option value="large">{t('branding.logoSizeLarge', 'Large (64px)')}</option>
+                  <option value="xlarge">{t('branding.logoSizeXLarge', 'Extra Large (96px)')}</option>
+                  <option value="custom">{t('branding.logoSizeCustom', 'Custom')}</option>
+                </select>
+              </div>
+
+              {/* Custom Height (only shown when size is custom) */}
+              {brandingSettings.logo_size === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    {t('branding.logoMaxHeight', 'Maximum Height (pixels)')}
+                  </label>
+                  <input
+                    type="number"
+                    min="20"
+                    max="200"
+                    value={brandingSettings.logo_max_height || 48}
+                    onChange={(e) => handleBrandingChange('logo_max_height', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-neutral-600 mt-1">
+                    {t('branding.logoMaxHeightHelp', 'Set a custom maximum height for the logo (20-200 pixels)')}
+                  </p>
+                </div>
+              )}
+
+              {/* Logo Position */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {t('branding.logoPosition', 'Logo Position in Header')}
+                </label>
+                <div className="flex gap-2">
+                  {(['left', 'center', 'right'] as const).map((position) => (
+                    <button
+                      key={position}
+                      type="button"
+                      onClick={() => handleBrandingChange('logo_position', position)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        brandingSettings.logo_position === position
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      }`}
+                    >
+                      {t(`branding.position${position.charAt(0).toUpperCase() + position.slice(1)}`, position.charAt(0).toUpperCase() + position.slice(1))}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Display Mode */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {t('branding.logoDisplayMode', 'Display Mode')}
+                </label>
+                <select
+                  value={brandingSettings.logo_display_mode || 'logo_and_text'}
+                  onChange={(e) => handleBrandingChange('logo_display_mode', e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="logo_only">{t('branding.logoOnly', 'Logo Only')}</option>
+                  <option value="text_only">{t('branding.textOnly', 'Company Name Only')}</option>
+                  <option value="logo_and_text">{t('branding.logoAndText', 'Logo and Company Name')}</option>
+                </select>
+              </div>
+
+              {/* Display Options */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={brandingSettings.logo_display_header !== false}
+                    onChange={(e) => handleBrandingChange('logo_display_header', e.target.checked)}
+                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-900">
+                      {t('branding.showLogoInHeader', 'Show logo in gallery header')}
+                    </span>
+                    <p className="text-xs text-neutral-600">
+                      {t('branding.showLogoInHeaderHelp', 'Display the logo in the main header bar')}
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={brandingSettings.logo_display_hero !== false}
+                    onChange={(e) => handleBrandingChange('logo_display_hero', e.target.checked)}
+                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-900">
+                      {t('branding.showLogoInHero', 'Show logo in hero section')}
+                    </span>
+                    <p className="text-xs text-neutral-600">
+                      {t('branding.showLogoInHeroHelp', 'Display the logo in hero sections (for non-grid layouts)')}
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
           </div>

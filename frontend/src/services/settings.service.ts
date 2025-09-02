@@ -12,6 +12,12 @@ export interface BrandingSettings {
   watermark_logo_url?: string;
   logo_url?: string;
   favicon_url?: string;
+  logo_size?: 'small' | 'medium' | 'large' | 'xlarge' | 'custom';
+  logo_max_height?: number;
+  logo_position?: 'left' | 'center' | 'right';
+  logo_display_header?: boolean;
+  logo_display_hero?: boolean;
+  logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
 }
 
 export interface ThemeSettings {
@@ -215,7 +221,13 @@ export const settingsService = {
       watermark_size: rawSettings.branding_watermark_size || 15,
       watermark_logo_url: rawSettings.branding_watermark_logo_url || undefined,
       logo_url: rawSettings.branding_logo_url || undefined,
-      favicon_url: rawSettings.branding_favicon_url || undefined
+      favicon_url: rawSettings.branding_favicon_url || undefined,
+      logo_size: rawSettings.branding_logo_size || 'medium',
+      logo_max_height: rawSettings.branding_logo_max_height || 48,
+      logo_position: rawSettings.branding_logo_position || 'left',
+      logo_display_header: rawSettings.branding_logo_display_header !== false,
+      logo_display_hero: rawSettings.branding_logo_display_hero !== false,
+      logo_display_mode: rawSettings.branding_logo_display_mode || 'logo_and_text'
     };
   },
 

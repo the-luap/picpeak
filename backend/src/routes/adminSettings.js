@@ -170,7 +170,13 @@ router.put('/branding', adminAuth, async (req, res) => {
       watermark_size,
       favicon_url,
       logo_url,
-      watermark_logo_url
+      watermark_logo_url,
+      logo_size,
+      logo_max_height,
+      logo_position,
+      logo_display_header,
+      logo_display_hero,
+      logo_display_mode
     } = req.body;
 
     const brandingSettings = {
@@ -184,7 +190,13 @@ router.put('/branding', adminAuth, async (req, res) => {
       watermark_size,
       favicon_url,
       logo_url,
-      watermark_logo_url
+      watermark_logo_url,
+      logo_size,
+      logo_max_height,
+      logo_position,
+      logo_display_header,
+      logo_display_hero,
+      logo_display_mode
     };
 
     // Handle favicon deletion if empty string or null is provided

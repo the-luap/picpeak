@@ -23,6 +23,12 @@ interface GalleryLayoutProps {
     footer_text?: string;
     favicon_url?: string;
     logo_url?: string;
+    logo_size?: 'small' | 'medium' | 'large' | 'xlarge' | 'custom';
+    logo_max_height?: number;
+    logo_position?: 'left' | 'center' | 'right';
+    logo_display_header?: boolean;
+    logo_display_hero?: boolean;
+    logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
   };
   showLogout?: boolean;
   onLogout?: () => void;
@@ -55,6 +61,53 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid' && theme.galleryLayout !== 'hero';
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   const headingFontFamily = theme.headingFontFamily || fontFamily;
+  
+  // Calculate logo size classes based on settings
+  const getLogoSizeClass = (context: 'header' | 'hero') => {
+    const size = brandingSettings?.logo_size || 'medium';
+    const maxHeight = brandingSettings?.logo_max_height || 48;
+    
+    if (size === 'custom') {
+      return { maxHeight: `${maxHeight}px`, height: 'auto' };
+    }
+    
+    const sizeMap = {
+      small: context === 'header' ? 'h-6 sm:h-8' : 'h-12 sm:h-14 lg:h-16',
+      medium: context === 'header' ? 'h-8 sm:h-10 lg:h-12' : 'h-16 sm:h-20 lg:h-24',
+      large: context === 'header' ? 'h-10 sm:h-12 lg:h-16' : 'h-20 sm:h-24 lg:h-32',
+      xlarge: context === 'header' ? 'h-12 sm:h-16 lg:h-20' : 'h-24 sm:h-32 lg:h-40'
+    };
+    
+    return sizeMap[size] || sizeMap.medium;
+  };
+  
+  // Determine logo position classes
+  const getLogoPositionClass = () => {
+    const position = brandingSettings?.logo_position || 'left';
+    return {
+      left: 'justify-start',
+      center: 'justify-center',
+      right: 'justify-end'
+    }[position];
+  };
+  
+  // Check if logo should be displayed
+  const shouldShowLogo = (context: 'header' | 'hero') => {
+    const displayMode = brandingSettings?.logo_display_mode || 'logo_and_text';
+    if (displayMode === 'text_only') return false;
+    
+    if (context === 'header') {
+      return brandingSettings?.logo_display_header !== false;
+    } else {
+      return brandingSettings?.logo_display_hero !== false;
+    }
+  };
+  
+  // Check if company name should be displayed
+  const shouldShowCompanyName = () => {
+    const displayMode = brandingSettings?.logo_display_mode || 'logo_and_text';
+    return displayMode !== 'logo_only';
+  };
   
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -122,16 +175,31 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                 )}
                 
                 {/* Logo - Show custom logo or fallback to PicPeak logo */}
-                <div className="flex-shrink-0">
-                  <img 
-                    src={brandingSettings?.logo_url ? 
-                      buildResourceUrl(brandingSettings.logo_url) : 
-                      '/picpeak-logo-transparent.png'
-                    } 
-                    alt={brandingSettings?.company_name || 'PicPeak'}
-                    className="h-8 sm:h-10 lg:h-12 w-auto object-contain"
-                  />
-                </div>
+                {shouldShowLogo('header') && (
+                  <div className={`flex-shrink-0 flex items-center gap-2 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
+                    <img 
+                      src={brandingSettings?.logo_url ? 
+                        buildResourceUrl(brandingSettings.logo_url) : 
+                        '/picpeak-logo-transparent.png'
+                      } 
+                      alt={brandingSettings?.company_name || 'PicPeak'}
+                      className={`${typeof getLogoSizeClass('header') === 'string' ? getLogoSizeClass('header') : ''} w-auto object-contain`}
+                      style={typeof getLogoSizeClass('header') === 'object' ? getLogoSizeClass('header') : undefined}
+                    />
+                    {shouldShowCompanyName() && brandingSettings?.company_name && (
+                      <span className="hidden sm:inline text-lg font-semibold text-neutral-900">
+                        {brandingSettings.company_name}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!shouldShowLogo('header') && shouldShowCompanyName() && brandingSettings?.company_name && (
+                  <div className={`flex-shrink-0 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
+                    <span className="text-lg font-semibold text-neutral-900">
+                      {brandingSettings.company_name || 'PicPeak'}
+                    </span>
+                  </div>
+                )}
               </div>
               
               {/* Center - Event info */}
@@ -277,19 +345,32 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           <div className="container py-12 sm:py-16 lg:py-20 relative z-10">
             <div className="text-center max-w-4xl mx-auto">
               {/* Logo - Show custom logo or fallback to PicPeak logo */}
-              <div className="mb-6">
-                <img 
-                  src={brandingSettings?.logo_url ? 
-                    buildResourceUrl(brandingSettings.logo_url) : 
-                    '/picpeak-logo-transparent.png'
-                  } 
-                  alt={brandingSettings?.company_name || 'PicPeak'}
-                  className="h-16 sm:h-20 lg:h-24 w-auto object-contain mx-auto"
-                  style={{ 
-                    filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
-                  }}
-                />
-              </div>
+              {shouldShowLogo('hero') && (
+                <div className="mb-6">
+                  <img 
+                    src={brandingSettings?.logo_url ? 
+                      buildResourceUrl(brandingSettings.logo_url) : 
+                      '/picpeak-logo-transparent.png'
+                    } 
+                    alt={brandingSettings?.company_name || 'PicPeak'}
+                    className={`${typeof getLogoSizeClass('hero') === 'string' ? getLogoSizeClass('hero') : ''} w-auto object-contain mx-auto`}
+                    style={typeof getLogoSizeClass('hero') === 'object' ? 
+                      { ...getLogoSizeClass('hero'), filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' } : 
+                      { filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' }
+                    }
+                  />
+                  {shouldShowCompanyName() && brandingSettings?.company_name && (
+                    <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90" style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                      {brandingSettings.company_name}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!shouldShowLogo('hero') && shouldShowCompanyName() && brandingSettings?.company_name && (
+                <div className="mb-6 text-2xl sm:text-3xl font-bold text-white" style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>
+                  {brandingSettings.company_name || 'PicPeak'}
+                </div>
+              )}
               
               {/* Event Name */}
               <h1 
