@@ -194,7 +194,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                     disabled={isDownloading}
                     className="w-full"
                   >
-                    {t('gallery.downloadSelected')} ({selectedCount})
+                    {t('gallery.downloadSelected', { count: selectedCount })} ({selectedCount})
                   </Button>
                 )}
               </div>
