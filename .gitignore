@@ -72,6 +72,12 @@ logs/
 storage/
 data/
 certbot/
- 
+
 # Ignore local contributor guide copy
 AGENTS.md
+
+# Local artifacts from browser tooling
+.playwright-mcp/
+
+# Local SQLite files in backend
+backend/*.sqlite*
