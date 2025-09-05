@@ -59,7 +59,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      # Backend exposes /health on internal port 3000
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -68,8 +69,8 @@ services:
     # Use pre-built image from GitHub Container Registry
     image: ghcr.io/the-luap/picpeak/frontend:latest
     container_name: picpeak-frontend
-    environment:
-      - VITE_API_URL=${FRONTEND_API_URL:-http://localhost:3001}
+    # Note: Pre-built frontend uses Nginx to proxy /api to backend:3001.
+    # Prefer keeping API base as '/api' in builds to avoid CORS.
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     networks:
