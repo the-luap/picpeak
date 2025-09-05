@@ -36,6 +36,11 @@
     "customize": "Customize",
     "hide": "Hide",
     "unknown": "Unknown",
+    "notSet": "Not set",
+    "of": "of",
+    "up": "Up",
+    "select": "Select",
+    "selected": "Selected",
     "chunk": "Chunk"
   },
   "upload": {
@@ -50,6 +55,10 @@
     "uploadFailed": "Upload failed",
     "someFilesFailed": "Some files failed to upload",
     "uploadPhotos": "Upload Photos",
+    "importExternal": "Import from External Folder",
+    "externalImportInfo": "All pictures from the selected folder will be imported.",
+    "selectExternalFolder": "Select external folder under /external-media",
+    "importFromSelectedFolder": "Import from selected folder",
     "maxFilesReached": "Maximum 500 files allowed",
     "someFilesSkipped": "Some files were skipped (500 file limit)",
     "tooManyFiles": "Maximum 500 files can be uploaded at once",
@@ -973,6 +982,12 @@
     "pageUpdated": "Page updated successfully"
   },
   "backup": {
+    "external": {
+      "warning": {
+        "title": "External media excluded",
+        "body": "This installation references photos from /external-media. These originals are excluded from backups. Thumbnails and database are still backed up."
+      }
+    },
     "title": "Backup Management",
     "subtitle": "Manage system backups, configure automated backups, and restore from previous backups.",
     "tabs": {

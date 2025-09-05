@@ -606,8 +606,9 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, async (req, res) => 
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const storagePath = getStoragePath();
-    const filePath = path.join(storagePath, 'events/active', photo.path);
+    const { resolvePhotoFilePath } = require('../services/photoResolver');
+    const event = await db('events').where('id', eventId).first();
+    const filePath = resolvePhotoFilePath(event, photo);
     
     // Check if file exists
     try {
@@ -684,8 +685,10 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
       photos: photos.map(photo => ({
         id: photo.id,
         filename: photo.filename,
-        url: `/admin/events/${eventId}/photo/${photo.id}`,
-        thumbnail_url: photo.thumbnail_path ? `/admin/events/${eventId}/thumbnail/${photo.id}` : null,
+        // Use the correct admin photos router base for serving images
+        url: `/admin/photos/${eventId}/photo/${photo.id}`,
+        // Always expose a thumbnail URL; backend will generate on demand if missing
+        thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
         type: photo.type,
         category_id: photo.type,
         category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
@@ -719,8 +722,9 @@ router.get('/:eventId/photo/:photoId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const storagePath = getStoragePath();
-    const filePath = path.join(storagePath, 'events/active', photo.path);
+    const { resolvePhotoFilePath } = require('../services/photoResolver');
+    const event = await db('events').where('id', eventId).first();
+    const filePath = resolvePhotoFilePath(event, photo);
     
     // Check if file exists
     try {

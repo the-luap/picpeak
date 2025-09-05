@@ -45,7 +45,8 @@ class PhotosService {
     }
     
     const queryString = params.toString();
-    const url = `/admin/events/${eventId}/photos${queryString ? `?${queryString}` : ''}`;
+    // Use admin photos router for listing to ensure URL alignment with media/thumbnail endpoints
+    const url = `/admin/photos/${eventId}/photos${queryString ? `?${queryString}` : ''}`;
     
     const response = await api.get(url);
     

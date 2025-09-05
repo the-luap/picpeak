@@ -28,9 +28,68 @@ import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, P
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { archiveService } from '../../services/archive.service';
+import { externalMediaService } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
+import { useTranslation } from 'react-i18next';
+
+const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+  const [entries, setEntries] = useState<{ path: string; entries: any[]; canNavigateUp: boolean } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentPath, setCurrentPath] = useState<string>(value || '');
+
+  const load = async (p: string) => {
+    try {
+      setLoading(true);
+      const res = await externalMediaService.list(p);
+      setEntries(res);
+      setCurrentPath(res.path);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(currentPath || ''); }, []);
+
+  const navigateUp = () => {
+    if (!entries?.canNavigateUp) return;
+    const parts = (entries.path || '').split('/').filter(Boolean);
+    parts.pop();
+    load(parts.join('/'));
+  };
+
+  return (
+    <div className="mt-2 border rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm text-neutral-600">/external-media/{entries?.path || ''}</div>
+        <div className="flex gap-2">
+          <button className="text-sm underline" onClick={navigateUp} disabled={!entries?.canNavigateUp}>{t('common.up', 'Up')}</button>
+          <button className="text-sm underline" onClick={() => onChange(entries?.path || '')}>{t('common.select', 'Select')}</button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="text-sm text-neutral-500">{t('common.loading', 'Loading...')}</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {entries?.entries?.filter((e: any) => e.type === 'dir').map((e: any) => (
+            <button
+              key={e.name}
+              onClick={() => load([entries?.path, e.name].filter(Boolean).join('/'))}
+              className="px-3 py-2 border rounded text-left hover:bg-neutral-50"
+            >
+              📁 {e.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {value && (
+        <div className="mt-2 text-xs text-neutral-600">{t('common.selected', 'Selected')}: /external-media/{value}</div>
+      )}
+    </div>
+  );
+};
 
 export const EventDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,7 +126,10 @@ export const EventDetailsPage: React.FC = () => {
   });
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [showExternalImport, setShowExternalImport] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'photos' | 'categories'>('overview');
+  const [externalPath, setExternalPath] = useState<string>('');
+  const [importing, setImporting] = useState<boolean>(false);
   const [selectedPhoto, setSelectedPhoto] = useState<{ photo: AdminPhoto; index: number } | null>(null);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
@@ -599,6 +661,15 @@ export const EventDetailsPage: React.FC = () => {
             ) : (
               <dl className="space-y-4">
                 <div>
+                  <dt className="text-sm font-medium text-neutral-500">Source Mode</dt>
+                  <dd className="mt-1 text-sm text-neutral-900">
+                    {event.source_mode === 'reference' ? 'Reference (external folder)' : 'Managed (upload)'}
+                    {event.source_mode === 'reference' && event.external_path ? (
+                      <span className="text-neutral-500 ml-2">/external-media/{event.external_path}</span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-sm font-medium text-neutral-500">{t('events.welcomeMessage')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900">
                     {event.welcome_message || <span className="text-neutral-400">{t('events.noWelcomeMessageSet')}</span>}
@@ -951,6 +1022,17 @@ export const EventDetailsPage: React.FC = () => {
             >
               {t('events.uploadPhotos')}
             </Button>
+            {event.source_mode === 'reference' && (
+              <div className="ml-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowExternalImport(true)}
+                >
+                  {t('events.importExternal', 'Import from External Folder')}
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Photo Grid */}
@@ -1022,6 +1104,59 @@ export const EventDetailsPage: React.FC = () => {
           }}
           onClose={() => setShowPasswordReset(false)}
         />
+      )}
+
+      {/* External Import Modal */}
+      {showExternalImport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-neutral-900">{t('events.importExternal', 'Import from External Folder')}</h2>
+              <button onClick={() => setShowExternalImport(false)} className="text-neutral-400 hover:text-neutral-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-3 text-sm text-neutral-700">
+              {t('events.externalImportInfo', 'All pictures from the selected folder will be imported.')}
+            </div>
+            <div className="mb-2 text-sm text-neutral-700">
+              {t('events.selectExternalFolder', 'Select external folder under /external-media')}
+            </div>
+            <ExternalFolderPicker value={externalPath || event.external_path || ''} onChange={setExternalPath} />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowExternalImport(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                isLoading={importing}
+                onClick={async () => {
+                  try {
+                    setImporting(true);
+                    const selected = externalPath || event.external_path || '';
+                    if (!selected) {
+                      toast.error(t('errors.somethingWentWrong', 'Something went wrong'));
+                      return;
+                    }
+                    await externalMediaService.importEvent(parseInt(id!), selected, { recursive: true });
+                    toast.success(t('toast.saveSuccess'));
+                    queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+                    queryClient.invalidateQueries({ queryKey: ['admin-event-photos', id] });
+                    setShowExternalImport(false);
+                  } catch (e: any) {
+                    toast.error(e?.response?.data?.error || 'Import failed');
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+              >
+                {t('events.importFromSelectedFolder', 'Import from selected folder')}
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
 
     </div>

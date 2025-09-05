@@ -15,6 +15,7 @@ import { parseISO } from 'date-fns';
 import { toast } from 'react-toastify';
 
 import { Card, Loading, Button } from '../common';
+import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
 import { feedbackService } from '../../services/feedback.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
@@ -129,15 +130,13 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
                         <p className="mt-1 text-sm text-neutral-700">{item.comment_text || item.comment}</p>
                         {item.photo_id && (
                           <div className="mt-2 flex items-center gap-2">
-                            <img 
-                              src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
-                              alt={item.filename || 'Photo'}
-                              className="w-16 h-16 object-cover rounded"
-                              onError={(e) => {
-                                // Hide image if thumbnail fails to load
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
+                            <div className="w-16 h-16 overflow-hidden rounded">
+                              <AdminAuthenticatedImage 
+                                src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
+                                alt={item.filename || 'Photo'}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            </div>
                             <p className="text-xs text-neutral-500">
                               {t('feedback.onPhoto', 'On photo')}: {item.filename || item.photo_filename || `#${item.photo_id}`}
                             </p>

@@ -132,7 +132,8 @@ async function generateThumbnail(imagePath, options = {}) {
     
     return path.relative(getStoragePath(), thumbnailPath);
   } catch (error) {
-    logger.error(`Failed to generate thumbnail for ${filename}:`, error.message);
+    const msg = (error && error.message) ? error.message : String(error);
+    logger.error(`Failed to generate thumbnail for ${filename}: ${msg}`);
     
     // Clean up any partially created file
     try {
@@ -171,8 +172,18 @@ async function isThumbnailValid(thumbnailPath) {
  * Regenerate thumbnail if it's broken or missing
  */
 async function ensureThumbnail(photo) {
-  const storagePath = getStoragePath();
-  const originalPath = path.join(storagePath, 'events/active', photo.path);
+  const { db } = require('../database/db');
+  const { resolvePhotoFilePath } = require('./photoResolver');
+  let originalPath;
+  try {
+    const event = await db('events').where('id', photo.event_id).first();
+    originalPath = resolvePhotoFilePath(event, photo);
+    logger.info(`Ensuring thumbnail for photo ${photo.id} from source: ${originalPath}`);
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    logger.error(`Failed to resolve original path for thumbnail (photo ${photo.id}): ${msg}`);
+    return null;
+  }
   
   // Check if thumbnail exists and is valid
   if (photo.thumbnail_path) {

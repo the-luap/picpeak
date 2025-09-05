@@ -71,6 +71,7 @@ If you need to customize the application or the pre-built images aren't availabl
 - [Reverse Proxy Setup](#reverse-proxy-setup)
 - [Maintenance](#maintenance)
 - [Troubleshooting](#troubleshooting)
+ - [External Media Library](#external-media-library)
 
 ## Prerequisites
 
@@ -110,6 +111,43 @@ If you need to customize the application or the pre-built images aren't availabl
    ```bash
    docker compose -f docker-compose.production.yml logs -f
    ```
+
+## External Media Library
+
+PicPeak can reference an existing, read‑only media library mounted into the backend container. This avoids copying originals into PicPeak storage.
+
+- Map your host library path to the container as read‑only in `docker-compose.production.yml`:
+  - Add volume under `backend`: `- ${EXTERNAL_MEDIA}:/external-media:ro`
+  - Add backend env: `EXTERNAL_MEDIA_ROOT=/external-media`
+- In `.env`, set:
+  - `EXTERNAL_MEDIA=/mnt/photos` (example host path)
+  - `EXTERNAL_MEDIA_ROOT=/external-media`
+
+Usage:
+- In Admin → Events, set “Source Mode” to “Reference (external folder)”, select a folder under `/external-media`, then import to index and generate thumbnails. Originals stay in your library.
+
+Backups and Archives:
+- Backups only include data under `STORAGE_PATH` and exclude external originals. The backup manifest includes `metadata.external_references = { excluded: true, events: N, photos: M }` and the Admin UI surfaces a warning.
+- Archiving reference events creates a manifest‑only ZIP and deletes thumbnails for that event. External originals are never moved or deleted.
+
+Local (npm) setup (no Docker):
+
+1. Create or choose a folder that contains your external originals, e.g. `/Users/you/Pictures/picpeak-external` (macOS/Linux) or `C:\\Pictures\\picpeak-external` (Windows).
+2. In `backend/.env` (or your shell), set:
+   - `EXTERNAL_MEDIA_ROOT=/absolute/path/to/picpeak-external`
+   - Ensure `STORAGE_PATH` points to your PicPeak storage (defaults to `./storage`).
+3. Start services from source:
+   - Backend: `cd backend && npm install && npm run migrate && JWT_SECRET=... npm start`
+   - Frontend: `cd frontend && npm install && npm run dev` (or build + serve)
+4. In Admin → Events:
+   - Create an event, set “Source Mode” to “Reference (external folder)”.
+   - Use the folder picker to browse under your `EXTERNAL_MEDIA_ROOT` and select the subfolder to reference.
+   - Click “Import from selected folder” to index files and generate thumbnails on demand.
+
+Notes:
+- PicPeak only reads from `EXTERNAL_MEDIA_ROOT`; it never modifies or deletes your originals there.
+- Thumbnails are generated under `STORAGE_PATH/thumbnails` and are included in backups; originals in `EXTERNAL_MEDIA_ROOT` are excluded.
+- On Windows, use absolute paths (e.g., `C:\\Photos\\Library`) for `EXTERNAL_MEDIA_ROOT`.
 
 ### Method 2: Building from Source
 

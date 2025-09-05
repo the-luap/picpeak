@@ -20,6 +20,7 @@ import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 
 import { Button, Card, Loading } from '../../components/common';
+import { AdminAuthenticatedImage } from '../../components/admin/AdminAuthenticatedImage';
 import { FeedbackSettings } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
@@ -251,15 +252,13 @@ export const EventFeedbackPage: React.FC = () => {
                 <Card key={item.id} className="overflow-hidden">
                   <div className="p-4 flex items-start gap-4">
                     {item.photo_id && (
-                      <img
-                        src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
-                        alt={item.filename || 'Photo'}
-                        className="w-16 h-16 object-cover rounded"
-                        onError={(e) => {
-                          // Hide image if thumbnail fails to load
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
+                      <div className="w-16 h-16 overflow-hidden rounded">
+                        <AdminAuthenticatedImage
+                          src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
+                          alt={item.filename || 'Photo'}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      </div>
                     )}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
