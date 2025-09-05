@@ -180,6 +180,19 @@ Update `.env` with:
   - Always include the scheme (`http://` or `https://`).
   - The backend compares origins strictly for CORS; malformed values will cause login requests to fail with 500.
 
+#### External Database Example
+To use an external PostgreSQL instead of the bundled container, set the following in `.env` and ensure the `postgres` service is disabled or removed:
+
+```env
+DB_HOST=db.example.com
+DB_PORT=5432
+DB_USER=picpeak
+DB_PASSWORD=change_me
+DB_NAME=picpeak_prod
+```
+
+Compose uses these values via `env_file: .env`. The backend service also defaults `DB_HOST=${DB_HOST:-postgres}` so if you don’t set `DB_HOST` it will use the bundled `postgres` container.
+
 ### Frontend Configuration (frontend/.env)
 Create `frontend/.env` from `frontend/.env.example`:
 ```bash

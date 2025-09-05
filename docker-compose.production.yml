@@ -41,13 +41,13 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
-      - DB_HOST=postgres
+      - DB_HOST=${DB_HOST:-postgres}
       - REDIS_HOST=redis
       - PHOTOS_DIR=/app/storage/events
     volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
-      - ./data:/app/data
+      - ${APP_STORAGE}:/app/storage
+      - ${LOGS}:/app/logs
+      - ${APP_DATA}:/app/data
     ports:
       - "${BACKEND_PORT:-3001}:3000"
     networks:
