@@ -170,8 +170,15 @@ Update `.env` with:
 - `REDIS_PASSWORD` - Redis password
 - `SMTP_*` - Email configuration
 - **URL Configuration** (for backend CORS):
-  - `FRONTEND_URL` - Frontend URL (e.g., `http://localhost:3000` for Docker)
-  - `ADMIN_URL` - Admin URL (e.g., `http://localhost:3000` for Docker)
+  - `FRONTEND_URL` - Frontend origin (use full URL with scheme, no trailing slash)
+    - Example (Docker): `http://localhost:3000`
+  - `ADMIN_URL` - Admin origin (same as `FRONTEND_URL` for Docker; full URL, no trailing slash)
+    - Example (Docker): `http://localhost:3000`
+  
+  Notes:
+  - Do not include trailing `/` (e.g., use `http://host:3000`, not `http://host:3000/`).
+  - Always include the scheme (`http://` or `https://`).
+  - The backend compares origins strictly for CORS; malformed values will cause login requests to fail with 500.
 
 ### Frontend Configuration (frontend/.env)
 Create `frontend/.env` from `frontend/.env.example`:
@@ -181,9 +188,10 @@ cp frontend/.env.example frontend/.env
 
 Update `frontend/.env` with:
 - `VITE_API_URL` - Backend API URL
-  - For Docker deployment: `http://localhost:3001/api`
-  - For non-Docker local dev: `http://localhost:3001`
-  - For production with reverse proxy: `/api`
+  - Docker (pre-built images) and production behind reverse proxy: `/api` (recommended; avoids CORS and matches the frontend Nginx proxy in the image)
+  - Local dev (Vite): `http://localhost:3001` or `/api` if proxying through a dev proxy
+
+Note: When using pre-built frontend images, runtime container env does not change the already-built JS. Prefer the default `/api` and let the frontend Nginx proxy forward to the backend.
 
 ⚠️ **IMPORTANT PORT CONFIGURATION**: 
 - The frontend runs on port **3000** in Docker (exposed via nginx)
@@ -246,8 +254,8 @@ docker compose ps
 ### Access Points
 
 By default, services are exposed on:
-- Frontend: http://localhost:3000
-- Backend/API: http://localhost:3001
+- Frontend (UI + Admin): http://localhost:3000 (admin at `/admin`)
+- Backend/API: http://localhost:3001 (API only; no UI routes)
 - PostgreSQL: localhost:5432 (if needed)
 - Redis: localhost:6379 (if needed)
 
@@ -318,7 +326,11 @@ After deployment, you must complete the first login process which includes manda
 
 ### Step 2: Access Admin Panel
 
-1. Navigate to your admin panel URL (e.g., `http://your-domain.com:3001/admin` or `https://your-domain.com/admin`)
+1. Navigate to your frontend domain and open the admin section:
+   - `http://your-domain.com/admin` (behind reverse proxy)
+   - `http://localhost:3000/admin` (Docker local)
+   
+   The backend at `:3001` serves API only and does not serve the admin UI.
 2. Login using:
    - **Email**: `admin@example.com` (or your custom admin email)
    - **Password**: The auto-generated password from the logs
@@ -392,7 +404,16 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Backend API
+    # Frontend (serves UI and /admin/*)
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Backend API and protected resources
     location /api {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
@@ -400,17 +421,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-
-    # Protected photos and uploads
     location ~ ^/(photos|thumbnails|uploads) {
-        proxy_pass http://localhost:3001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    # Admin routes
-    location /admin {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

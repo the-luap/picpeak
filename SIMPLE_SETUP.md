@@ -166,8 +166,10 @@ sudo ./setup.sh --native --unattended \
 ## 🌐 Access Methods
 
 ### Direct Access (Simplest)
-- **Docker**: `http://your-server:3000` (frontend), `http://your-server:3001/admin` (admin)
-- **Native**: `http://your-server:3001/admin` (admin panel)
+- Docker: `http://your-server:3000` (frontend and admin at `/admin`)
+- Backend/API: `http://your-server:3001` (API only; no UI routes)
+  
+For native installs, serve the built frontend (e.g., with nginx or Caddy) and access the admin at `/admin` on the frontend domain.
 
 ### With Domain & HTTPS
 If configured during setup:
@@ -175,9 +177,23 @@ If configured during setup:
 - `https://your-domain.com/admin` - Admin panel
 
 ### Behind Existing Proxy
-Add to your Nginx/Apache configuration:
+Add to your Nginx/Apache configuration (split frontend vs backend):
 ```nginx
+# Frontend (UI + /admin/*)
 location / {
+    proxy_pass http://localhost:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Backend API and protected resources
+location /api {
     proxy_pass http://localhost:3001;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -188,6 +204,14 @@ location / {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     client_max_body_size 100M;
+}
+location ~ ^/(photos|thumbnails|uploads) {
+    proxy_pass http://localhost:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 

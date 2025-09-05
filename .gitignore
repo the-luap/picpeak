@@ -72,3 +72,6 @@ logs/
 storage/
 data/
 certbot/
+ 
+# Ignore local contributor guide copy
+AGENTS.md

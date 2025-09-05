@@ -3,6 +3,7 @@ import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check,
 import { Button } from '../common';
 import { PhotoCategory } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { GalleryFilter, type FilterType } from './GalleryFilter';
 
 interface GallerySidebarProps {
   isOpen: boolean;
@@ -28,6 +29,11 @@ interface GallerySidebarProps {
   galleryLayout?: string;
   allowUploads?: boolean;
   onUploadClick?: () => void;
+  feedbackEnabled?: boolean;
+  filterType?: FilterType;
+  onFilterChange?: (filter: FilterType) => void;
+  likeCount?: number;
+  favoriteCount?: number;
 }
 
 export const GallerySidebar: React.FC<GallerySidebarProps> = ({
@@ -53,7 +59,12 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   isMobile,
   galleryLayout,
   allowUploads,
-  onUploadClick
+  onUploadClick,
+  feedbackEnabled = false,
+  filterType = 'all',
+  onFilterChange,
+  likeCount = 0,
+  favoriteCount = 0
 }) => {
   const { t } = useTranslation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -198,6 +209,23 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                   </Button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Feedback Filter Section */}
+          {feedbackEnabled && onFilterChange && (
+            <div className="p-4 border-b border-neutral-200">
+              <GalleryFilter
+                currentFilter={filterType}
+                onFilterChange={(filter) => {
+                  onFilterChange(filter);
+                  if (isMobile) onClose();
+                }}
+                feedbackEnabled={feedbackEnabled}
+                likeCount={likeCount}
+                favoriteCount={favoriteCount}
+                className="w-full"
+              />
             </div>
           )}
 
