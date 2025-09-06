@@ -143,6 +143,7 @@ const secureStatic = require('./src/middleware/secureStatic');
 
 // Get storage path from environment or use default
 const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../storage');
+process.env.EXTERNAL_MEDIA_ROOT = process.env.EXTERNAL_MEDIA_ROOT || '/external-media';
 
 // Static file serving for photos (protected)
 app.use('/photos', require('./src/middleware/photoAuth'), setCorsHeaders, secureStatic(path.join(storagePath, 'events/active')));
@@ -199,7 +200,8 @@ app.get('/health', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
+  app.use('/api/events', eventRoutes);
+  app.use('/api/admin/external-media', require('./src/routes/adminExternalMedia'));
 // Gallery routes - main routes first, then feedback routes
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/gallery', require('./src/routes/galleryFeedback'));
