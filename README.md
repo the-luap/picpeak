@@ -28,6 +28,7 @@ Unlike expensive SaaS solutions, PicPeak gives you:
 
 ### For Photographers
 - 📁 **Drag & Drop Upload** - Simply drop photos into folders
+- 🔗 **External Media (Reference Mode)** - Browse and import from a read‑only external folder library without copying originals
 - ⏰ **Auto-Expiring Galleries** - Set expiration dates (default: 30 days)
 - 🔐 **Password Protection** - Secure client galleries
 - 📧 **Automated Emails** - Creation confirmations and expiration warnings
@@ -45,6 +46,7 @@ Unlike expensive SaaS solutions, PicPeak gives you:
 ### Technical Excellence
 - 🐳 **Docker Ready** - Deploy in minutes
 - 🔄 **Auto-Processing** - Automatic thumbnail generation
+- 🗂️ **Reference Library Support** - Point PicPeak at `EXTERNAL_MEDIA_ROOT` to reference existing originals, index quickly, and generate thumbnails on demand
 - 💾 **Smart Storage** - Automatic archiving of expired galleries
 - 🛡️ **Security First** - JWT auth, rate limiting, CORS protection
 - 📈 **Scalable** - From small studios to large agencies
@@ -73,6 +75,7 @@ docker-compose up -d
 ## 📖 Documentation
 
 - 📘 [**Deployment Guide**](DEPLOYMENT_GUIDE.md) - Detailed installation instructions
+  - Includes the new [External Media Library](DEPLOYMENT_GUIDE.md#external-media-library) reference mode
 - 🤝 [**Contributing**](CONTRIBUTING.md) - How to contribute
 - 📜 [**License**](LICENSE) - MIT License
 - 🔒 [**Security**](SECURITY.md) - Security policies
@@ -192,9 +195,10 @@ These features are currently in beta testing and may have limited functionality 
 | Feature | Description | Priority | Status |
 |---------|-------------|----------|---------|
 | **Backup & Restore** | Comprehensive backup system with S3/MinIO support, automated scheduling, and safe restore functionality | High | ✅ Implemented |
+| **External Media Library (Reference Mode)** | Use an external folder library as a read‑only source with import and on‑demand thumbnail generation | High | ✅ Implemented |
 | **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
 | **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
-| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented (not tested) |
+| **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented |
 | **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
 | **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
 
