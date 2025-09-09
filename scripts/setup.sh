@@ -944,16 +944,31 @@ print_success_message() {
 
 update_installation() {
     print_header "Updating PicPeak"
-    
-    # Detect existing installation
-    if [[ -d "$DOCKER_APP_DIR" ]] || [[ -d "/home/${SUDO_USER:-}/picpeak" ]]; then
-        INSTALL_METHOD="docker"
-        update_docker_installation
-    elif [[ -d "$NATIVE_APP_DIR" ]]; then
+
+    # Prefer explicit native install detection first
+    native_detected=false
+    docker_detected=false
+
+    # Native detection: app/backend exists OR systemd unit present
+    if [[ -d "$NATIVE_APP_DIR/app/backend" ]]; then
+        native_detected=true
+    elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q '^picpeak-backend.service'; then
+        native_detected=true
+    fi
+
+    # Docker detection: docker app dir or user home picpeak dir exists
+    if [[ -d "$DOCKER_APP_DIR" ]] || [[ -n "${SUDO_USER:-}" && -d "/home/${SUDO_USER}/picpeak" ]]; then
+        docker_detected=true
+    fi
+
+    if [[ "$native_detected" == true ]]; then
         INSTALL_METHOD="native"
         update_native_installation
+    elif [[ "$docker_detected" == true ]]; then
+        INSTALL_METHOD="docker"
+        update_docker_installation
     else
-        die "No existing PicPeak installation found"
+        die "No existing PicPeak installation found (native dir $NATIVE_APP_DIR/app/backend or docker dir $DOCKER_APP_DIR not present)"
     fi
 }
 
