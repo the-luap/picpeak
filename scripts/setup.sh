@@ -580,10 +580,15 @@ setup_native_installation() {
     log_step "Downloading PicPeak..."
     if [[ -d "$NATIVE_APP_DIR/app/.git" ]]; then
         cd "$NATIVE_APP_DIR/app"
-        run_as_user "git pull --ff-only" || {
-            run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app"
-            run_as_user "git pull --ff-only"
-        }
+        # Ensure correct remote and update even if history was rewritten
+        run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app" || true
+        run_as_user "git remote set-url origin $REPO_URL" || true
+        run_as_user "git fetch --all --prune" || true
+        # Prefer checking out remote main and hard resetting to avoid merge prompts
+        if ! run_as_user "git checkout -B main origin/main"; then
+          run_as_user "git checkout main" || true
+          run_as_user "git reset --hard origin/main"
+        fi
     else
         run_as_user "git clone $REPO_URL $NATIVE_APP_DIR/app" || {
             run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app"
@@ -976,7 +981,13 @@ update_native_installation() {
     
     # Pull latest code
     cd "$NATIVE_APP_DIR/app"
-    run_as_user "git pull --ff-only" || run_as_user "git pull"
+    run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app" || true
+    run_as_user "git remote set-url origin $REPO_URL" || true
+    run_as_user "git fetch --all --prune"
+    if ! run_as_user "git checkout -B main origin/main"; then
+      run_as_user "git checkout main" || true
+      run_as_user "git reset --hard origin/main"
+    fi
     
     # Update backend dependencies
     cd "$NATIVE_APP_DIR/app/backend"
