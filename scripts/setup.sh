@@ -61,6 +61,23 @@ UNINSTALL_MODE=false
 # Helper Functions
 ################################################################################
 
+# Run a command as the application user, even if sudo is not available
+run_as_user() {
+    local cmd="$*"
+    if [[ "$(id -u)" -ne 0 ]]; then
+        # Already non-root; just run
+        bash -lc "$cmd"
+        return $?
+    fi
+    if command_exists sudo; then
+        sudo -H -u "$NATIVE_APP_USER" bash -lc "$cmd"
+    elif command_exists runuser; then
+        runuser -u "$NATIVE_APP_USER" -- bash -lc "$cmd"
+    else
+        su -s /bin/bash - "$NATIVE_APP_USER" -c "$cmd"
+    fi
+}
+
 print_banner() {
     echo -e "${PURPLE}"
     echo "╔════════════════════════════════════════════════════════════════════════╗"
@@ -110,11 +127,16 @@ generate_jwt_secret() {
 }
 
 get_available_ram_mb() {
-    if command_exists free; then
-        free -m | awk '/^Mem:/{print $2}'
-    else
-        echo "0"
+    # Prefer /proc/meminfo (always available on Linux), fallback to free(1)
+    if [[ -r /proc/meminfo ]]; then
+        awk '/^MemTotal:/ { printf "%d\n", $2/1024 }' /proc/meminfo
+        return
     fi
+    if command_exists free; then
+        free -m | awk '/^Mem:/ {print $2}'
+        return
+    fi
+    echo "0"
 }
 
 get_available_disk_gb() {
@@ -552,14 +574,21 @@ setup_native_installation() {
     # Create application directory
     log_step "Creating application directory..."
     mkdir -p "$NATIVE_APP_DIR"/{app,events/{active,archived},logs,config}
+    chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR"
     
     # Clone repository
     log_step "Downloading PicPeak..."
     if [[ -d "$NATIVE_APP_DIR/app/.git" ]]; then
         cd "$NATIVE_APP_DIR/app"
-        git pull
+        run_as_user "git pull --ff-only" || {
+            run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app"
+            run_as_user "git pull --ff-only"
+        }
     else
-        git clone "$REPO_URL" "$NATIVE_APP_DIR/app"
+        run_as_user "git clone $REPO_URL $NATIVE_APP_DIR/app" || {
+            run_as_user "git config --global --add safe.directory $NATIVE_APP_DIR/app"
+            run_as_user "git clone $REPO_URL $NATIVE_APP_DIR/app"
+        }
     fi
     
     # Install dependencies
@@ -629,7 +658,7 @@ EOF
     # Run database migrations
     log_step "Initializing database..."
     cd "$NATIVE_APP_DIR/app/backend"
-    sudo -u $NATIVE_APP_USER npm run migrate
+    run_as_user "npm run migrate"
     
     # Create systemd services
     create_systemd_services
@@ -947,14 +976,14 @@ update_native_installation() {
     
     # Pull latest code
     cd "$NATIVE_APP_DIR/app"
-    sudo -u $NATIVE_APP_USER git pull
+    run_as_user "git pull --ff-only" || run_as_user "git pull"
     
     # Update backend dependencies
     cd "$NATIVE_APP_DIR/app/backend"
-    sudo -u $NATIVE_APP_USER npm install --production
+    run_as_user "npm install --production"
     
     # Run migrations
-    sudo -u $NATIVE_APP_USER npm run migrate
+    run_as_user "npm run migrate"
     
     # Restart services
     systemctl start picpeak-backend picpeak-workers
