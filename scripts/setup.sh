@@ -13,7 +13,7 @@ IFS=$'\n\t'
 # Script configuration
 readonly SCRIPT_VERSION="2.0.0"
 readonly APP_NAME="PicPeak"
-readonly REPO_URL="https://github.com/yourusername/wedding-photo-sharing"
+readonly REPO_URL="https://github.com/the-luap/picpeak.git"
 readonly NODE_VERSION="20"
 readonly MIN_RAM_DOCKER=2048
 readonly MIN_RAM_NATIVE=1024
@@ -564,7 +564,9 @@ setup_native_installation() {
     
     # Install dependencies
     log_step "Installing dependencies..."
-    cd "$NATIVE_APP_DIR/backend"
+    # The repository root contains both backend/ and frontend/
+    # Install backend production dependencies
+    cd "$NATIVE_APP_DIR/backend/backend"
     npm install --production
     
     # Generate secrets
@@ -573,7 +575,7 @@ setup_native_installation() {
     
     # Create .env file
     log_step "Creating configuration..."
-    cat > "$NATIVE_APP_DIR/backend/.env" <<EOF
+    cat > "$NATIVE_APP_DIR/backend/backend/.env" <<EOF
 # PicPeak Native Configuration
 # Generated: $(date)
 
@@ -588,10 +590,11 @@ ADMIN_PASSWORD=$ADMIN_PASSWORD
 ADMIN_EMAIL=$ADMIN_EMAIL
 
 # Database
-DATABASE_PATH=$NATIVE_APP_DIR/backend/database.sqlite
+DATABASE_CLIENT=sqlite3
+DATABASE_PATH=$NATIVE_APP_DIR/backend/backend/data/photo_sharing.db
 
 # Storage
-PHOTOS_DIR=$NATIVE_APP_DIR/events
+STORAGE_PATH=$NATIVE_APP_DIR
 
 # Email
 SMTP_ENABLED=${SMTP_HOST:+true}
@@ -618,11 +621,11 @@ EOF
     
     # Set permissions
     chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR"
-    chmod 600 "$NATIVE_APP_DIR/backend/.env"
+    chmod 600 "$NATIVE_APP_DIR/backend/backend/.env"
     
     # Run database migrations
     log_step "Initializing database..."
-    cd "$NATIVE_APP_DIR/backend"
+    cd "$NATIVE_APP_DIR/backend/backend"
     sudo -u $NATIVE_APP_USER npm run migrate
     
     # Create systemd services
@@ -654,7 +657,7 @@ After=network.target
 [Service]
 Type=simple
 User=$NATIVE_APP_USER
-WorkingDirectory=$NATIVE_APP_DIR/backend
+WorkingDirectory=$NATIVE_APP_DIR/backend/backend
 Environment="NODE_ENV=production"
 ExecStart=/usr/bin/node server.js
 Restart=always
@@ -675,7 +678,7 @@ After=network.target picpeak-backend.service
 [Service]
 Type=simple
 User=$NATIVE_APP_USER
-WorkingDirectory=$NATIVE_APP_DIR/backend
+WorkingDirectory=$NATIVE_APP_DIR/backend/backend
 Environment="NODE_ENV=production"
 ExecStart=/usr/bin/node src/services/workerManager.js
 Restart=always
@@ -878,8 +881,8 @@ print_success_message() {
     echo
     echo "📚 Documentation:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "Setup Guide:  https://github.com/yourusername/wedding-photo-sharing/blob/main/SIMPLE_SETUP.md"
-    echo "Full Docs:    https://github.com/yourusername/wedding-photo-sharing"
+    echo "Setup Guide:  https://github.com/the-luap/picpeak/blob/main/SIMPLE_SETUP.md"
+    echo "Full Docs:    https://github.com/the-luap/picpeak"
     echo
     echo -e "${GREEN}✨ Setup complete! Visit the admin panel to start creating galleries.${NC}"
 }
