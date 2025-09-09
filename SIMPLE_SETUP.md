@@ -8,7 +8,7 @@ This guide provides easy installation instructions for PicPeak on Linux servers 
 
 ```bash
 # Download and run the unified setup script
-curl -fsSL https://raw.githubusercontent.com/yourusername/wedding-photo-sharing/main/scripts/setup.sh -o setup.sh && \
+curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/setup.sh -o setup.sh && \
 chmod +x setup.sh && \
 sudo ./setup.sh
 ```
@@ -305,9 +305,9 @@ docker compose restart
 ```
 
 ### Native Configuration
-Edit `/opt/picpeak/backend/.env`:
+Edit `/opt/picpeak/app/backend/.env`:
 ```bash
-sudo nano /opt/picpeak/backend/.env
+sudo nano /opt/picpeak/app/backend/.env
 sudo systemctl restart picpeak-backend
 ```
 
@@ -369,7 +369,7 @@ tar -czf photos-backup.tar.gz storage/events/
 #### Native:
 ```bash
 # Database backup
-sudo cp /opt/picpeak/backend/database.sqlite /backup/database-$(date +%Y%m%d).sqlite
+sudo cp /opt/picpeak/app/backend/data/photo_sharing.db /backup/database-$(date +%Y%m%d).sqlite
 
 # Photos backup
 sudo tar -czf /backup/photos-$(date +%Y%m%d).tar.gz /opt/picpeak/events/
@@ -446,7 +446,7 @@ ls -la ~/picpeak/storage/events/
 docker exec picpeak-backend node scripts/reset-admin-password.js
 
 # Native
-cd /opt/picpeak/backend
+cd /opt/picpeak/app/backend
 sudo -u picpeak node scripts/reset-admin-password.js
 ```
 
@@ -458,11 +458,11 @@ sudo -u picpeak node scripts/reset-admin-password.js
    - Installation: `/tmp/picpeak-setup-*.log`
 
 2. **Documentation:**
-   - [Full Documentation](https://github.com/yourusername/wedding-photo-sharing)
+   - [Full Documentation](https://github.com/the-luap/picpeak)
    - [Deployment Guide](./DEPLOYMENT_GUIDE.md)
 
 3. **Support:**
-   - [GitHub Issues](https://github.com/yourusername/wedding-photo-sharing/issues)
+   - [GitHub Issues](https://github.com/the-luap/picpeak/issues)
    - Include: Error messages, system info (`uname -a`), installation method
 
 ## 🔒 Security Best Practices
@@ -498,7 +498,7 @@ services:
 ### Native Optimization
 ```bash
 # Increase Node.js memory
-echo "NODE_OPTIONS=--max-old-space-size=2048" >> /opt/picpeak/backend/.env
+echo "NODE_OPTIONS=--max-old-space-size=2048" >> /opt/picpeak/app/backend/.env
 sudo systemctl restart picpeak-backend
 ```
 
@@ -540,4 +540,4 @@ sudo ./setup.sh --native \
 
 ---
 
-**PicPeak Setup v1.0** | [Documentation](https://github.com/yourusername/wedding-photo-sharing) | [Support](https://github.com/yourusername/wedding-photo-sharing/issues)
+**PicPeak Setup v1.0** | [Documentation](https://github.com/the-luap/picpeak) | [Support](https://github.com/the-luap/picpeak/issues)

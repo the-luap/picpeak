@@ -551,22 +551,22 @@ setup_native_installation() {
     
     # Create application directory
     log_step "Creating application directory..."
-    mkdir -p "$NATIVE_APP_DIR"/{backend,events/{active,archived},logs,config}
+    mkdir -p "$NATIVE_APP_DIR"/{app,events/{active,archived},logs,config}
     
     # Clone repository
     log_step "Downloading PicPeak..."
-    if [[ -d "$NATIVE_APP_DIR/backend/.git" ]]; then
-        cd "$NATIVE_APP_DIR/backend"
+    if [[ -d "$NATIVE_APP_DIR/app/.git" ]]; then
+        cd "$NATIVE_APP_DIR/app"
         git pull
     else
-        git clone "$REPO_URL" "$NATIVE_APP_DIR/backend"
+        git clone "$REPO_URL" "$NATIVE_APP_DIR/app"
     fi
     
     # Install dependencies
     log_step "Installing dependencies..."
     # The repository root contains both backend/ and frontend/
     # Install backend production dependencies
-    cd "$NATIVE_APP_DIR/backend/backend"
+    cd "$NATIVE_APP_DIR/app/backend"
     npm install --production
     
     # Generate secrets
@@ -575,7 +575,7 @@ setup_native_installation() {
     
     # Create .env file
     log_step "Creating configuration..."
-    cat > "$NATIVE_APP_DIR/backend/backend/.env" <<EOF
+    cat > "$NATIVE_APP_DIR/app/backend/.env" <<EOF
 # PicPeak Native Configuration
 # Generated: $(date)
 
@@ -589,11 +589,11 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 ADMIN_EMAIL=$ADMIN_EMAIL
 
-# Database
+# Database (native uses SQLite by default)
 DATABASE_CLIENT=sqlite3
-DATABASE_PATH=$NATIVE_APP_DIR/backend/backend/data/photo_sharing.db
+DATABASE_PATH=$NATIVE_APP_DIR/app/backend/data/photo_sharing.db
 
-# Storage
+# Storage root (thumbnails/uploads live under this path)
 STORAGE_PATH=$NATIVE_APP_DIR
 
 # Email
@@ -621,11 +621,11 @@ EOF
     
     # Set permissions
     chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR"
-    chmod 600 "$NATIVE_APP_DIR/backend/backend/.env"
+    chmod 600 "$NATIVE_APP_DIR/app/backend/.env"
     
     # Run database migrations
     log_step "Initializing database..."
-    cd "$NATIVE_APP_DIR/backend/backend"
+    cd "$NATIVE_APP_DIR/app/backend"
     sudo -u $NATIVE_APP_USER npm run migrate
     
     # Create systemd services
@@ -657,7 +657,7 @@ After=network.target
 [Service]
 Type=simple
 User=$NATIVE_APP_USER
-WorkingDirectory=$NATIVE_APP_DIR/backend/backend
+    WorkingDirectory=$NATIVE_APP_DIR/app/backend
 Environment="NODE_ENV=production"
 ExecStart=/usr/bin/node server.js
 Restart=always
@@ -678,7 +678,7 @@ After=network.target picpeak-backend.service
 [Service]
 Type=simple
 User=$NATIVE_APP_USER
-WorkingDirectory=$NATIVE_APP_DIR/backend/backend
+    WorkingDirectory=$NATIVE_APP_DIR/app/backend
 Environment="NODE_ENV=production"
 ExecStart=/usr/bin/node src/services/workerManager.js
 Restart=always
@@ -938,13 +938,16 @@ update_native_installation() {
     systemctl stop picpeak-backend picpeak-workers
     
     # Backup current configuration
-    cp "$NATIVE_APP_DIR/backend/.env" "$NATIVE_APP_DIR/backend/.env.backup-$(date +%Y%m%d-%H%M%S)"
+    if [[ -f "$NATIVE_APP_DIR/app/backend/.env" ]]; then
+      cp "$NATIVE_APP_DIR/app/backend/.env" "$NATIVE_APP_DIR/app/backend/.env.backup-$(date +%Y%m%d-%H%M%S)"
+    fi
     
     # Pull latest code
-    cd "$NATIVE_APP_DIR/backend"
+    cd "$NATIVE_APP_DIR/app"
     sudo -u $NATIVE_APP_USER git pull
     
-    # Update dependencies
+    # Update backend dependencies
+    cd "$NATIVE_APP_DIR/app/backend"
     sudo -u $NATIVE_APP_USER npm install --production
     
     # Run migrations
