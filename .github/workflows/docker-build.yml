@@ -43,6 +43,8 @@ jobs:
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
+      id: login-ghcr
+      continue-on-error: true
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
@@ -73,7 +75,8 @@ jobs:
       with:
         context: ./backend
         file: ./backend/Dockerfile
-        push: ${{ github.event_name != 'pull_request' || github.event.inputs.push == 'true' }}
+        # Always build; only push when registry login succeeded
+        push: ${{ (github.event_name != 'pull_request' || github.event.inputs.push == 'true') && steps.login-ghcr.outcome == 'success' }}
         tags: ${{ steps.meta-backend.outputs.tags }}
         labels: ${{ steps.meta-backend.outputs.labels }}
         platforms: linux/amd64,linux/arm64
@@ -86,7 +89,7 @@ jobs:
           VERSION=${{ steps.meta-backend.outputs.version }}
 
     - name: Run Trivy vulnerability scanner
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.meta-backend.outputs.version }}
@@ -96,7 +99,7 @@ jobs:
         timeout: '10m'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-backend.sarif'
@@ -120,6 +123,8 @@ jobs:
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
+      id: login-ghcr
+      continue-on-error: true
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
@@ -150,7 +155,8 @@ jobs:
       with:
         context: ./frontend
         file: ./frontend/Dockerfile
-        push: ${{ github.event_name != 'pull_request' || github.event.inputs.push == 'true' }}
+        # Always build; only push when registry login succeeded
+        push: ${{ (github.event_name != 'pull_request' || github.event.inputs.push == 'true') && steps.login-ghcr.outcome == 'success' }}
         tags: ${{ steps.meta-frontend.outputs.tags }}
         labels: ${{ steps.meta-frontend.outputs.labels }}
         platforms: linux/amd64,linux/arm64
@@ -163,7 +169,7 @@ jobs:
           VERSION=${{ steps.meta-frontend.outputs.version }}
 
     - name: Run Trivy vulnerability scanner
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.meta-frontend.outputs.version }}
@@ -173,7 +179,7 @@ jobs:
         timeout: '10m'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      if: github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'trivy-frontend.sarif'
