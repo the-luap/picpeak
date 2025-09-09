@@ -222,15 +222,20 @@ app.use('/api/secure-images', secureImagesRoutes);
 
 // Optional: Serve built frontend (native installs)
 try {
-  const serveFrontend = process.env.SERVE_FRONTEND === 'true';
+  const serveFrontendEnv = process.env.SERVE_FRONTEND; // 'true' | 'false' | undefined
   const frontendDir = process.env.FRONTEND_DIR || path.join(__dirname, '../frontend/dist');
-  if (serveFrontend && fs.existsSync(frontendDir)) {
+  const indexPath = path.join(frontendDir, 'index.html');
+  // Auto-serve when dist exists unless explicitly disabled
+  const shouldServe = (serveFrontendEnv === 'true') || ((serveFrontendEnv === undefined || serveFrontendEnv === 'auto') && fs.existsSync(indexPath));
+  if (shouldServe) {
     logger.info(`Serving frontend from ${frontendDir}`);
     app.use(express.static(frontendDir));
     // SPA fallback for non-API routes
     app.get([ '/', '/admin', '/admin/*', '/gallery/*' ], (req, res) => {
-      res.sendFile(path.join(frontendDir, 'index.html'));
+      res.sendFile(indexPath);
     });
+  } else {
+    logger.info('Frontend static serving disabled or dist not found', { serveFrontendEnv, frontendDir });
   }
 } catch (e) {
   logger.warn('Failed to enable frontend static serving', { error: e.message });
