@@ -43,25 +43,36 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 
 // Security middleware with custom CSP
+// In native HTTP installs, do NOT force HTTPS for subresources.
+const enableHsts = process.env.ENABLE_HSTS === 'true';
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'"], // Required for React
+  styleSrc: ["'self'", "'unsafe-inline'", "https:"], // Required for styled components
+  imgSrc: ["'self'", "data:", "https:", "blob:"], // Allow data URLs and external images
+  connectSrc: ["'self'"], // API connections
+  fontSrc: ["'self'", "https:", "data:"], // Web fonts
+  objectSrc: ["'none'"], // Disable plugins
+  mediaSrc: ["'self'"], // Audio/video
+  frameSrc: ["'none'"], // Disable iframes
+};
+// Only upgrade insecure requests when HSTS explicitly enabled (HTTPS deployment)
+if (enableHsts) {
+  // In helmet, an empty array enables the directive
+  cspDirectives.upgradeInsecureRequests = [];
+}
+
 app.use(helmet({
   contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for React
-      styleSrc: ["'self'", "'unsafe-inline'", "https:"], // Required for styled components
-      imgSrc: ["'self'", "data:", "https:", "blob:"], // Allow data URLs and external images
-      connectSrc: ["'self'"], // API connections
-      fontSrc: ["'self'", "https:", "data:"], // Web fonts
-      objectSrc: ["'none'"], // Disable plugins
-      mediaSrc: ["'self'"], // Audio/video
-      frameSrc: ["'none'"], // Disable iframes
-    },
+    // Avoid helmet adding defaults like upgrade-insecure-requests when not desired
+    useDefaults: false,
+    directives: cspDirectives,
   },
-  hsts: {
+  hsts: enableHsts ? {
     maxAge: 31536000, // 1 year
     includeSubDomains: true,
     preload: true
-  },
+  } : false,
   permittedCrossDomainPolicies: false,
   referrerPolicy: { policy: "strict-origin-when-cross-origin" }
 }));
