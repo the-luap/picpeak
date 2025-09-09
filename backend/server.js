@@ -12,6 +12,7 @@ logger.info('Server starting up', {
   timestamp: new Date().toISOString()
 });
 
+const fs = require('fs');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -218,6 +219,22 @@ app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
 app.use('/api/secure-images', secureImagesRoutes);
+
+// Optional: Serve built frontend (native installs)
+try {
+  const serveFrontend = process.env.SERVE_FRONTEND === 'true';
+  const frontendDir = process.env.FRONTEND_DIR || path.join(__dirname, '../frontend/dist');
+  if (serveFrontend && fs.existsSync(frontendDir)) {
+    logger.info(`Serving frontend from ${frontendDir}`);
+    app.use(express.static(frontendDir));
+    // SPA fallback for non-API routes
+    app.get([ '/', '/admin', '/admin/*', '/gallery/*' ], (req, res) => {
+      res.sendFile(path.join(frontendDir, 'index.html'));
+    });
+  }
+} catch (e) {
+  logger.warn('Failed to enable frontend static serving', { error: e.message });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

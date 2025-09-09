@@ -602,9 +602,19 @@ setup_native_installation() {
     # Install backend production dependencies
     cd "$NATIVE_APP_DIR/app/backend"
     npm install --production
-    
     # Ensure SQLite data directory exists for native installs
     mkdir -p "$NATIVE_APP_DIR/app/backend/data"
+
+    # Build frontend for native serving
+    log_step "Building frontend..."
+    if [[ -d "$NATIVE_APP_DIR/app/frontend" ]]; then
+      cd "$NATIVE_APP_DIR/app/frontend"
+      # Try ci (faster/clean) then fallback to install
+      run_as_user "npm ci --include=dev" || run_as_user "npm install"
+      run_as_user "npm run build"
+    else
+      log_warn "Frontend directory not found; admin UI will not be served by backend"
+    fi
     
     # Generate secrets
     local jwt_secret=$(generate_jwt_secret)
@@ -654,6 +664,10 @@ DEFAULT_EXPIRY_DAYS=30
 # Logging
 LOG_DIR=$NATIVE_APP_DIR/logs
 LOG_LEVEL=info
+
+# Frontend serving (native installs)
+SERVE_FRONTEND=true
+FRONTEND_DIR=$NATIVE_APP_DIR/app/frontend/dist
 EOF
     
     # Set permissions
