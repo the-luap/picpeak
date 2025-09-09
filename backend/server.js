@@ -84,14 +84,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS configuration
+// CORS configuration (apply only to API routes)
 const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       process.env.FRONTEND_URL || 'http://localhost:3005',
       process.env.ADMIN_URL || 'http://localhost:3005'
     ];
-    
+
     // In development, also allow localhost origins
     if (process.env.NODE_ENV === 'development') {
       allowedOrigins.push(
@@ -101,18 +101,20 @@ const corsOptions = {
         'http://localhost:3000'  // Direct backend access
       );
     }
-    
-    // Allow requests with no origin (like mobile apps or curl)
+
+    // Allow requests with no origin (like curl) and allow-listed origins
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Do not error globally; just omit CORS headers on disallowed origins
+      callback(null, false);
     }
   },
   credentials: true
 };
 
-app.use(cors(corsOptions));
+// Only attach CORS to API endpoints, not static assets
+app.use('/api', cors(corsOptions));
 
 // Initialize rate limiters (they will be created dynamically)
 let generalRateLimiter;
