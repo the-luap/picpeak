@@ -44,7 +44,6 @@ INSTALL_METHOD=""  # docker or native
 OS_TYPE=""
 OS_VERSION=""
 PACKAGE_MANAGER=""
-ADMIN_PASSWORD=""
 ADMIN_EMAIL="admin@example.com"
 DOMAIN_NAME=""
 SMTP_HOST=""
@@ -353,7 +352,6 @@ setup_docker_installation() {
     local jwt_secret=$(generate_jwt_secret)
     local db_password=$(generate_password)
     local redis_password=$(generate_password)
-    [[ -z "$ADMIN_PASSWORD" ]] && ADMIN_PASSWORD=$(generate_password)
     
     # Create .env file
     log_step "Creating configuration..."
@@ -368,7 +366,6 @@ JWT_SECRET=$jwt_secret
 
 # Admin
 ADMIN_EMAIL=$ADMIN_EMAIL
-ADMIN_PASSWORD=$ADMIN_PASSWORD
 
 # Database
 DB_HOST=postgres
@@ -395,7 +392,7 @@ SMTP_FROM=${SMTP_USER:-noreply@localhost}
 
 # URLs
 FRONTEND_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
-ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME/admin}
+ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 
 # Features
 ENABLE_FILE_WATCHER=true
@@ -618,7 +615,6 @@ setup_native_installation() {
     
     # Generate secrets
     local jwt_secret=$(generate_jwt_secret)
-    [[ -z "$ADMIN_PASSWORD" ]] && ADMIN_PASSWORD=$(generate_password)
     
     # Create .env file
     log_step "Creating configuration..."
@@ -633,7 +629,6 @@ JWT_SECRET=$jwt_secret
 
 # Admin
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=$ADMIN_PASSWORD
 ADMIN_EMAIL=$ADMIN_EMAIL
 
 # Database (native uses SQLite by default)
@@ -653,7 +648,7 @@ SMTP_FROM=${SMTP_USER:-noreply@localhost}
 
 # URLs
 FRONTEND_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
-ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME/admin}
+ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 
 # Features
 ENABLE_FILE_WATCHER=true
@@ -906,8 +901,32 @@ print_success_message() {
     echo
     echo "🔐 Admin Credentials:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
-    echo -e "Password: ${CYAN}$ADMIN_PASSWORD${NC}"
+    # Read from ADMIN_CREDENTIALS.txt when available
+    local cred_file email_line pass_line admin_email_val admin_pass_val
+    if [[ "$INSTALL_METHOD" == "docker" ]]; then
+        cred_file="$app_dir/data/ADMIN_CREDENTIALS.txt"
+    else
+        cred_file="$NATIVE_APP_DIR/app/backend/data/ADMIN_CREDENTIALS.txt"
+    fi
+    if [[ -f "$cred_file" ]]; then
+        email_line=$(grep -m1 '^Email:' "$cred_file" || true)
+        pass_line=$(grep -m1 '^Password:' "$cred_file" || true)
+        admin_email_val=${email_line#Email: }
+        admin_pass_val=${pass_line#Password: }
+        if [[ -n "$admin_email_val" ]]; then
+          echo -e "Email:    ${CYAN}$admin_email_val${NC}"
+        else
+          echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
+        fi
+        if [[ -n "$admin_pass_val" ]]; then
+          echo -e "Password: ${CYAN}$admin_pass_val${NC}"
+        else
+          echo -e "Password: ${YELLOW}(see $cred_file)${NC}"
+        fi
+      else
+        echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
+        echo -e "Password: ${YELLOW}(credentials file not found)${NC}"
+      fi
     echo
     echo -e "${YELLOW}⚠️  IMPORTANT: Change the admin password on first login!${NC}"
     
@@ -931,8 +950,8 @@ print_success_message() {
         echo "🔧 Service Commands:"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "View logs:    sudo journalctl -u picpeak-backend -f"
-        echo "Stop:         sudo systemctl stop picpeak-backend picpeak-workers"
-        echo "Start:        sudo systemctl start picpeak-backend picpeak-workers"
+        echo "Stop:         sudo systemctl stop picpeak-backend"
+        echo "Start:        sudo systemctl start picpeak-backend"
         echo "Status:       sudo systemctl status picpeak-backend"
     fi
     
@@ -1146,10 +1165,6 @@ parse_arguments() {
                 ADMIN_EMAIL="$2"
                 shift 2
                 ;;
-            --admin-password)
-                ADMIN_PASSWORD="$2"
-                shift 2
-                ;;
             --smtp-host)
                 SMTP_HOST="$2"
                 shift 2
@@ -1207,7 +1222,6 @@ Options:
   --unattended        Run without prompts
   --domain DOMAIN     Set domain name for HTTPS
   --email EMAIL       Admin email address
-  --admin-password    Admin password (auto-generated if not set)
   --smtp-host HOST    SMTP server hostname
   --smtp-port PORT    SMTP server port
   --smtp-user USER    SMTP username
@@ -1230,7 +1244,7 @@ Examples:
 
   # Fully automated Docker setup
   sudo $0 --docker --unattended --domain photos.example.com \\
-    --email admin@example.com --admin-password SecurePass123 \\
+    --email admin@example.com \\
     --smtp-host smtp.gmail.com --smtp-port 587 \\
     --smtp-user user@gmail.com --smtp-pass app-password \\
     --enable-ssl
