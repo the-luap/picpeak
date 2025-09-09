@@ -1009,9 +1009,25 @@ update_native_installation() {
     
     # Run migrations
     run_as_user "npm run migrate"
+
+    # Rebuild frontend (ensure admin UI for native installs)
+    if [[ -d "$NATIVE_APP_DIR/app/frontend" ]]; then
+      log_step "Rebuilding frontend..."
+      cd "$NATIVE_APP_DIR/app/frontend"
+      run_as_user "npm ci --include=dev" || run_as_user "npm install"
+      run_as_user "npm run build"
+    fi
+
+    # Ensure env has frontend serving flags
+    if ! grep -q '^SERVE_FRONTEND=' "$NATIVE_APP_DIR/app/backend/.env"; then
+      echo "SERVE_FRONTEND=true" >> "$NATIVE_APP_DIR/app/backend/.env"
+    fi
+    if ! grep -q '^FRONTEND_DIR=' "$NATIVE_APP_DIR/app/backend/.env"; then
+      echo "FRONTEND_DIR=$NATIVE_APP_DIR/app/frontend/dist" >> "$NATIVE_APP_DIR/app/backend/.env"
+    fi
     
     # Restart services
-    systemctl start picpeak-backend picpeak-workers
+    systemctl restart picpeak-backend picpeak-workers
     
     log_success "Native installation updated successfully!"
 }
