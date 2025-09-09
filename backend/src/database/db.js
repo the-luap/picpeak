@@ -1,6 +1,27 @@
+const fs = require('fs');
+const path = require('path');
 const knex = require('knex');
 const knexConfig = require('../../knexfile');
 const logger = require('../utils/logger');
+
+// Ensure SQLite directory exists when using file-based DB (native installs)
+try {
+  const isPostgres = knexConfig && knexConfig.client === 'pg';
+  if (!isPostgres && knexConfig && knexConfig.connection) {
+    const filename = typeof knexConfig.connection === 'object'
+      ? knexConfig.connection.filename
+      : (typeof knexConfig.connection === 'string' ? knexConfig.connection : null);
+    if (filename && typeof filename === 'string') {
+      const dir = path.dirname(filename);
+      if (dir && dir !== '.') {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+  }
+} catch (e) {
+  // Non-fatal: log and continue; SQLite will fail later if still missing
+  try { logger.warn('SQLite directory ensure failed', { error: e.message }); } catch (_) {}
+}
 
 // Create database connection with built-in retry logic
 const db = knex(knexConfig);

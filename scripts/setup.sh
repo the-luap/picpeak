@@ -569,6 +569,9 @@ setup_native_installation() {
     cd "$NATIVE_APP_DIR/app/backend"
     npm install --production
     
+    # Ensure SQLite data directory exists for native installs
+    mkdir -p "$NATIVE_APP_DIR/app/backend/data"
+    
     # Generate secrets
     local jwt_secret=$(generate_jwt_secret)
     [[ -z "$ADMIN_PASSWORD" ]] && ADMIN_PASSWORD=$(generate_password)
