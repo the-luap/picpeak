@@ -690,8 +690,15 @@ EOF
     # Start services
     log_step "Starting services..."
     systemctl daemon-reload
-    systemctl enable picpeak-backend picpeak-workers
-    systemctl start picpeak-backend picpeak-workers
+    systemctl enable picpeak-backend
+    # Stop/remove legacy workers service if present
+    if systemctl list-unit-files | grep -q '^picpeak-workers.service'; then
+      systemctl disable picpeak-workers || true
+      systemctl stop picpeak-workers || true
+      rm -f /etc/systemd/system/picpeak-workers.service
+      systemctl daemon-reload
+    fi
+    systemctl start picpeak-backend
     
     log_success "Native installation completed!"
 }
@@ -1001,7 +1008,10 @@ update_native_installation() {
     log_step "Updating native installation..."
     
     # Stop services
-    systemctl stop picpeak-backend picpeak-workers
+    systemctl stop picpeak-backend || true
+    if systemctl list-unit-files | grep -q '^picpeak-workers.service'; then
+      systemctl stop picpeak-workers || true
+    fi
     
     # Backup current configuration
     if [[ -f "$NATIVE_APP_DIR/app/backend/.env" ]]; then
@@ -1042,7 +1052,7 @@ update_native_installation() {
     fi
     
     # Restart services
-    systemctl restart picpeak-backend picpeak-workers
+    systemctl restart picpeak-backend
     
     log_success "Native installation updated successfully!"
 }

@@ -115,6 +115,8 @@ const corsOptions = {
 
 // Only attach CORS to API endpoints, not static assets
 app.use('/api', cors(corsOptions));
+// Handle preflight explicitly for API paths
+app.options('/api/*', cors(corsOptions));
 
 // Initialize rate limiters (they will be created dynamically)
 let generalRateLimiter;
@@ -137,6 +139,22 @@ async function initializeRateLimiters() {
 // Body parsing middleware with increased limits for large uploads
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+// Request logging for API routes (with timestamps)
+const apiRequestLogger = (req, res, next) => {
+  try {
+    const started = Date.now();
+    const ts = new Date().toISOString();
+    logger.info(`[${ts}] ${req.method} ${req.originalUrl}`);
+    res.on('finish', () => {
+      const ms = Date.now() - started;
+      const tsDone = new Date().toISOString();
+      logger.info(`[${tsDone}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
+    });
+  } catch (_) {}
+  next();
+};
+app.use('/api', apiRequestLogger);
 
 // Maintenance mode middleware - add after body parsing but before routes
 app.use(maintenanceMiddleware);
