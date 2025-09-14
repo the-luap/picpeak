@@ -352,7 +352,7 @@ setup_docker_installation() {
     fi
     
     log_step "Creating application directory at $app_dir"
-    mkdir -p "$app_dir"/{storage/events/{active,archived},logs,backup,config}
+    mkdir -p "$app_dir"/{storage/events/{active,archived},logs,backup,config,data,events}
     
     # Clone repository
     log_step "Downloading PicPeak..."
@@ -363,6 +363,16 @@ setup_docker_installation() {
         git clone "$REPO_URL" "$app_dir"
     fi
     
+    # Determine host user for container mapping (PUID/PGID)
+    local host_uid host_gid
+    if [[ -n "${SUDO_USER:-}" ]]; then
+        host_uid=$(id -u "$SUDO_USER" 2>/dev/null || echo 1000)
+        host_gid=$(id -g "$SUDO_USER" 2>/dev/null || echo 1000)
+    else
+        host_uid=$(id -u 2>/dev/null || echo 1000)
+        host_gid=$(id -g 2>/dev/null || echo 1000)
+    fi
+
     # Generate secrets
     local jwt_secret=$(generate_jwt_secret)
     local db_password=$(generate_password)
@@ -381,6 +391,10 @@ JWT_SECRET=$jwt_secret
 
 # Admin
 ADMIN_EMAIL=$ADMIN_EMAIL
+
+# Runtime user mapping for Docker bind mounts
+PUID=$host_uid
+PGID=$host_gid
 
 # Database
 DB_HOST=postgres
@@ -415,6 +429,9 @@ ENABLE_EXPIRATION_CHECKER=true
 ENABLE_EMAIL_SERVICE=true
 DEFAULT_EXPIRY_DAYS=30
 EOF
+
+    # Ensure bind mounts are writable by mapped user
+    chown -R "$host_uid":"$host_gid" "$app_dir"/storage "$app_dir"/logs "$app_dir"/backup "$app_dir"/data "$app_dir"/events 2>/dev/null || true
     
     # Create docker-compose.yml if it doesn't exist
     if [[ ! -f "$app_dir/docker-compose.yml" ]]; then
