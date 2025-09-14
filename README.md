@@ -72,6 +72,14 @@ docker-compose up -d
 # Access at http://localhost:3005
 ```
 
+Note on Docker file permissions (PUID/PGID)
+- When using bind mounts (e.g., `./storage`, `./data`, `./logs`, `./events`), ensure the container user can write to these host folders. The backend runs as a non‑root user by default.
+- Set `PUID` and `PGID` in your `.env` to match your host user’s UID/GID (run `id -u` and `id -g` on the host). Compose maps the container user to these values.
+- Example in `.env`:
+  - `PUID=1000`
+  - `PGID=1000`
+- Without this, creating events, uploads, thumbnails, or logs can fail with “Permission denied”.
+
 ## 📖 Documentation
 
 - 📘 [**Deployment Guide**](DEPLOYMENT_GUIDE.md) - Detailed installation instructions
