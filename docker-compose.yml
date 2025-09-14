@@ -29,6 +29,11 @@ services:
       - ADMIN_URL=${ADMIN_URL:-http://localhost:3001}
       - TZ=${TZ:-UTC}
       - STORAGE_PATH=/app/storage
+      # Optional: run container as matching host user to avoid bind mount permission issues
+      - PUID=${PUID:-1001}
+      - PGID=${PGID:-1001}
+    # Use host-matching user ID/GID so bind-mounted folders are writable
+    user: "${PUID:-1001}:${PGID:-1001}"
     volumes:
       - ./events:/app/events
       - ./data:/app/data

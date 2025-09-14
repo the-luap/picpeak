@@ -77,6 +77,21 @@ run_as_user() {
     fi
 }
 
+# Prompt for admin email interactively (unless provided or unattended)
+prompt_admin_email() {
+    if [[ -n "$ADMIN_EMAIL" ]]; then
+        return
+    fi
+    if [[ "$UNATTENDED" == "true" ]]; then
+        ADMIN_EMAIL="admin@example.com"
+        return
+    fi
+    echo
+    echo "Please enter the admin email address (used for the initial admin account):"
+    read -p "Admin email [admin@example.com]: " ADMIN_EMAIL
+    ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+}
+
 print_banner() {
     echo -e "${PURPLE}"
     echo "╔════════════════════════════════════════════════════════════════════════╗"
@@ -1283,6 +1298,9 @@ main() {
     
     # Check system requirements
     check_system_requirements
+    
+    # Prompt for admin email (design choice: always ask unless provided)
+    prompt_admin_email
     
     # Configure email (optional)
     configure_email
