@@ -11,6 +11,7 @@ interface MosaicPhotoProps {
   isSelectionMode: boolean;
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
+  onToggleSelect: () => void;
   className?: string;
   allowDownloads?: boolean;
 }
@@ -21,6 +22,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
+  onToggleSelect,
   className = '',
   allowDownloads = true
 }) => {
@@ -69,13 +71,22 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
         )}
       </div>
 
-      {isSelectionMode && (
-        <div className={`absolute top-2 right-2 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-          <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/80 border-white'} flex items-center justify-center transition-colors`}>
-            {isSelected && <Check className="w-4 h-4 text-white" />}
-          </div>
+      {/* Selection Checkbox (visible on hover or when selected) */}
+      <button
+        type="button"
+        aria-label={`Select ${photo.filename}`}
+        role="checkbox"
+        aria-checked={isSelected}
+        data-testid={`gallery-photo-checkbox-${photo.id}`}
+        className={`absolute top-2 right-2 z-20 transition-opacity ${
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
+        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+      >
+        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+          {isSelected && <Check className="w-4 h-4 text-white" />}
         </div>
-      )}
+      </button>
 
       {photo.type === 'collage' && (
         <div className="absolute bottom-2 left-2">
@@ -136,8 +147,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 photo={photo0}
                 isSelected={selectedPhotos.has(photo0.id)}
                 isSelectionMode={isSelectionMode}
-                onClick={() => handlePhotoClick(idx0, photo0.id)}
+                onClick={() => onPhotoClick(idx0)}
                 onDownload={(e) => onDownload(photo0, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
                 className="col-span-1"
                 allowDownloads={allowDownloads}
               />
@@ -148,22 +160,24 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   photo={photo1}
                   isSelected={selectedPhotos.has(photo1.id)}
                   isSelectionMode={isSelectionMode}
-                  onClick={() => handlePhotoClick(idx1, photo1.id)}
-                  onDownload={(e) => onDownload(photo1, e)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                />
+                onClick={() => onPhotoClick(idx1)}
+                onDownload={(e) => onDownload(photo1, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
+                className=""
+                allowDownloads={allowDownloads}
+              />
               )}
               {photo2 && (
                 <MosaicPhoto
                   photo={photo2}
                   isSelected={selectedPhotos.has(photo2.id)}
                   isSelectionMode={isSelectionMode}
-                  onClick={() => handlePhotoClick(idx2, photo2.id)}
-                  onDownload={(e) => onDownload(photo2, e)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                />
+                onClick={() => onPhotoClick(idx2)}
+                onDownload={(e) => onDownload(photo2, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
+                className=""
+                allowDownloads={allowDownloads}
+              />
               )}
             </div>
           </div>
@@ -209,8 +223,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 photo={photo0}
                 isSelected={selectedPhotos.has(photo0.id)}
                 isSelectionMode={isSelectionMode}
-                onClick={() => handlePhotoClick(idx0, photo0.id)}
+                onClick={() => onPhotoClick(idx0)}
                 onDownload={(e) => onDownload(photo0, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
                 className="col-span-2"
                 allowDownloads={allowDownloads}
               />
@@ -221,22 +236,24 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   photo={photo1}
                   isSelected={selectedPhotos.has(photo1.id)}
                   isSelectionMode={isSelectionMode}
-                  onClick={() => handlePhotoClick(idx1, photo1.id)}
-                  onDownload={(e) => onDownload(photo1, e)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                />
+                onClick={() => onPhotoClick(idx1)}
+                onDownload={(e) => onDownload(photo1, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
+                className=""
+                allowDownloads={allowDownloads}
+              />
               )}
               {photo2 && (
                 <MosaicPhoto
                   photo={photo2}
                   isSelected={selectedPhotos.has(photo2.id)}
                   isSelectionMode={isSelectionMode}
-                  onClick={() => handlePhotoClick(idx2, photo2.id)}
-                  onDownload={(e) => onDownload(photo2, e)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                />
+                onClick={() => onPhotoClick(idx2)}
+                onDownload={(e) => onDownload(photo2, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
+                className=""
+                allowDownloads={allowDownloads}
+              />
               )}
             </div>
           </div>
@@ -263,8 +280,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 photo={photo}
                 isSelected={selectedPhotos.has(photo.id)}
                 isSelectionMode={isSelectionMode}
-                onClick={() => handlePhotoClick(index, photo.id)}
+                onClick={() => onPhotoClick(index)}
                 onDownload={(e) => onDownload(photo, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
                 className="aspect-square"
                 allowDownloads={allowDownloads}
               />

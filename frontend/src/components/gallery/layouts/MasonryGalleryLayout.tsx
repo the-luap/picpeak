@@ -11,6 +11,7 @@ interface MasonryPhotoProps {
   isSelectionMode: boolean;
   onClick: (e: React.MouseEvent) => void;
   onDownload: (e: React.MouseEvent) => void;
+  onToggleSelect: () => void;
   style?: React.CSSProperties;
   allowDownloads?: boolean;
   feedbackEnabled?: boolean;
@@ -22,6 +23,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   isSelectionMode,
   onClick,
   onDownload,
+  onToggleSelect,
   style,
   allowDownloads = true,
   feedbackEnabled = false
@@ -104,13 +106,22 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         )}
       </div>
 
-      {isSelectionMode && (
-        <div className={`absolute top-2 right-2 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-          <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/80 border-white'} flex items-center justify-center transition-colors`}>
-            {isSelected && <Check className="w-4 h-4 text-white" />}
-          </div>
+      {/* Selection Checkbox (visible on hover or when selected) */}
+      <button
+        type="button"
+        aria-label={`Select ${photo.filename}`}
+        role="checkbox"
+        aria-checked={isSelected}
+        data-testid={`gallery-photo-checkbox-${photo.id}`}
+        className={`absolute top-2 right-2 z-20 transition-opacity ${
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
+        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+      >
+        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+          {isSelected && <Check className="w-4 h-4 text-white" />}
         </div>
-      )}
+      </button>
 
       {photo.type === 'collage' && (
         <div className="absolute bottom-2 left-2">
@@ -182,14 +193,9 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 photo={photo}
                 isSelected={selectedPhotos.has(photo.id)}
                 isSelectionMode={isSelectionMode}
-                onClick={() => {
-                  if (isSelectionMode && onPhotoSelect) {
-                    onPhotoSelect(photo.id);
-                  } else {
-                    onPhotoClick(originalIndex);
-                  }
-                }}
+                onClick={() => onPhotoClick(originalIndex)}
                 onDownload={(e) => onDownload(photo, e)}
+                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
                 allowDownloads={allowDownloads}
                 feedbackEnabled={feedbackEnabled}
               />

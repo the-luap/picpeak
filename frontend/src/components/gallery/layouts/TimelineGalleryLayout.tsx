@@ -90,13 +90,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   <div
                     key={photo.id}
                     className="relative group cursor-pointer aspect-square"
-                    onClick={() => {
-                      if (isSelectionMode && onPhotoSelect) {
-                        onPhotoSelect(photo.id);
-                      } else {
-                        onPhotoClick(actualIndex);
-                      }
-                    }}
+                    onClick={() => onPhotoClick(actualIndex)}
                   >
                     <AuthenticatedImage
                       src={photo.thumbnail_url || photo.url}
@@ -141,13 +135,22 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                       )}
                     </div>
 
-                    {isSelectionMode && (
-                      <div className={`absolute top-2 right-2 ${selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                        <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/80 border-white'} flex items-center justify-center transition-colors`}>
-                          {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
-                        </div>
+                    {/* Selection Checkbox (visible on hover or when selected) */}
+                    <button
+                      type="button"
+                      aria-label={`Select ${photo.filename}`}
+                      role="checkbox"
+                      aria-checked={selectedPhotos.has(photo.id)}
+                      data-testid={`gallery-photo-checkbox-${photo.id}`}
+                      className={`absolute top-2 right-2 z-20 transition-opacity ${
+                        selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                      onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+                    >
+                      <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                        {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                       </div>
-                    )}
+                    </button>
                   </div>
                 );
               })}

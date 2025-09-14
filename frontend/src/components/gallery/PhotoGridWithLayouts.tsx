@@ -81,6 +81,14 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   };
 
   const handlePhotoSelect = (photoId: number) => {
+    // Auto-enable selection mode when selecting via checkbox
+    if (!isSelectionMode) {
+      if (parentToggleSelectionMode) {
+        parentToggleSelectionMode();
+      } else {
+        setLocalSelectionMode(true);
+      }
+    }
     const newSelected = new Set(selectedPhotos);
     if (newSelected.has(photoId)) {
       newSelected.delete(photoId);

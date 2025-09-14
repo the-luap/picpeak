@@ -29,7 +29,10 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
     if (e) {
       e.stopPropagation();
     }
-    
+    // Auto-enable selection mode when selecting via checkbox
+    if (!isSelectionMode) {
+      setIsSelectionMode(true);
+    }
     const newSelected = new Set(selectedPhotos);
     if (newSelected.has(photoId)) {
       newSelected.delete(photoId);
@@ -126,7 +129,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
             {isSelectionMode ? 'Cancel Selection' : 'Select Photos'}
           </Button>
           
-          {isSelectionMode && (
+          {(isSelectionMode || selectedPhotos.size > 0) && (
             <>
               <Button
                 variant="ghost"
@@ -167,25 +170,32 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
           return (
             <div
               key={photo.id}
+              data-testid={`admin-photo-tile-${photo.id}`}
               className={`relative group cursor-pointer rounded-lg overflow-hidden bg-neutral-100 transition-opacity ${
                 isSelectionMode ? 'ring-2 ring-offset-2 ' + (selectedPhotos.has(photo.id) ? 'ring-primary-500' : 'ring-transparent') : ''
               } ${isDeleting ? 'opacity-50' : ''}`}
-              onClick={() => !isDeleting && (isSelectionMode ? handlePhotoSelect(photo.id) : onPhotoClick(photo, index))}
+              onClick={() => !isDeleting && onPhotoClick(photo, index)}
           >
-            {/* Selection Checkbox */}
-            {isSelectionMode && (
-              <div className="absolute top-2 left-2 z-10">
-                <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                  selectedPhotos.has(photo.id) 
-                    ? 'bg-primary-500 border-primary-500' 
-                    : 'bg-white/80 border-neutral-300'
-                }`}>
-                  {selectedPhotos.has(photo.id) && (
-                    <Check className="w-4 h-4 text-white" />
-                  )}
-                </div>
+            {/* Selection Checkbox (top-right) */}
+            <button
+              type="button"
+              aria-label={`Select ${photo.filename}`}
+              role="checkbox"
+              aria-checked={selectedPhotos.has(photo.id)}
+              data-testid={`admin-photo-checkbox-${photo.id}`}
+              className={`absolute top-2 right-2 z-20 transition-opacity ${
+                selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+              onClick={(e) => handlePhotoSelect(photo.id, e)}
+            >
+              <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
+                selectedPhotos.has(photo.id)
+                  ? 'bg-primary-600 border-primary-600'
+                  : 'bg-white/90 border-white'
+              }`}>
+                {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
               </div>
-            )}
+            </button>
 
             {/* Thumbnail */}
             <div className="aspect-square">
@@ -240,7 +250,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
 
             {/* Category Badge */}
             {photo.category_name && (
-              <div className="absolute top-2 right-2">
+              <div className="absolute right-2" style={{ top: (selectedPhotos.has(photo.id) || isSelectionMode) ? '40px' : '8px' }}>
                 <span className="px-2 py-1 text-xs font-medium bg-white/90 text-neutral-700 rounded">
                   {photo.category_name}
                 </span>
