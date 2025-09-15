@@ -248,10 +248,10 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
               </div>
             </div>
 
-            {/* Category Badge */}
+            {/* Category Badge - move to top-left and prevent overlap with select checkbox */}
             {photo.category_name && (
-              <div className="absolute right-2" style={{ top: (selectedPhotos.has(photo.id) || isSelectionMode) ? '40px' : '8px' }}>
-                <span className="px-2 py-1 text-xs font-medium bg-white/90 text-neutral-700 rounded">
+              <div className="absolute left-2 top-2 pointer-events-none">
+                <span className="px-2 py-1 text-xs font-medium bg-white/90 text-neutral-700 rounded max-w-[70%] whitespace-nowrap overflow-hidden text-ellipsis">
                   {photo.category_name}
                 </span>
               </div>

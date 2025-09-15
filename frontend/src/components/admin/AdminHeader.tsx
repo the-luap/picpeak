@@ -71,33 +71,27 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
     <header className="sticky top-0 z-30 bg-white border-b border-neutral-200">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left side - Menu button and Date */}
-          <div className="flex items-center gap-3">
+          {/* Left side - Menu button, Logo, and Date */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={onMenuClick}
               className="lg:hidden text-neutral-500 hover:text-neutral-700"
             >
               <Menu className="w-6 h-6" />
             </button>
-            
-            {/* Date display - hidden on small screens */}
-            <div className="hidden xl:block">
+
+            {/* PicPeak logo - sticky to the left on all sizes */}
+            <div className="flex items-center gap-2">
+              <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-8 w-auto object-contain" />
+              <span className="text-xl sm:text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
+            </div>
+
+            {/* Date display - hidden on smaller screens */}
+            <div className="hidden xl:block pl-3 border-l border-neutral-200 ml-1">
               <p className="text-base text-neutral-700">
                 {format(new Date(), 'PPPP')}
               </p>
             </div>
-          </div>
-
-          {/* Center - Logo and PicPeak text - hidden on small screens to prevent overlap */}
-          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-3">
-            <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-10 w-auto object-contain" />
-            <span className="text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
-          </div>
-          
-          {/* Mobile Logo - shown only on small screens */}
-          <div className="flex lg:hidden items-center gap-2 mx-auto">
-            <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-8 w-auto object-contain" />
-            <span className="text-xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
           </div>
 
           {/* Right side actions */}
