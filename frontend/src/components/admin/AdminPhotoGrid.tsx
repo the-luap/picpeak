@@ -257,19 +257,19 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
               </div>
             )}
             
-            {/* Feedback Indicators */}
+            {/* Feedback Indicators (moved to bottom-right to avoid covering category) */}
             {(photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
-              <div className="absolute top-2 left-2 flex gap-1 z-10" style={{ left: isSelectionMode ? '40px' : '8px' }}>
-                {photo.comment_count > 0 && (
-                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
-                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                    <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
-                  </div>
-                )}
+              <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10">
                 {photo.average_rating > 0 && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
                     <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
                     <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                  </div>
+                )}
+                {photo.comment_count > 0 && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                    <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
                   </div>
                 )}
               </div>

@@ -180,32 +180,29 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             </div>
           </button>
 
-          {/* Feedback Indicators */}
+          {/* Feedback Indicators (always visible, bottom-left) */}
           {feedbackEnabled && (photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
-            <div className="absolute top-2 left-2 flex gap-1 z-10">
-              {photo.comment_count > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
-                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
-                </div>
+            <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 flex items-center gap-1 z-10`}>
+              {photo.like_count > 0 && (
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
+                  <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                </span>
               )}
               {photo.average_rating > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Rated">
                   <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
-                </div>
+                </span>
               )}
-              {photo.like_count > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.like_count} likes`}>
-                  <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photo.like_count}</span>
-                </div>
+              {photo.comment_count > 0 && (
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Commented">
+                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                </span>
               )}
             </div>
           )}
 
           {photo.type === 'collage' && (
-            <div className="absolute bottom-2 left-2">
+            <div className="absolute bottom-2 right-2">
               <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">
                 Collage
               </span>

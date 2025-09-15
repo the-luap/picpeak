@@ -42,6 +42,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   const [pendingAction, setPendingAction] = React.useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
   return (
+    <>
     <div
       className={`relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 ${className}`}
       onClick={(e) => {
@@ -172,6 +173,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
       }}
       feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
     />
+    </>
   );
 };
 

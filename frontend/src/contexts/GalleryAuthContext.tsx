@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { authService } from '../services';
+import { authService, galleryService } from '../services';
 import { cleanupOldGalleryAuth } from '../utils/cleanupGalleryAuth';
 
 interface GalleryEvent {
@@ -78,6 +78,35 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
           // Invalid stored data - clear it
           localStorage.removeItem(`gallery_event_${currentSlug}`);
           localStorage.removeItem(`gallery_token_${currentSlug}`);
+        }
+      } else {
+        // No stored auth; check for token in URL and auto-authenticate
+        const parts = window.location.pathname.split('/');
+        const urlToken = parts.length >= 5 ? parts[4] : (parts.length >= 4 ? parts[3] : undefined);
+        if (urlToken) {
+          (async () => {
+            try {
+              setIsLoading(true);
+              // Verify token against backend
+              const verify = await galleryService.verifyToken(currentSlug, urlToken);
+              if (verify?.valid) {
+                // Store token and fetch event via photos endpoint to get full event object
+                localStorage.setItem(`gallery_token_${currentSlug}`, urlToken);
+                const data = await galleryService.getGalleryPhotos(currentSlug);
+                if (data?.event) {
+                  setEvent(data.event);
+                  setIsAuthenticated(true);
+                  localStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(data.event));
+                }
+              }
+            } catch (e) {
+              // Invalid token; ensure any residual storage is cleared
+              localStorage.removeItem(`gallery_token_${currentSlug}`);
+              localStorage.removeItem(`gallery_event_${currentSlug}`);
+            } finally {
+              setIsLoading(false);
+            }
+          })();
         }
       }
     }

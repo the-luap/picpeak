@@ -331,6 +331,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         <AuthenticatedImage
           src={currentPhoto.url}
           alt={currentPhoto.filename}
+          fallbackSrc={currentPhoto.thumbnail_url || undefined}
           className="max-w-full max-h-full object-contain select-none"
           style={{
             transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,

@@ -17,7 +17,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 import { Button, Card, Loading } from '../../components/common';
 import { AdminAuthenticatedImage } from '../../components/admin/AdminAuthenticatedImage';
@@ -254,7 +254,7 @@ export const EventFeedbackPage: React.FC = () => {
                     {item.photo_id && (
                       <div className="w-16 h-16 overflow-hidden rounded">
                         <AdminAuthenticatedImage
-                          src={`/api/admin/photos/${id}/thumbnail/${item.photo_id}`}
+                          src={`/admin/photos/${id}/thumbnail/${item.photo_id}`}
                           alt={item.filename || 'Photo'}
                           className="w-16 h-16 object-cover rounded"
                         />
@@ -290,7 +290,12 @@ export const EventFeedbackPage: React.FC = () => {
                             <p className="text-sm text-neutral-700">{item.comment_text}</p>
                           )}
                           <p className="text-xs text-neutral-500 mt-1">
-                            {format(new Date(item.created_at), 'PPpp')}
+                            {(() => {
+                              const d = typeof item.created_at === 'string' 
+                                ? parseISO(item.created_at) 
+                                : new Date(item.created_at);
+                              return isNaN(d.getTime()) ? t('common.unknownDate', 'Unknown date') : format(d, 'PPpp');
+                            })()}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -492,7 +497,12 @@ export const EventFeedbackPage: React.FC = () => {
                           <p className="text-sm text-neutral-700">{comment.comment_text}</p>
                           <p className="text-xs text-neutral-500 mt-1">
                             {comment.guest_name} • {comment.filename} • 
-                            {format(new Date(comment.created_at), 'PP')}
+                            {(() => {
+                              const d = typeof comment.created_at === 'string' 
+                                ? parseISO(comment.created_at) 
+                                : new Date(comment.created_at);
+                              return isNaN(d.getTime()) ? t('common.unknownDate', 'Unknown date') : format(d, 'PP');
+                            })()}
                           </p>
                         </div>
                       ))}

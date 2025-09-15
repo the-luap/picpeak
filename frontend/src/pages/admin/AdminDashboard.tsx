@@ -268,13 +268,13 @@ export const AdminDashboard: React.FC = () => {
                     categoryName: activity.metadata?.category_name || ''
                   };
                   
-                  // Check if translation exists
-                  const translated = t(translationKey, params);
-                  if (typeof translated === 'string') {
-                    return translated;
+                  // Translate; if key missing i18n returns the key string itself
+                  const translated = t(translationKey, params) as string;
+                  if (!translated || translated === translationKey) {
+                    // Fallback: format a readable English message
+                    return adminService.formatActivityMessage(activity);
                   }
-                  // Fallback to unknown activity if translation not found
-                  return t('admin.activities.unknown') as string;
+                  return translated;
                 };
 
                 return (

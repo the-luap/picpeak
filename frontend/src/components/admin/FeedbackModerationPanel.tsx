@@ -132,7 +132,7 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
                           <div className="mt-2 flex items-center gap-2">
                             <div className="w-16 h-16 overflow-hidden rounded">
                               <AdminAuthenticatedImage 
-                                src={`/api/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
+                                src={`/admin/photos/${eventId}/thumbnail/${item.photo_id}`}
                                 alt={item.filename || 'Photo'}
                                 className="w-16 h-16 object-cover rounded"
                               />

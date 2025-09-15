@@ -413,18 +413,9 @@ router.get('/:slug/photo/:photoId',
         });
       }
       
-      // Photo path should be in storage/events/active directory
-      // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
-      const storagePath = getStoragePath();
-      
-      let filePath;
-      if (photo.path.startsWith('events/active/')) {
-        // New format: path already includes events/active/ prefix
-        filePath = path.join(storagePath, photo.path);
-      } else {
-        // Legacy format: path is just slug/filename
-        filePath = path.join(storagePath, 'events/active', photo.path);
-      }
+      // Resolve the absolute file path for this photo, supporting both managed and external reference modes
+      const { resolvePhotoFilePath } = require('../services/photoResolver');
+      const filePath = resolvePhotoFilePath(req.event, photo);
       
       
       // Log access - temporarily disabled for debugging

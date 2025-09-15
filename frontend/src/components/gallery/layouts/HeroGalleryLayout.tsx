@@ -84,11 +84,13 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   const remainingPhotos = photos;
 
   return (
+    <>
     <div className="relative -mt-6">
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] lg:h-[80vh] -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
         <AuthenticatedImage
           src={heroPhoto.url}
+          fallbackSrc={heroPhoto.thumbnail_url || undefined}
           alt={heroPhoto.filename}
           className="w-full h-full object-cover"
           isGallery={true}
@@ -260,6 +262,29 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
+
+              {/* Feedback indicators (always visible, bottom-left) */}
+              {(feedbackEnabled && (photo.like_count > 0 || (photo.average_rating || 0) > 0 || (photo.comment_count || 0) > 0)) && (
+                <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 flex items-center gap-1 z-20`}>
+                  {photo.like_count > 0 && (
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                    </span>
+                  )}
+                  {(photo.average_rating || 0) > 0 && (
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Rated">
+                      <Bookmark className="hidden" />
+                      {/* Using star icon to indicate rating */}
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-yellow-500 fill-current"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.402 8.168L12 18.897l-7.336 3.869 1.402-8.168L.132 9.211l8.2-1.193z"/></svg>
+                    </span>
+                  )}
+                  {(photo.comment_count || 0) > 0 && (
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Commented">
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-blue-600 fill-current"><path d="M20 2H4a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -282,5 +307,6 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
       }}
       feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
     />
+    </>
   );
 };
