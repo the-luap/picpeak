@@ -544,6 +544,13 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             slug={slug} 
             categoryId={selectedCategoryId}
             feedbackEnabled={feedbackEnabled}
+            feedbackOptions={{
+              allowLikes: !!feedbackSettings?.allow_likes,
+              allowFavorites: !!feedbackSettings?.allow_favorites,
+              allowRatings: !!feedbackSettings?.allow_ratings,
+              allowComments: !!feedbackSettings?.allow_comments,
+              requireNameEmail: !!feedbackSettings?.require_name_email,
+            }}
             isSelectionMode={isSelectionMode}
             selectedPhotos={selectedPhotos}
             onSelectionChange={setSelectedPhotos}

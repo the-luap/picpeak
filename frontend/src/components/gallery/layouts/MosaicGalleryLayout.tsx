@@ -1,7 +1,9 @@
 import React from 'react';
-import { Download, Maximize2, Check } from 'lucide-react';
+import { Download, Maximize2, Check, Heart, Bookmark } from 'lucide-react';
 // import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
+import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
+import { feedbackService } from '../../../services/feedback.service';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -14,6 +16,13 @@ interface MosaicPhotoProps {
   onToggleSelect: () => void;
   className?: string;
   allowDownloads?: boolean;
+  slug?: string;
+  feedbackEnabled?: boolean;
+  feedbackOptions?: {
+    allowLikes?: boolean;
+    allowFavorites?: boolean;
+    requireNameEmail?: boolean;
+  };
 }
 
 const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
@@ -24,8 +33,14 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   onDownload,
   onToggleSelect,
   className = '',
-  allowDownloads = true
+  allowDownloads = true,
+  slug,
+  feedbackEnabled,
+  feedbackOptions
 }) => {
+  const [showIdentityModal, setShowIdentityModal] = React.useState(false);
+  const [pendingAction, setPendingAction] = React.useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
   return (
     <div
       className={`relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 ${className}`}
@@ -67,6 +82,50 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
                 <Download className="w-5 h-5 text-neutral-800" />
               </button>
             )}
+            {feedbackEnabled && feedbackOptions?.allowLikes && (
+              <button
+                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                    setPendingAction({ type: 'like', photoId: photo.id });
+                    setShowIdentityModal(true);
+                    return;
+                  }
+                  await feedbackService.submitFeedback(slug!, String(photo.id), {
+                    feedback_type: 'like',
+                    guest_name: savedIdentity?.name,
+                    guest_email: savedIdentity?.email,
+                  });
+                }}
+                aria-label="Like photo"
+                title="Like"
+              >
+                <Heart className="w-5 h-5 text-neutral-800" />
+              </button>
+            )}
+            {feedbackEnabled && feedbackOptions?.allowFavorites && (
+              <button
+                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                    setPendingAction({ type: 'favorite', photoId: photo.id });
+                    setShowIdentityModal(true);
+                    return;
+                  }
+                  await feedbackService.submitFeedback(slug!, String(photo.id), {
+                    feedback_type: 'favorite',
+                    guest_name: savedIdentity?.name,
+                    guest_email: savedIdentity?.email,
+                  });
+                }}
+                aria-label="Favorite photo"
+                title="Favorite"
+              >
+                <Bookmark className="w-5 h-5 text-neutral-800" />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -96,17 +155,37 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
         </div>
       )}
     </div>
+    <FeedbackIdentityModal
+      isOpen={showIdentityModal}
+      onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}
+      onSubmit={async (name, email) => {
+        setSavedIdentity({ name, email });
+        setShowIdentityModal(false);
+        if (pendingAction) {
+          await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
+            feedback_type: pendingAction.type,
+            guest_name: name,
+            guest_email: email,
+          });
+          setPendingAction(null);
+        }
+      }}
+      feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+    />
   );
 };
 
 export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
+  slug,
   onPhotoClick,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
   onPhotoSelect,
-  allowDownloads = true
+  allowDownloads = true,
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
   // const { theme } = useTheme();
   // const gallerySettings = theme.gallerySettings || {};
@@ -152,6 +231,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
                 className="col-span-1"
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
             )}
             <div className="grid grid-rows-2 gap-2">
@@ -165,6 +247,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
                 className=""
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
               )}
               {photo2 && (
@@ -177,6 +262,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
                 className=""
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
               )}
             </div>
@@ -228,6 +316,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
                 className="col-span-2"
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
             )}
             <div className="grid grid-rows-2 gap-2">
@@ -241,6 +332,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
                 className=""
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
               )}
               {photo2 && (
@@ -253,6 +347,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
                 className=""
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
               )}
             </div>
@@ -285,6 +382,9 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
                 className="aspect-square"
                 allowDownloads={allowDownloads}
+                slug={slug}
+                feedbackEnabled={feedbackEnabled}
+                feedbackOptions={feedbackOptions}
               />
             );
           })}

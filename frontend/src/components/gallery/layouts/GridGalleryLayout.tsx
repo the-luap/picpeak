@@ -1,8 +1,10 @@
 import React from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart, Bookmark } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
+import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
+import { feedbackService } from '../../../services/feedback.service';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -19,6 +21,15 @@ interface GridPhotoProps {
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
   feedbackEnabled?: boolean;
+  feedbackOptions?: {
+    allowLikes?: boolean;
+    allowFavorites?: boolean;
+    allowRatings?: boolean;
+    allowComments?: boolean;
+    requireNameEmail?: boolean;
+  };
+  savedIdentity?: { name: string; email: string } | null;
+  onRequireIdentity?: (action: 'like' | 'favorite', photoId: number) => void;
 }
 
 const GridPhoto: React.FC<GridPhotoProps> = ({
@@ -33,8 +44,10 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   slug,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
-  feedbackEnabled = false
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
+  // handled by parent layout; kept here for type completeness but not used
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -101,6 +114,49 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                     aria-label="Download photo"
                   >
                     <Download className="w-5 h-5 text-neutral-800" />
+                  </button>
+                )}
+                {/* Quick feedback actions */}
+                {feedbackOptions?.allowLikes && (
+                  <button
+                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
+                        onRequireIdentity('like', photo.id);
+                        return;
+                      }
+                      await feedbackService.submitFeedback(slug!, String(photo.id), {
+                        feedback_type: 'like',
+                        guest_name: savedIdentity?.name,
+                        guest_email: savedIdentity?.email,
+                      });
+                    }}
+                    aria-label="Like photo"
+                    title="Like"
+                  >
+                    <Heart className="w-5 h-5 text-neutral-800" />
+                  </button>
+                )}
+                {feedbackOptions?.allowFavorites && (
+                  <button
+                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
+                        onRequireIdentity('favorite', photo.id);
+                        return;
+                      }
+                      await feedbackService.submitFeedback(slug!, String(photo.id), {
+                        feedback_type: 'favorite',
+                        guest_name: savedIdentity?.name,
+                        guest_email: savedIdentity?.email,
+                      });
+                    }}
+                    aria-label="Favorite photo"
+                    title="Favorite"
+                  >
+                    <Bookmark className="w-5 h-5 text-neutral-800" />
                   </button>
                 )}
               </>
@@ -174,13 +230,18 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
-  feedbackEnabled = false
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
   const { theme } = useTheme();
   const gallerySettings = theme.gallerySettings || {};
   const columns = gallerySettings.gridColumns || { mobile: 2, tablet: 3, desktop: 4 };
   const spacing = gallerySettings.spacing || 'normal';
   const animation = gallerySettings.photoAnimation || 'fade';
+
+  const [showIdentityModal, setShowIdentityModal] = React.useState(false);
+  const [pendingAction, setPendingAction] = React.useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
   
@@ -207,8 +268,31 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
           feedbackEnabled={feedbackEnabled}
+          feedbackOptions={feedbackOptions}
+          savedIdentity={savedIdentity}
+          onRequireIdentity={(action, photoId) => {
+            setPendingAction({ type: action, photoId });
+            setShowIdentityModal(true);
+          }}
         />
       ))}
+      <FeedbackIdentityModal
+        isOpen={showIdentityModal}
+        onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}
+        onSubmit={async (name, email) => {
+          setSavedIdentity({ name, email });
+          setShowIdentityModal(false);
+          if (pendingAction) {
+            await feedbackService.submitFeedback(slug, String(pendingAction.photoId), {
+              feedback_type: pendingAction.type,
+              guest_name: name,
+              guest_email: email,
+            });
+            setPendingAction(null);
+          }
+        }}
+        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+      />
     </div>
   );
 };

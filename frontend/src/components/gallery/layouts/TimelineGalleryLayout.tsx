@@ -1,21 +1,29 @@
-import React, { useMemo } from 'react';
-import { Download, Maximize2, Check, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Download, Maximize2, Check, Calendar, Heart, Bookmark } from 'lucide-react';
 import { format, parseISO, startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
+import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
+import { feedbackService } from '../../../services/feedback.service';
 
 export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
+  slug,
   onPhotoClick,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
   onPhotoSelect,
-  allowDownloads = true
+  allowDownloads = true,
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
   const { theme } = useTheme();
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const gallerySettings = theme.gallerySettings || {};
   const grouping = gallerySettings.timelineGrouping || 'day';
   const showDates = gallerySettings.timelineShowDates !== false;
@@ -131,6 +139,50 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                               <Download className="w-5 h-5 text-neutral-800" />
                             </button>
                           )}
+                          {feedbackEnabled && feedbackOptions?.allowLikes && (
+                            <button
+                              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                                  setPendingAction({ type: 'like', photoId: photo.id });
+                                  setShowIdentityModal(true);
+                                  return;
+                                }
+                                await feedbackService.submitFeedback(slug!, String(photo.id), {
+                                  feedback_type: 'like',
+                                  guest_name: savedIdentity?.name,
+                                  guest_email: savedIdentity?.email,
+                                });
+                              }}
+                              aria-label="Like photo"
+                              title="Like"
+                            >
+                              <Heart className="w-5 h-5 text-neutral-800" />
+                            </button>
+                          )}
+                          {feedbackEnabled && feedbackOptions?.allowFavorites && (
+                            <button
+                              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                                  setPendingAction({ type: 'favorite', photoId: photo.id });
+                                  setShowIdentityModal(true);
+                                  return;
+                                }
+                                await feedbackService.submitFeedback(slug!, String(photo.id), {
+                                  feedback_type: 'favorite',
+                                  guest_name: savedIdentity?.name,
+                                  guest_email: savedIdentity?.email,
+                                });
+                              }}
+                              aria-label="Favorite photo"
+                              title="Favorite"
+                            >
+                              <Bookmark className="w-5 h-5 text-neutral-800" />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -158,6 +210,23 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           </div>
         ))}
       </div>
+      <FeedbackIdentityModal
+        isOpen={showIdentityModal}
+        onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}
+        onSubmit={async (name, email) => {
+          setSavedIdentity({ name, email });
+          setShowIdentityModal(false);
+          if (pendingAction) {
+            await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
+              feedback_type: pendingAction.type,
+              guest_name: name,
+              guest_email: email,
+            });
+            setPendingAction(null);
+          }
+        }}
+        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+      />
     </div>
   );
 };

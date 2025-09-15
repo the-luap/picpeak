@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Maximize2, Check, ChevronDown, Calendar, Clock } from 'lucide-react';
+import { Download, Maximize2, Check, ChevronDown, Calendar, Clock, Heart, Bookmark } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../../../hooks/useLocalizedDate';
@@ -8,6 +8,8 @@ import { AuthenticatedImage } from '../../common';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 import { buildResourceUrl } from '../../../utils/url';
+import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
+import { feedbackService } from '../../../services/feedback.service';
 
 interface HeroGalleryLayoutProps extends BaseGalleryLayoutProps {
   eventName?: string;
@@ -18,6 +20,7 @@ interface HeroGalleryLayoutProps extends BaseGalleryLayoutProps {
 
 export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   photos,
+  slug,
   onPhotoClick,
   onDownload,
   selectedPhotos = new Set(),
@@ -27,13 +30,18 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   eventLogo,
   eventDate,
   expiresAt,
-  allowDownloads = true
+  allowDownloads = true,
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
   const [heroPhoto, setHeroPhoto] = useState<Photo | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const gallerySettings = theme.gallerySettings || {};
   const overlayOpacity = gallerySettings.heroOverlayOpacity || 0.3;
 
@@ -188,6 +196,50 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                         <Download className="w-5 h-5 text-neutral-800" />
                       </button>
                     )}
+                    {feedbackEnabled && feedbackOptions?.allowLikes && (
+                      <button
+                        className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                            setPendingAction({ type: 'like', photoId: photo.id });
+                            setShowIdentityModal(true);
+                            return;
+                          }
+                          await feedbackService.submitFeedback(slug!, String(photo.id), {
+                            feedback_type: 'like',
+                            guest_name: savedIdentity?.name,
+                            guest_email: savedIdentity?.email,
+                          });
+                        }}
+                        aria-label="Like photo"
+                        title="Like"
+                      >
+                        <Heart className="w-5 h-5 text-neutral-800" />
+                      </button>
+                    )}
+                    {feedbackEnabled && feedbackOptions?.allowFavorites && (
+                      <button
+                        className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                            setPendingAction({ type: 'favorite', photoId: photo.id });
+                            setShowIdentityModal(true);
+                            return;
+                          }
+                          await feedbackService.submitFeedback(slug!, String(photo.id), {
+                            feedback_type: 'favorite',
+                            guest_name: savedIdentity?.name,
+                            guest_email: savedIdentity?.email,
+                          });
+                        }}
+                        aria-label="Favorite photo"
+                        title="Favorite"
+                      >
+                        <Bookmark className="w-5 h-5 text-neutral-800" />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -213,5 +265,22 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
         })}
       </div>
     </div>
+    <FeedbackIdentityModal
+      isOpen={showIdentityModal}
+      onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}
+      onSubmit={async (name, email) => {
+        setSavedIdentity({ name, email });
+        setShowIdentityModal(false);
+        if (pendingAction) {
+          await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
+            feedback_type: pendingAction.type,
+            guest_name: name,
+            guest_email: email,
+          });
+          setPendingAction(null);
+        }
+      }}
+      feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+    />
   );
 };

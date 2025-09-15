@@ -17,6 +17,13 @@ export interface BaseGalleryLayoutProps {
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
   feedbackEnabled?: boolean;
+  feedbackOptions?: {
+    allowLikes?: boolean;
+    allowFavorites?: boolean;
+    allowRatings?: boolean;
+    allowComments?: boolean;
+    requireNameEmail?: boolean;
+  };
 }
 
 export abstract class BaseGalleryLayout<T extends BaseGalleryLayoutProps = BaseGalleryLayoutProps> extends React.Component<T> {

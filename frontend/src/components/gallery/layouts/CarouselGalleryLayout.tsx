@@ -1,16 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Download, Maximize2, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Maximize2, Play, Pause, Heart, Bookmark } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage, Button } from '../../common';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
+import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
+import { feedbackService } from '../../../services/feedback.service';
 
 export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
+  slug,
   onPhotoClick,
   onDownload,
   allowDownloads = true,
-  // selectedPhotos = new Set(),
-  // isSelectionMode = false
+  feedbackEnabled = false,
+  feedbackOptions
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -59,6 +62,9 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   if (photos.length === 0) return null;
 
   const currentPhoto = photos[currentIndex];
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
   return (
     <div className="relative">
@@ -136,6 +142,50 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <Download className="w-5 h-5" />
               </Button>
             )}
+            {feedbackEnabled && feedbackOptions?.allowLikes && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                    setPendingAction({ type: 'like', photoId: currentPhoto.id });
+                    setShowIdentityModal(true);
+                    return;
+                  }
+                  await feedbackService.submitFeedback(slug!, String(currentPhoto.id), {
+                    feedback_type: 'like',
+                    guest_name: savedIdentity?.name,
+                    guest_email: savedIdentity?.email,
+                  });
+                }}
+                className="text-white hover:bg-white/20"
+                title="Like photo"
+              >
+                <Heart className="w-5 h-5" />
+              </Button>
+            )}
+            {feedbackEnabled && feedbackOptions?.allowFavorites && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  if (feedbackOptions?.requireNameEmail && !savedIdentity) {
+                    setPendingAction({ type: 'favorite', photoId: currentPhoto.id });
+                    setShowIdentityModal(true);
+                    return;
+                  }
+                  await feedbackService.submitFeedback(slug!, String(currentPhoto.id), {
+                    feedback_type: 'favorite',
+                    guest_name: savedIdentity?.name,
+                    guest_email: savedIdentity?.email,
+                  });
+                }}
+                className="text-white hover:bg-white/20"
+                title="Favorite photo"
+              >
+                <Bookmark className="w-5 h-5" />
+              </Button>
+            )}
           </div>
         </div>
         
@@ -181,6 +231,24 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
         </div>
       )}
       
+      <FeedbackIdentityModal
+        isOpen={showIdentityModal}
+        onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}
+        onSubmit={async (name, email) => {
+          setSavedIdentity({ name, email });
+          setShowIdentityModal(false);
+          if (pendingAction) {
+            await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
+              feedback_type: pendingAction.type,
+              guest_name: name,
+              guest_email: email,
+            });
+            setPendingAction(null);
+          }
+        }}
+        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+      />
+
       <style>{`
         @keyframes progress {
           from { width: 0%; }

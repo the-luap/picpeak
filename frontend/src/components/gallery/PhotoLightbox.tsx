@@ -15,6 +15,7 @@ interface PhotoLightboxProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  initialShowFeedback?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -26,6 +27,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  initialShowFeedback = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -33,7 +35,14 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(initialShowFeedback);
+  const [isSmallScreen, setIsSmallScreen] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+
+  useEffect(() => {
+    const onResize = () => setIsSmallScreen(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
@@ -231,13 +240,16 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         <ChevronLeft className="w-6 h-6 text-white" />
       </button>
 
-      <button
-        onClick={goToNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-20"
-        aria-label="Next photo"
-      >
-        <ChevronRight className="w-6 h-6 text-white" />
-      </button>
+      {!showFeedback || !isSmallScreen ? (
+        <button
+          onClick={goToNext}
+          className="absolute top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
+          aria-label="Next photo"
+          style={{ right: showFeedback && !isSmallScreen ? '26rem' : '1rem' }}
+        >
+          <ChevronRight className="w-6 h-6 text-white" />
+        </button>
+      ) : null}
 
       {/* Bottom toolbar */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-20">

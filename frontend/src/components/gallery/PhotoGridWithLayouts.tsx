@@ -38,6 +38,13 @@ interface PhotoGridWithLayoutsProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  feedbackOptions?: {
+    allowLikes?: boolean;
+    allowFavorites?: boolean;
+    allowRatings?: boolean;
+    allowComments?: boolean;
+    requireNameEmail?: boolean;
+  };
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({ 
@@ -47,6 +54,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   isSelectionMode: parentSelectionMode,
   selectedPhotos: parentSelectedPhotos,
   feedbackEnabled,
+  feedbackOptions,
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
@@ -186,6 +194,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     eventDate,
     expiresAt,
     feedbackEnabled,
+    feedbackOptions,
   };
 
   let LayoutComponent;
