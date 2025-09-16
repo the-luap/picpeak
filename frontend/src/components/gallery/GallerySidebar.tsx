@@ -225,6 +225,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                 likeCount={likeCount}
                 favoriteCount={favoriteCount}
                 className="w-full"
+                variant="compact"
               />
             </div>
           )}
