@@ -174,36 +174,41 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
               </div>
             </div>
 
-            {/* Desktop: compact vertical feedback filter (icons only), outside the overflow area */}
+            {/* Desktop: compact horizontal feedback filter with headline (icons only) */}
             {feedbackEnabled && onFilterChange && (
-              <div className="hidden lg:flex flex-col items-center gap-1 mx-2">
-                <Button
-                  variant={currentFilter === 'all' ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onFilterChange('all')}
-                  className="p-1 w-8 h-8 flex items-center justify-center"
-                  aria-label={t('gallery.all')}
-                >
-                  <Grid className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant={currentFilter === 'liked' ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onFilterChange('liked')}
-                  className="p-1 w-8 h-8 flex items-center justify-center"
-                  aria-label={t('feedback.likes', 'Likes')}
-                >
-                  <Heart className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onFilterChange('favorited')}
-                  className="p-1 w-8 h-8 flex items-center justify-center"
-                  aria-label={t('feedback.favorites', 'Favorites')}
-                >
-                  <Star className="w-3.5 h-3.5" />
-                </Button>
+              <div className="hidden lg:flex items-center gap-2 mx-2 flex-shrink-0">
+                <span className="text-sm text-neutral-600 whitespace-nowrap">
+                  {t('gallery.feedbackFilter', 'Feedback Filter')}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={currentFilter === 'all' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('all')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('gallery.all', 'All')}
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant={currentFilter === 'liked' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('liked')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('feedback.likes', 'Likes')}
+                  >
+                    <Heart className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('favorited')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('feedback.favorites', 'Favorites')}
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -213,16 +218,19 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
           </div>
         )}
         
-        {/* Mobile/Tablet: compact vertical icons below categories */}
+        {/* Mobile/Tablet: compact horizontal icons with headline below categories */}
         {feedbackEnabled && onFilterChange && (
-          <div className="flex lg:hidden gap-2">
-            <div className="flex flex-col gap-1">
+          <div className="flex lg:hidden items-center gap-2">
+            <span className="text-xs text-neutral-600 whitespace-nowrap">
+              {t('gallery.feedbackFilter', 'Feedback Filter')}
+            </span>
+            <div className="flex items-center gap-1">
               <Button
                 variant={currentFilter === 'all' ? 'primary' : 'outline'}
                 size="sm"
                 onClick={() => onFilterChange('all')}
                 className="p-1 w-8 h-8 flex items-center justify-center"
-                aria-label={t('gallery.all')}
+                aria-label={t('gallery.all', 'All')}
               >
                 <Grid className="w-3.5 h-3.5" />
               </Button>
