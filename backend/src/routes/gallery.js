@@ -110,12 +110,35 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
     // Apply filtering if requested (global, based on aggregate counts)
     if (filter) {
       const f = String(filter).toLowerCase();
-      if (f === 'liked') {
-        photos = photos.filter(p => (p.like_count || 0) > 0);
-      } else if (f === 'favorited') {
-        photos = photos.filter(p => (p.favorite_count || 0) > 0);
-      } else if (f === 'liked,favorited' || f === 'favorited,liked') {
-        photos = photos.filter(p => (p.like_count || 0) > 0 || (p.favorite_count || 0) > 0);
+      const parts = f.split(',').map(s => s.trim());
+      const include = new Set();
+
+      // Helper to include IDs for a predicate
+      const includeBy = (predicate) => {
+        photos.forEach(p => { if (predicate(p)) include.add(p.id); });
+      };
+
+      if (parts.includes('liked')) {
+        includeBy(p => (p.like_count || 0) > 0);
+      }
+      if (parts.includes('favorited')) {
+        includeBy(p => (p.favorite_count || 0) > 0);
+      }
+      if (parts.includes('rated')) {
+        includeBy(p => (p.average_rating || 0) > 0);
+      }
+      if (parts.includes('commented')) {
+        // Query commented photo IDs
+        const commented = await db('photo_feedback')
+          .where({ event_id: req.event.id, feedback_type: 'comment', is_approved: true, is_hidden: false })
+          .groupBy('photo_id')
+          .select('photo_id');
+        const commentedIds = new Set(commented.map(c => c.photo_id));
+        includeBy(p => commentedIds.has(p.id));
+      }
+
+      if (include.size > 0) {
+        photos = photos.filter(p => include.has(p.id));
       }
     }
     

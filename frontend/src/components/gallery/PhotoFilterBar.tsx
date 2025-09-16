@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, SortAsc, Grid, Heart, Star } from 'lucide-react';
+import { Search, SortAsc, Grid, Heart, Star, Bookmark, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../common';
 import type { FilterType } from './GalleryFilter';
@@ -206,7 +206,25 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                     className="p-1 w-8 h-8 flex items-center justify-center"
                     aria-label={t('feedback.favorites', 'Favorites')}
                   >
+                    <Bookmark className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant={currentFilter === 'rated' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('rated')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('gallery.rated', 'Rated')}
+                  >
                     <Star className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant={currentFilter === 'commented' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('commented')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('gallery.commented', 'Commented')}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
@@ -250,7 +268,25 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                 className="p-1 w-8 h-8 flex items-center justify-center"
                 aria-label={t('feedback.favorites', 'Favorites')}
               >
+                <Bookmark className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant={currentFilter === 'rated' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onFilterChange('rated')}
+                className="p-1 w-8 h-8 flex items-center justify-center"
+                aria-label={t('gallery.rated', 'Rated')}
+              >
                 <Star className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant={currentFilter === 'commented' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onFilterChange('commented')}
+                className="p-1 w-8 h-8 flex items-center justify-center"
+                aria-label={t('gallery.commented', 'Commented')}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>

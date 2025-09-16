@@ -1,9 +1,9 @@
 import React from 'react';
-import { Heart, Star } from 'lucide-react';
+import { Heart, Star, Bookmark, MessageSquare } from 'lucide-react';
 import { Button } from '../common';
 import { useTranslation } from 'react-i18next';
 
-export type FilterType = 'all' | 'liked' | 'favorited';
+export type FilterType = 'all' | 'liked' | 'favorited' | 'rated' | 'commented';
 
 interface GalleryFilterProps {
   currentFilter: FilterType;
@@ -150,13 +150,33 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               onClick={() => onFilterChange('favorited')}
               className="text-xs sm:text-sm flex items-center gap-1"
             >
-              <Star className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('gallery.favorited', 'Favorites')}</span>
+              <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{t('gallery.favorites', 'Favorites')}</span>
               {favoriteCount > 0 && (
                 <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
                   {favoriteCount}
                 </span>
               )}
+            </Button>
+
+            <Button
+              variant={currentFilter === 'rated' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('rated')}
+              className="text-xs sm:text-sm flex items-center gap-1"
+            >
+              <Star className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{t('gallery.rated', 'Rated')}</span>
+            </Button>
+
+            <Button
+              variant={currentFilter === 'commented' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('commented')}
+              className="text-xs sm:text-sm flex items-center gap-1"
+            >
+              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{t('gallery.commented', 'Commented')}</span>
             </Button>
           </div>
         </div>
