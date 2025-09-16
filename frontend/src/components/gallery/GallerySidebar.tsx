@@ -114,7 +114,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
       <div
         ref={sidebarRef}
         className={`
-          fixed top-0 left-0 h-full bg-white shadow-xl z-50 transition-transform duration-300 ease-in-out
+          fixed top-0 left-0 h-full bg-white shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col
           ${isMobile ? 'w-full max-w-sm' : 'w-80'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}

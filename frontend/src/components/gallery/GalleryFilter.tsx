@@ -36,34 +36,39 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
   if (variant === 'compact') {
     return (
       <div className={`${className}`}>
-        <div className="flex flex-col items-start gap-1">
-          <Button
-            variant={currentFilter === 'all' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('all')}
-            className="p-1 w-8 h-8 flex items-center justify-center"
-            aria-label={t('gallery.all', 'All')}
-          >
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-current"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 8v-8h8v8h-8z"/></svg>
-          </Button>
-          <Button
-            variant={currentFilter === 'liked' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('liked')}
-            className="p-1 w-8 h-8 flex items-center justify-center"
-            aria-label={t('feedback.likes', 'Likes')}
-          >
-            <Heart className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange('favorited')}
-            className="p-1 w-8 h-8 flex items-center justify-center"
-            aria-label={t('feedback.favorites', 'Favorites')}
-          >
-            <Star className="w-3.5 h-3.5" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-neutral-700 whitespace-nowrap">
+            {t('gallery.feedbackFilter', 'Feedback Filter')}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={currentFilter === 'all' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('all')}
+              className="p-1 w-8 h-8 flex items-center justify-center"
+              aria-label={t('gallery.all', 'All')}
+            >
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-current"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 8v-8h8v8h-8z"/></svg>
+            </Button>
+            <Button
+              variant={currentFilter === 'liked' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('liked')}
+              className="p-1 w-8 h-8 flex items-center justify-center"
+              aria-label={t('feedback.likes', 'Likes')}
+            >
+              <Heart className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('favorited')}
+              className="p-1 w-8 h-8 flex items-center justify-center"
+              aria-label={t('feedback.favorites', 'Favorites')}
+            >
+              <Star className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
     );
