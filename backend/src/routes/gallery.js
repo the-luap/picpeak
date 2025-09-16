@@ -107,33 +107,8 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       .select('photos.*')
       .orderBy('photos.uploaded_at', 'desc');
     
-    // Apply filtering if requested
-    if (filter && guest_id) {
-      let filters = {};
-      
-      // Parse filter parameter
-      if (filter === 'liked') {
-        filters.liked = true;
-      } else if (filter === 'favorited') {
-        filters.favorited = true;
-      } else if (filter === 'liked,favorited' || filter === 'favorited,liked') {
-        filters.liked = true;
-        filters.favorited = true;
-        filters.operator = 'OR';
-      }
-      
-      // Get filtered photo IDs
-      const filteredPhotoIds = await feedbackService.getFilteredPhotos(
-        req.event.id,
-        guest_id,
-        filters
-      );
-      
-      // Filter photos to only include those with feedback
-      photos = photos.filter(photo => filteredPhotoIds.includes(photo.id));
-    } else if (filter && !guest_id) {
-      // Global filtering (by aggregate counts) when no guest identifier is provided
-      // Normalize filter string
+    // Apply filtering if requested (global, based on aggregate counts)
+    if (filter) {
       const f = String(filter).toLowerCase();
       if (f === 'liked') {
         photos = photos.filter(p => (p.like_count || 0) > 0);
