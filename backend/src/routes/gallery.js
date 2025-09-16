@@ -131,6 +131,17 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       
       // Filter photos to only include those with feedback
       photos = photos.filter(photo => filteredPhotoIds.includes(photo.id));
+    } else if (filter && !guest_id) {
+      // Global filtering (by aggregate counts) when no guest identifier is provided
+      // Normalize filter string
+      const f = String(filter).toLowerCase();
+      if (f === 'liked') {
+        photos = photos.filter(p => (p.like_count || 0) > 0);
+      } else if (f === 'favorited') {
+        photos = photos.filter(p => (p.favorite_count || 0) > 0);
+      } else if (f === 'liked,favorited' || f === 'favorited,liked') {
+        photos = photos.filter(p => (p.like_count || 0) > 0 || (p.favorite_count || 0) > 0);
+      }
     }
     
     // Then get comment counts separately

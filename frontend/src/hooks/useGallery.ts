@@ -14,7 +14,8 @@ export const useGalleryInfo = (slug: string, token?: string) => {
 export const useGalleryPhotos = (slug: string, filter?: 'liked' | 'favorited' | 'all', guestId?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['gallery-photos', slug, filter, guestId],
-    queryFn: () => galleryService.getGalleryPhotos(slug, filter, guestId),
+    // Do not pass guestId for now; backend will apply global filters when guest_id is absent
+    queryFn: () => galleryService.getGalleryPhotos(slug, filter, undefined),
     enabled,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
