@@ -311,13 +311,17 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     `fixed inset-0 bg-black z-50 flex items-center justify-center protected-image protection-${protectionLevel}` :
     'fixed inset-0 bg-black z-50 flex items-center justify-center';
 
+  const desktopFeedbackWidth = 416; // 26rem; keep in sync with panel width
+  const isDesktopFeedback = showFeedback && !isSmallScreen;
+
   return (
     <div className={lightboxClass}>
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-20"
+        className="absolute top-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
         aria-label="Close"
+        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : '1rem' }}
       >
         <X className="w-6 h-6 text-white" />
       </button>
@@ -336,14 +340,17 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           onClick={goToNext}
           className="absolute top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
           aria-label="Next photo"
-          style={{ right: showFeedback && !isSmallScreen ? '26rem' : '1rem' }}
+          style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : '1rem' }}
         >
           <ChevronRight className="w-6 h-6 text-white" />
         </button>
       ) : null}
 
       {/* Bottom toolbar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-20">
+      <div
+        className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-20"
+        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0 }}
+      >
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="text-white">
             <p className="text-sm opacity-75">
@@ -441,7 +448,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
       {/* Image container */}
       <div
-        className="absolute inset-0 flex items-center justify-center z-0"
+        className="absolute top-0 left-0 bottom-0 flex items-center justify-center z-0"
         onClick={handleImageClick}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -450,7 +457,10 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+        style={{
+          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
+        }}
       >
         <AuthenticatedImage
           src={currentPhoto.url}
@@ -506,7 +516,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
       {/* Feedback Panel */}
       {showFeedback && (
-        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-96 lg:w-[28rem] bg-white shadow-xl z-20 overflow-y-auto">
+        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[26rem] bg-white shadow-xl z-20 overflow-y-auto flex flex-col border-l border-neutral-200">
           <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
             <h3 className="font-semibold text-neutral-900">Photo Feedback</h3>
             <button
@@ -517,7 +527,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="p-4">
+          <div className="p-4 flex-1 overflow-y-auto">
             <PhotoFeedback
               photoId={currentPhoto.id}
               gallerySlug={slug}
