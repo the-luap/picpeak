@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, Maximize2, Check, Calendar, Heart, Bookmark } from 'lucide-react';
+import { Download, Maximize2, Check, Calendar, Heart, MessageSquare } from 'lucide-react';
 import { format, parseISO, startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -12,6 +12,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
   slug,
   onPhotoClick,
+  onOpenPhotoWithFeedback,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
@@ -21,12 +22,14 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   feedbackOptions
 }) => {
   const { theme } = useTheme();
+  const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const [showIdentityModal, setShowIdentityModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const gallerySettings = theme.gallerySettings || {};
   const grouping = gallerySettings.timelineGrouping || 'day';
   const showDates = gallerySettings.timelineShowDates !== false;
+  const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
 
   // Group photos by date
   const groupedPhotos = useMemo(() => {
@@ -139,9 +142,9 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                               <Download className="w-5 h-5 text-neutral-800" />
                             </button>
                           )}
-                          {feedbackEnabled && feedbackOptions?.allowLikes && (
+                          {feedbackOptions?.allowLikes && (
                             <button
-                              className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                              className={`p-2 rounded-full transition-colors ${likedIds.has(photo.id) ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 if (feedbackOptions?.requireNameEmail && !savedIdentity) {
@@ -149,43 +152,43 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                                   setShowIdentityModal(true);
                                   return;
                                 }
-                                await feedbackService.submitFeedback(slug!, String(photo.id), {
-                                  feedback_type: 'like',
-                                  guest_name: savedIdentity?.name,
-                                  guest_email: savedIdentity?.email,
-                                });
+                                setLikedIds(prev => new Set(prev).add(photo.id));
+                                try {
+                                  await feedbackService.submitFeedback(slug!, String(photo.id), {
+                                    feedback_type: 'like',
+                                    guest_name: savedIdentity?.name,
+                                    guest_email: savedIdentity?.email,
+                                  });
+                                } catch (_) {}
                               }}
                               aria-label="Like photo"
+                              aria-pressed={likedIds.has(photo.id)}
                               title="Like"
                             >
-                              <Heart className="w-5 h-5 text-neutral-800" />
+                              <Heart className={`w-5 h-5 ${likedIds.has(photo.id) ? 'text-white fill-white' : 'text-neutral-800'}`} />
                             </button>
                           )}
-                          {feedbackEnabled && feedbackOptions?.allowFavorites && (
+                          {canQuickComment && (
                             <button
                               className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (feedbackOptions?.requireNameEmail && !savedIdentity) {
-                                  setPendingAction({ type: 'favorite', photoId: photo.id });
-                                  setShowIdentityModal(true);
-                                  return;
-                                }
-                                await feedbackService.submitFeedback(slug!, String(photo.id), {
-                                  feedback_type: 'favorite',
-                                  guest_name: savedIdentity?.name,
-                                  guest_email: savedIdentity?.email,
-                                });
-                              }}
-                              aria-label="Favorite photo"
-                              title="Favorite"
+                              onClick={(e) => { e.stopPropagation(); onOpenPhotoWithFeedback?.(actualIndex); }}
+                              aria-label="Comment on photo"
+                              title="Comment"
                             >
-                              <Bookmark className="w-5 h-5 text-neutral-800" />
+                              <MessageSquare className="w-5 h-5 text-neutral-800" />
                             </button>
                           )}
                         </>
                       )}
                     </div>
+
+                    {(photo.like_count > 0 || likedIds.has(photo.id)) && (
+                      <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 z-10`}>
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
+                          <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                        </span>
+                      </div>
+                    )}
 
                     {/* Selection Checkbox (visible on hover or when selected) */}
                     <button
@@ -225,7 +228,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
             setPendingAction(null);
           }
         }}
-        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+        feedbackType="like"
       />
     </div>
   );

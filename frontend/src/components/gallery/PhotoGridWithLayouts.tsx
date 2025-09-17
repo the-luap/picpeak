@@ -25,6 +25,9 @@ interface PhotoGridWithLayoutsProps {
   photos: Photo[];
   slug: string;
   categoryId?: number | null;
+  // When provided, the hero layout will use this photo
+  // instead of deriving from the filtered photo list.
+  heroPhotoOverride?: Photo | null;
   isSelectionMode?: boolean;
   selectedPhotos?: Set<number>;
   onSelectionChange?: (photos: Set<number>) => void;
@@ -45,16 +48,19 @@ interface PhotoGridWithLayoutsProps {
     allowComments?: boolean;
     requireNameEmail?: boolean;
   };
+  onFeedbackChange?: () => void;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({ 
   photos, 
   slug, 
   categoryId,
+  heroPhotoOverride,
   isSelectionMode: parentSelectionMode,
   selectedPhotos: parentSelectedPhotos,
   feedbackEnabled,
   feedbackOptions,
+  onFeedbackChange,
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
@@ -69,6 +75,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   const { t } = useTranslation();
   const { theme } = useTheme();
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [openFeedbackInitially, setOpenFeedbackInitially] = useState<boolean>(false);
   const [localSelectedPhotos, setLocalSelectedPhotos] = useState<Set<number>>(new Set());
   const [localSelectionMode, setLocalSelectionMode] = useState(false);
   const downloadPhotoMutation = useDownloadPhoto();
@@ -85,6 +92,12 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   }, [categoryId]);
 
   const handlePhotoClick = (index: number) => {
+    setOpenFeedbackInitially(false);
+    setSelectedPhotoIndex(index);
+  };
+
+  const handleOpenWithFeedback = (index: number) => {
+    setOpenFeedbackInitially(true);
     setSelectedPhotoIndex(index);
   };
 
@@ -130,39 +143,21 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
 
   const handleDownloadSelected = async () => {
     if (selectedPhotos.size === 0) return;
-    
-    const selectedPhotosList = photos.filter(p => selectedPhotos.has(p.id));
-    
-    toastify.info(t('gallery.downloading', { count: selectedPhotos.size }));
-    
-    // Download each selected photo
-    const downloadPromises = selectedPhotosList.map(photo => 
-      galleryService.downloadPhoto(slug, photo.id, photo.filename)
-        .catch(err => {
-          // Download failed - error handled by UI
-          return null;
-        })
-    );
-    
+    const ids = Array.from(selectedPhotos);
+    toastify.info(t('gallery.downloading', { count: ids.length }));
+
     try {
-      await Promise.all(downloadPromises);
-      toastify.success(t('gallery.downloadedPhotos', { count: selectedPhotos.size }));
-      
-      // Track bulk download
-      analyticsService.trackGalleryEvent('bulk_download', {
-        gallery: slug,
-        photo_count: selectedPhotos.size
-      });
-      
-      // Clear selection after download
+      await galleryService.downloadSelectedPhotos(slug, ids);
+      analyticsService.trackGalleryEvent('bulk_download_selected', { gallery: slug, photo_count: ids.length });
+    } catch (error) {
+      toastify.error(t('gallery.downloadError'));
+    } finally {
       setSelectedPhotos(new Set());
       if (parentToggleSelectionMode) {
         parentToggleSelectionMode();
       } else {
         setLocalSelectionMode(false);
       }
-    } catch (error) {
-      toastify.error(t('gallery.downloadError'));
     }
   };
 
@@ -182,7 +177,10 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     photos,
     slug,
     onPhotoClick: handlePhotoClick,
+    onOpenPhotoWithFeedback: handleOpenWithFeedback,
+    onFeedbackChange: onFeedbackChange,
     onDownload: handleDownload,
+    heroPhotoOverride,
     selectedPhotos,
     allowDownloads,
     protectionLevel,
@@ -292,6 +290,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           allowDownloads={allowDownloads}
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
+          initialShowFeedback={openFeedbackInitially}
         />
       )}
     </>

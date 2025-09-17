@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart, Bookmark } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -23,13 +23,17 @@ interface GridPhotoProps {
   feedbackEnabled?: boolean;
   feedbackOptions?: {
     allowLikes?: boolean;
-    allowFavorites?: boolean;
     allowRatings?: boolean;
     allowComments?: boolean;
     requireNameEmail?: boolean;
   };
   savedIdentity?: { name: string; email: string } | null;
-  onRequireIdentity?: (action: 'like' | 'favorite', photoId: number) => void;
+  onRequireIdentity?: (action: 'like', photoId: number) => void;
+  onQuickComment?: () => void;
+  onFeedbackChange?: () => void;
+  // Immediate UI like state and callback
+  liked?: boolean;
+  onLikeSuccess?: () => void;
 }
 
 const GridPhoto: React.FC<GridPhotoProps> = ({
@@ -45,7 +49,13 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   protectionLevel = 'standard',
   useEnhancedProtection = false,
   feedbackEnabled = false,
-  feedbackOptions
+  feedbackOptions,
+  savedIdentity,
+  onRequireIdentity,
+  onQuickComment,
+  onFeedbackChange,
+  liked = false,
+  onLikeSuccess
 }) => {
   // handled by parent layout; kept here for type completeness but not used
   const { ref, inView } = useInView({
@@ -94,7 +104,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             }}
           />
           
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
             {!isSelectionMode && (
               <>
                 <button
@@ -116,47 +126,45 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                     <Download className="w-5 h-5 text-neutral-800" />
                   </button>
                 )}
+                {onQuickComment && (
+                  <button
+                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onQuickComment(); }}
+                    aria-label="Comment on photo"
+                    title="Comment"
+                  >
+                    <MessageSquare className="w-5 h-5 text-neutral-800" />
+                  </button>
+                )}
                 {/* Quick feedback actions */}
                 {feedbackOptions?.allowLikes && (
                   <button
-                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                    className={`p-2 rounded-full transition-colors ${liked ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
                         onRequireIdentity('like', photo.id);
                         return;
                       }
-                      await feedbackService.submitFeedback(slug!, String(photo.id), {
-                        feedback_type: 'like',
-                        guest_name: savedIdentity?.name,
-                        guest_email: savedIdentity?.email,
-                      });
+                      // Optimistic UI: mark as liked immediately
+                      if (onLikeSuccess) onLikeSuccess();
+                      try {
+                        await feedbackService.submitFeedback(slug!, String(photo.id), {
+                          feedback_type: 'like',
+                          guest_name: savedIdentity?.name,
+                          guest_email: savedIdentity?.email,
+                        });
+                      } catch (err) {
+                        // Keep optimistic state; a refresh will reconcile
+                        console.warn('Like submit failed, keeping optimistic UI', err);
+                      }
+                      if (onFeedbackChange) onFeedbackChange();
                     }}
                     aria-label="Like photo"
+                    aria-pressed={liked}
                     title="Like"
                   >
-                    <Heart className="w-5 h-5 text-neutral-800" />
-                  </button>
-                )}
-                {feedbackOptions?.allowFavorites && (
-                  <button
-                    className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
-                        onRequireIdentity('favorite', photo.id);
-                        return;
-                      }
-                      await feedbackService.submitFeedback(slug!, String(photo.id), {
-                        feedback_type: 'favorite',
-                        guest_name: savedIdentity?.name,
-                        guest_email: savedIdentity?.email,
-                      });
-                    }}
-                    aria-label="Favorite photo"
-                    title="Favorite"
-                  >
-                    <Bookmark className="w-5 h-5 text-neutral-800" />
+                    <Heart className={`w-5 h-5 ${liked ? 'text-white fill-white' : 'text-neutral-800'}`} />
                   </button>
                 )}
               </>
@@ -180,10 +188,10 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             </div>
           </button>
 
-          {/* Feedback Indicators (always visible, bottom-left) */}
-          {feedbackEnabled && (photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+          {/* Feedback Indicators (always visible, bottom-left). Show like immediately when user liked */}
+          {(photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0 || liked) && (
             <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 flex items-center gap-1 z-10`}>
-              {photo.like_count > 0 && (
+              {(photo.like_count > 0 || liked) && (
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
                   <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
                 </span>
@@ -220,6 +228,8 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
   slug,
   onPhotoClick,
+  onOpenPhotoWithFeedback,
+  onFeedbackChange,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
@@ -237,7 +247,8 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const animation = gallerySettings.photoAnimation || 'fade';
 
   const [showIdentityModal, setShowIdentityModal] = React.useState(false);
-  const [pendingAction, setPendingAction] = React.useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [pendingAction, setPendingAction] = React.useState<null | { type: 'like'; photoId: number }>(null);
+  const [likedPhotoIds, setLikedPhotoIds] = React.useState<Set<number>>(new Set());
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
@@ -271,6 +282,16 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
             setPendingAction({ type: action, photoId });
             setShowIdentityModal(true);
           }}
+          onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(index)}
+          onFeedbackChange={onFeedbackChange}
+          liked={likedPhotoIds.has(photo.id)}
+          onLikeSuccess={() => {
+            setLikedPhotoIds((prev) => {
+              const next = new Set(prev);
+              next.add(photo.id);
+              return next;
+            });
+          }}
         />
       ))}
       <FeedbackIdentityModal
@@ -285,10 +306,18 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
               guest_name: name,
               guest_email: email,
             });
+            // Immediately reflect like UI
+            if (pendingAction.type === 'like') {
+              setLikedPhotoIds((prev) => {
+                const next = new Set(prev);
+                next.add(pendingAction.photoId);
+                return next;
+              });
+            }
             setPendingAction(null);
           }
         }}
-        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+        feedbackType="like"
       />
     </div>
   );

@@ -11,11 +11,16 @@ export const useGalleryInfo = (slug: string, token?: string) => {
   });
 };
 
-export const useGalleryPhotos = (slug: string, filter?: 'liked' | 'favorited' | 'all', guestId?: string, enabled: boolean = true) => {
+export const useGalleryPhotos = (
+  slug: string,
+  filter?: 'liked' | 'commented' | 'rated' | 'all',
+  guestId?: string,
+  enabled: boolean = true
+) => {
   return useQuery({
     queryKey: ['gallery-photos', slug, filter, guestId],
-    // Do not pass guestId for now; backend will apply global filters when guest_id is absent
-    queryFn: () => galleryService.getGalleryPhotos(slug, filter, undefined),
+    // Pass guestId so backend can filter per-guest views when needed
+    queryFn: () => galleryService.getGalleryPhotos(slug, filter, guestId),
     enabled,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes

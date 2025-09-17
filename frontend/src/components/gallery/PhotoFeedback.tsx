@@ -4,7 +4,6 @@ import { feedbackService } from '../../services/feedback.service';
 import { PhotoRating } from './PhotoRating';
 import { PhotoLikes } from './PhotoLikes';
 import { PhotoComments } from './PhotoComments';
-import { PhotoFavorites } from './PhotoFavorites';
 import { Skeleton } from '../common';
 import type { FeedbackSettings } from '../../services/feedback.service';
 
@@ -43,18 +42,14 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
   // Local state for optimistic updates
   const [currentRating, setCurrentRating] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
-  const [favoriteCount, setFavoriteCount] = useState(0);
 
   // Update local state when data loads
   useEffect(() => {
     if (feedbackData) {
       setCurrentRating(feedbackData.my_feedback.rating || 0);
       setIsLiked(feedbackData.my_feedback.liked);
-      setIsFavorited(feedbackData.my_feedback.favorited);
       setLikeCount(feedbackData.summary.like_count);
-      setFavoriteCount(feedbackData.summary.favorite_count);
     }
   }, [feedbackData]);
 
@@ -67,12 +62,6 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
   const handleLikeChange = (liked: boolean) => {
     setIsLiked(liked);
     setLikeCount(prev => liked ? prev + 1 : Math.max(0, prev - 1));
-    if (onFeedbackUpdate) onFeedbackUpdate();
-  };
-
-  const handleFavoriteChange = (favorited: boolean) => {
-    setIsFavorited(favorited);
-    setFavoriteCount(prev => favorited ? prev + 1 : Math.max(0, prev - 1));
     if (onFeedbackUpdate) onFeedbackUpdate();
   };
 
@@ -90,7 +79,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
   }
 
   const hasAnyFeedbackType = settings.allow_ratings || settings.allow_likes || 
-                            settings.allow_comments || settings.allow_favorites;
+                            settings.allow_comments;
 
   if (!hasAnyFeedbackType) {
     return null;
@@ -113,7 +102,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
       )}
 
       {/* Action Buttons */}
-      {(settings.allow_likes || settings.allow_favorites) && (
+      {settings.allow_likes && (
         <div className="flex items-center gap-2">
           {settings.allow_likes && (
             <PhotoLikes
@@ -124,17 +113,6 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
               isEnabled={true}
               requireNameEmail={settings.require_name_email || false}
               onLikeChange={handleLikeChange}
-            />
-          )}
-          {settings.allow_favorites && (
-            <PhotoFavorites
-              photoId={photoId}
-              gallerySlug={gallerySlug}
-              isFavorited={isFavorited}
-              favoriteCount={favoriteCount}
-              isEnabled={true}
-              requireNameEmail={settings.require_name_email || false}
-              onFavoriteChange={handleFavoriteChange}
             />
           )}
         </div>

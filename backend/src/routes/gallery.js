@@ -393,6 +393,87 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
   }
 });
 
+// Download selected photos as ZIP
+router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) => {
+  try {
+    // Check if downloads are allowed for this event
+    if (req.event.allow_downloads === false) {
+      return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
+    }
+
+    const ids = Array.isArray(req.body?.photo_ids) ? req.body.photo_ids : [];
+    if (!ids.length) {
+      return res.status(400).json({ error: 'photo_ids is required (non-empty array)' });
+    }
+
+    // Clean IDs
+    const photoIds = ids
+      .map((v) => parseInt(v, 10))
+      .filter((v) => Number.isInteger(v))
+      .slice(0, 500);
+
+    if (photoIds.length === 0) {
+      return res.status(400).json({ error: 'No valid photo IDs provided' });
+    }
+
+    // Fetch photos
+    const photos = await db('photos')
+      .where('photos.event_id', req.event.id)
+      .whereIn('photos.id', photoIds)
+      .select('photos.*')
+      .orderBy('photos.uploaded_at', 'desc');
+
+    if (photos.length === 0) {
+      return res.status(404).json({ error: 'No photos found for selected IDs' });
+    }
+
+    const archiveName = `${req.event.slug}-selected.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${archiveName}"`);
+
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    archive.on('error', (err) => {
+      console.error('Zip error:', err);
+      try { res.status(500).end(); } catch (e) {}
+    });
+    archive.pipe(res);
+
+    const { resolvePhotoFilePath } = require('../services/photoResolver');
+    const fs = require('fs');
+    // Check watermark settings similar to download-all
+    const watermarkSettings = await watermarkService.getWatermarkSettings();
+    for (const photo of photos) {
+      try {
+        const filePath = resolvePhotoFilePath(req.event, photo);
+        if (filePath && fs.existsSync(filePath)) {
+          const name = photo.filename || `photo-${photo.id}.jpg`;
+          if (watermarkSettings && watermarkSettings.enabled) {
+            // Apply watermark like download-all
+            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+            archive.append(watermarkedBuffer, { name });
+          } else {
+            archive.file(filePath, { name });
+          }
+        }
+      } catch (e) {
+        // skip missing/inaccessible files
+      }
+    }
+
+    await archive.finalize();
+
+    await db('access_logs').insert({
+      event_id: req.event.id,
+      ip_address: req.ip,
+      user_agent: req.headers['user-agent'],
+      action: 'download_selected'
+    });
+  } catch (error) {
+    console.error('Error in download-selected:', error);
+    res.status(500).json({ error: 'Failed to download selected photos' });
+  }
+});
+
 
 // View single photo (with watermark if enabled)
 router.get('/:slug/photo/:photoId', 

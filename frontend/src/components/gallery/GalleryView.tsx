@@ -22,6 +22,7 @@ import { Upload, Menu } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { feedbackService } from '../../services/feedback.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
+import type { Photo } from '../../types';
 
 interface GalleryViewProps {
   slug: string;
@@ -58,6 +59,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [protectionLevel, setProtectionLevel] = useState<'basic' | 'standard' | 'enhanced' | 'maximum'>('standard');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [guestId, setGuestId] = useState<string>('');
+  const [staticHeroPhoto, setStaticHeroPhoto] = useState<Photo | null>(null);
   
   // Generate a unique guest ID for this session
   useEffect(() => {
@@ -166,6 +168,23 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       });
     }
   }, [settingsData]);
+
+  // Determine a stable hero photo from the initial (unfiltered) load
+  useEffect(() => {
+    if (!staticHeroPhoto && data?.photos && filterType === 'all') {
+      let hero: Photo | null = null;
+      const heroId = data?.event?.hero_photo_id || null;
+      if (heroId) {
+        hero = data.photos.find(p => p.id === heroId) || null;
+      }
+      if (!hero && data.photos.length > 0) {
+        hero = data.photos[0];
+      }
+      if (hero) {
+        setStaticHeroPhoto(hero);
+      }
+    }
+  }, [data?.photos, data?.event?.hero_photo_id, filterType, staticHeroPhoto]);
 
   // Apply theme when settings are loaded
   useEffect(() => {
@@ -440,7 +459,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           filterType={filterType}
           onFilterChange={setFilterType}
           likeCount={data?.photos?.filter(p => p.like_count > 0).length || 0}
-          favoriteCount={data?.photos?.filter(p => p.favorite_count > 0).length || 0}
+          ratedCount={data?.photos?.filter(p => (p.total_ratings || 0) > 0).length || 0}
         />
       ) : null}
 
@@ -531,8 +550,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
               feedbackEnabled={feedbackEnabled}
               currentFilter={filterType}
               onFilterChange={setFilterType}
-              likeCount={data?.photos?.filter(p => p.like_count > 0).length || 0}
-              favoriteCount={data?.photos?.filter(p => p.favorite_count > 0).length || 0}
             />
           </div>
         ) : null}
@@ -543,6 +560,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             photos={filteredPhotos} 
             slug={slug} 
             categoryId={selectedCategoryId}
+            onFeedbackChange={() => refetch()}
+            heroPhotoOverride={staticHeroPhoto}
             feedbackEnabled={feedbackEnabled}
             feedbackOptions={{
               allowLikes: !!feedbackSettings?.allow_likes,

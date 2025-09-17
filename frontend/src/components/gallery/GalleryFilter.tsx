@@ -1,16 +1,16 @@
 import React from 'react';
-import { Heart, Star, Bookmark, MessageSquare } from 'lucide-react';
+import { Heart, Star, MessageSquare } from 'lucide-react';
 import { Button } from '../common';
 import { useTranslation } from 'react-i18next';
 
-export type FilterType = 'all' | 'liked' | 'favorited' | 'rated' | 'commented';
+export type FilterType = 'all' | 'liked' | 'rated' | 'commented';
 
 interface GalleryFilterProps {
   currentFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
   feedbackEnabled: boolean;
   likeCount?: number;
-  favoriteCount?: number;
+  ratedCount?: number;
   className?: string;
   isMobile?: boolean;
   variant?: 'default' | 'compact';
@@ -21,7 +21,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
   onFilterChange,
   feedbackEnabled,
   likeCount = 0,
-  favoriteCount = 0,
+  ratedCount = 0,
   className = '',
   isMobile = false,
   variant = 'default'
@@ -60,13 +60,22 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               <Heart className="w-3.5 h-3.5" />
             </Button>
             <Button
-              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              variant={currentFilter === 'rated' ? 'primary' : 'outline'}
               size="sm"
-              onClick={() => onFilterChange('favorited')}
+              onClick={() => onFilterChange('rated')}
               className="p-1 w-8 h-8 flex items-center justify-center"
-              aria-label={t('feedback.favorites', 'Favorites')}
+              aria-label={t('gallery.rated', 'Rated')}
             >
               <Star className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant={currentFilter === 'commented' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('commented')}
+              className="p-1 w-8 h-8 flex items-center justify-center"
+              aria-label={t('gallery.commented', 'Commented')}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
@@ -103,13 +112,13 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
             </Button>
             
             <Button
-              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              variant={currentFilter === 'rated' ? 'primary' : 'outline'}
               size="sm"
-              onClick={() => onFilterChange('favorited')}
+              onClick={() => onFilterChange('rated')}
               className="text-xs flex-1 min-w-[80px] flex items-center justify-center gap-1"
             >
               <Star className="w-3 h-3" />
-              <span>{favoriteCount > 0 ? favoriteCount : t('gallery.favorites', 'Favorites')}</span>
+              <span>{ratedCount > 0 ? ratedCount : t('gallery.rated', 'Rated')}</span>
             </Button>
           </div>
         </div>
@@ -145,21 +154,6 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
             </Button>
             
             <Button
-              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => onFilterChange('favorited')}
-              className="text-xs sm:text-sm flex items-center gap-1"
-            >
-              <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('gallery.favorites', 'Favorites')}</span>
-              {favoriteCount > 0 && (
-                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
-                  {favoriteCount}
-                </span>
-              )}
-            </Button>
-
-            <Button
               variant={currentFilter === 'rated' ? 'primary' : 'outline'}
               size="sm"
               onClick={() => onFilterChange('rated')}
@@ -167,6 +161,11 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
             >
               <Star className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{t('gallery.rated', 'Rated')}</span>
+              {ratedCount > 0 && (
+                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
+                  {ratedCount}
+                </span>
+              )}
             </Button>
 
             <Button

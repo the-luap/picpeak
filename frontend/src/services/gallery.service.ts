@@ -16,7 +16,11 @@ export const galleryService = {
   },
 
   // Get gallery photos (requires auth)
-  async getGalleryPhotos(slug: string, filter?: 'liked' | 'favorited' | 'all', guestId?: string): Promise<GalleryData> {
+  async getGalleryPhotos(
+    slug: string,
+    filter?: 'liked' | 'commented' | 'rated' | 'all',
+    guestId?: string
+  ): Promise<GalleryData> {
     const params: any = {};
     if (filter && filter !== 'all' && guestId) {
       params.filter = filter;
@@ -28,19 +32,36 @@ export const galleryService = {
 
   // Download single photo
   async downloadPhoto(slug: string, photoId: number, filename: string): Promise<void> {
-    const response = await api.get(`/gallery/${slug}/download/${photoId}`, {
-      responseType: 'blob',
-    });
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    try {
+      const response = await api.get(`/gallery/${slug}/download/${photoId}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      // Fallback: use the view endpoint if direct download fails (e.g., missing original)
+      try {
+        const response = await api.get(`/gallery/${slug}/photo/${photoId}`, {
+          responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (fallbackErr) {
+        throw fallbackErr;
+      }
+    }
   },
 
   // Download all photos as ZIP
@@ -54,6 +75,22 @@ export const galleryService = {
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `${slug}.zip`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  // Download selected photos as ZIP
+  async downloadSelectedPhotos(slug: string, photoIds: number[]): Promise<void> {
+    const response = await api.post(`/gallery/${slug}/download-selected`, { photo_ids: photoIds }, {
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${slug}-selected.zip`);
     document.body.appendChild(link);
     link.click();
     link.remove();

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart, Bookmark } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
@@ -20,9 +20,10 @@ interface MasonryPhotoProps {
   slug?: string;
   feedbackOptions?: {
     allowLikes?: boolean;
-    allowFavorites?: boolean;
+    allowComments?: boolean;
     requireNameEmail?: boolean;
   };
+  onQuickComment?: () => void;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -36,11 +37,12 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   allowDownloads = true,
   feedbackEnabled = false,
   slug,
-  feedbackOptions
+  feedbackOptions,
+  onQuickComment
 }) => {
   const [imageHeight, setImageHeight] = useState<number>(200);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
   // Generate random heights for masonry effect
@@ -115,6 +117,16 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                 <Download className="w-5 h-5 text-neutral-800" />
               </button>
             )}
+            {onQuickComment && (
+              <button
+                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                onClick={(e) => { e.stopPropagation(); onQuickComment(); }}
+                aria-label="Comment on photo"
+                title="Comment"
+              >
+                <MessageSquare className="w-5 h-5 text-neutral-800" />
+              </button>
+            )}
             {feedbackOptions?.allowLikes && (
               <button
                 className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
@@ -137,28 +149,6 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                 <Heart className="w-5 h-5 text-neutral-800" />
               </button>
             )}
-            {feedbackOptions?.allowFavorites && (
-              <button
-                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (feedbackOptions?.requireNameEmail && !savedIdentity) {
-                    setPendingAction({ type: 'favorite', photoId: photo.id });
-                    setShowIdentityModal(true);
-                    return;
-                  }
-                  await feedbackService.submitFeedback(slug!, String(photo.id), {
-                    feedback_type: 'favorite',
-                    guest_name: savedIdentity?.name,
-                    guest_email: savedIdentity?.email,
-                  });
-                }}
-                aria-label="Favorite photo"
-                title="Favorite"
-              >
-                <Bookmark className="w-5 h-5 text-neutral-800" />
-              </button>
-            )}
           </>
         )}
       </div>
@@ -179,7 +169,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
             setPendingAction(null);
           }
         }}
-        feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+        feedbackType="like"
       />
 
       {/* Selection Checkbox (visible on hover or when selected) */}
@@ -214,6 +204,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
   slug,
   onPhotoClick,
+  onOpenPhotoWithFeedback,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
@@ -278,6 +269,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 feedbackEnabled={feedbackEnabled}
                 slug={slug}
                 feedbackOptions={feedbackOptions}
+                onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(originalIndex)}
               />
             );
           })}

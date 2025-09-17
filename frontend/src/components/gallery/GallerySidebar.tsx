@@ -33,7 +33,7 @@ interface GallerySidebarProps {
   filterType?: FilterType;
   onFilterChange?: (filter: FilterType) => void;
   likeCount?: number;
-  favoriteCount?: number;
+  ratedCount?: number;
 }
 
 export const GallerySidebar: React.FC<GallerySidebarProps> = ({
@@ -64,7 +64,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   filterType = 'all',
   onFilterChange,
   likeCount = 0,
-  favoriteCount = 0
+  ratedCount = 0
 }) => {
   const { t } = useTranslation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -223,7 +223,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                 }}
                 feedbackEnabled={feedbackEnabled}
                 likeCount={likeCount}
-                favoriteCount={favoriteCount}
+                ratedCount={ratedCount}
                 className="w-full"
                 variant="compact"
               />

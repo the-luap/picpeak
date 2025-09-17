@@ -5,6 +5,10 @@ export interface BaseGalleryLayoutProps {
   photos: Photo[];
   slug: string;
   onPhotoClick: (index: number) => void;
+  // Optional: open the lightbox with feedback panel visible
+  onOpenPhotoWithFeedback?: (index: number) => void;
+  // Notify parent that feedback (like/favorite/rating/comment) changed
+  onFeedbackChange?: () => void;
   onDownload: (photo: Photo, e: React.MouseEvent) => void;
   selectedPhotos?: Set<number>;
   isSelectionMode?: boolean;

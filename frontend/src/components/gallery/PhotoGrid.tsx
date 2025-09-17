@@ -95,35 +95,17 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 
   const handleDownloadSelected = async () => {
     if (selectedPhotos.size === 0) return;
-    
-    const selectedPhotosList = photos.filter(p => selectedPhotos.has(p.id));
-    
-    toastify.info(t('gallery.downloading', { count: selectedPhotos.size }));
-    
-    // Download each selected photo
-    const downloadPromises = selectedPhotosList.map(photo => 
-      galleryService.downloadPhoto(slug, photo.id, photo.filename)
-        .catch(err => {
-          // Download failed - error handled by UI
-          return null;
-        })
-    );
-    
+    const ids = Array.from(selectedPhotos);
+    toastify.info(t('gallery.downloading', { count: ids.length }));
+
     try {
-      await Promise.all(downloadPromises);
-      toastify.success(t('gallery.downloadedPhotos', { count: selectedPhotos.size }));
-      
-      // Track bulk download
-      analyticsService.trackGalleryEvent('bulk_download', {
-        gallery: slug,
-        photo_count: selectedPhotos.size
-      });
-      
-      // Clear selection after download
-      setSelectedPhotos(new Set());
-      setIsSelectionMode(false);
+      await galleryService.downloadSelectedPhotos(slug, ids);
+      analyticsService.trackGalleryEvent('bulk_download_selected', { gallery: slug, photo_count: ids.length });
     } catch (error) {
       toastify.error(t('gallery.downloadError'));
+    } finally {
+      setSelectedPhotos(new Set());
+      setIsSelectionMode(false);
     }
   };
 
@@ -316,7 +298,7 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
           )}
           
           {/* Overlay on hover/tap - Always visible on mobile for better UX */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
             {!isSelectionMode && (
               <>
                 <button

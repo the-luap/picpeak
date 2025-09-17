@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Maximize2, Check, ChevronDown, Calendar, Clock, Heart, Bookmark } from 'lucide-react';
+import { Download, Maximize2, Check, ChevronDown, Calendar, Clock, Heart, MessageSquare } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../../../hooks/useLocalizedDate';
@@ -16,12 +16,15 @@ interface HeroGalleryLayoutProps extends BaseGalleryLayoutProps {
   eventLogo?: string | null;
   eventDate?: string;
   expiresAt?: string;
+  // Use a static hero photo independent of current filter
+  heroPhotoOverride?: Photo | null;
 }
 
 export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   photos,
   slug,
   onPhotoClick,
+  onOpenPhotoWithFeedback,
   onDownload,
   selectedPhotos = new Set(),
   isSelectionMode = false,
@@ -30,6 +33,7 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   eventLogo,
   eventDate,
   expiresAt,
+  heroPhotoOverride,
   allowDownloads = true,
   feedbackEnabled = false,
   feedbackOptions
@@ -40,10 +44,20 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   const [heroPhoto, setHeroPhoto] = useState<Photo | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'favorite'; photoId: number }>(null);
+  const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const gallerySettings = theme.gallerySettings || {};
   const overlayOpacity = gallerySettings.heroOverlayOpacity || 0.3;
+  const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
+  const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
+
+  // If an override is provided, always use it and skip initialization logic
+  useEffect(() => {
+    if (heroPhotoOverride) {
+      setHeroPhoto(heroPhotoOverride);
+      setHasInitialized(true);
+    }
+  }, [heroPhotoOverride]);
 
   // Reset initialization when heroImageId changes
   useEffect(() => {
@@ -54,29 +68,28 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
 
   // Select hero photo (admin-selected or first photo only if gallery was empty)
   useEffect(() => {
+    // When an override is provided, the effect above has already set the hero.
+    if (heroPhotoOverride) return;
+
     if (photos.length > 0) {
       const heroId = gallerySettings.heroImageId;
-      // Process hero layout with provided photos
-      
-      // If admin has selected a specific hero image, always use it
+      // If admin has selected a specific hero image, always use it when available
       if (heroId) {
         const adminSelectedHero = photos.find(p => p.id === heroId);
-        // Hero photo selected by admin
         if (adminSelectedHero) {
           setHeroPhoto(adminSelectedHero);
           setHasInitialized(true);
           return;
         }
       }
-      
-      // Only auto-select first photo on initial load when gallery was empty
-      // This prevents changing the hero when new photos are uploaded
+
+      // Only auto-select first photo on initial load
       if (!hasInitialized) {
         setHeroPhoto(photos[0]);
         setHasInitialized(true);
       }
     }
-  }, [photos, gallerySettings.heroImageId, hasInitialized]);
+  }, [photos, gallerySettings.heroImageId, hasInitialized, heroPhotoOverride]);
 
   if (!heroPhoto) return null;
 
@@ -198,9 +211,9 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                         <Download className="w-5 h-5 text-neutral-800" />
                       </button>
                     )}
-                    {feedbackEnabled && feedbackOptions?.allowLikes && (
+                    {feedbackOptions?.allowLikes && (
                       <button
-                        className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                        className={`p-2 rounded-full transition-colors ${likedIds.has(photo.id) ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                         onClick={async (e) => {
                           e.stopPropagation();
                           if (feedbackOptions?.requireNameEmail && !savedIdentity) {
@@ -208,38 +221,30 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                             setShowIdentityModal(true);
                             return;
                           }
-                          await feedbackService.submitFeedback(slug!, String(photo.id), {
-                            feedback_type: 'like',
-                            guest_name: savedIdentity?.name,
-                            guest_email: savedIdentity?.email,
-                          });
+                          setLikedIds(prev => new Set(prev).add(photo.id));
+                          try {
+                            await feedbackService.submitFeedback(slug!, String(photo.id), {
+                              feedback_type: 'like',
+                              guest_name: savedIdentity?.name,
+                              guest_email: savedIdentity?.email,
+                            });
+                          } catch (_) {}
                         }}
                         aria-label="Like photo"
+                        aria-pressed={likedIds.has(photo.id)}
                         title="Like"
                       >
-                        <Heart className="w-5 h-5 text-neutral-800" />
+                        <Heart className={`w-5 h-5 ${likedIds.has(photo.id) ? 'text-white fill-white' : 'text-neutral-800'}`} />
                       </button>
                     )}
-                    {feedbackEnabled && feedbackOptions?.allowFavorites && (
+                    {canQuickComment && (
                       <button
                         className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (feedbackOptions?.requireNameEmail && !savedIdentity) {
-                            setPendingAction({ type: 'favorite', photoId: photo.id });
-                            setShowIdentityModal(true);
-                            return;
-                          }
-                          await feedbackService.submitFeedback(slug!, String(photo.id), {
-                            feedback_type: 'favorite',
-                            guest_name: savedIdentity?.name,
-                            guest_email: savedIdentity?.email,
-                          });
-                        }}
-                        aria-label="Favorite photo"
-                        title="Favorite"
+                        onClick={(e) => { e.stopPropagation(); onOpenPhotoWithFeedback?.(actualIndex); }}
+                        aria-label="Comment on photo"
+                        title="Comment"
                       >
-                        <Bookmark className="w-5 h-5 text-neutral-800" />
+                        <MessageSquare className="w-5 h-5 text-neutral-800" />
                       </button>
                     )}
                   </>
@@ -263,18 +268,16 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                 </div>
               </button>
 
-              {/* Feedback indicators (always visible, bottom-left) */}
-              {(feedbackEnabled && (photo.like_count > 0 || (photo.average_rating || 0) > 0 || (photo.comment_count || 0) > 0)) && (
+              {/* Feedback indicators (always visible, bottom-left). Show like immediately when liked */}
+              {(photo.like_count > 0 || likedIds.has(photo.id) || (photo.average_rating || 0) > 0 || (photo.comment_count || 0) > 0) && (
                 <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 flex items-center gap-1 z-20`}>
-                  {photo.like_count > 0 && (
+                  {(photo.like_count > 0 || likedIds.has(photo.id)) && (
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
                       <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
                     </span>
                   )}
                   {(photo.average_rating || 0) > 0 && (
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Rated">
-                      <Bookmark className="hidden" />
-                      {/* Using star icon to indicate rating */}
                       <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-yellow-500 fill-current"><path d="M12 .587l3.668 7.431 8.2 1.193-5.934 5.787 1.402 8.168L12 18.897l-7.336 3.869 1.402-8.168L.132 9.211l8.2-1.193z"/></svg>
                     </span>
                   )}
@@ -305,7 +308,7 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
           setPendingAction(null);
         }
       }}
-      feedbackType={pendingAction?.type === 'favorite' ? 'favorite' : 'like'}
+        feedbackType="like"
     />
     </>
   );

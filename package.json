@@ -1,10 +1,14 @@
 {
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
     "canvas": "^3.2.0",
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
-    "puppeteer": "^24.17.0"
+    "puppeteer": "^24.17.0",
+    "@playwright/test": "^1.48.2"
   }
 }
