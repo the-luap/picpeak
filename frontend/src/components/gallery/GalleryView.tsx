@@ -266,6 +266,21 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       );
     }
     
+    // Apply feedback filter
+    switch (filterType) {
+      case 'liked':
+        photos = photos.filter(photo => (photo.like_count || 0) > 0);
+        break;
+      case 'rated':
+        photos = photos.filter(photo => (photo.average_rating || 0) > 0 || (photo.total_ratings || 0) > 0);
+        break;
+      case 'commented':
+        photos = photos.filter(photo => (photo.comment_count || 0) > 0);
+        break;
+      default:
+        break;
+    }
+    
     // Apply sorting
     photos.sort((a, b) => {
       switch (sortBy) {
@@ -298,7 +313,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return photos;
-  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug]);
+  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType]);
 
   // Check if downloads are allowed (both event setting and not expired)
   const allowDownloads = !isExpired && (data?.event?.allow_downloads === true);
