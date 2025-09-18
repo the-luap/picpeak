@@ -4,7 +4,14 @@ const GALLERY_COOKIE_PREFIX = 'gallery_token_';
 
 const DEFAULT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-const secureCookie = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
+const secureCookie = (() => {
+  if (typeof process.env.COOKIE_SECURE === 'string') {
+    return process.env.COOKIE_SECURE.toLowerCase() === 'true';
+  }
+  // Default to false so native HTTP installs stay functional. Operators can
+  // opt-in via COOKIE_SECURE=true when serving behind HTTPS.
+  return false;
+})();
 const sameSiteDefault = process.env.COOKIE_SAMESITE || 'Lax';
 const cookieDomain = process.env.COOKIE_DOMAIN;
 
