@@ -368,7 +368,7 @@ router.post('/word-filters',
       res.json({ success: true });
     } catch (error) {
       if (error.message === 'Word filter already exists') {
-        return res.status(409).json({ error: error.message });
+        return res.status(409).json({ error: 'Word filter already exists' });
       }
       logger.error('Error adding word filter:', error);
       res.status(500).json({ error: 'Failed to add word filter' });

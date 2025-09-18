@@ -49,21 +49,10 @@ class SecureTokenService {
     }
 
     try {
-      // Get the gallery token from localStorage
-      const galleryToken = localStorage.getItem(`gallery_token_${slug}`);
-      if (!galleryToken) {
-        throw new Error('No gallery authentication token found');
-      }
-
-      // Generate new token from backend with explicit auth header
+      // Generate new token from backend – authentication handled via cookies
       const response = await api.post<SecureToken>(
         `/secure-images/${slug}/generate-token`,
-        { photoId, accessType },
-        {
-          headers: {
-            'Authorization': `Bearer ${galleryToken}`
-          }
-        }
+        { photoId, accessType }
       );
 
       const tokenData: SecureToken = {

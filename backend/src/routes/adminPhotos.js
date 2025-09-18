@@ -802,7 +802,8 @@ router.get('/:eventId/debug', adminAuth, async (req, res) => {
       storagePath: getStoragePath()
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching admin photo debug data:', error);
+    res.status(500).json({ error: 'Failed to fetch photo debug data' });
   }
 });
 

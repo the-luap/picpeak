@@ -515,13 +515,11 @@ router.delete('/:id', adminAuth, async (req, res) => {
     // Provide more specific error messages
     if (error.message && error.message.includes('foreign key constraint')) {
       res.status(500).json({ 
-        error: 'Cannot delete event due to existing references. Please contact support.',
-        details: error.message 
+        error: 'Cannot delete event due to existing references. Please contact support.'
       });
     } else {
       res.status(500).json({ 
-        error: 'Failed to delete event',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Failed to delete event'
       });
     }
   }
@@ -780,7 +778,7 @@ router.post('/bulk-archive', adminAuth, [
         results.failed.push({
           id: event.id,
           name: event.event_name,
-          error: error.message
+          error: 'Failed to archive event. Check server logs for details.'
         });
       }
     }

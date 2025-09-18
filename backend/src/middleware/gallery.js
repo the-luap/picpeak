@@ -1,16 +1,16 @@
 const jwt = require('jsonwebtoken');
 const { db, withRetry } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
+const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 
 // Middleware to verify gallery access
 async function verifyGalleryAccess(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
+    const requestedSlug = req.params.slug || req.requestedSlug;
+    const token = getGalleryTokenFromRequest(req, requestedSlug);
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
     
     // Try to verify with issuer first, fallback to no issuer for backward compatibility
     let decoded;
@@ -29,8 +29,6 @@ async function verifyGalleryAccess(req, res, next) {
     console.log('[verifyGalleryAccess] Token decoded successfully, eventId:', decoded.eventId);
     
     // If we have a slug in the URL params or from pre-middleware, verify it matches
-    const requestedSlug = req.params.slug || req.requestedSlug;
-    
     let event;
     if (requestedSlug) {
       // Verify by slug and ensure it matches the token's event
@@ -84,7 +82,7 @@ async function verifyGalleryAccess(req, res, next) {
     next();
   } catch (error) {
     console.error('Error verifying gallery access:', error);
-    res.status(401).json({ error: 'Invalid token', details: error.message });
+    res.status(401).json({ error: 'Invalid token' });
   }
 }
 

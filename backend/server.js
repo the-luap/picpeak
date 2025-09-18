@@ -26,6 +26,11 @@ const { startScheduledBackups } = require('./src/services/databaseBackup');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
+const cookieParser = require('cookie-parser');
+const {
+  getAdminTokenFromRequest,
+  getGalleryTokenFromRequest,
+} = require('./src/utils/tokenUtils');
 
 // Import routes
 const authRoutes = require('./src/routes/auth-enhanced');
@@ -47,20 +52,43 @@ app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 const enableHsts = process.env.ENABLE_HSTS === 'true';
 const cspDirectives = {
   defaultSrc: ["'self'"],
-  scriptSrc: ["'self'", "'unsafe-inline'"], // Required for React
+  scriptSrc: [
+    "'self'",
+    'https://www.google.com',
+    'https://www.gstatic.com'
+  ],
   styleSrc: ["'self'", "'unsafe-inline'", "https:"], // Required for styled components
   imgSrc: ["'self'", "data:", "https:", "blob:"], // Allow data URLs and external images
-  connectSrc: ["'self'"], // API connections
+  connectSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'], // API connections
   fontSrc: ["'self'", "https:", "data:"], // Web fonts
   objectSrc: ["'none'"], // Disable plugins
   mediaSrc: ["'self'"], // Audio/video
-  frameSrc: ["'none'"], // Disable iframes
+  frameSrc: ["'self'", 'https://www.google.com'],
 };
 // Only upgrade insecure requests when HSTS explicitly enabled (HTTPS deployment)
 if (enableHsts) {
   // In helmet, an empty array enables the directive
   cspDirectives.upgradeInsecureRequests = [];
 }
+
+app.use(cookieParser());
+
+app.use((req, res, next) => {
+  if (!req.headers.authorization) {
+    const slugMatch = req.path.match(/\/api\/(?:gallery|secure-images)\/([^\/]+)/);
+    const slug = slugMatch ? slugMatch[1] : req.requestedSlug;
+    const galleryToken = getGalleryTokenFromRequest(req, slug);
+    const adminToken = getAdminTokenFromRequest(req);
+
+    if (galleryToken) {
+      req.headers.authorization = `Bearer ${galleryToken}`;
+    } else if (adminToken) {
+      req.headers.authorization = `Bearer ${adminToken}`;
+    }
+  }
+
+  next();
+});
 
 app.use(helmet({
   contentSecurityPolicy: {

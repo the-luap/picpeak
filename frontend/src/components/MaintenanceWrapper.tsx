@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MaintenanceMode } from './MaintenanceMode';
 import { useMaintenanceMode } from '../contexts/MaintenanceContext';
-import { setMaintenanceModeCallback, api, getAuthToken } from '../config/api';
+import { setMaintenanceModeCallback, api } from '../config/api';
 
 interface MaintenanceWrapperProps {
   children: React.ReactNode;
@@ -12,10 +12,38 @@ interface MaintenanceWrapperProps {
 export const MaintenanceWrapper: React.FC<MaintenanceWrapperProps> = ({ children }) => {
   const location = useLocation();
   const { isMaintenanceMode, setMaintenanceMode } = useMaintenanceMode();
+  const [hasAdminSession, setHasAdminSession] = useState(false);
   
   // Check if current route is admin route
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const hasAdminAuth = !!getAuthToken(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAdminSession = async () => {
+      if (!isAdminRoute) {
+        setHasAdminSession(false);
+        return;
+      }
+
+      try {
+        const response = await api.get<{ valid: boolean; type: string }>('/auth/session');
+        if (isMounted) {
+          setHasAdminSession(Boolean(response.data?.valid && response.data.type === 'admin'));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setHasAdminSession(false);
+        }
+      }
+    };
+
+    checkAdminSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAdminRoute]);
 
   // Register the maintenance mode callback
   useEffect(() => {
@@ -37,7 +65,7 @@ export const MaintenanceWrapper: React.FC<MaintenanceWrapperProps> = ({ children
       } catch (error: any) {
         if (error.response?.status === 503) {
           // Only set maintenance mode for non-admin routes or unauthenticated admin routes
-          if (!isAdminRoute || !hasAdminAuth) {
+          if (!isAdminRoute || !hasAdminSession) {
             setMaintenanceMode(true);
             return { maintenance: true };
           }
@@ -47,11 +75,11 @@ export const MaintenanceWrapper: React.FC<MaintenanceWrapperProps> = ({ children
     },
     staleTime: 30000, // Check every 30 seconds
     retry: false, // Don't retry on failure
-    enabled: (!isAdminRoute || !hasAdminAuth) && !isMaintenanceMode, // Don't check if already in maintenance
+    enabled: (!isAdminRoute || !hasAdminSession) && !isMaintenanceMode, // Don't check if already in maintenance
   });
 
   // Show maintenance page if in maintenance mode and not on admin route with auth
-  if (isMaintenanceMode && (!isAdminRoute || !hasAdminAuth)) {
+  if (isMaintenanceMode && (!isAdminRoute || !hasAdminSession)) {
     return <MaintenanceMode />;
   }
 

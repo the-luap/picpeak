@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { api } from '../config/api';
 import { authService, galleryService } from '../services';
 import { cleanupOldGalleryAuth } from '../utils/cleanupGalleryAuth';
 
@@ -52,65 +53,81 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
   };
 
   useEffect(() => {
-    // Clean up old authentication data on mount
     cleanupOldGalleryAuth();
-    
-    // Check if user has a valid token on mount
-    const currentSlug = getCurrentGallerySlug();
-    if (currentSlug) {
-      // Try to restore event data from localStorage with slug-specific key
-      const storedEvent = localStorage.getItem(`gallery_event_${currentSlug}`);
-      const storedToken = localStorage.getItem(`gallery_token_${currentSlug}`);
-      
-      if (storedEvent && storedToken) {
+
+    const initialise = async () => {
+      const currentSlug = getCurrentGallerySlug();
+
+      if (!currentSlug) {
+        setIsLoading(false);
+        return;
+      }
+
+      const storedEvent = sessionStorage.getItem(`gallery_event_${currentSlug}`);
+      if (storedEvent) {
         try {
-          const eventData = JSON.parse(storedEvent);
-          // Verify the stored event matches the current gallery slug
-          if (eventData && eventData.id) {
-            setEvent(eventData);
-            setIsAuthenticated(true);
-          } else {
-            // Clear invalid data
-            localStorage.removeItem(`gallery_event_${currentSlug}`);
-            localStorage.removeItem(`gallery_token_${currentSlug}`);
+          const parsed = JSON.parse(storedEvent);
+          if (parsed && parsed.id) {
+            setEvent(parsed);
           }
-        } catch (error) {
-          // Invalid stored data - clear it
-          localStorage.removeItem(`gallery_event_${currentSlug}`);
-          localStorage.removeItem(`gallery_token_${currentSlug}`);
-        }
-      } else {
-        // No stored auth; check for token in URL and auto-authenticate
-        const parts = window.location.pathname.split('/');
-        const urlToken = parts.length >= 5 ? parts[4] : (parts.length >= 4 ? parts[3] : undefined);
-        if (urlToken) {
-          (async () => {
-            try {
-              setIsLoading(true);
-              // Verify token against backend
-              const verify = await galleryService.verifyToken(currentSlug, urlToken);
-              if (verify?.valid) {
-                // Store token and fetch event via photos endpoint to get full event object
-                localStorage.setItem(`gallery_token_${currentSlug}`, urlToken);
-                const data = await galleryService.getGalleryPhotos(currentSlug);
-                if (data?.event) {
-                  setEvent(data.event);
-                  setIsAuthenticated(true);
-                  localStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(data.event));
-                }
-              }
-            } catch (e) {
-              // Invalid token; ensure any residual storage is cleared
-              localStorage.removeItem(`gallery_token_${currentSlug}`);
-              localStorage.removeItem(`gallery_event_${currentSlug}`);
-            } finally {
-              setIsLoading(false);
-            }
-          })();
+        } catch (err) {
+          sessionStorage.removeItem(`gallery_event_${currentSlug}`);
         }
       }
-    }
-    setIsLoading(false);
+
+      try {
+        setIsLoading(true);
+        const sessionResponse = await api.get<{ valid: boolean; type: string; eventSlug?: string }>(
+          '/auth/session',
+          { params: { slug: currentSlug } }
+        );
+
+        if (sessionResponse.data?.valid && sessionResponse.data.type === 'gallery' && sessionResponse.data.eventSlug === currentSlug) {
+          setIsAuthenticated(true);
+
+          if (!storedEvent) {
+            // Fetch gallery details to hydrate context
+            const galleryData = await galleryService.getGalleryPhotos(currentSlug);
+            if (galleryData?.event) {
+              setEvent(galleryData.event);
+              sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(galleryData.event));
+            }
+          }
+
+          return;
+        }
+
+        // If no active session, check for share token in URL
+        const parts = window.location.pathname.split('/');
+        const urlToken = parts.length >= 5 ? parts[4] : (parts.length >= 4 ? parts[3] : undefined);
+
+        if (urlToken) {
+          const verify = await galleryService.verifyToken(currentSlug, urlToken);
+          if (verify?.valid) {
+            const response = await authService.shareLinkLogin(currentSlug, urlToken);
+            if (response?.event) {
+              setEvent(response.event);
+              setIsAuthenticated(true);
+              sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(response.event));
+              return;
+            }
+          }
+        }
+
+        // No valid session found
+        setIsAuthenticated(false);
+        sessionStorage.removeItem(`gallery_event_${currentSlug}`);
+        setEvent(null);
+      } catch (error) {
+        setIsAuthenticated(false);
+        sessionStorage.removeItem(`gallery_event_${currentSlug}`);
+        setEvent(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initialise();
   }, []);
 
   const login = async (slug: string, password: string, recaptchaToken?: string | null) => {
@@ -121,9 +138,8 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       setEvent(response.event);
       setIsAuthenticated(true);
       
-      // Store event data and token in localStorage with slug-specific key
-      localStorage.setItem(`gallery_event_${slug}`, JSON.stringify(response.event));
-      localStorage.setItem(`gallery_token_${slug}`, response.token);
+      // Store event data for quick reloads (non-sensitive)
+      sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(response.event));
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid password');
       throw err;
@@ -135,13 +151,13 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
   const logout = () => {
     const currentSlug = getCurrentGallerySlug();
     if (currentSlug) {
-      localStorage.removeItem(`gallery_event_${currentSlug}`);
-      localStorage.removeItem(`gallery_token_${currentSlug}`);
+      sessionStorage.removeItem(`gallery_event_${currentSlug}`);
     }
-    authService.galleryLogout();
+    authService.galleryLogout(currentSlug || undefined);
     setIsAuthenticated(false);
     setEvent(null);
-  };
+  }
+;
 
   return (
     <GalleryAuthContext.Provider

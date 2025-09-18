@@ -37,7 +37,7 @@ router.get('/:slug/verify-token/:token', async (req, res) => {
     res.json({ valid: true });
   } catch (error) {
     console.error('Error verifying token:', error);
-    res.status(500).json({ error: 'Failed to verify token', details: error.message });
+    res.status(500).json({ error: 'Failed to verify token' });
   }
 });
 
@@ -90,7 +90,7 @@ router.get('/:slug/info', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
-    res.status(500).json({ error: 'Failed to fetch gallery info', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch gallery info' });
   }
 });
 
@@ -239,7 +239,7 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching photos:', error);
-    res.status(500).json({ error: 'Failed to fetch photos', details: error.message });
+    res.status(500).json({ error: 'Failed to fetch photos' });
   }
 });
 
@@ -547,7 +547,7 @@ router.get('/:slug/photo/:photoId',
         photoId: req.params.photoId,
         eventId: req.event?.id
       });
-      res.status(500).json({ error: 'Failed to serve photo', details: error.message });
+      res.status(500).json({ error: 'Failed to serve photo' });
     }
   }
 );

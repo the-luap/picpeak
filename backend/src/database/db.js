@@ -195,11 +195,24 @@ async function initializeDatabase() {
       table.string('email_type').notNullable(); // 'creation', 'warning', 'expiration', 'archive_complete'
       table.json('email_data');
       table.string('status').defaultTo('pending'); // 'pending', 'sent', 'failed'
+      table.datetime('created_at').defaultTo(db.fn.now());
       table.datetime('scheduled_at').defaultTo(db.fn.now());
       table.datetime('sent_at');
       table.text('error_message');
       table.integer('retry_count').defaultTo(0);
     });
+  } else {
+    const hasCreatedAt = await db.schema.hasColumn('email_queue', 'created_at');
+    if (!hasCreatedAt) {
+      await db.schema.alterTable('email_queue', (table) => {
+        table.datetime('created_at').defaultTo(db.fn.now());
+      });
+      try {
+        await db('email_queue').whereNull('created_at').update({ created_at: db.fn.now() });
+      } catch (updateError) {
+        logger.debug('Email queue created_at backfill skipped', { error: updateError.message });
+      }
+    }
   }
 
   // Admin users table
@@ -217,6 +230,7 @@ async function initializeDatabase() {
       table.datetime('updated_at').defaultTo(db.fn.now());
       table.datetime('last_login');
       table.string('last_login_ip');
+      table.string('language', 2).defaultTo('en');
     });
   } else {
     // Check if updated_at column exists
@@ -250,6 +264,13 @@ async function initializeDatabase() {
     if (!hasLastLoginIp) {
       await db.schema.table('admin_users', (table) => {
         table.string('last_login_ip');
+      });
+    }
+
+    const hasLanguage = await db.schema.hasColumn('admin_users', 'language');
+    if (!hasLanguage) {
+      await db.schema.table('admin_users', (table) => {
+        table.string('language', 2).defaultTo('en');
       });
     }
   }
@@ -327,6 +348,18 @@ async function initializeDatabase() {
       table.datetime('updated_at').defaultTo(db.fn.now());
     });
   }
+  
+  const defaultLanguageSetting = await db('app_settings')
+    .where('setting_key', 'default_language')
+    .first();
+  if (!defaultLanguageSetting) {
+    await db('app_settings').insert({
+      setting_key: 'default_language',
+      setting_value: JSON.stringify('en'),
+      setting_type: 'general',
+      updated_at: new Date(),
+    });
+  }
 
   // Activity logs table
   const hasActivityLogsTable = await db.schema.hasTable('activity_logs');
@@ -349,6 +382,86 @@ async function initializeDatabase() {
       await db.schema.table('activity_logs', (table) => {
         table.datetime('read_at').nullable();
       });
+    }
+  }
+
+  await ensureGlobalCategories();
+}
+
+// Ensure photo categories exist for new deployments
+async function ensureGlobalCategories() {
+  const hasPhotoCategoriesTable = await db.schema.hasTable('photo_categories');
+  if (!hasPhotoCategoriesTable) {
+    await db.schema.createTable('photo_categories', (table) => {
+      table.increments('id').primary();
+      table.string('name', 100).notNullable();
+      table.string('slug', 100).notNullable();
+      table.boolean('is_global').defaultTo(true);
+      table.integer('event_id').references('id').inTable('events').onDelete('CASCADE');
+      table.timestamp('created_at').defaultTo(db.fn.now());
+      table.unique(['slug', 'event_id']);
+    });
+  }
+
+  const hasCategoryIdColumn = await db.schema.hasColumn('photos', 'category_id');
+  if (!hasCategoryIdColumn) {
+    await db.schema.alterTable('photos', (table) => {
+      table.integer('category_id').references('id').inTable('photo_categories');
+    });
+  }
+
+  const hasCmsPagesTable = await db.schema.hasTable('cms_pages');
+  if (!hasCmsPagesTable) {
+    await db.schema.createTable('cms_pages', (table) => {
+      table.increments('id').primary();
+      table.string('slug', 100).unique().notNullable();
+      table.text('title_en');
+      table.text('title_de');
+      table.text('content_en');
+      table.text('content_de');
+      table.timestamp('updated_at').defaultTo(db.fn.now());
+    });
+  }
+
+  const categoryCountRow = await db('photo_categories').count({ count: 'id' }).first();
+  const categoryCount = categoryCountRow ? Number(categoryCountRow.count) : 0;
+  if (categoryCount === 0) {
+    const defaultCategories = [
+      { name: 'Ceremony', slug: 'ceremony', is_global: true },
+      { name: 'Reception', slug: 'reception', is_global: true },
+      { name: 'Portraits', slug: 'portraits', is_global: true },
+      { name: 'Group Photos', slug: 'group-photos', is_global: true },
+      { name: 'Details', slug: 'details', is_global: true },
+      { name: 'Party', slug: 'party', is_global: true },
+    ];
+
+    await db('photo_categories').insert(defaultCategories);
+  }
+
+  const cmsPages = await db('cms_pages').select('slug');
+  const existingSlugs = cmsPages.map((page) => page.slug);
+  const defaultPages = [
+    {
+      slug: 'impressum',
+      title_en: 'Legal Notice',
+      title_de: 'Impressum',
+      content_en: '<h2>Legal Notice</h2><p>Please edit this content in the admin panel.</p>',
+      content_de: '<h2>Impressum</h2><p>Bitte bearbeiten Sie diesen Inhalt im Admin-Panel.</p>',
+      updated_at: new Date(),
+    },
+    {
+      slug: 'datenschutz',
+      title_en: 'Privacy Policy',
+      title_de: 'Datenschutzerklärung',
+      content_en: '<h2>Privacy Policy</h2><p>Please edit this content in the admin panel.</p>',
+      content_de: '<h2>Datenschutzerklärung</h2><p>Bitte bearbeiten Sie diesen Inhalt im Admin-Panel.</p>',
+      updated_at: new Date(),
+    },
+  ];
+
+  for (const page of defaultPages) {
+    if (!existingSlugs.includes(page.slug)) {
+      await db('cms_pages').insert(page);
     }
   }
 }

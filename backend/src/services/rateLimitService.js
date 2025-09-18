@@ -2,6 +2,7 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
+const { getAdminTokenFromRequest, getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 
 // Cache for rate limit settings
 let settingsCache = null;
@@ -95,12 +96,9 @@ function clearSettingsCache() {
  */
 function isAuthenticated(req) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return false;
-    }
-
-    const token = authHeader.substring(7);
+    const slugMatch = req.path.match(/\/api\/(?:gallery|secure-images)\/([^\/]+)/);
+    const slug = slugMatch ? slugMatch[1] : req.requestedSlug;
+    const token = getAdminTokenFromRequest(req) || getGalleryTokenFromRequest(req, slug);
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if token is valid

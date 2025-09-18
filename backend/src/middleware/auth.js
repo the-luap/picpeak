@@ -2,10 +2,11 @@ const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const logger = require('../utils/logger');
+const { getAdminTokenFromRequest } = require('../utils/tokenUtils');
 
 async function adminAuth(req, res, next) {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = getAdminTokenFromRequest(req);
     if (!token) {
       const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
                      req.headers['x-real-ip'] || 

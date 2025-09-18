@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, Input, Card, ReCaptcha } from '../../components/common';
 import { useAdminAuth } from '../../contexts';
 import { authService } from '../../services/auth.service';
-import { getAuthToken, api } from '../../config/api';
+import { api } from '../../config/api';
 
 export const AdminLoginPage: React.FC = () => {
   const { t } = useTranslation();
@@ -84,17 +84,20 @@ export const AdminLoginPage: React.FC = () => {
       login(response.token, response.user);
       toast.success(t('adminLogin.loginSuccess'));
       setLoginSuccess(true);
-    } catch (error: any) {
-      // Login error handled by UI notification
-      
-      // Handle network errors gracefully
-      if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_RESET') {
+      } catch (error: any) {
+        // Login error handled by UI notification
+        
+        // Handle network errors gracefully
+        if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_RESET') {
         // Check if we actually got logged in despite the error
-        const token = getAuthToken(true);
-        if (token) {
-          // Login was successful, just had a connection issue
-          setLoginSuccess(true);
-          return;
+        try {
+          const sessionResponse = await api.get<{ valid: boolean; type: string }>('/auth/session');
+          if (sessionResponse.data?.valid && sessionResponse.data.type === 'admin') {
+            setLoginSuccess(true);
+            return;
+          }
+        } catch (sessionError) {
+          // Ignore secondary failure, we'll surface the original network error
         }
         toast.error(t('adminLogin.networkError'));
       } else if (error.response?.status === 429) {

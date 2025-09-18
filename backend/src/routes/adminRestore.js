@@ -82,7 +82,7 @@ router.post('/validate', [
     logger.error('Restore validation failed:', error);
     res.status(400).json({
       success: false,
-      error: error.message,
+      error: 'Restore validation failed',
       logs: restoreService.restoreLog
     });
   }
@@ -162,7 +162,7 @@ router.post('/start', [
     logger.error('Failed to start restore:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Failed to start restore operation'
     });
   }
 });

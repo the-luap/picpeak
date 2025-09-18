@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { getAuthToken } from '../../config/api';
 import { buildResourceUrl } from '../../utils/url';
 
 interface AuthenticatedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -25,28 +24,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
     let objectUrl: string | null = null;
 
     // Determine which token to use based on context
-    let token: string | undefined;
-    
-    if (isGallery) {
-      // For gallery images, get the gallery-specific token
-      const pathParts = window.location.pathname.split('/');
-      if (pathParts[1] === 'gallery' && pathParts[2]) {
-        const gallerySlug = pathParts[2];
-        token = localStorage.getItem(`gallery_token_${gallerySlug}`) || undefined;
-      }
-    } else {
-      // For admin images, use the admin token
-      token = getAuthToken(true);
-    }
-    
     if (!src) {
-      setImageSrc(fallbackSrc || '');
-      setIsLoading(false);
-      return;
-    }
-
-    if (!token) {
-      // No auth token - use fallback
       setImageSrc(fallbackSrc || '');
       setIsLoading(false);
       return;
@@ -71,9 +49,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         
         // Fetch authenticated image
         const response = await fetch(fullImageUrl, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         });
 
         if (!response.ok) {

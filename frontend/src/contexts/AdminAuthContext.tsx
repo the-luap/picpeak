@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getAuthToken } from '../config/api';
+import { api } from '../config/api';
 import { authService } from '../services';
 import type { AdminUser } from '../types';
 
@@ -40,15 +40,31 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     // Check if user has a valid token on mount
     const checkAuth = async () => {
       try {
-        const token = getAuthToken(true);
-        if (token) {
-          // For now, just assume the token is valid
-          // TODO: Validate token with backend and get user info
+        const storedUser = sessionStorage.getItem('admin_user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (err) {
+            sessionStorage.removeItem('admin_user');
+          }
+        }
+
+        const response = await api.get<{ valid: boolean; type: string; adminUsername?: string; user?: string }>(
+          '/auth/session'
+        );
+
+        if (response.data?.valid && response.data.type === 'admin') {
           setIsAuthenticated(true);
+        } else {
+          sessionStorage.removeItem('admin_user');
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
         // Auth check failed - user needs to login
-        setError('Failed to check authentication');
+        sessionStorage.removeItem('admin_user');
+        setIsAuthenticated(false);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -63,9 +79,11 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     setError(null);
     setIsAuthenticated(true);
     setMustChangePassword(user.mustChangePassword || false);
+    sessionStorage.setItem('admin_user', JSON.stringify(user));
   };
 
   const logout = () => {
+    sessionStorage.removeItem('admin_user');
     authService.adminLogout();
     setIsAuthenticated(false);
     setUser(null);
@@ -79,6 +97,10 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         ...user,
         mustChangePassword: false
       });
+      sessionStorage.setItem('admin_user', JSON.stringify({
+        ...user,
+        mustChangePassword: false
+      }));
     }
   };
 

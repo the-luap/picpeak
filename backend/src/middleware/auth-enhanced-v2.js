@@ -3,13 +3,14 @@ const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { isTokenRevoked } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
+const { getAdminTokenFromRequest, getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 
 /**
  * Enhanced admin authentication middleware with revocation checking
  */
 async function adminAuth(req, res, next) {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = getAdminTokenFromRequest(req);
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
@@ -97,7 +98,8 @@ async function adminAuth(req, res, next) {
  */
 async function galleryAuth(req, res, next) {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const slug = req.params?.slug || req.requestedSlug;
+    const token = getGalleryTokenFromRequest(req, slug);
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }

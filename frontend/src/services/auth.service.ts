@@ -1,4 +1,4 @@
-import { api, setAuthToken, clearAuthToken } from '../config/api';
+import { api } from '../config/api';
 import type { LoginResponse, GalleryAuthResponse } from '../types';
 
 export const authService = {
@@ -10,14 +10,17 @@ export const authService = {
       password: credentials.password,
       recaptchaToken: credentials.recaptchaToken
     });
-    
-    setAuthToken(response.data.token, true);
     return response.data;
   },
 
-  adminLogout() {
-    clearAuthToken(true);
-    window.location.href = '/admin/login';
+  async adminLogout() {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      // Ignore logout errors; fallback to redirect
+    } finally {
+      window.location.href = '/admin/login';
+    }
   },
 
   // Gallery authentication
@@ -32,7 +35,19 @@ export const authService = {
     return response.data;
   },
 
-  galleryLogout() {
-    // Logout is now handled by GalleryAuthContext
+  async shareLinkLogin(slug: string, token: string): Promise<GalleryAuthResponse> {
+    const response = await api.post<GalleryAuthResponse>('/auth/gallery/share-login', {
+      slug,
+      token,
+    });
+    return response.data;
+  },
+
+  async galleryLogout(slug?: string | null) {
+    try {
+      await api.post('/auth/gallery/logout', { slug });
+    } catch (err) {
+      // Ignore; cookie will naturally expire if removal fails
+    }
   },
 };

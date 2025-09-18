@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const { adminAuth } = require('../middleware/auth');
 const { list, resolveExternalPath, getExternalMediaRoot } = require('../services/externalMediaService');
 const { db, logActivity } = require('../database/db');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -14,7 +15,11 @@ router.get('/list', adminAuth, async (req, res) => {
     const result = await list(relPath);
     res.json(result);
   } catch (error) {
-    res.status(400).json({ error: 'Invalid path', details: error.message });
+    logger.warn('Invalid external media path requested', {
+      path: req.query.path,
+      error: error.message
+    });
+    res.status(400).json({ error: 'Invalid external media path' });
   }
 });
 
@@ -104,9 +109,13 @@ router.post('/events/:id/import-external', adminAuth, async (req, res) => {
 
     res.json({ imported, skipped, thumbnailsQueued: 0 });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to import external media', details: error.message });
+    logger.error('External media import failed', {
+      eventId: req.params.id,
+      externalPath: req.body?.external_path,
+      error: error.message
+    });
+    res.status(500).json({ error: 'Failed to import external media' });
   }
 });
 
 module.exports = router;
-

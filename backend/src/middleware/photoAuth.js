@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
+const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 
 async function photoAuth(req, res, next) {
   try {
@@ -20,9 +21,9 @@ async function photoAuth(req, res, next) {
     }
     
     // First check for JWT token (from gallery access)
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '');
+    const tokenFromRequest = getGalleryTokenFromRequest(req, eventSlug);
+    if (tokenFromRequest) {
+      const token = tokenFromRequest;
       try {
         // Try to verify with issuer first, fallback to no issuer for backward compatibility
         let decoded;
@@ -88,7 +89,7 @@ async function photoAuth(req, res, next) {
     // Check for password header (legacy support)
     const password = req.headers['x-gallery-password'];
     
-    if (!password && !authHeader) {
+    if (!password && !tokenFromRequest) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     

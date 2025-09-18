@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
+const { getAdminTokenFromRequest } = require('../utils/tokenUtils');
 
 // In-memory session tracking (in production, use Redis)
 const sessions = new Map();
@@ -67,11 +68,7 @@ async function getSessionTimeout() {
 
 async function sessionTimeoutMiddleware(req, res, next) {
   // Skip for non-authenticated routes
-  if (!req.headers.authorization) {
-    return next();
-  }
-  
-  const token = req.headers.authorization.split(' ')[1];
+  const token = getAdminTokenFromRequest(req);
   if (!token) {
     return next();
   }

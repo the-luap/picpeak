@@ -221,7 +221,11 @@ router.post('/test-connection', adminAuth, async (req, res) => {
           await fs.access(config.path, fs.constants.W_OK);
           res.json({ success: true, message: 'Local path is writable' });
         } catch (error) {
-          res.json({ success: false, message: 'Cannot write to local path: ' + error.message });
+          logger.warn('Local backup path not writable', {
+            path: config.path,
+            error: error.message
+          });
+          res.json({ success: false, message: 'Cannot write to local path. Check server logs for details.' });
         }
         break;
         
@@ -243,7 +247,11 @@ router.post('/test-connection', adminAuth, async (req, res) => {
           const { stdout } = await execAsync(testCommand);
           res.json({ success: true, message: 'Rsync connection successful' });
         } catch (error) {
-          res.json({ success: false, message: 'Rsync connection failed: ' + error.message });
+          logger.warn('Rsync connection test failed', {
+            destination: config.host || config.destination,
+            error: error.message
+          });
+          res.json({ success: false, message: 'Rsync connection failed. Check server logs for details.' });
         }
         break;
         
@@ -274,7 +282,7 @@ router.get('/manifest/:backupRunId', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get backup manifest:', error);
-    res.status(404).json({ error: error.message || 'Backup manifest not found' });
+    res.status(404).json({ error: 'Backup manifest not found' });
   }
 });
 
@@ -327,7 +335,7 @@ router.get('/manifest/:backupRunId/download', adminAuth, async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to download backup manifest:', error);
-    res.status(404).json({ error: error.message || 'Backup manifest not found' });
+    res.status(404).json({ error: 'Backup manifest not found' });
   }
 });
 
@@ -344,7 +352,7 @@ router.get('/manifests/:backupId', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get backup manifest:', error);
-    res.status(404).json({ error: error.message || 'Backup manifest not found' });
+    res.status(404).json({ error: 'Backup manifest not found' });
   }
 });
 
@@ -375,7 +383,7 @@ router.get('/manifests/:backupId/download', adminAuth, async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to download backup manifest:', error);
-    res.status(404).json({ error: error.message || 'Backup manifest not found' });
+    res.status(404).json({ error: 'Backup manifest not found' });
   }
 });
 
@@ -436,7 +444,7 @@ router.get('/s3/buckets', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to list S3 buckets:', error);
-    res.status(500).json({ error: 'Failed to list S3 buckets: ' + error.message });
+    res.status(500).json({ error: 'Failed to list S3 buckets' });
   }
 });
 
@@ -473,7 +481,7 @@ router.get('/s3/files', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to list S3 files:', error);
-    res.status(500).json({ error: 'Failed to list S3 files: ' + error.message });
+    res.status(500).json({ error: 'Failed to list S3 files' });
   }
 });
 
@@ -535,7 +543,7 @@ router.delete('/s3/cleanup', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to cleanup S3 backups:', error);
-    res.status(500).json({ error: 'Failed to cleanup S3 backups: ' + error.message });
+    res.status(500).json({ error: 'Failed to cleanup S3 backups' });
   }
 });
 
@@ -587,7 +595,7 @@ router.post('/s3/test-upload', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('S3 upload test failed:', error);
-    res.status(500).json({ error: 'S3 upload test failed: ' + error.message });
+    res.status(500).json({ error: 'S3 upload test failed' });
   }
 });
 
@@ -675,7 +683,7 @@ router.get('/download/:backupId', adminAuth, async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to download backup:', error);
-    res.status(500).json({ error: 'Failed to download backup: ' + error.message });
+    res.status(500).json({ error: 'Failed to download backup' });
   }
 });
 
@@ -744,7 +752,7 @@ router.get('/checksums', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get file checksums:', error);
-    res.status(500).json({ error: 'Failed to get file checksums: ' + error.message });
+    res.status(500).json({ error: 'Failed to get file checksums' });
   }
 });
 
@@ -847,7 +855,7 @@ router.post('/estimate', adminAuth, async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to estimate backup size:', error);
-    res.status(500).json({ error: 'Failed to estimate backup size: ' + error.message });
+    res.status(500).json({ error: 'Failed to estimate backup size' });
   }
 });
 
@@ -945,10 +953,11 @@ async function validateManifestData(manifestData) {
       }
     };
   } catch (error) {
+    logger.error('Manifest validation error', { error: error.message });
     return {
       valid: false,
-      error: `Validation error: ${error.message}`,
-      details: { error: error.message }
+      error: 'Validation error encountered while processing manifest',
+      details: { hint: 'See server logs for diagnostic details.' }
     };
   }
 }

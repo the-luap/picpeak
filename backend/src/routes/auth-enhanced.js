@@ -14,6 +14,14 @@ const {
 } = require('../utils/authSecurity');
 const { endSession } = require('../middleware/sessionTimeout');
 const logger = require('../utils/logger');
+const {
+  setAdminAuthCookie,
+  clearAdminAuthCookie,
+  setGalleryAuthCookies,
+  clearGalleryAuthCookies,
+  getAdminTokenFromRequest,
+  getGalleryTokenFromRequest,
+} = require('../utils/tokenUtils');
 const router = express.Router();
 
 // Admin login with enhanced security
@@ -91,6 +99,8 @@ router.post('/admin/login', [
       expiresIn: '24h',
       issuer: 'picpeak-auth'
     });
+
+    setAdminAuthCookie(res, token);
     
     res.json({
       token,
@@ -110,13 +120,14 @@ router.post('/admin/login', [
 // Logout endpoint
 router.post('/logout', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    
+    const adminToken = getAdminTokenFromRequest(req);
+    const galleryToken = getGalleryTokenFromRequest(req);
+    const token = adminToken || galleryToken;
+
     if (token) {
       // End the session
       endSession(token);
-      
-      // Log the logout
+
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         logger.info('User logged out', { 
@@ -124,11 +135,23 @@ router.post('/logout', async (req, res) => {
           username: decoded.username,
           type: decoded.type
         });
+
+        if (decoded.type === 'admin') {
+          clearAdminAuthCookie(res);
+        } else if (decoded.type === 'gallery') {
+          clearGalleryAuthCookies(res, decoded.eventSlug);
+        }
       } catch (err) {
-        // Token might be invalid, but still process logout
+        // Token might be invalid, but still process logout and clear cookies
+        clearAdminAuthCookie(res);
+        clearGalleryAuthCookies(res);
       }
+    } else {
+      // No token found, but ensure cookies are cleared
+      clearAdminAuthCookie(res);
+      clearGalleryAuthCookies(res);
     }
-    
+
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     logger.error('Logout error:', error);
@@ -209,6 +232,8 @@ router.post('/gallery/verify', [
       expiresIn: '24h',
       issuer: 'picpeak-auth'
     });
+
+    setGalleryAuthCookies(res, token, event.slug);
     
     res.json({
       token,
@@ -230,15 +255,94 @@ router.post('/gallery/verify', [
   }
 });
 
+// Share link authentication (token-based)
+router.post('/gallery/share-login', [
+  body('slug').notEmpty().trim(),
+  body('token').notEmpty()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { slug, token } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || '';
+
+    const event = await db('events')
+      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .first();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    let expectedToken = event.share_link;
+    if (expectedToken && expectedToken.includes('/')) {
+      expectedToken = expectedToken.split('/').pop();
+    }
+
+    if (!expectedToken || token !== expectedToken) {
+      return res.status(401).json({ error: 'Invalid or expired share link' });
+    }
+
+    const jwtToken = jwt.sign({
+      eventId: event.id,
+      eventSlug: event.slug,
+      type: 'gallery',
+      ip: ipAddress,
+      loginTime: Date.now()
+    }, process.env.JWT_SECRET, {
+      expiresIn: '24h',
+      issuer: 'picpeak-auth'
+    });
+
+    await trackSuccessfulLogin(`gallery:${slug}:share`, ipAddress, userAgent);
+    setGalleryAuthCookies(res, jwtToken, event.slug);
+
+    res.json({
+      token: jwtToken,
+      event: {
+        id: event.id,
+        event_name: event.event_name,
+        event_type: event.event_type,
+        event_date: event.event_date,
+        welcome_message: event.welcome_message,
+        color_theme: event.color_theme,
+        expires_at: event.expires_at,
+        allow_user_uploads: event.allow_user_uploads,
+        upload_category_id: event.upload_category_id
+      }
+    });
+  } catch (error) {
+    logger.error('Share link authentication error:', error);
+    res.status(500).json({ error: 'Share link login failed' });
+  }
+});
+
+// Gallery logout to clear cookies
+router.post('/gallery/logout', async (req, res) => {
+  try {
+    const { slug } = req.body || {};
+    clearGalleryAuthCookies(res, slug);
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    logger.error('Gallery logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
 // Get current session info
 router.get('/session', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const { slug } = req.query;
+    const token = getAdminTokenFromRequest(req) || getGalleryTokenFromRequest(req, slug);
     
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
+
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
@@ -250,7 +354,9 @@ router.get('/session', async (req, res) => {
         valid: true,
         type: decoded.type,
         expiresIn: Math.floor(remainingTime),
-        user: decoded.username || decoded.eventSlug
+        user: decoded.username || decoded.eventSlug,
+        eventSlug: decoded.eventSlug,
+        adminUsername: decoded.username
       });
     } catch (err) {
       res.json({

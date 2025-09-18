@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { formatBoolean } = require('../utils/dbCompat');
+const logger = require('../utils/logger');
 const router = express.Router();
 
 // Get system version
@@ -208,10 +209,14 @@ router.get('/database', adminAuth, async (req, res) => {
         });
       } catch (error) {
         // Table might not exist
+        logger.warn('Failed to retrieve table info', {
+          table,
+          error: error.message
+        });
         tableInfo.push({
           name: table,
           rows: 0,
-          error: error.message
+          error: 'Unable to retrieve table details'
         });
       }
     }
