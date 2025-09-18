@@ -209,6 +209,7 @@ These features are currently in beta testing and may have limited functionality 
 | **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented |
 | **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
 | **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
+| **Filtering & Export Options** | Add filters to show only rated, liked, or marked photos and export filtered selections for Capture One or Lightroom workflows | Low | 🔄 Open |
 
 **Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
 

@@ -75,6 +75,13 @@ async function initializeDatabase() {
       table.boolean('is_archived').defaultTo(false);
       table.string('archive_path');
       table.datetime('archived_at');
+      table.boolean('allow_user_uploads').defaultTo(false);
+      table.integer('upload_category_id');
+      table.boolean('allow_downloads').defaultTo(true);
+      table.boolean('disable_right_click').defaultTo(false);
+      table.boolean('watermark_downloads').defaultTo(false);
+      table.text('watermark_text');
+      table.integer('hero_photo_id').references('id').inTable('photos').onDelete('SET NULL');
     });
   } else {
     // Check if color_theme needs to be updated to TEXT type
@@ -104,11 +111,39 @@ async function initializeDatabase() {
             archive_path TEXT,
             archived_at DATETIME,
             allow_user_uploads BOOLEAN DEFAULT 0,
-            upload_category_id INTEGER
+            upload_category_id INTEGER,
+            allow_downloads BOOLEAN DEFAULT 1,
+            disable_right_click BOOLEAN DEFAULT 0,
+            watermark_downloads BOOLEAN DEFAULT 0,
+            watermark_text TEXT,
+            hero_photo_id INTEGER
           )
         `);
         
-        await db.raw('INSERT INTO events_new SELECT * FROM events');
+        const pragmaRows = await db.raw("PRAGMA table_info('events')");
+        const existingColumns = pragmaRows.map(row => row.name);
+        const selectColumns = existingColumns.map((col) => {
+          switch (col) {
+            case 'allow_user_uploads':
+              return "COALESCE(allow_user_uploads, 0) as allow_user_uploads";
+            case 'upload_category_id':
+              return "upload_category_id";
+            case 'allow_downloads':
+              return "COALESCE(allow_downloads, 1) as allow_downloads";
+            case 'disable_right_click':
+              return "COALESCE(disable_right_click, 0) as disable_right_click";
+            case 'watermark_downloads':
+              return "COALESCE(watermark_downloads, 0) as watermark_downloads";
+            case 'watermark_text':
+              return 'watermark_text';
+            case 'hero_photo_id':
+              return 'hero_photo_id';
+            default:
+              return col;
+          }
+        });
+
+        await db.raw(`INSERT INTO events_new (${existingColumns.join(', ')}) SELECT ${selectColumns.join(', ')} FROM events`);
         await db.raw('DROP TABLE events');
         await db.raw('ALTER TABLE events_new RENAME TO events');
       } catch (error) {
@@ -129,6 +164,7 @@ async function initializeDatabase() {
       table.string('thumbnail_path');
       table.string('type').notNullable(); // 'collage' or 'individual'
       table.integer('size_bytes');
+      table.string('uploaded_by').defaultTo('admin');
       table.datetime('uploaded_at').defaultTo(db.fn.now());
       table.integer('view_count').defaultTo(0);
       table.integer('download_count').defaultTo(0);

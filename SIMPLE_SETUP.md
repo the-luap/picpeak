@@ -292,6 +292,7 @@ sudo systemctl stop picpeak-backend picpeak-workers
 sudo systemctl restart picpeak-backend picpeak-workers
 
 # Update PicPeak
+# (reruns migrations to pick up schema fixes for native installs)
 sudo ./setup.sh --update
 ```
 
