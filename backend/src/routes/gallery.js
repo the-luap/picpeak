@@ -107,38 +107,82 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       .select('photos.*')
       .orderBy('photos.uploaded_at', 'desc');
     
-    // Apply filtering if requested (global, based on aggregate counts)
+    // Apply filtering if requested (supports global stats + per-guest interactions)
     if (filter) {
-      const f = String(filter).toLowerCase();
-      const parts = f.split(',').map(s => s.trim());
-      const include = new Set();
+      const filterTokens = new Set(
+        String(filter)
+          .toLowerCase()
+          .split(',')
+          .map(token => token.trim())
+          .filter(Boolean)
+      );
 
-      // Helper to include IDs for a predicate
-      const includeBy = (predicate) => {
-        photos.forEach(p => { if (predicate(p)) include.add(p.id); });
-      };
+      if (filterTokens.size > 0) {
+        // Treat "saved" / "favorite" synonyms as favorites
+        if (filterTokens.has('saved')) {
+          filterTokens.add('favorited');
+        }
+        if (filterTokens.has('favorite')) {
+          filterTokens.add('favorited');
+        }
 
-      if (parts.includes('liked')) {
-        includeBy(p => (p.like_count || 0) > 0);
-      }
-      if (parts.includes('favorited')) {
-        includeBy(p => (p.favorite_count || 0) > 0);
-      }
-      if (parts.includes('rated')) {
-        includeBy(p => (p.average_rating || 0) > 0);
-      }
-      if (parts.includes('commented')) {
-        // Query commented photo IDs
-        const commented = await db('photo_feedback')
-          .where({ event_id: req.event.id, feedback_type: 'comment', is_approved: true, is_hidden: false })
-          .groupBy('photo_id')
-          .select('photo_id');
-        const commentedIds = new Set(commented.map(c => c.photo_id));
-        includeBy(p => commentedIds.has(p.id));
-      }
+        const include = new Set();
 
-      if (include.size > 0) {
-        photos = photos.filter(p => include.has(p.id));
+        const includeBy = (predicate) => {
+          photos.forEach(photo => {
+            if (predicate(photo)) {
+              include.add(photo.id);
+            }
+          });
+        };
+
+        let guestFeedbackByType = null;
+        if (guest_id) {
+          const guestFeedbackRows = await db('photo_feedback')
+            .where({ event_id: req.event.id, guest_identifier: guest_id })
+            .select('photo_id', 'feedback_type');
+
+          guestFeedbackByType = guestFeedbackRows.reduce((acc, row) => {
+            if (!acc[row.feedback_type]) {
+              acc[row.feedback_type] = new Set();
+            }
+            acc[row.feedback_type].add(row.photo_id);
+            return acc;
+          }, {});
+        }
+
+        const includeGuestMatches = (type) => {
+          const ids = guestFeedbackByType?.[type];
+          if (ids && ids.size > 0) {
+            ids.forEach(id => include.add(id));
+          }
+        };
+
+        if (filterTokens.has('liked')) {
+          includeGuestMatches('like');
+          includeBy(photo => (photo.like_count || 0) > 0);
+        }
+
+        if (filterTokens.has('favorited')) {
+          includeGuestMatches('favorite');
+          includeBy(photo => (photo.favorite_count || 0) > 0);
+        }
+
+        if (filterTokens.has('rated')) {
+          includeGuestMatches('rating');
+          includeBy(photo => (photo.average_rating || 0) > 0);
+        }
+
+        if (filterTokens.has('commented')) {
+          includeGuestMatches('comment');
+          const commentedRows = await db('photo_feedback')
+            .where({ event_id: req.event.id, feedback_type: 'comment', is_approved: true, is_hidden: false })
+            .groupBy('photo_id')
+            .select('photo_id');
+          commentedRows.forEach(row => include.add(row.photo_id));
+        }
+
+        photos = photos.filter(photo => include.has(photo.id));
       }
     }
     
@@ -712,12 +756,6 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
       try {
         // Process uploaded photos
         const results = await processUploadedPhotos(req.files, eventId, 'user', categoryId);
-        
-        // Clean up temp files
-        const fs = require('fs').promises;
-        for (const file of req.files) {
-          await fs.unlink(file.path).catch(console.error);
-        }
         
         res.json({ 
           message: 'Photos uploaded successfully',

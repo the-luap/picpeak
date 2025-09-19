@@ -66,15 +66,42 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       const relativeThumbPath = thumbnailPath; // thumbnailPath is already relative to storage root
       
       // Add to database with uploaded_by field
-      const [photoId] = await trx('photos').insert({
-        event_id: eventId,
-        filename: newFilename,
-        path: relativePath,
-        thumbnail_path: relativeThumbPath,
-        type: photoType,
-        size_bytes: file.size
-      });
-      
+      let insertResult;
+      const clientName = trx?.client?.config?.client;
+      const supportsReturning = ['pg', 'postgres', 'postgresql'].includes(clientName);
+
+      if (supportsReturning) {
+        insertResult = await trx('photos')
+          .insert({
+            event_id: eventId,
+            filename: newFilename,
+            path: relativePath,
+            thumbnail_path: relativeThumbPath,
+            type: photoType,
+            size_bytes: file.size
+          })
+          .returning('id');
+      } else {
+        insertResult = await trx('photos').insert({
+          event_id: eventId,
+          filename: newFilename,
+          path: relativePath,
+          thumbnail_path: relativeThumbPath,
+          type: photoType,
+          size_bytes: file.size
+        });
+      }
+
+      const insertedId = Array.isArray(insertResult)
+        ? (insertResult[0]?.id ?? insertResult[0])
+        : insertResult;
+
+      const photoId = typeof insertedId === 'object' ? insertedId.id : insertedId;
+
+      if (photoId === undefined || photoId === null) {
+        throw new Error('Failed to determine inserted photo ID');
+      }
+
       // Commit transaction
       await trx.commit();
       
