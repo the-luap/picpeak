@@ -26,6 +26,7 @@ const { startScheduledBackups } = require('./src/services/databaseBackup');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
+const { getPublicSitePayload } = require('./src/services/publicSiteService');
 const cookieParser = require('cookie-parser');
 const {
   getAdminTokenFromRequest,
@@ -149,6 +150,145 @@ app.options('/api/*', cors(corsOptions));
 // Initialize rate limiters (they will be created dynamically)
 let generalRateLimiter;
 let authRateLimiter;
+
+function composeInlineStyles(payload) {
+  const { branding } = payload;
+  const cssSegments = [];
+
+  cssSegments.push(`:root {
+  --brand-primary: ${branding.colors.primary};
+  --brand-accent: ${branding.colors.accent};
+  --brand-background: ${branding.colors.background};
+  --brand-text: ${branding.colors.text};
+}`);
+
+  if (payload.baseCss) {
+    cssSegments.push(payload.baseCss);
+  }
+
+  if (payload.css) {
+    cssSegments.push(`/* Custom styles */\n${payload.css}`);
+  }
+
+  return cssSegments.join('\n\n');
+}
+
+function renderBrandHeader(branding) {
+  const displayName = branding.companyName || 'PicPeak';
+  const logoSrc = branding.logoUrl || '/picpeak-logo-transparent.png';
+  const logo = `<img src="${logoSrc}" alt="${displayName}" class="brand-logo" loading="lazy" decoding="async" />`;
+
+  const tagline = branding.companyTagline
+    ? `<p class="brand-tagline">${branding.companyTagline}</p>`
+    : '';
+
+  return `<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      ${logo}
+      <div class="brand-copy">
+        <p class="brand-label">${displayName}</p>
+        ${tagline}
+      </div>
+    </div>
+    <nav class="site-nav">
+      <a href="#features">${'Features'}</a>
+      <a href="#workflow">${'Workflow'}</a>
+      <a href="#collections">${'Collections'}</a>
+      <a href="#stories">${'Stories'}</a>
+      <a href="#contact">${'Contact'}</a>
+    </nav>
+  </div>
+</header>`;
+}
+
+function renderBrandFooter(branding) {
+  const displayName = branding.companyName || 'PicPeak';
+  const footerNote = branding.footerText
+    ? `<p>${branding.footerText}</p>`
+    : '<p>Powered by PicPeak to keep every celebration beautifully organised.</p>';
+
+  const supportLink = branding.supportEmail
+    ? `<a href="mailto:${branding.supportEmail}">Support</a>`
+    : '';
+
+  const legalLinks = `
+    <a href="/datenschutz">Privacy Policy</a>
+    <a href="/impressum">Impressum</a>
+    ${supportLink}
+  `;
+
+  return `<footer class="site-footer" id="contact">
+  <div class="footer-inner">
+    <div>
+      <h2>${displayName}</h2>
+      ${footerNote}
+    </div>
+    <div class="footer-links">
+      ${legalLinks}
+    </div>
+  </div>
+</footer>`;
+}
+
+function buildPublicSiteDocument(payload) {
+  const inlineStyles = composeInlineStyles(payload);
+  const header = renderBrandHeader(payload.branding);
+  const footer = renderBrandFooter(payload.branding);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${payload.title}</title>
+  <meta name="description" content="Curated photo galleries and stories from unforgettable celebrations." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>${inlineStyles}</style>
+</head>
+<body>
+  <div class="site-shell">
+    ${header}
+    <main class="site-main">
+      ${payload.html}
+    </main>
+    ${footer}
+  </div>
+</body>
+</html>`;
+}
+
+async function handlePublicSiteRequest(req, res, next) {
+  try {
+    const payload = await getPublicSitePayload();
+
+    if (!payload.enabled) {
+      res.redirect(302, '/admin/login');
+      return;
+    }
+
+    if (payload.etag && req.headers['if-none-match'] === payload.etag) {
+      res.status(304).end();
+      return;
+    }
+
+    const document = buildPublicSiteDocument(payload);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=30, must-revalidate');
+    res.setHeader('ETag', payload.etag);
+    res.setHeader('Vary', 'Accept-Encoding');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; object-src 'none'; script-src 'self'; form-action 'self'");
+
+    res.status(200).send(document);
+  } catch (error) {
+    logger.error('Failed to render public site', { error: error.message });
+    next();
+  }
+}
 
 // Function to initialize rate limiters
 async function initializeRateLimiters() {
@@ -288,13 +428,23 @@ try {
   const shouldServe = (serveFrontendEnv === 'true') || ((serveFrontendEnv === undefined || serveFrontendEnv === 'auto') && fs.existsSync(indexPath));
   if (shouldServe) {
     logger.info(`Serving frontend from ${frontendDir}`);
+    // Serve pre-built assets
     app.use(express.static(frontendDir));
-    // SPA fallback for non-API routes
-    app.get([ '/', '/admin', '/admin/*', '/gallery/*' ], (req, res) => {
+
+    // Landing page handler or SPA fallback
+    app.get('/', handlePublicSiteRequest, (req, res) => {
+      res.sendFile(indexPath);
+    });
+
+    // SPA fallback for admin + gallery routes
+    app.get(['/admin', '/admin/*', '/gallery/*'], (req, res) => {
       res.sendFile(indexPath);
     });
   } else {
     logger.info('Frontend static serving disabled or dist not found', { serveFrontendEnv, frontendDir });
+    app.get('/', handlePublicSiteRequest, (req, res) => {
+      res.status(503).send('Frontend bundle not available. Build frontend or enable public site.');
+    });
   }
 } catch (e) {
   logger.warn('Failed to enable frontend static serving', { error: e.message });

@@ -121,11 +121,20 @@ const StorageInfo: React.FC = () => {
     );
   }
 
-  const usagePercent = Math.round((storageInfo.total_used / storageInfo.storage_limit) * 100);
+  const limitInUse = storageInfo.storage_soft_limit || storageInfo.storage_limit || 1;
+  const usagePercent = limitInUse
+    ? Math.round((storageInfo.total_used / limitInUse) * 100)
+    : 0;
+  const isOverSoftLimit = limitInUse && storageInfo.total_used >= limitInUse;
+  const progressBarClass = isOverSoftLimit ? 'bg-red-600' : 'bg-primary-600';
+  const containerClass = isOverSoftLimit
+    ? 'bg-red-50 border border-red-200'
+    : 'bg-neutral-100';
+  const softLimitDisplay = settingsService.formatBytes(limitInUse);
 
   return (
     <div className="p-4 border-t border-neutral-200">
-      <div className="bg-neutral-100 rounded-lg p-3">
+      <div className={`${containerClass} rounded-lg p-3 transition-colors duration-300`}>
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-700">{t('admin.storageUsed')}</span>
           <span className="font-medium text-neutral-900">
@@ -134,12 +143,12 @@ const StorageInfo: React.FC = () => {
         </div>
         <div className="mt-2 w-full bg-neutral-200 rounded-full h-2">
           <div 
-            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+            className={`${progressBarClass} h-2 rounded-full transition-all duration-300`}
             style={{ width: `${Math.min(usagePercent, 100)}%` }}
           />
         </div>
         <p className="text-xs text-neutral-600 mt-1">
-          {t('admin.storagePercent', { percent: usagePercent, limit: settingsService.formatBytes(storageInfo.storage_limit) })}
+          {t('admin.storagePercent', { percent: usagePercent, limit: softLimitDisplay })}
         </p>
       </div>
     </div>

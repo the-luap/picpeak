@@ -119,8 +119,6 @@ class SecureTokenService {
    * Clear expired tokens from cache
    */
   clearExpiredTokens(): void {
-    const now = Date.now();
-    
     for (const [key, entry] of this.tokenCache.entries()) {
       if (!this.isTokenValid(entry)) {
         this.tokenCache.delete(key);

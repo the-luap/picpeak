@@ -6,6 +6,23 @@ interface AuthenticatedImageProps extends React.ImgHTMLAttributes<HTMLImageEleme
   fallbackSrc?: string;
   useWatermark?: boolean;
   isGallery?: boolean;
+  protectFromDownload?: boolean;
+  slug?: string;
+  photoId?: number;
+  requiresToken?: boolean;
+  secureUrlTemplate?: string;
+  downloadUrlTemplate?: string;
+  onProtectionViolation?: (violationType: string) => void;
+  watermarkText?: string;
+  overlayProtection?: boolean;
+  fragmentGrid?: boolean;
+  scrambleFragments?: boolean;
+  useCanvasRendering?: boolean;
+  blockKeyboardShortcuts?: boolean;
+  detectPrintScreen?: boolean;
+  detectDevTools?: boolean;
+  protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  useEnhancedProtection?: boolean;
 }
 
 export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
@@ -14,8 +31,46 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
   alt,
   useWatermark = false,
   isGallery = false,
+  protectFromDownload,
+  slug,
+  photoId,
+  requiresToken,
+  secureUrlTemplate,
+  downloadUrlTemplate,
+  onProtectionViolation,
+  watermarkText,
+  overlayProtection,
+  fragmentGrid,
+  scrambleFragments,
+  useCanvasRendering,
+  blockKeyboardShortcuts,
+  detectPrintScreen,
+  detectDevTools,
+  protectionLevel,
+  useEnhancedProtection,
   ...props
 }) => {
+  const unusedProps = {
+    protectFromDownload,
+    slug,
+    photoId,
+    requiresToken,
+    secureUrlTemplate,
+    downloadUrlTemplate,
+    onProtectionViolation,
+    watermarkText,
+    overlayProtection,
+    fragmentGrid,
+    scrambleFragments,
+    useCanvasRendering,
+    blockKeyboardShortcuts,
+    detectPrintScreen,
+    detectDevTools,
+    protectionLevel,
+    useEnhancedProtection
+  };
+  void unusedProps;
+
   const [imageSrc, setImageSrc] = useState<string>('');
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

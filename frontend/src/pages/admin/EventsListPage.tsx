@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Plus, 
@@ -11,7 +11,6 @@ import {
   Download,
   Trash2,
   Calendar,
-  Users,
   Image,
   Activity
 } from 'lucide-react';

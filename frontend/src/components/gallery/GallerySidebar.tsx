@@ -21,7 +21,6 @@ interface GallerySidebarProps {
   onDownloadAll: () => void;
   onDownloadSelected: () => void;
   isDownloading: boolean;
-  isExpired?: boolean;
   allowDownloads?: boolean;
   photoCounts?: Record<number, number>;
   totalPhotos: number;
@@ -52,7 +51,6 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   onDownloadAll,
   onDownloadSelected,
   isDownloading,
-  isExpired = false,
   allowDownloads = true,
   photoCounts = {},
   totalPhotos,

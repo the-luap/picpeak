@@ -129,7 +129,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
       </div>
 
       {/* Feedback Indicators (bottom-left) */}
-      {(photo.like_count > 0 || likedLocal) && (
+      {((photo.like_count ?? 0) > 0 || likedLocal) && (
         <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 z-10`}>
           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
             <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
@@ -298,6 +298,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                   isSelectionMode={isSelectionMode}
                   onClick={() => handlePhotoClick(currentIndex, photo.id)}
                   onDownload={(e) => onDownload(photo, e)}
+                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
                   className=""
                   allowDownloads={allowDownloads}
                   slug={slug}

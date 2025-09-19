@@ -58,6 +58,8 @@ export interface AnalyticsData {
     event_name: string;
     slug: string;
     views: number;
+    downloads?: number;
+    uniqueVisitors?: number;
   }>;
   devices: {
     desktop: number;

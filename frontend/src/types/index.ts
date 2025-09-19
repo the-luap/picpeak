@@ -31,6 +31,8 @@ export interface Event {
   total_views?: number;
   total_downloads?: number;
   unique_visitors?: number;
+  source_mode?: 'managed' | 'reference' | string;
+  external_path?: string | null;
 }
 
 export interface GalleryInfo {

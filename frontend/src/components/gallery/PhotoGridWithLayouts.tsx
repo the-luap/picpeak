@@ -148,7 +148,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
 
     try {
       await galleryService.downloadSelectedPhotos(slug, ids);
-      analyticsService.trackGalleryEvent('bulk_download_selected', { gallery: slug, photo_count: ids.length });
+      analyticsService.trackGalleryEvent('bulk_download', { gallery: slug, photo_count: ids.length });
     } catch (error) {
       toastify.error(t('gallery.downloadError'));
     } finally {

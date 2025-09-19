@@ -94,7 +94,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         }
 
         try {
-          const response = await api.post(`/admin/events/${eventId}/upload`, formData, {
+          await api.post(`/admin/events/${eventId}/upload`, formData, {
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 // Calculate overall progress across all chunks

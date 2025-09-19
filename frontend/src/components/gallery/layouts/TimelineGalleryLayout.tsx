@@ -182,7 +182,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                       )}
                     </div>
 
-                    {(photo.like_count > 0 || likedIds.has(photo.id)) && (
+                    {((photo.like_count ?? 0) > 0 || likedIds.has(photo.id)) && (
                       <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 z-10`}>
                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
                           <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />

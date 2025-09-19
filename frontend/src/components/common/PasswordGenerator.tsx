@@ -183,7 +183,7 @@ export const PasswordGenerator: React.FC<PasswordGeneratorProps> = ({
                       <Button
                         type="button"
                         variant="outline"
-                        size="xs"
+                        size="sm"
                         onClick={() => selectPassword(password)}
                       >
                         {t('passwordGenerator.use')}

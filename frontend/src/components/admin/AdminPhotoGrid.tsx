@@ -167,6 +167,9 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {photos.map((photo, index) => {
           const isDeleting = deletingPhotos.has(photo.id);
+          const commentCount = photo.comment_count ?? 0;
+          const averageRating = photo.average_rating ?? 0;
+          const likeCount = photo.like_count ?? 0;
           return (
             <div
               key={photo.id}
@@ -258,18 +261,18 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
             )}
             
             {/* Feedback Indicators (moved to bottom-right to avoid covering category) */}
-            {(photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+            {(commentCount > 0 || averageRating > 0 || likeCount > 0) && (
               <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10">
-                {photo.average_rating > 0 && (
-                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+                {averageRating > 0 && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(averageRating).toFixed(1)}`}>
                     <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-                    <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                    <span className="text-xs font-medium text-neutral-700">{Number(averageRating).toFixed(1)}</span>
                   </div>
                 )}
-                {photo.comment_count > 0 && (
-                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+                {commentCount > 0 && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${commentCount} comments`}>
                     <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                    <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+                    <span className="text-xs font-medium text-neutral-700">{commentCount}</span>
                   </div>
                 )}
               </div>

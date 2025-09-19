@@ -100,7 +100,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 
     try {
       await galleryService.downloadSelectedPhotos(slug, ids);
-      analyticsService.trackGalleryEvent('bulk_download_selected', { gallery: slug, photo_count: ids.length });
+      analyticsService.trackGalleryEvent('bulk_download', { gallery: slug, photo_count: ids.length });
     } catch (error) {
       toastify.error(t('gallery.downloadError'));
     } finally {
@@ -191,6 +191,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
             protectionLevel={protectionLevel}
             useEnhancedProtection={useEnhancedProtection}
             slug={slug}
+            feedbackEnabled={feedbackEnabled}
           />
         ))}
       </div>
@@ -222,6 +223,7 @@ interface PhotoThumbnailProps {
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
   slug: string; // Add slug as required prop
+  feedbackEnabled?: boolean;
 }
 
 const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
@@ -233,7 +235,8 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
-  slug
+  slug,
+  feedbackEnabled = false
 }) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -280,18 +283,18 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
           />
           
           {/* Feedback Indicators */}
-          {feedbackEnabled && (photo.has_feedback || photo.average_rating > 0 || photo.comment_count > 0) && (
+          {feedbackEnabled && (photo.has_feedback || (photo.average_rating ?? 0) > 0 || (photo.comment_count ?? 0) > 0) && (
             <div className="absolute top-2 left-2 flex gap-1 z-10">
-              {photo.comment_count > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+              {(photo.comment_count ?? 0) > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count ?? 0} comments`}>
                   <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                 </div>
               )}
-              {photo.average_rating > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+              {(photo.average_rating ?? 0) > 0 && (
+                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating ?? 0).toFixed(1)}`}>
                   <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
                 </div>
               )}
             </div>

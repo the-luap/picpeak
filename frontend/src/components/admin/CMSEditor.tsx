@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import HardBreak from '@tiptap/extension-hard-break';
@@ -107,10 +107,11 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
     },
   });
 
-  const updateCounts = useCallback((editor: any) => {
-    const text = editor.state.doc.textContent;
-    setCharCount(editor.storage.characterCount.characters());
-    setWordCount(text.trim().split(/\s+/).filter(word => word.length > 0).length);
+  const updateCounts = useCallback((editorInstance: Editor) => {
+    const textContent = editorInstance.state.doc.textContent;
+    setCharCount(editorInstance.storage.characterCount.characters());
+    const words = textContent.trim().split(/\s+/).filter((word: string) => word.length > 0);
+    setWordCount(words.length);
   }, []);
 
   // Update editor content when prop changes

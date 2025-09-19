@@ -68,6 +68,10 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
     : animationType === 'fade'
     ? 'transition-opacity duration-300'
     : '';
+  const likeCount = photo.like_count ?? 0;
+  const averageRating = photo.average_rating ?? 0;
+  const commentCount = photo.comment_count ?? 0;
+  const showFeedbackActions = feedbackEnabled && Boolean(feedbackOptions);
 
   return (
     <div
@@ -99,7 +103,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             detectPrintScreen={useEnhancedProtection}
             detectDevTools={protectionLevel === 'maximum'}
             watermarkText={useEnhancedProtection ? 'Protected' : undefined}
-            onProtectionViolation={(violationType) => {
+            onProtectionViolation={(violationType: string) => {
               console.warn(`Protection violation on grid photo ${photo.id}: ${violationType}`);
             }}
           />
@@ -126,7 +130,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                     <Download className="w-5 h-5 text-neutral-800" />
                   </button>
                 )}
-                {onQuickComment && (
+                {showFeedbackActions && onQuickComment && (
                   <button
                     className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                     onClick={(e) => { e.stopPropagation(); onQuickComment(); }}
@@ -137,7 +141,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                   </button>
                 )}
                 {/* Quick feedback actions */}
-                {feedbackOptions?.allowLikes && (
+                {showFeedbackActions && feedbackOptions?.allowLikes && (
                   <button
                     className={`p-2 rounded-full transition-colors ${liked ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                     onClick={async (e) => {
@@ -189,19 +193,19 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
           </button>
 
           {/* Feedback Indicators (always visible, bottom-left). Show like immediately when user liked */}
-          {(photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0 || liked) && (
+          {(commentCount > 0 || averageRating > 0 || likeCount > 0 || liked) && (
             <div className={`absolute ${photo.type === 'collage' ? 'bottom-8' : 'bottom-2'} left-2 flex items-center gap-1 z-10`}>
-              {(photo.like_count > 0 || liked) && (
+              {(likeCount > 0 || liked) && (
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Liked">
                   <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
                 </span>
               )}
-              {photo.average_rating > 0 && (
+              {averageRating > 0 && (
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Rated">
                   <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
                 </span>
               )}
-              {photo.comment_count > 0 && (
+              {commentCount > 0 && (
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Commented">
                   <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
                 </span>

@@ -1,6 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ProtectionLevel } from '../../hooks/useImageProtection';
 
+type VendorStyle = CSSStyleDeclaration & {
+  webkitUserSelect?: string;
+  webkitTouchCallout?: string;
+  webkitUserDrag?: string;
+};
+
 interface ProtectedImageProps extends React.CanvasHTMLAttributes<HTMLCanvasElement> {
   src: string;
   alt: string;
@@ -31,7 +37,6 @@ export const ProtectedImage: React.FC<ProtectedImageProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -201,9 +206,6 @@ export const ProtectedImage: React.FC<ProtectedImageProps> = ({
         // Render normal image - ensure image is valid before drawing
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          // Verify the image was drawn by checking a pixel
-          const pixelData = ctx.getImageData(10, 10, 1, 1).data;
         }
       }
       
@@ -288,11 +290,12 @@ export const ProtectedImage: React.FC<ProtectedImageProps> = ({
     }
     
     // Apply CSS protection
-    canvas.style.userSelect = 'none';
-    canvas.style.webkitUserSelect = 'none';
-    canvas.style.webkitTouchCallout = 'none';
-    canvas.style.webkitUserDrag = 'none';
-    canvas.style.pointerEvents = protectionLevel === 'maximum' ? 'none' : 'auto';
+    const canvasStyle = canvas.style as VendorStyle;
+    canvasStyle.userSelect = 'none';
+    canvasStyle.webkitUserSelect = 'none';
+    canvasStyle.webkitTouchCallout = 'none';
+    canvasStyle.webkitUserDrag = 'none';
+    canvasStyle.pointerEvents = protectionLevel === 'maximum' ? 'none' : 'auto';
     
     return () => {
       canvas.removeEventListener('contextmenu', handleContextMenu);

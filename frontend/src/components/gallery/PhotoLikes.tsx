@@ -73,7 +73,10 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
     if (requireNameEmail && !savedIdentity) {
       setShowIdentityModal(true);
     } else {
-      submitLikeMutation.mutate(savedIdentity || {});
+      const identityPayload = savedIdentity
+        ? { guest_name: savedIdentity.name, guest_email: savedIdentity.email }
+        : {};
+      submitLikeMutation.mutate(identityPayload);
     }
   };
 

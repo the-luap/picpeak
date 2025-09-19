@@ -35,7 +35,6 @@ interface GalleryLayoutProps {
   showDownloadAll?: boolean;
   onDownloadAll?: () => void;
   isDownloading?: boolean;
-  isExpired?: boolean;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
   children: React.ReactNode;
@@ -49,7 +48,6 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   showDownloadAll = false,
   onDownloadAll,
   isDownloading = false,
-  isExpired = false,
   headerExtra,
   menuButton,
   children,
@@ -63,22 +61,28 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const headingFontFamily = theme.headingFontFamily || fontFamily;
   
   // Calculate logo size classes based on settings
-  const getLogoSizeClass = (context: 'header' | 'hero') => {
+  const getLogoDimensions = (context: 'header' | 'hero'): { className: string; style?: React.CSSProperties } => {
     const size = brandingSettings?.logo_size || 'medium';
     const maxHeight = brandingSettings?.logo_max_height || 48;
-    
+
     if (size === 'custom') {
-      return { maxHeight: `${maxHeight}px`, height: 'auto' };
+      return {
+        className: '',
+        style: { maxHeight: `${maxHeight}px`, height: 'auto' }
+      };
     }
-    
-    const sizeMap = {
+
+    const sizeMap: Record<'small' | 'medium' | 'large' | 'xlarge', string> = {
       small: context === 'header' ? 'h-6 sm:h-8' : 'h-12 sm:h-14 lg:h-16',
       medium: context === 'header' ? 'h-8 sm:h-10 lg:h-12' : 'h-16 sm:h-20 lg:h-24',
       large: context === 'header' ? 'h-10 sm:h-12 lg:h-16' : 'h-20 sm:h-24 lg:h-32',
       xlarge: context === 'header' ? 'h-12 sm:h-16 lg:h-20' : 'h-24 sm:h-32 lg:h-40'
     };
-    
-    return sizeMap[size] || sizeMap.medium;
+
+    return {
+      className: sizeMap[size as keyof typeof sizeMap] || sizeMap.medium,
+      style: undefined
+    };
   };
   
   // Determine logo position classes
@@ -108,6 +112,9 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
     const displayMode = brandingSettings?.logo_display_mode || 'logo_and_text';
     return displayMode !== 'logo_only';
   };
+
+  const headerLogoSize = getLogoDimensions('header');
+  const heroLogoSize = getLogoDimensions('hero');
   
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -183,8 +190,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                         '/picpeak-logo-transparent.png'
                       } 
                       alt={brandingSettings?.company_name || 'PicPeak'}
-                      className={`${typeof getLogoSizeClass('header') === 'string' ? getLogoSizeClass('header') : ''} w-auto object-contain`}
-                      style={typeof getLogoSizeClass('header') === 'object' ? getLogoSizeClass('header') : undefined}
+                      className={`${headerLogoSize.className} w-auto object-contain`}
+                      style={headerLogoSize.style}
                     />
                     {shouldShowCompanyName() && brandingSettings?.company_name && (
                       <span className="hidden sm:inline text-lg font-semibold text-neutral-900">
@@ -353,11 +360,11 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                       '/picpeak-logo-transparent.png'
                     } 
                     alt={brandingSettings?.company_name || 'PicPeak'}
-                    className={`${typeof getLogoSizeClass('hero') === 'string' ? getLogoSizeClass('hero') : ''} w-auto object-contain mx-auto`}
-                    style={typeof getLogoSizeClass('hero') === 'object' ? 
-                      { ...getLogoSizeClass('hero'), filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' } : 
-                      { filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' }
-                    }
+                    className={`${heroLogoSize.className} w-auto object-contain mx-auto`}
+                    style={{
+                      ...(heroLogoSize.style || {}),
+                      filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                    }}
                   />
                   {shouldShowCompanyName() && brandingSettings?.company_name && (
                     <div className="mt-3 text-xl sm:text-2xl font-semibold text-white/90" style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)' }}>

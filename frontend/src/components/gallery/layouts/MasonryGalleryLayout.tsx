@@ -72,24 +72,24 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
       />
       
       {/* Feedback Indicators */}
-      {feedbackEnabled && (photo.comment_count > 0 || photo.average_rating > 0 || photo.like_count > 0) && (
+      {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
         <div className="absolute top-2 left-2 flex gap-1 z-10">
-          {photo.comment_count > 0 && (
-            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count} comments`}>
+          {(photo.comment_count ?? 0) > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count ?? 0} comments`}>
               <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-              <span className="text-xs font-medium text-neutral-700">{photo.comment_count}</span>
+              <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
             </div>
           )}
-          {photo.average_rating > 0 && (
-            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating).toFixed(1)}`}>
+          {(photo.average_rating ?? 0) > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating ?? 0).toFixed(1)}`}>
               <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-              <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating).toFixed(1)}</span>
+              <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
             </div>
           )}
-          {photo.like_count > 0 && (
-            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.like_count} likes`}>
+          {(photo.like_count ?? 0) > 0 && (
+            <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.like_count ?? 0} likes`}>
               <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
-              <span className="text-xs font-medium text-neutral-700">{photo.like_count}</span>
+              <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
             </div>
           )}
         </div>

@@ -29,10 +29,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
-import { photosService, AdminPhoto } from '../../services/photos.service';
+import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
-import { useTranslation } from 'react-i18next';
 
 const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
@@ -121,8 +120,12 @@ export const EventDetailsPage: React.FC = () => {
     allow_likes: true,
     allow_comments: true,
     allow_favorites: true,
-    require_moderation: true,
-    show_public_stats: false
+    require_name_email: false,
+    moderate_comments: true,
+    show_feedback_to_guests: true,
+    enable_rate_limiting: false,
+    rate_limit_window_minutes: 15,
+    rate_limit_max_requests: 10,
   });
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
@@ -136,10 +139,10 @@ export const EventDetailsPage: React.FC = () => {
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   
   // Photo filters state
-  const [photoFilters, setPhotoFilters] = useState({
+  const [photoFilters, setPhotoFilters] = useState<PhotoFilterParams>({
     category_id: undefined as number | null | undefined,
     search: '',
-    sort: 'date' as 'date' | 'name' | 'size' | 'rating',
+    sort: 'date',
     order: 'desc' as 'asc' | 'desc'
   });
 
@@ -1004,9 +1007,9 @@ export const EventDetailsPage: React.FC = () => {
           <PhotoFilters
             categories={categories}
             selectedCategory={photoFilters.category_id}
-            searchTerm={photoFilters.search}
-            sortBy={photoFilters.sort}
-            sortOrder={photoFilters.order}
+            searchTerm={photoFilters.search ?? ''}
+            sortBy={photoFilters.sort ?? 'date'}
+            sortOrder={photoFilters.order ?? 'desc'}
             onCategoryChange={(categoryId) => setPhotoFilters(prev => ({ ...prev, category_id: categoryId }))}
             onSearchChange={(search) => setPhotoFilters(prev => ({ ...prev, search }))}
             onSortChange={(sort, order) => setPhotoFilters(prev => ({ ...prev, sort, order }))}

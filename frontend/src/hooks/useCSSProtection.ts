@@ -1,6 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { ProtectionLevel } from './useImageProtection';
 
+type VendorStyle = CSSStyleDeclaration & {
+  webkitUserSelect?: string;
+  webkitTouchCallout?: string;
+  webkitUserDrag?: string;
+};
+
 interface UseCSSProtectionOptions {
   enabled: boolean;
   protectionLevel: ProtectionLevel;
@@ -63,19 +69,22 @@ export const useCSSProtection = (options: UseCSSProtectionOptions) => {
     // Apply inline styles for enhanced protection
     if (options.protectionLevel === 'enhanced' || options.protectionLevel === 'maximum') {
       // Disable various browser features
-      container.style.userSelect = 'none';
-      container.style.webkitUserSelect = 'none';
-      container.style.webkitTouchCallout = 'none';
-      container.style.webkitUserDrag = 'none';
+      const containerStyle = container.style as VendorStyle;
+      containerStyle.userSelect = 'none';
+      containerStyle.webkitUserSelect = 'none';
+      containerStyle.webkitTouchCallout = 'none';
+      containerStyle.webkitUserDrag = 'none';
       
       // Find all img and canvas elements and protect them
       const mediaElements = container.querySelectorAll('img, canvas');
       mediaElements.forEach(element => {
-        (element as HTMLElement).draggable = false;
-        (element as HTMLElement).style.userSelect = 'none';
-        (element as HTMLElement).style.webkitUserSelect = 'none';
-        (element as HTMLElement).style.webkitUserDrag = 'none';
-        (element as HTMLElement).style.webkitTouchCallout = 'none';
+        const el = element as HTMLElement;
+        const elStyle = el.style as VendorStyle;
+        el.draggable = false;
+        elStyle.userSelect = 'none';
+        elStyle.webkitUserSelect = 'none';
+        elStyle.webkitUserDrag = 'none';
+        elStyle.webkitTouchCallout = 'none';
         
         if (options.protectionLevel === 'maximum') {
           (element as HTMLElement).style.pointerEvents = 'none';
@@ -101,19 +110,22 @@ export const useCSSProtection = (options: UseCSSProtectionOptions) => {
       }
       
       // Reset inline styles
-      container.style.userSelect = '';
-      container.style.webkitUserSelect = '';
-      container.style.webkitTouchCallout = '';
-      container.style.webkitUserDrag = '';
+      const containerStyle = container.style as VendorStyle;
+      containerStyle.userSelect = '';
+      containerStyle.webkitUserSelect = '';
+      containerStyle.webkitTouchCallout = '';
+      containerStyle.webkitUserDrag = '';
       
       // Reset media element styles
       const mediaElements = container.querySelectorAll('img, canvas');
       mediaElements.forEach(element => {
-        (element as HTMLElement).style.userSelect = '';
-        (element as HTMLElement).style.webkitUserSelect = '';
-        (element as HTMLElement).style.webkitUserDrag = '';
-        (element as HTMLElement).style.webkitTouchCallout = '';
-        (element as HTMLElement).style.pointerEvents = '';
+        const el = element as HTMLElement;
+        const elStyle = el.style as VendorStyle;
+        elStyle.userSelect = '';
+        elStyle.webkitUserSelect = '';
+        elStyle.webkitUserDrag = '';
+        elStyle.webkitTouchCallout = '';
+        elStyle.pointerEvents = '';
       });
     };
   }, [

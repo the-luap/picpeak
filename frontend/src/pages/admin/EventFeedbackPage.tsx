@@ -11,7 +11,6 @@ import {
   Download,
   Shield,
   CheckCircle,
-  XCircle,
   Eye,
   EyeOff,
   Trash2
@@ -25,7 +24,7 @@ import { FeedbackSettings } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { feedbackService } from '../../services/feedback.service';
-import type { PhotoFeedback, FeedbackAnalytics } from '../../services/feedback.service';
+import type { PhotoFeedback, FeedbackAnalytics, FeedbackResponse } from '../../services/feedback.service';
 
 export const EventFeedbackPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +43,7 @@ export const EventFeedbackPage: React.FC = () => {
   // Fetch event details
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ['event', id],
-    queryFn: () => eventsService.getEvent(id!),
+    queryFn: () => eventsService.getEvent(Number(id)),
     enabled: !!id
   });
 
@@ -56,14 +55,14 @@ export const EventFeedbackPage: React.FC = () => {
   });
 
   // Fetch feedback list
-  const { data: feedbackData, isLoading: feedbackLoading } = useQuery({
+  const { data: feedbackData, isLoading: feedbackLoading } = useQuery<FeedbackResponse>({
     queryKey: ['event-feedback', id, feedbackFilter],
     queryFn: () => feedbackService.getEventFeedback(id!, feedbackFilter),
     enabled: !!id && activeTab === 'feedback'
   });
 
   // Fetch analytics
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+  const { data: analytics, isLoading: analyticsLoading } = useQuery<FeedbackAnalytics>({
     queryKey: ['feedback-analytics', id],
     queryFn: () => feedbackService.getEventFeedbackAnalytics(id!),
     enabled: !!id && activeTab === 'analytics'
@@ -132,6 +131,10 @@ export const EventFeedbackPage: React.FC = () => {
   if (!event) {
     return <div>{t('events.notFound', 'Event not found')}</div>;
   }
+
+  const pagination = feedbackData?.pagination;
+  const perPage = pagination?.per_page ?? feedbackFilter.limit ?? 20;
+  const totalPages = perPage ? Math.max(1, Math.ceil((pagination?.total ?? 0) / perPage)) : 1;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -360,7 +363,7 @@ export const EventFeedbackPage: React.FC = () => {
           )}
 
           {/* Pagination */}
-          {feedbackData?.pagination && feedbackData.pagination.pages > 1 && (
+          {pagination && totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <Button
                 variant="outline"
@@ -373,13 +376,13 @@ export const EventFeedbackPage: React.FC = () => {
               <span className="flex items-center px-3 text-sm text-neutral-600">
                 {t('common.pageOf', 'Page {{current}} of {{total}}', {
                   current: feedbackFilter.page,
-                  total: feedbackData.pagination.pages
+                  total: totalPages
                 })}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={feedbackFilter.page === feedbackData.pagination.pages}
+                disabled={feedbackFilter.page >= totalPages}
                 onClick={() => setFeedbackFilter({ ...feedbackFilter, page: feedbackFilter.page + 1 })}
               >
                 {t('common.next', 'Next')}

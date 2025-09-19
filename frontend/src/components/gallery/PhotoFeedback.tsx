@@ -5,7 +5,6 @@ import { PhotoRating } from './PhotoRating';
 import { PhotoLikes } from './PhotoLikes';
 import { PhotoComments } from './PhotoComments';
 import { Skeleton } from '../common';
-import type { FeedbackSettings } from '../../services/feedback.service';
 
 interface PhotoFeedbackProps {
   photoId: string;
@@ -33,7 +32,7 @@ export const PhotoFeedback: React.FC<PhotoFeedbackProps> = ({
   });
 
   // Fetch feedback data for the photo
-  const { data: feedbackData, isLoading: feedbackLoading } = useQuery({
+  const { data: feedbackData } = useQuery({
     queryKey: ['photo-feedback', gallerySlug, photoId],
     queryFn: () => feedbackService.getPhotoFeedback(gallerySlug, photoId),
     enabled: !!settings?.feedback_enabled,

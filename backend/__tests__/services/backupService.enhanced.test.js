@@ -1,4 +1,4 @@
-const { describe, it, expect, jest, beforeEach, afterEach } = require('@jest/globals');
+const { describe, it, expect, beforeEach, afterEach } = require('@jest/globals');
 const mockFs = require('mock-fs');
 const path = require('path');
 const crypto = require('crypto');

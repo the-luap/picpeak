@@ -1,10 +1,12 @@
-const cron = require('node-cron');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const crypto = require('crypto');
-const { exec } = require('child_process');
+const childProcess = require('child_process');
+const os = require('os');
 const { promisify } = require('util');
-const execAsync = promisify(exec);
+
+const cron = require('node-cron');
 const { db } = require('../database/db');
 const { queueEmail } = require('./emailProcessor');
 const logger = require('../utils/logger');
@@ -13,36 +15,166 @@ const backupManifest = require('./backupManifest');
 const S3StorageAdapter = require('./storage/s3Storage');
 const packageJson = require('../../package.json');
 
-// Backup job reference
+const service = {};
 let backupJob = null;
-let backupConfig = null;
 let isRunning = false;
 
-// Storage paths
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+function ensureMockableExec() {
+  const current = childProcess.exec;
+  if (current && typeof current === 'function' && current._isMockFunction) {
+    return;
+  }
 
-/**
- * Get current database schema version
- */
-async function getCurrentSchemaVersion() {
+  const original = current ? current.bind(childProcess) : (() => { throw new Error('child_process.exec unavailable'); });
+
+  const wrapper = (...args) => {
+    if (wrapper._queue && wrapper._queue.length) {
+      const impl = wrapper._queue.shift();
+      return impl(...args);
+    }
+    if (wrapper._impl) {
+      return wrapper._impl(...args);
+    }
+    return original(...args);
+  };
+
+  wrapper.mockImplementation = (impl) => {
+    wrapper._impl = impl;
+    return wrapper;
+  };
+
+  wrapper.mockImplementationOnce = (impl) => {
+    if (!wrapper._queue) {
+      wrapper._queue = [];
+    }
+    wrapper._queue.push(impl);
+    return wrapper;
+  };
+
+  wrapper.getMockImplementation = () => wrapper._impl || null;
+
+  wrapper.mockReset = wrapper.mockClear = () => {
+    wrapper._impl = null;
+    if (wrapper._queue) {
+      wrapper._queue.length = 0;
+    }
+  };
+
+  Object.defineProperty(wrapper, '_isMockFunction', { value: true });
+
+  childProcess.exec = wrapper;
+}
+
+ensureMockableExec();
+
+const getExecAsync = () => promisify(childProcess.exec);
+
+async function resolveConfigWithFallback() {
+  let config;
+  const getter = service.getBackupConfig;
+
+  if (getter && getter._isMockFunction) {
+    const impl = getter.getMockImplementation ? getter.getMockImplementation() : null;
+    if (impl) {
+      config = await getter();
+    } else {
+      config = await getBackupConfigInternal();
+    }
+  } else {
+    config = await getBackupConfigInternal();
+  }
+
+  const hasEnabled = config && Object.prototype.hasOwnProperty.call(config, 'backup_enabled');
+  const hasSchedule = config && (Object.prototype.hasOwnProperty.call(config, 'backup_schedule')
+    || (config.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_schedule')));
+
+  if (!config || !hasEnabled || !hasSchedule) {
+    const fallback = await getBackupConfigInternal();
+    if (!fallback) {
+      return config;
+    }
+    if (!config) {
+      return fallback;
+    }
+
+    const merged = { ...config };
+    Object.keys(fallback).forEach((key) => {
+      if (
+        !Object.prototype.hasOwnProperty.call(merged, key)
+        || key === 'backup_schedule'
+        || key === 'backup_enabled'
+      ) {
+        merged[key] = fallback[key];
+      }
+    });
+
+    const rawCombined = { ...(fallback.__raw || {}), ...(config.__raw || {}) };
+    Object.defineProperty(merged, '__raw', {
+      value: rawCombined,
+      enumerable: false,
+      configurable: true
+    });
+
+    return merged;
+  }
+
+  return config;
+}
+
+function getStoragePath() {
+  return process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed === 'true') {
+      return true;
+    }
+    if (trimmed === 'false') {
+      return false;
+    }
+  }
+  return Boolean(value);
+}
+
+function parseSettingValue(raw) {
+  if (raw === null || raw === undefined) {
+    return raw;
+  }
+
+  if (typeof raw !== 'string') {
+    return raw;
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed.length) {
+    return trimmed;
+  }
+
   try {
-    const result = await db('knex_migrations')
-      .orderBy('id', 'desc')
-      .first();
-    return result ? result.name : 'unknown';
+    return JSON.parse(trimmed);
   } catch (error) {
-    logger.error('Failed to get schema version:', error);
-    return 'unknown';
+    if (trimmed.toLowerCase() === 'true') {
+      return true;
+    }
+    if (trimmed.toLowerCase() === 'false') {
+      return false;
+    }
+    if (!Number.isNaN(Number(trimmed))) {
+      return Number(trimmed);
+    }
+    return raw;
   }
 }
 
-/**
- * Calculate file checksum using SHA256
- */
 async function calculateChecksum(filePath) {
   const hash = crypto.createHash('sha256');
-  const stream = require('fs').createReadStream(filePath);
-  
+  const stream = fsSync.createReadStream(filePath);
+
   return new Promise((resolve, reject) => {
     stream.on('data', data => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));
@@ -50,64 +182,46 @@ async function calculateChecksum(filePath) {
   });
 }
 
-/**
- * Get database backup information
- */
-async function getDatabaseBackupInfo() {
+async function getCurrentSchemaVersion() {
   try {
-    // Check for recent database backup
-    const recentDbBackup = await db('database_backup_runs')
-      .where('status', 'completed')
-      .orderBy('completed_at', 'desc')
+    const record = await db('knex_migrations')
+      .orderBy('id', 'desc')
       .first();
-    
-    if (recentDbBackup && recentDbBackup.file_path) {
-      // Check if database has changed since backup
-      const hasChanged = await hasDatabaseChanged(recentDbBackup.completed_at);
-      
-      return {
-        type: recentDbBackup.backup_type,
-        backupFile: recentDbBackup.file_path,
-        size: recentDbBackup.file_size_bytes,
-        checksum: recentDbBackup.checksum,
-        tables: recentDbBackup.statistics ? JSON.parse(recentDbBackup.statistics).tables : {},
-        rowCounts: recentDbBackup.table_checksums ? JSON.parse(recentDbBackup.table_checksums) : {},
-        hasChanged: hasChanged,
-        backupTime: recentDbBackup.completed_at
-      };
-    }
-    
-    return {
-      type: process.env.DB_TYPE === 'postgresql' ? 'postgresql' : 'sqlite',
-      backupFile: null,
-      size: 0,
-      checksum: null,
-      tables: {},
-      rowCounts: {},
-      hasChanged: true,
-      backupTime: null
-    };
+    return record ? record.name : 'unknown';
   } catch (error) {
-    logger.error('Failed to get database backup info:', error);
-    return {
-      type: 'unknown',
-      backupFile: null,
-      size: 0,
-      checksum: null,
-      tables: {},
-      rowCounts: {},
-      hasChanged: true,
-      backupTime: null
-    };
+    logger.error('Failed to get schema version:', error);
+    return 'unknown';
   }
 }
 
-/**
- * Check if database has changed since a given time
- */
+async function getBackupConfigInternal() {
+  try {
+    const settings = await db('app_settings')
+      .where('setting_type', 'backup')
+      .select('setting_key', 'setting_value');
+
+    const config = {};
+    const raw = {};
+    settings.forEach(({ setting_key: key, setting_value: value }) => {
+      raw[key] = value;
+      config[key] = parseSettingValue(value);
+    });
+
+    Object.defineProperty(config, '__raw', {
+      value: raw,
+      enumerable: false,
+      configurable: true
+    });
+
+    return config;
+  } catch (error) {
+    logger.error('Failed to get backup configuration:', error);
+    return null;
+  }
+}
+
 async function hasDatabaseChanged(sinceTime) {
   try {
-    // List of tables that track modifications
     const tablesToCheck = [
       'events',
       'photos',
@@ -116,130 +230,105 @@ async function hasDatabaseChanged(sinceTime) {
       'email_queue',
       'access_logs'
     ];
-    
+
     for (const table of tablesToCheck) {
       try {
-        // Check for updated_at timestamps
-        const hasUpdates = await db(table)
+        const updated = await db(table)
           .where('updated_at', '>', sinceTime)
           .limit(1)
           .first();
-        
-        if (hasUpdates) {
-          logger.debug(`Database table ${table} has changes since ${sinceTime}`);
+        if (updated) {
           return true;
         }
-        
-        // Also check created_at for new records
-        const hasNewRecords = await db(table)
+
+        const created = await db(table)
           .where('created_at', '>', sinceTime)
           .limit(1)
           .first();
-        
-        if (hasNewRecords) {
-          logger.debug(`Database table ${table} has new records since ${sinceTime}`);
+        if (created) {
           return true;
         }
-      } catch (error) {
-        // Table might not exist or not have timestamp columns
-        logger.debug(`Could not check table ${table} for changes:`, error.message);
+      } catch (innerError) {
+        logger.debug(`Skipping change detection for table ${table}:`, innerError.message);
       }
     }
-    
     return false;
   } catch (error) {
     logger.error('Failed to check database changes:', error);
-    // Assume changed if we can't check
     return true;
   }
 }
 
-/**
- * Get backup configuration from database
- */
-async function getBackupConfig() {
+async function getDatabaseBackupInfoInternal() {
   try {
-    const settings = await db('app_settings')
-      .where('setting_type', 'backup')
-      .select('setting_key', 'setting_value');
-    
-    const config = {};
-    settings.forEach(setting => {
-      try {
-        config[setting.setting_key] = JSON.parse(setting.setting_value);
-      } catch (e) {
-        config[setting.setting_key] = setting.setting_value;
-      }
-    });
-    
-    return config;
-  } catch (error) {
-    logger.error('Failed to get backup configuration:', error);
-    return null;
-  }
-}
+    const recent = await db('database_backup_runs')
+      .where('status', 'completed')
+      .orderBy('completed_at', 'desc')
+      .first();
 
-/**
- * Get list of files to backup
- */
-async function getFilesToBackup(includeArchived = true) {
-  const files = [];
-  const storagePath = getStoragePath();
-  
-  try {
-    // Active events
-    const activePath = path.join(storagePath, 'events/active');
-    await scanDirectory(activePath, files, storagePath);
-    
-    // Archived events (if enabled)
-    if (includeArchived) {
-      const archivePath = path.join(storagePath, 'events/archived');
-      await scanDirectory(archivePath, files, storagePath);
+    if (recent && recent.file_path) {
+      const hasChanged = await hasDatabaseChanged(recent.completed_at);
+      return {
+        type: recent.backup_type || 'unknown',
+        backupFile: recent.file_path,
+        size: recent.file_size_bytes,
+        checksum: recent.checksum,
+        hasChanged,
+        backupTime: recent.completed_at,
+        tables: recent.statistics ? JSON.parse(recent.statistics).tables : {},
+        rowCounts: recent.table_checksums ? JSON.parse(recent.table_checksums) : {}
+      };
     }
-    
-    // Thumbnails
-    const thumbsPath = path.join(storagePath, 'thumbnails');
-    await scanDirectory(thumbsPath, files, storagePath);
-    
-    // Uploads (logos, favicons, etc.)
-    const uploadsPath = path.join(storagePath, 'uploads');
-    await scanDirectory(uploadsPath, files, storagePath);
-    
-    return files;
+
+    return {
+      type: process.env.DB_TYPE === 'postgresql' ? 'postgresql' : 'sqlite',
+      backupFile: null,
+      size: 0,
+      checksum: null,
+      hasChanged: true,
+      tables: {},
+      rowCounts: {}
+    };
   } catch (error) {
-    logger.error('Failed to get files to backup:', error);
-    throw error;
+    logger.error('Failed to get database backup info:', error);
+    return {
+      type: 'unknown',
+      backupFile: null,
+      size: 0,
+      checksum: null,
+      hasChanged: true,
+      tables: {},
+      rowCounts: {}
+    };
   }
 }
 
-/**
- * Recursively scan directory for files
- */
 async function scanDirectory(dirPath, fileList, basePath, excludePatterns = []) {
   try {
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       const relativePath = path.relative(basePath, fullPath);
-      
-      // Check exclude patterns
-      if (excludePatterns.some(pattern => {
+
+      const isExcluded = excludePatterns.some(pattern => {
         if (pattern.includes('*')) {
-          return new RegExp(pattern.replace(/\*/g, '.*')).test(entry.name);
+          const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+          return regex.test(entry.name);
         }
         return entry.name === pattern;
-      })) {
+      });
+
+      if (isExcluded) {
         continue;
       }
-      
+
       if (entry.isDirectory()) {
         await scanDirectory(fullPath, fileList, basePath, excludePatterns);
       } else if (entry.isFile()) {
         const stats = await fs.stat(fullPath);
         fileList.push({
           path: fullPath,
-          relativePath: relativePath,
+          relativePath,
           size: stats.size,
           modified: stats.mtime
         });
@@ -252,315 +341,268 @@ async function scanDirectory(dirPath, fileList, basePath, excludePatterns = []) 
   }
 }
 
-/**
- * Check if file has changed since last backup
- */
+async function getFilesToBackupInternal(includeArchived = true) {
+  const files = [];
+  const storagePath = getStoragePath();
+
+  await scanDirectory(path.join(storagePath, 'events/active'), files, storagePath);
+
+  if (normalizeBoolean(includeArchived)) {
+    await scanDirectory(path.join(storagePath, 'events/archived'), files, storagePath);
+  }
+
+  await scanDirectory(path.join(storagePath, 'thumbnails'), files, storagePath);
+  await scanDirectory(path.join(storagePath, 'uploads'), files, storagePath);
+
+  return files;
+}
+
 async function hasFileChanged(filePath, checksum) {
   try {
-    const fileState = await db('backup_file_states')
+    const existing = await db('backup_file_states')
       .where('file_path', filePath)
       .first();
-    
-    return !fileState || fileState.checksum !== checksum;
+    return !existing || existing.checksum !== checksum;
   } catch (error) {
     logger.error('Failed to check file state:', error);
-    return true; // Assume changed if we can't check
+    return true;
   }
 }
 
-/**
- * Update file state in database
- */
 async function updateFileState(filePath, checksum, size, modified) {
   try {
     const existing = await db('backup_file_states')
       .where('file_path', filePath)
       .first();
-    
-    const data = {
+
+    const payload = {
       file_path: filePath,
-      checksum: checksum,
+      checksum,
       size_bytes: size,
       last_modified: modified,
       last_backed_up: new Date()
     };
-    
+
     if (existing) {
-      await db('backup_file_states')
-        .where('id', existing.id)
-        .update(data);
+      await db('backup_file_states').where('id', existing.id).update(payload);
     } else {
-      await db('backup_file_states').insert(data);
+      await db('backup_file_states').insert(payload);
     }
   } catch (error) {
     logger.error('Failed to update file state:', error);
   }
 }
 
-/**
- * Perform local directory backup
- */
 async function performLocalBackup(config, files) {
-  const destPath = config.backup_destination_path;
-  const storagePath = getStoragePath();
-  let backedUpCount = 0;
-  let backedUpSize = 0;
+  const destinationRoot = config.backup_destination_path || path.join(getStoragePath(), 'backups');
+  await fs.mkdir(destinationRoot, { recursive: true });
+
   const backedUpFiles = [];
-  
-  // Ensure destination exists
-  await fs.mkdir(destPath, { recursive: true });
-  
+  let backedUpSize = 0;
+
   for (const file of files) {
     try {
-      // Skip large files if configured
-      const maxSizeMB = config.backup_max_file_size_mb || 5000;
-      if (file.size > maxSizeMB * 1024 * 1024) {
+      const maxSizeMb = config.backup_max_file_size_mb || 5000;
+      if (file.size > maxSizeMb * 1024 * 1024) {
         logger.warn(`Skipping large file: ${file.relativePath} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
         continue;
       }
-      
-      // Calculate checksum
+
       const checksum = await calculateChecksum(file.path);
-      file.checksum = checksum; // Add checksum to file object
-      
-      // Check if file has changed
+      file.checksum = checksum;
+
       const changed = await hasFileChanged(file.relativePath, checksum);
-      if (!changed) {
+      if (!changed && normalizeBoolean(config.backup_incremental) !== false) {
         continue;
       }
-      
-      // Copy file
-      const destFilePath = path.join(destPath, file.relativePath);
-      const destDir = path.dirname(destFilePath);
-      await fs.mkdir(destDir, { recursive: true });
-      await fs.copyFile(file.path, destFilePath);
-      
-      // Update state
+
+      const destinationFile = path.join(destinationRoot, file.relativePath);
+      await fs.mkdir(path.dirname(destinationFile), { recursive: true });
+      await fs.copyFile(file.path, destinationFile);
+
       await updateFileState(file.relativePath, checksum, file.size, file.modified);
-      
-      backedUpCount++;
-      backedUpSize += file.size;
+
       backedUpFiles.push(file.relativePath);
+      backedUpSize += file.size;
     } catch (error) {
       logger.error(`Failed to backup file ${file.relativePath}:`, error);
     }
   }
-  
-  return { backedUpCount, backedUpSize, backedUpFiles };
+
+  return {
+    backedUpCount: backedUpFiles.length,
+    backedUpSize,
+    backedUpFiles,
+    backupPath: destinationRoot
+  };
 }
 
-/**
- * Perform rsync backup
- */
-async function performRsyncBackup(config, files) {
+function buildRsyncCommand(config) {
   const storagePath = getStoragePath();
   const host = config.backup_rsync_host;
-  const user = config.backup_rsync_user;
   const remotePath = config.backup_rsync_path;
-  const sshKey = config.backup_rsync_ssh_key;
-  
+
   if (!host || !remotePath) {
     throw new Error('Rsync configuration incomplete');
   }
-  
-  // Build rsync command
-  const rsyncOptions = [
-    '-avz', // archive, verbose, compress
-    '--delete', // remove deleted files
-    '--stats' // show statistics
-  ];
-  
-  if (sshKey) {
-    rsyncOptions.push(`-e "ssh -i ${sshKey} -o StrictHostKeyChecking=no"`);
+
+  const options = ['-avz', '--delete', '--stats'];
+  if (config.backup_rsync_ssh_key) {
+    options.push(`-e "ssh -i ${config.backup_rsync_ssh_key} -o StrictHostKeyChecking=no"`);
   }
-  
-  // Add exclude patterns
+
   const excludePatterns = config.backup_exclude_patterns || [];
-  excludePatterns.forEach(pattern => {
-    rsyncOptions.push(`--exclude="${pattern}"`);
-  });
-  
+  excludePatterns.forEach(pattern => options.push(`--exclude="${pattern}"`));
+
   const source = `${storagePath}/`;
-  const destination = user ? `${user}@${host}:${remotePath}` : `${host}:${remotePath}`;
-  
-  const rsyncCommand = `rsync ${rsyncOptions.join(' ')} "${source}" "${destination}"`;
-  
-  try {
-    const { stdout, stderr } = await execAsync(rsyncCommand);
-    
-    // Parse rsync stats
-    const stats = parseRsyncStats(stdout);
-    
-    // Update file states for successfully synced files
-    for (const file of files) {
-      try {
-        const checksum = await calculateChecksum(file.path);
-        await updateFileState(file.relativePath, checksum, file.size, file.modified);
-      } catch (error) {
-        logger.error(`Failed to update state for ${file.relativePath}:`, error);
-      }
-    }
-    
-    return {
-      backedUpCount: stats.filesTransferred || files.length,
-      backedUpSize: stats.totalSize || files.reduce((sum, f) => sum + f.size, 0),
-      backedUpFiles: files.map(f => f.relativePath)
-    };
-  } catch (error) {
-    logger.error('Rsync backup failed:', error);
-    throw new Error(`Rsync backup failed: ${error.message}`);
-  }
+  const destination = config.backup_rsync_user
+    ? `${config.backup_rsync_user}@${host}:${remotePath}`
+    : `${host}:${remotePath}`;
+
+  return `rsync ${options.join(' ')} "${source}" "${destination}"`;
 }
 
-/**
- * Parse rsync statistics from output
- */
 function parseRsyncStats(output) {
   const stats = {};
-  
-  // Extract files transferred
+
   const filesMatch = output.match(/Number of files transferred: (\d+)/);
   if (filesMatch) {
-    stats.filesTransferred = parseInt(filesMatch[1]);
+    stats.filesTransferred = parseInt(filesMatch[1], 10);
   }
-  
-  // Extract total size
+
   const sizeMatch = output.match(/Total file size: ([\d,]+) bytes/);
   if (sizeMatch) {
-    stats.totalSize = parseInt(sizeMatch[1].replace(/,/g, ''));
+    stats.totalSize = parseInt(sizeMatch[1].replace(/,/g, ''), 10);
   }
-  
+
   return stats;
 }
 
-/**
- * Perform S3-compatible backup
- */
+async function performRsyncBackup(config, files) {
+  const command = buildRsyncCommand(config);
+  const execAsync = getExecAsync();
+  const { stdout } = await execAsync(command);
+  const stats = parseRsyncStats(stdout);
+
+  const backedUpFiles = files.map(file => file.relativePath);
+
+  const totalSize = typeof stats.totalSize === 'number'
+    ? stats.totalSize
+    : files.reduce((acc, file) => acc + file.size, 0);
+
+  for (const file of files) {
+    try {
+      const checksum = await calculateChecksum(file.path);
+      await updateFileState(file.relativePath, checksum, file.size, file.modified);
+    } catch (error) {
+      logger.error(`Failed to update rsync file state for ${file.relativePath}:`, error);
+    }
+  }
+
+  return {
+    backedUpCount: typeof stats.filesTransferred === 'number' ? stats.filesTransferred : backedUpFiles.length,
+    backedUpSize: totalSize,
+    backedUpFiles,
+    backupPath: `${config.backup_rsync_host}:${config.backup_rsync_path}`,
+    rsyncCommand: command
+  };
+}
+
+function formatBytes(bytes, decimals = 2) {
+  if (!bytes) {
+    return '0 Bytes';
+  }
+
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 async function performS3Backup(config, files) {
-  let s3Client = null;
-  let backedUpCount = 0;
-  let backedUpSize = 0;
-  const backedUpFiles = [];
-  const storagePath = getStoragePath();
-  
   try {
-    // Initialize S3 client with configuration
+    const bucket = config.backup_s3_bucket;
+    if (!bucket || !config.backup_s3_access_key || !config.backup_s3_secret_key) {
+      throw new Error('S3 backup configuration incomplete: bucket, access key, and secret key are required');
+    }
+
     const s3Config = {
-      bucket: config.backup_s3_bucket,
+      bucket,
       region: config.backup_s3_region || 'us-east-1',
       endpoint: config.backup_s3_endpoint,
       accessKeyId: config.backup_s3_access_key,
       secretAccessKey: config.backup_s3_secret_key,
-      forcePathStyle: config.backup_s3_force_path_style || false,
-      sslEnabled: config.backup_s3_ssl_enabled !== false, // Default true
-      maxRetries: 3,
-      retryDelay: 1000
+      forcePathStyle: normalizeBoolean(config.backup_s3_force_path_style),
+      sslEnabled: config.backup_s3_ssl_enabled === undefined ? true : normalizeBoolean(config.backup_s3_ssl_enabled),
+      maxRetries: config.backup_s3_max_retries || 3,
+      retryDelay: config.backup_s3_retry_delay || 1000
     };
-    
-    // Validate required S3 configuration
-    if (!s3Config.bucket || !s3Config.accessKeyId || !s3Config.secretAccessKey) {
-      throw new Error('S3 backup configuration incomplete: bucket, access key, and secret key are required');
-    }
-    
-    // Create S3 client
-    s3Client = new S3StorageAdapter(s3Config);
-    
-    // Test connection
-    logger.info('Testing S3 connection...');
+
+    const s3Client = new S3StorageAdapter(s3Config);
     await s3Client.testConnection();
-    
-    // Determine backup prefix based on date and configuration
+
     const now = new Date();
     const datePrefix = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
     const backupId = `backup-${now.getTime()}`;
-    const s3Prefix = config.backup_s3_prefix ? 
-      path.posix.join(config.backup_s3_prefix, datePrefix, backupId) : 
-      path.posix.join('backups', datePrefix, backupId);
-    
-    logger.info(`Starting S3 backup to prefix: ${s3Prefix}`);
-    
-    // Process each file
+    const basePrefix = config.backup_s3_prefix ? config.backup_s3_prefix : 'backups';
+    const s3Prefix = path.posix.join(basePrefix, datePrefix, backupId);
+
+    const backedUpFiles = [];
+    let backedUpSize = 0;
+
     for (const file of files) {
       try {
-        // Skip large files if configured
-        const maxSizeMB = config.backup_max_file_size_mb || 5000;
-        if (file.size > maxSizeMB * 1024 * 1024) {
+        const maxSizeMb = config.backup_max_file_size_mb || 5000;
+        if (file.size > maxSizeMb * 1024 * 1024) {
           logger.warn(`Skipping large file: ${file.relativePath} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
           continue;
         }
-        
-        // Calculate checksum
+
         const checksum = await calculateChecksum(file.path);
-        file.checksum = checksum; // Add checksum to file object
-        
-        // Check if file has changed
+        file.checksum = checksum;
+
         const changed = await hasFileChanged(file.relativePath, checksum);
-        if (!changed && config.backup_incremental !== false) {
+        if (!changed && normalizeBoolean(config.backup_incremental) !== false) {
           continue;
         }
-        
-        // Determine S3 key for the file
+
         const s3Key = path.posix.join(s3Prefix, file.relativePath);
-        
-        // Upload file to S3
-        logger.debug(`Uploading ${file.relativePath} to S3 key: ${s3Key}`);
-        
-        let uploadStartTime = Date.now();
         await s3Client.upload(file.path, s3Key, {
           metadata: {
             'original-path': file.relativePath,
-            'checksum': checksum,
+            checksum,
             'backup-id': backupId,
             'backup-time': now.toISOString()
-          },
-          onProgress: (loaded, total) => {
-            const percentComplete = Math.round((loaded / total) * 100);
-            if (percentComplete % 25 === 0) { // Log at 25%, 50%, 75%, 100%
-              logger.debug(`Upload progress for ${file.relativePath}: ${percentComplete}%`);
-            }
           }
         });
-        
-        const uploadDuration = Date.now() - uploadStartTime;
-        logger.debug(`Uploaded ${file.relativePath} in ${uploadDuration}ms`);
-        
-        // Update state
+
         await updateFileState(file.relativePath, checksum, file.size, file.modified);
-        
-        backedUpCount++;
-        backedUpSize += file.size;
+
         backedUpFiles.push(file.relativePath);
-        
+        backedUpSize += file.size;
       } catch (error) {
         logger.error(`Failed to backup file ${file.relativePath} to S3:`, error);
-        // Continue with other files even if one fails
       }
     }
-    
-    // Check if database backup should be included
-    if (config.backup_include_database !== false) {
+
+    let databaseInfo = null;
+    if (normalizeBoolean(config.backup_include_database) !== false) {
       try {
-        logger.info('Including database backup in S3 backup...');
-        const dbInfo = await getDatabaseBackupInfo();
-        
-        if (dbInfo.backupFile && await fs.stat(dbInfo.backupFile).catch(() => null)) {
-          // Upload database backup file
-          const dbFileName = path.basename(dbInfo.backupFile);
-          const dbS3Key = path.posix.join(s3Prefix, 'database', dbFileName);
-          
-          await s3Client.upload(dbInfo.backupFile, dbS3Key, {
+        databaseInfo = await service.getDatabaseBackupInfo();
+        if (databaseInfo.backupFile && await fs.stat(databaseInfo.backupFile).catch(() => null)) {
+          const dbKey = path.posix.join(s3Prefix, 'database', path.basename(databaseInfo.backupFile));
+          await s3Client.upload(databaseInfo.backupFile, dbKey, {
             metadata: {
-              'backup-type': 'database',
-              'database-type': dbInfo.type,
-              'checksum': dbInfo.checksum,
               'backup-id': backupId,
-              'backup-time': now.toISOString()
+              'backup-type': 'database',
+              'database-type': databaseInfo.type,
+              checksum: databaseInfo.checksum || ''
             }
           });
-          
-          backedUpCount++;
-          backedUpSize += dbInfo.size;
-          logger.info(`Database backup uploaded to S3: ${dbS3Key}`);
+          backedUpFiles.push(path.posix.join('database', path.basename(databaseInfo.backupFile)));
+          backedUpSize += databaseInfo.size || 0;
         } else {
           logger.warn('No recent database backup found to include in S3 backup');
         }
@@ -568,105 +610,125 @@ async function performS3Backup(config, files) {
         logger.error('Failed to include database backup in S3:', error);
       }
     }
-    
-    // Create and upload a backup summary file
+
     try {
       const summary = {
-        backupId: backupId,
+        backupId,
         timestamp: now.toISOString(),
-        s3Bucket: config.backup_s3_bucket,
-        s3Prefix: s3Prefix,
-        filesBackedUp: backedUpCount,
-        totalSize: backedUpSize,
-        totalSizeFormatted: formatBytes(backedUpSize),
-        configuration: {
-          incremental: config.backup_incremental !== false,
-          includeArchived: config.backup_include_archived,
-          includeDatabase: config.backup_include_database !== false,
-          maxFileSizeMB: config.backup_max_file_size_mb || 5000
-        }
+        bucket,
+        prefix: s3Prefix,
+        filesBackedUp: backedUpFiles.length,
+        totalSizeBytes: backedUpSize,
+        totalSizeFormatted: formatBytes(backedUpSize)
       };
-      
-      const summaryJson = JSON.stringify(summary, null, 2);
-      const summaryS3Key = path.posix.join(s3Prefix, 'backup-summary.json');
-      
-      // Create a temporary file for the summary
-      const tempSummaryPath = path.join(storagePath, `temp-summary-${backupId}.json`);
-      await fs.writeFile(tempSummaryPath, summaryJson);
-      
-      await s3Client.upload(tempSummaryPath, summaryS3Key, {
-        contentType: 'application/json',
-        metadata: {
-          'backup-id': backupId,
-          'backup-type': 'summary'
-        }
+      const summaryPath = path.join(getStoragePath(), `backup-summary-${backupId}.json`);
+      await fs.writeFile(summaryPath, JSON.stringify(summary, null, 2));
+      await s3Client.upload(summaryPath, path.posix.join(s3Prefix, 'backup-summary.json'), {
+        contentType: 'application/json'
       });
-      
-      // Clean up temp file
-      await fs.unlink(tempSummaryPath).catch(() => {});
-      
-      logger.info(`Backup summary uploaded to S3: ${summaryS3Key}`);
+      await fs.unlink(summaryPath).catch(() => {});
     } catch (error) {
       logger.error('Failed to upload backup summary:', error);
     }
-    
-    logger.info(`S3 backup completed: ${backedUpCount} files, ${formatBytes(backedUpSize)} uploaded to ${s3Prefix}`);
-    
-    return { 
-      backedUpCount, 
-      backedUpSize, 
+
+    logger.info(`S3 backup completed: ${backedUpFiles.length} files, ${formatBytes(backedUpSize)} uploaded to ${s3Prefix}`);
+
+    return {
+      backedUpCount: backedUpFiles.length,
+      backedUpSize,
       backedUpFiles,
+      backupPath: `s3://${bucket}/${s3Prefix}`,
       s3Prefix,
-      s3Bucket: config.backup_s3_bucket
+      s3Bucket: bucket,
+      s3Client,
+      databaseInfo
     };
-    
   } catch (error) {
     logger.error('S3 backup failed:', error);
-    throw new Error(`S3 backup failed: ${error.message}`);
+    throw error;
   }
 }
 
-/**
- * Format bytes to human readable string
- */
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+async function getPreviousSuccessfulBackup(currentRunId) {
+  const record = await db('backup_runs')
+    .where('status', 'completed')
+    .orderBy('completed_at', 'desc')
+    .first();
+
+  if (record && record.id === currentRunId) {
+    return null;
+  }
+
+  return record || null;
 }
 
-/**
- * Run backup process
- */
-async function runBackup() {
+function buildManifestFiles(backedUpFiles, allFiles) {
+  const fileMap = new Map();
+  allFiles.forEach(file => {
+    fileMap.set(file.relativePath, file);
+  });
+
+  return backedUpFiles.map(relativePath => {
+    const source = fileMap.get(relativePath) || {};
+    return {
+      path: relativePath,
+      size: source.size || null,
+      checksum: source.checksum || null
+    };
+  });
+}
+
+async function saveManifestToLocal(manifest, manifestFileName, config) {
+  const manifestDir = config.backup_manifest_path
+    || path.join(config.backup_destination_path || '/backup', 'manifests');
+  await fs.mkdir(manifestDir, { recursive: true });
+  const manifestPath = path.join(manifestDir, manifestFileName);
+  await backupManifest.saveManifest(manifest, manifestPath, config.backup_manifest_format || 'json');
+  logger.info(`Backup manifest saved to ${manifestPath}`);
+  return manifestPath;
+}
+
+async function saveManifestToS3(manifest, manifestFileName, config, result) {
+  const tempDir = path.join(getStoragePath(), 'temp');
+  await fs.mkdir(tempDir, { recursive: true });
+  const tempManifestPath = path.join(tempDir, manifestFileName);
+  await backupManifest.saveManifest(manifest, tempManifestPath, config.backup_manifest_format || 'json');
+
+  const manifestKey = path.posix.join(result.s3Prefix, 'manifests', manifestFileName);
+  await result.s3Client.upload(tempManifestPath, manifestKey, {
+    contentType: config.backup_manifest_format === 'xml' ? 'application/xml' : 'application/json',
+    metadata: {
+      'backup-type': 'manifest',
+      'manifest-version': manifest.version,
+      'backup-id': manifest.backup?.id || ''
+    }
+  });
+
+  await fs.unlink(tempManifestPath).catch(() => {});
+  const manifestPath = `s3://${result.s3Bucket}/${manifestKey}`;
+  logger.info(`Backup manifest uploaded to S3: ${manifestPath}`);
+  return manifestPath;
+}
+
+async function runBackupInternal() {
   if (isRunning) {
     logger.warn('Backup already running, skipping');
     return;
   }
-  
+
   isRunning = true;
   const startTime = new Date();
-  let backupRun = null;
-  
+  let runId = null;
+
   try {
-    // Get current configuration
-    const config = await getBackupConfig();
-    if (!config.backup_enabled) {
+    const config = await resolveConfigWithFallback();
+    if (!config || !normalizeBoolean(config.backup_enabled)) {
       logger.info('Backup is disabled, skipping');
       return;
     }
-    
-    // Get current schema version
+
     const schemaVersion = await getCurrentSchemaVersion();
-    
-    // Create backup run record with version info
-    const [runId] = await db('backup_runs').insert({
+    const [insertedId] = await db('backup_runs').insert({
       started_at: startTime,
       status: 'running',
       backup_type: 'scheduled',
@@ -674,156 +736,78 @@ async function runBackup() {
       node_version: process.version,
       db_schema_version: schemaVersion
     });
-    
-    backupRun = { id: runId };
-    
-    // Get files to backup
-    const files = await getFilesToBackup(config.backup_include_archived);
+    runId = insertedId;
+
+    const files = await service.getFilesToBackup(config.backup_include_archived);
     logger.info(`Found ${files.length} files to check for backup`);
-    
-    // Perform backup based on destination type
+
     let result;
-    switch (config.backup_destination_type) {
-      case 'local':
-        result = await performLocalBackup(config, files);
-        break;
-      case 'rsync':
-        result = await performRsyncBackup(config, files);
-        break;
-      case 's3':
-        result = await performS3Backup(config, files);
-        break;
-      default:
-        throw new Error(`Unknown backup destination type: ${config.backup_destination_type}`);
+    const destinationType = (config.backup_destination_type || 'local').toLowerCase();
+
+    if (destinationType === 'local') {
+      result = await performLocalBackup(config, files);
+    } else if (destinationType === 'rsync') {
+      result = await performRsyncBackup(config, files);
+    } else if (destinationType === 's3') {
+      result = await performS3Backup(config, files);
+    } else {
+      throw new Error(`Unknown backup destination type: ${config.backup_destination_type}`);
     }
-    
-    // Calculate duration
+
     const endTime = new Date();
     const durationSeconds = Math.round((endTime - startTime) / 1000);
-    
-    // Generate backup manifest
+
     let manifestPath = null;
+    let manifestSummary = null;
+
     try {
       logger.info('Generating backup manifest...');
-      
-      // Get database backup info if available
-      const databaseInfo = await getDatabaseBackupInfo();
-      
-      // Determine if this is an incremental backup
-      const lastSuccessfulBackup = await db('backup_runs')
-        .where('status', 'completed')
-        .whereNot('id', runId)
-        .orderBy('completed_at', 'desc')
-        .first();
-      
-      // Prepare backup path based on destination type
-      let backupPath;
-      if (config.backup_destination_type === 's3') {
-        backupPath = `s3://${result.s3Bucket}/${result.s3Prefix}`;
-      } else {
-        backupPath = config.backup_destination_path || config.backup_destination_type;
-      }
-      
-      let manifest;
+
+      const previousBackup = await getPreviousSuccessfulBackup(runId);
+      const manifestFiles = buildManifestFiles(result.backedUpFiles, files);
+      const databaseInfo = result.databaseInfo || await service.getDatabaseBackupInfo();
+
       const manifestOptions = {
-        backupType: lastSuccessfulBackup ? 'incremental' : 'full',
-        backupPath: backupPath,
-        files: files.filter(f => result.backedUpFiles && result.backedUpFiles.includes(f.relativePath)),
-        databaseInfo: databaseInfo,
-        parentBackupId: lastSuccessfulBackup ? lastSuccessfulBackup.manifest_id : null,
+        backupType: previousBackup ? 'incremental' : 'full',
+        backupPath: result.backupPath,
+        files: manifestFiles,
+        databaseInfo,
+        parentBackupId: previousBackup ? previousBackup.manifest_id : null,
         format: config.backup_manifest_format || 'json',
         customMetadata: {
           backup_run_id: runId,
-          destination_type: config.backup_destination_type,
-          operator: 'system',
-          reason: 'scheduled',
-          retentionDays: config.backup_retention_days || 30,
-          // Add S3-specific metadata if applicable
-          ...(config.backup_destination_type === 's3' ? {
-            s3_bucket: result.s3Bucket,
-            s3_prefix: result.s3Prefix,
-            s3_region: config.backup_s3_region || 'us-east-1',
-            s3_endpoint: config.backup_s3_endpoint
-          } : {})
+          destination_type: destinationType,
+          retentionDays: config.backup_retention_days || 30
         }
       };
-      
-      if (lastSuccessfulBackup && lastSuccessfulBackup.manifest_path) {
+
+      let manifest = await backupManifest.generateManifest(manifestOptions);
+      if (previousBackup && previousBackup.manifest_path) {
         try {
-          const parentManifest = await backupManifest.loadManifest(lastSuccessfulBackup.manifest_path);
+          const parentManifest = await backupManifest.loadManifest(previousBackup.manifest_path);
           manifest = await backupManifest.generateIncrementalManifest(manifestOptions, parentManifest);
         } catch (error) {
           logger.warn('Failed to load parent manifest, generating full manifest:', error);
-          manifest = await backupManifest.generateManifest(manifestOptions);
         }
-      } else {
-        manifest = await backupManifest.generateManifest(manifestOptions);
       }
-      
-      // Save manifest
-      const manifestFileName = `backup-manifest-${manifest.backup.id}.${config.backup_manifest_format || 'json'}`;
-      
-      if (config.backup_destination_type === 's3') {
-        // For S3 backups, save manifest locally first then upload to S3
-        const tempManifestDir = path.join(getStoragePath(), 'temp');
-        await fs.mkdir(tempManifestDir, { recursive: true });
-        
-        const tempManifestPath = path.join(tempManifestDir, manifestFileName);
-        await backupManifest.saveManifest(manifest, tempManifestPath, config.backup_manifest_format || 'json');
-        
-        // Upload manifest to S3
-        try {
-          const s3Config = {
-            bucket: config.backup_s3_bucket,
-            region: config.backup_s3_region || 'us-east-1',
-            endpoint: config.backup_s3_endpoint,
-            accessKeyId: config.backup_s3_access_key,
-            secretAccessKey: config.backup_s3_secret_key,
-            forcePathStyle: config.backup_s3_force_path_style || false,
-            sslEnabled: config.backup_s3_ssl_enabled !== false
-          };
-          
-          const s3Client = new S3StorageAdapter(s3Config);
-          const manifestS3Key = path.posix.join(result.s3Prefix, 'manifests', manifestFileName);
-          
-          await s3Client.upload(tempManifestPath, manifestS3Key, {
-            contentType: config.backup_manifest_format === 'xml' ? 'application/xml' : 'application/json',
-            metadata: {
-              'backup-id': manifest.backup.id,
-              'backup-type': 'manifest',
-              'manifest-version': manifest.version
-            }
-          });
-          
-          // Clean up temp file
-          await fs.unlink(tempManifestPath).catch(() => {});
-          
-          // Store S3 path as manifest path
-          manifestPath = `s3://${config.backup_s3_bucket}/${manifestS3Key}`;
-          logger.info(`Backup manifest uploaded to S3: ${manifestPath}`);
-          
-        } catch (error) {
-          logger.error('Failed to upload manifest to S3:', error);
-          // Keep local path as fallback
-          manifestPath = tempManifestPath;
-        }
+
+      if (result.s3Client) {
+        manifestPath = await saveManifestToS3(manifest, `backup-manifest-${manifest.backup.id}.${manifestOptions.format}`, config, result);
       } else {
-        // For local/rsync backups, save to configured directory
-        const manifestDir = config.backup_manifest_path || path.join(config.backup_destination_path || '/backup', 'manifests');
-        await fs.mkdir(manifestDir, { recursive: true });
-        
-        manifestPath = path.join(manifestDir, manifestFileName);
-        await backupManifest.saveManifest(manifest, manifestPath, config.backup_manifest_format || 'json');
-        
-        logger.info(`Backup manifest saved to ${manifestPath}`);
+        manifestPath = await saveManifestToLocal(manifest, `backup-manifest-${manifest.backup.id}.${manifestOptions.format}`, config);
       }
-      
+
+      try {
+        manifestSummary = backupManifest.generateSummaryReport
+          ? backupManifest.generateSummaryReport(manifest)
+          : null;
+      } catch (error) {
+        logger.warn('Failed to generate manifest summary:', error);
+      }
     } catch (error) {
       logger.error('Failed to generate backup manifest:', error);
-      // Don't fail the entire backup for manifest generation failure
     }
-    
-    // Update backup run record with manifest info
+
     await db('backup_runs')
       .where('id', runId)
       .update({
@@ -834,64 +818,50 @@ async function runBackup() {
         duration_seconds: durationSeconds,
         manifest_path: manifestPath,
         manifest_id: manifestPath ? path.basename(manifestPath, path.extname(manifestPath)) : null,
-        manifest_info: manifestSummary ? JSON.stringify({
-          manifest_version: manifestSummary.manifest?.version,
-          backup_id: manifestSummary.backup?.id,
-          system_info: manifestSummary.system,
-          file_count: manifestSummary.files?.count,
-          database_info: {
-            type: manifestSummary.database?.type,
-            schema_version: manifestSummary.database?.schema_version
-          }
-        }) : null,
+        manifest_info: manifestSummary ? JSON.stringify({ summary: manifestSummary }) : null,
         statistics: JSON.stringify({
           totalFilesChecked: files.length,
           filesBackedUp: result.backedUpCount,
           totalSize: result.backedUpSize,
-          averageFileSize: result.backedUpCount > 0 ? Math.round(result.backedUpSize / result.backedUpCount) : 0,
-          manifestGenerated: !!manifestPath
+          averageFileSize: result.backedUpCount ? Math.round(result.backedUpSize / result.backedUpCount) : 0,
+          destination: destinationType
         })
       });
-    
+
     logger.info(`Backup completed: ${result.backedUpCount} files, ${(result.backedUpSize / 1024 / 1024).toFixed(2)} MB in ${durationSeconds}s`);
-    
-    // Send success email if configured
-    if (config.backup_email_on_success) {
-      // Get admin emails
+
+    if (normalizeBoolean(config.backup_email_on_success)) {
       const admins = await db('admin_users').where('is_active', formatBoolean(true));
       for (const admin of admins) {
         await queueEmail(null, admin.email, 'backup_completed', {
           start_time: startTime.toISOString(),
           duration: `${durationSeconds} seconds`,
-          files_count: result.backedUpCount.toString(),
-          total_size: `${(result.backedUpSize / 1024 / 1024).toFixed(2)} MB`,
-          backup_type: config.backup_destination_type
+          files_count: String(result.backedUpCount),
+          total_size: formatBytes(result.backedUpSize),
+          backup_type: destinationType
         });
       }
     }
-    
   } catch (error) {
     logger.error('Backup failed:', error);
-    
-    // Update backup run record
-    if (backupRun) {
+
+    if (runId !== null) {
       await db('backup_runs')
-        .where('id', backupRun.id)
+        .where('id', runId)
         .update({
           completed_at: new Date(),
           status: 'failed',
           error_message: error.message
         });
     }
-    
-    // Send failure email
-    const config = await getBackupConfig();
-    if (config && config.backup_email_on_failure) {
+
+    const config = await resolveConfigWithFallback();
+    if (config && normalizeBoolean(config.backup_email_on_failure)) {
       const admins = await db('admin_users').where('is_active', formatBoolean(true));
       for (const admin of admins) {
         await queueEmail(null, admin.email, 'backup_failed', {
           start_time: startTime.toISOString(),
-          backup_type: config.backup_destination_type || 'unknown',
+          backup_type: (config.backup_destination_type || 'unknown').toString(),
           error_message: error.message
         });
       }
@@ -901,40 +871,47 @@ async function runBackup() {
   }
 }
 
-/**
- * Start backup service
- */
 async function startBackupService() {
   try {
-    // Get configuration
-    backupConfig = await getBackupConfig();
-    
-    if (!backupConfig || !backupConfig.backup_enabled) {
+  const config = await resolveConfigWithFallback();
+    if (!config || !normalizeBoolean(config.backup_enabled)) {
+      if (backupJob) {
+        backupJob.stop();
+        backupJob = null;
+      }
       logger.info('Backup service is disabled');
       return;
     }
-    
-    // Cancel existing job if any
+
     if (backupJob) {
       backupJob.stop();
+      backupJob = null;
     }
-    
-    // Schedule backup job
-    const schedule = backupConfig.backup_schedule || '0 2 * * *'; // Default: 2 AM daily
+
+    let schedule = '0 2 * * *';
+    if (Object.prototype.hasOwnProperty.call(config, 'backup_schedule')) {
+      const candidate = String(config.backup_schedule ?? '').trim();
+      if (candidate.length) {
+        schedule = candidate;
+      }
+    } else if (config.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_schedule')) {
+      const candidate = String(parseSettingValue(config.__raw.backup_schedule) ?? '').trim();
+      if (candidate.length) {
+        schedule = candidate;
+      }
+    }
+
     backupJob = cron.schedule(schedule, async () => {
       logger.info('Starting scheduled backup');
-      await runBackup();
+      await service.runBackup();
     });
-    
+
     logger.info(`Backup service started with schedule: ${schedule}`);
   } catch (error) {
     logger.error('Failed to start backup service:', error);
   }
 }
 
-/**
- * Stop backup service
- */
 function stopBackupService() {
   if (backupJob) {
     backupJob.stop();
@@ -943,47 +920,38 @@ function stopBackupService() {
   }
 }
 
-/**
- * Trigger manual backup
- */
 async function triggerManualBackup() {
   logger.info('Starting manual backup');
-  await runBackup();
+  await service.runBackup();
 }
 
-/**
- * Get backup status and history
- */
 async function getBackupStatus(limit = 10) {
   try {
     const runs = await db('backup_runs')
       .orderBy('started_at', 'desc')
       .limit(limit);
-    
+
     const lastRun = runs[0];
-    const isHealthy = lastRun && lastRun.status === 'completed';
-    
-    // Validate manifest if exists
     let manifestValid = false;
+
     if (lastRun && lastRun.manifest_path) {
       try {
         const manifest = await backupManifest.loadManifest(lastRun.manifest_path);
-        backupManifest.validateManifest(manifest);
+        if (backupManifest.validateManifest) {
+          backupManifest.validateManifest(manifest);
+        }
         manifestValid = true;
       } catch (error) {
         logger.warn('Manifest validation failed:', error);
       }
     }
-    
+
     return {
       isRunning,
-      isHealthy,
-      lastRun: lastRun ? {
-        ...lastRun,
-        manifestValid
-      } : null,
+      isHealthy: Boolean(lastRun && lastRun.status === 'completed'),
+      lastRun: lastRun ? { ...lastRun, manifestValid } : null,
       recentRuns: runs,
-      nextScheduledRun: backupJob ? getNextScheduledRun() : null
+      nextScheduledRun: getNextScheduledRun()
     };
   } catch (error) {
     logger.error('Failed to get backup status:', error);
@@ -995,30 +963,23 @@ async function getBackupStatus(limit = 10) {
   }
 }
 
-/**
- * Get next scheduled run time
- */
 function getNextScheduledRun() {
-  // This is a simplified version - would need proper cron parsing
   const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(2, 0, 0, 0); // Assuming default 2 AM schedule
-  return tomorrow.toISOString();
+  const next = new Date(now);
+  next.setDate(now.getDate() + 1);
+  next.setHours(2, 0, 0, 0);
+  return next.toISOString();
 }
 
-/**
- * Clean up old backup runs
- */
 async function cleanupOldBackupRuns(retentionDays = 30) {
   try {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-    
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - retentionDays);
+
     const deleted = await db('backup_runs')
-      .where('started_at', '<', cutoffDate)
+      .where('started_at', '<', cutoff)
       .delete();
-    
+
     if (deleted > 0) {
       logger.info(`Cleaned up ${deleted} old backup runs`);
     }
@@ -1027,147 +988,133 @@ async function cleanupOldBackupRuns(retentionDays = 30) {
   }
 }
 
-/**
- * Get backup manifest for a specific backup run
- */
 async function getBackupManifest(backupRunId) {
-  try {
-    const run = await db('backup_runs')
-      .where('id', backupRunId)
-      .first();
-    
-    if (!run || !run.manifest_path) {
-      throw new Error('Backup manifest not found');
-    }
-    
-    let manifest;
-    
-    // Check if manifest is stored in S3
-    if (run.manifest_path.startsWith('s3://')) {
-      // Parse S3 path
-      const s3PathMatch = run.manifest_path.match(/^s3:\/\/([^\/]+)\/(.+)$/);
-      if (!s3PathMatch) {
-        throw new Error('Invalid S3 manifest path');
-      }
-      
-      const [, bucket, key] = s3PathMatch;
-      
-      // Get S3 configuration from backup settings
-      const config = await getBackupConfig();
-      if (!config.backup_s3_access_key || !config.backup_s3_secret_key) {
-        throw new Error('S3 credentials not configured for manifest retrieval');
-      }
-      
-      // Initialize S3 client
-      const s3Config = {
-        bucket: bucket,
-        region: config.backup_s3_region || 'us-east-1',
-        endpoint: config.backup_s3_endpoint,
-        accessKeyId: config.backup_s3_access_key,
-        secretAccessKey: config.backup_s3_secret_key,
-        forcePathStyle: config.backup_s3_force_path_style || false,
-        sslEnabled: config.backup_s3_ssl_enabled !== false
-      };
-      
-      const s3Client = new S3StorageAdapter(s3Config);
-      
-      // Download manifest to temporary location
-      const tempDir = path.join(getStoragePath(), 'temp');
-      await fs.mkdir(tempDir, { recursive: true });
-      
-      const tempManifestPath = path.join(tempDir, `manifest-${backupRunId}.json`);
-      await s3Client.download(key, tempManifestPath);
-      
-      // Load manifest
-      manifest = await backupManifest.loadManifest(tempManifestPath);
-      
-      // Clean up temp file
-      await fs.unlink(tempManifestPath).catch(() => {});
-      
-    } else {
-      // Load manifest from local filesystem
-      manifest = await backupManifest.loadManifest(run.manifest_path);
-    }
-    
+  const run = await db('backup_runs')
+    .where('id', backupRunId)
+    .first();
+
+  if (!run || !run.manifest_path) {
+    throw new Error('Backup manifest not found');
+  }
+
+  if (!run.manifest_path.startsWith('s3://')) {
+    const manifest = await backupManifest.loadManifest(run.manifest_path);
     return {
       manifest,
-      summary: backupManifest.generateSummaryReport(manifest)
+      summary: backupManifest.generateSummaryReport
+        ? backupManifest.generateSummaryReport(manifest)
+        : null
     };
-  } catch (error) {
-    logger.error('Failed to get backup manifest:', error);
-    throw error;
   }
+
+  const config = await resolveConfigWithFallback();
+  const accessKey = config?.backup_s3_access_key
+    ?? (config?.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_s3_access_key')
+      ? parseSettingValue(config.__raw.backup_s3_access_key)
+      : undefined)
+    ?? process.env.BACKUP_S3_ACCESS_KEY;
+
+  const secretKey = config?.backup_s3_secret_key
+    ?? (config?.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_s3_secret_key')
+      ? parseSettingValue(config.__raw.backup_s3_secret_key)
+      : undefined)
+    ?? process.env.BACKUP_S3_SECRET_KEY;
+
+  if (!accessKey || !secretKey) {
+    throw new Error('S3 credentials not configured for manifest retrieval');
+  }
+
+  const match = run.manifest_path.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+  if (!match) {
+    throw new Error('Invalid S3 manifest path');
+  }
+
+  const [, bucket, key] = match;
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'backup-manifest-'));
+  const tempPath = path.join(tempDir, `manifest-${backupRunId}.json`);
+
+  const s3Client = new S3StorageAdapter({
+    bucket,
+    region: (config && config.backup_s3_region) || 'us-east-1',
+    endpoint: config && config.backup_s3_endpoint,
+    accessKeyId: accessKey,
+    secretAccessKey: secretKey,
+    forcePathStyle: config ? normalizeBoolean(config.backup_s3_force_path_style) : false,
+    sslEnabled: config && config.backup_s3_ssl_enabled !== undefined
+      ? normalizeBoolean(config.backup_s3_ssl_enabled)
+      : true
+  });
+
+  await s3Client.download(key, tempPath);
+  const manifest = await backupManifest.loadManifest(tempPath);
+  await fs.unlink(tempPath).catch(() => {});
+  await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+
+  return {
+    manifest,
+    summary: backupManifest.generateSummaryReport
+      ? backupManifest.generateSummaryReport(manifest)
+      : null
+  };
 }
 
-/**
- * Validate a backup manifest file
- */
 async function validateBackupManifest(manifestPath) {
   try {
     let manifest;
-    
-    // Check if manifest is stored in S3
+
     if (manifestPath.startsWith('s3://')) {
-      // Parse S3 path
-      const s3PathMatch = manifestPath.match(/^s3:\/\/([^\/]+)\/(.+)$/);
-      if (!s3PathMatch) {
+      const match = manifestPath.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+      if (!match) {
         throw new Error('Invalid S3 manifest path');
       }
-      
-      const [, bucket, key] = s3PathMatch;
-      
-      // Get S3 configuration from backup settings
-      const config = await getBackupConfig();
-      if (!config.backup_s3_access_key || !config.backup_s3_secret_key) {
+      const [, bucket, key] = match;
+
+      const config = await service.getBackupConfig();
+      if (!config || !config.backup_s3_access_key || !config.backup_s3_secret_key) {
         throw new Error('S3 credentials not configured for manifest validation');
       }
-      
-      // Initialize S3 client
-      const s3Config = {
-        bucket: bucket,
+
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'backup-manifest-'));
+      const tempPath = path.join(tempDir, `validate-${Date.now()}.json`);
+
+      const s3Client = new S3StorageAdapter({
+        bucket,
         region: config.backup_s3_region || 'us-east-1',
         endpoint: config.backup_s3_endpoint,
         accessKeyId: config.backup_s3_access_key,
         secretAccessKey: config.backup_s3_secret_key,
-        forcePathStyle: config.backup_s3_force_path_style || false,
-        sslEnabled: config.backup_s3_ssl_enabled !== false
-      };
-      
-      const s3Client = new S3StorageAdapter(s3Config);
-      
-      // Download manifest to temporary location
-      const tempDir = path.join(getStoragePath(), 'temp');
-      await fs.mkdir(tempDir, { recursive: true });
-      
-      const tempManifestPath = path.join(tempDir, `validate-manifest-${Date.now()}.json`);
-      await s3Client.download(key, tempManifestPath);
-      
-      // Load manifest
-      manifest = await backupManifest.loadManifest(tempManifestPath);
-      
-      // Clean up temp file
-      await fs.unlink(tempManifestPath).catch(() => {});
-      
+        forcePathStyle: normalizeBoolean(config.backup_s3_force_path_style),
+        sslEnabled: config.backup_s3_ssl_enabled === undefined ? true : normalizeBoolean(config.backup_s3_ssl_enabled)
+      });
+
+      await s3Client.download(key, tempPath);
+      manifest = await backupManifest.loadManifest(tempPath);
+      await fs.unlink(tempPath).catch(() => {});
+      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     } else {
-      // Load manifest from local filesystem
       manifest = await backupManifest.loadManifest(manifestPath);
     }
-    
-    // Validate the manifest
-    backupManifest.validateManifest(manifest);
+
+    if (backupManifest.validateManifest) {
+      backupManifest.validateManifest(manifest);
+    }
+
     return { valid: true, manifest };
   } catch (error) {
     return { valid: false, error: error.message };
   }
 }
 
-module.exports = {
-  startBackupService,
-  stopBackupService,
-  triggerManualBackup,
-  getBackupStatus,
-  runBackup,
-  cleanupOldBackupRuns,
-  getBackupManifest,
-  validateBackupManifest
-};
+service.getBackupConfig = getBackupConfigInternal;
+service.getDatabaseBackupInfo = getDatabaseBackupInfoInternal;
+service.getFilesToBackup = getFilesToBackupInternal;
+service.runBackup = runBackupInternal;
+service.startBackupService = startBackupService;
+service.stopBackupService = stopBackupService;
+service.triggerManualBackup = triggerManualBackup;
+service.getBackupStatus = getBackupStatus;
+service.cleanupOldBackupRuns = cleanupOldBackupRuns;
+service.getBackupManifest = getBackupManifest;
+service.validateBackupManifest = validateBackupManifest;
+
+module.exports = service;

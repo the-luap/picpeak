@@ -26,7 +26,7 @@ export interface PhotoFilters {
   category_id?: number | null;
   type?: string;
   search?: string;
-  sort?: 'date' | 'name' | 'size';
+  sort?: 'date' | 'name' | 'size' | 'rating';
   order?: 'asc' | 'desc';
 }
 

@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { 
-  MessageSquare, 
-  Eye, 
-  EyeOff, 
-  Trash2, 
-  AlertCircle,
+import {
+  MessageSquare,
+  EyeOff,
+  Trash2,
   CheckCircle,
-  Clock,
   User
 } from 'lucide-react';
 import { parseISO } from 'date-fns';
@@ -16,7 +13,7 @@ import { toast } from 'react-toastify';
 
 import { Card, Loading, Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
-import { feedbackService } from '../../services/feedback.service';
+import { feedbackService, type FeedbackResponse, type PhotoFeedback } from '../../services/feedback.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 interface FeedbackModerationPanelProps {
@@ -38,7 +35,7 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
   const [showAll, setShowAll] = useState(false);
 
   // Fetch pending feedback
-  const { data: feedbackData, isLoading } = useQuery({
+  const { data: feedbackData, isLoading } = useQuery<FeedbackResponse>({
     queryKey: ['event-feedback-moderation', eventId],
     queryFn: () => feedbackService.getEventFeedback(eventId.toString(), {
       type: 'comment',
@@ -77,12 +74,12 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
     );
   }
 
-  const pendingComments = feedbackData?.feedback || [];
+  const pendingComments: PhotoFeedback[] = feedbackData?.feedback || [];
   const hasPending = pendingComments.length > 0;
 
   return (
     <Card className={className}>
-      <div className="p-6">
+      <div className={compact ? 'p-4' : 'p-6'}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-neutral-900">
             {t('feedback.pendingModeration', 'Pending Moderation')}

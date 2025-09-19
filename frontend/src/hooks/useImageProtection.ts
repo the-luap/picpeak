@@ -1,5 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
 
+type VendorStyle = CSSStyleDeclaration & {
+  webkitUserSelect?: string;
+  webkitTouchCallout?: string;
+  webkitUserDrag?: string;
+  MozAppearance?: string;
+  webkitAppearance?: string;
+};
+
 export type ProtectionLevel = 'basic' | 'standard' | 'enhanced' | 'maximum';
 
 interface UseImageProtectionOptions {
@@ -16,9 +24,9 @@ interface UseImageProtectionOptions {
 }
 
 export const useImageProtection = (options: UseImageProtectionOptions) => {
-  const elementRef = useRef<HTMLImageElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const elementRef = useRef<HTMLImageElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const printScreenDetectorRef = useRef<HTMLCanvasElement | null>(null);
   const printScreenIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -195,25 +203,26 @@ export const useImageProtection = (options: UseImageProtectionOptions) => {
     }
 
     // CSS protection
-    element.style.userSelect = 'none';
-    element.style.webkitUserSelect = 'none';
-    element.style.webkitTouchCallout = 'none';
-    element.style.pointerEvents = 'auto';
-    element.style.webkitUserDrag = 'none';
-    element.style.webkitTouchCallout = 'none';
+    const elementStyle = element.style as VendorStyle;
+    elementStyle.userSelect = 'none';
+    elementStyle.webkitUserSelect = 'none';
+    elementStyle.webkitTouchCallout = 'none';
+    elementStyle.pointerEvents = 'auto';
+    elementStyle.webkitUserDrag = 'none';
     element.draggable = false;
 
     // Enhanced CSS protection
     if (protectionLevel !== 'basic') {
-      element.style.outline = 'none';
-      element.style.webkitAppearance = 'none';
-      element.style.MozAppearance = 'none';
+      elementStyle.outline = 'none';
+      elementStyle.webkitAppearance = 'none';
+      elementStyle.MozAppearance = 'none';
       
       // Disable text selection on parent elements
       let parent = element.parentElement;
       while (parent) {
-        parent.style.userSelect = 'none';
-        parent.style.webkitUserSelect = 'none';
+        const parentStyle = parent.style as VendorStyle;
+        parentStyle.userSelect = 'none';
+        parentStyle.webkitUserSelect = 'none';
         parent = parent.parentElement;
       }
     }

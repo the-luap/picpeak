@@ -34,6 +34,7 @@ Unlike expensive SaaS solutions, PicPeak gives you:
 - 📧 **Automated Emails** - Creation confirmations and expiration warnings
 - 📊 **Analytics Dashboard** - Track views, downloads, and engagement
 - 🎨 **Custom Themes** - Match your brand perfectly
+- 🌐 **Public Landing Page** - Publish a curated marketing page when guests visit your root URL
 
 ### For Clients
 - 🖼️ **Beautiful Galleries** - Clean, modern interface
@@ -88,6 +89,18 @@ Note on Docker file permissions (PUID/PGID)
 - 📜 [**License**](LICENSE) - MIT License
 - 🔒 [**Security**](SECURITY.md) - Security policies
 - 📋 [**Code of Conduct**](CODE_OF_CONDUCT.md) - Community guidelines
+
+## 🌐 Public Landing Page
+
+Spotlight your studio with a customizable marketing page at `/`:
+
+- Head to **Admin → CMS Pages** to enable the public landing page toggle.
+- Edit the provided HTML template (rich sections, hero, testimonials) and optional CSS overrides.
+- The preview renders in a sandboxed iframe so you can iterate safely before publishing.
+- PicPeak sanitizes stored HTML and CSS server-side—scripts, iframes, and unsafe attributes are stripped automatically.
+- Use **Reset to default** anytime to restore the bundled template.
+- The backend caches the rendered landing page for 60 seconds by default; override with `PUBLIC_SITE_CACHE_TTL_MS` if you need a different TTL.
+- When the landing page is disabled PicPeak continues to serve the admin SPA/login exactly as before.
 
 ## 🎯 Use Cases
 

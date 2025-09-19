@@ -8,6 +8,16 @@ const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
 const { clearMaintenanceCache } = require('../middleware/maintenance');
 const { clearSettingsCache } = require('../services/rateLimitService');
+const {
+  DEFAULT_PUBLIC_SITE_HTML,
+  DEFAULT_PUBLIC_SITE_CSS,
+} = require('../constants/publicSiteDefaults');
+const {
+  clearPublicSiteCache,
+  getDefaultPublicSitePayload,
+  getRawPublicSiteSettings,
+} = require('../services/publicSiteService');
+const { sanitizeCss } = require('../utils/cssSanitizer');
 const router = express.Router();
 
 // Configure multer for logo uploads
@@ -284,6 +294,8 @@ router.put('/branding', adminAuth, async (req, res) => {
       metadata: JSON.stringify({ company_name })
     });
 
+    clearPublicSiteCache();
+
     res.json({ message: 'Branding settings updated successfully' });
   } catch (error) {
     console.error('Branding update error:', error);
@@ -443,6 +455,8 @@ router.put('/theme', adminAuth, async (req, res) => {
       metadata: JSON.stringify({ theme_name: themeSettings.name || 'custom' })
     });
 
+    clearPublicSiteCache();
+
     res.json({ message: 'Theme settings updated successfully' });
   } catch (error) {
     console.error('Theme update error:', error);
@@ -453,7 +467,39 @@ router.put('/theme', adminAuth, async (req, res) => {
 // Update general settings
 router.put('/general', adminAuth, async (req, res) => {
   try {
-    const settings = req.body;
+    const settings = { ...req.body };
+
+    const publicSiteKeysTouched = Object.keys(settings).some((key) => key.startsWith('general_public_site_'));
+
+    if (publicSiteKeysTouched) {
+      if (Object.prototype.hasOwnProperty.call(settings, 'general_public_site_custom_css')) {
+        settings.general_public_site_custom_css = sanitizeCss(settings.general_public_site_custom_css || '');
+      }
+
+      if (Object.prototype.hasOwnProperty.call(settings, 'general_public_site_html') && typeof settings.general_public_site_html === 'string') {
+        settings.general_public_site_html = settings.general_public_site_html.trim();
+      }
+
+      if (Object.prototype.hasOwnProperty.call(settings, 'general_public_site_enabled')) {
+        settings.general_public_site_enabled = formatBoolean(settings.general_public_site_enabled);
+      }
+
+      const enableToggle = settings.general_public_site_enabled;
+      if (enableToggle === true) {
+        let htmlValue = settings.general_public_site_html;
+
+        if (htmlValue === undefined) {
+          const currentSettings = await getRawPublicSiteSettings();
+          htmlValue = currentSettings.general_public_site_html;
+        }
+
+        if (!htmlValue || !String(htmlValue).trim()) {
+          return res.status(400).json({
+            error: 'Public site HTML must be provided before enabling the public landing page.'
+          });
+        }
+      }
+    }
 
     // Update or insert each setting
     for (const [key, value] of Object.entries(settings)) {
@@ -474,6 +520,10 @@ router.put('/general', adminAuth, async (req, res) => {
     // Clear maintenance mode cache if it was updated
     if ('general_maintenance_mode' in settings) {
       clearMaintenanceCache();
+    }
+
+    if (publicSiteKeysTouched) {
+      clearPublicSiteCache();
     }
 
     // Log activity
@@ -603,11 +653,190 @@ router.get('/storage/info', adminAuth, async (req, res) => {
       }
     }
 
+    const DEFAULT_SOFT_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // 10GB fallback
+    const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+
+    let diskStats = null;
+    let rawDiskTotal = null;
+    let rawDiskFree = null;
+    let rawDiskAvailable = null;
+    try {
+      diskStats = await fs.statfs(storagePath);
+      rawDiskTotal = Number(diskStats.bsize) * Number(diskStats.blocks);
+      rawDiskFree = Number(diskStats.bsize) * Number(diskStats.bfree);
+      rawDiskAvailable = Number(diskStats.bsize) * Number(diskStats.bavail);
+    } catch (diskError) {
+      console.error('Disk stats error:', diskError.message);
+    }
+
+    const clampDiskValue = (value) => {
+      if (!Number.isFinite(value) || value <= 0) {
+        return null;
+      }
+
+      // Treat unusually large virtualised values as unreliable (>50TB)
+      const MAX_REASONABLE_BYTES = 50 * 1024 * 1024 * 1024 * 1024;
+      if (value > MAX_REASONABLE_BYTES) {
+        return null;
+      }
+
+      return value;
+    };
+
+    let diskTotal = null;
+    let diskFree = null;
+    let diskAvailable = null;
+
+    if (diskStats) {
+      diskTotal = clampDiskValue(rawDiskTotal);
+      diskFree = clampDiskValue(rawDiskFree);
+      diskAvailable = clampDiskValue(rawDiskAvailable);
+
+      if (diskTotal && diskAvailable && diskAvailable > diskTotal) {
+        diskAvailable = null;
+      }
+      if (diskTotal && diskFree && diskFree > diskTotal) {
+        diskFree = null;
+      }
+    }
+
+    const totalUsed = totalStorage?.total || 0;
+
+    const parseBytesValue = (value) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return null;
+      }
+      return Math.floor(numeric);
+    };
+
+    const parseEnvOverride = (bytesVar, gbVar) => {
+      if (process.env[bytesVar]) {
+        return parseBytesValue(process.env[bytesVar]);
+      }
+      if (process.env[gbVar]) {
+        const value = parseBytesValue(process.env[gbVar]);
+        return value ? value * 1024 * 1024 * 1024 : null;
+      }
+      return null;
+    };
+
+    let configuredSoftLimit = null;
+    let capacityOverrideDb = null;
+    let availableOverrideDb = null;
+
+    try {
+      const storageSettings = await db('app_settings')
+        .whereIn('setting_key', [
+          'general_storage_soft_limit_bytes',
+          'general_storage_capacity_override_bytes',
+          'general_storage_available_override_bytes'
+        ])
+        .select('setting_key', 'setting_value');
+
+      storageSettings.forEach((setting) => {
+        let parsedValue = null;
+        if (setting.setting_value) {
+          try {
+            parsedValue = JSON.parse(setting.setting_value);
+          } catch (error) {
+            parsedValue = setting.setting_value;
+          }
+        }
+
+        switch (setting.setting_key) {
+          case 'general_storage_soft_limit_bytes':
+            if (typeof parsedValue === 'number' && !Number.isNaN(parsedValue)) {
+              configuredSoftLimit = parsedValue;
+            }
+            break;
+          case 'general_storage_capacity_override_bytes':
+            if (typeof parsedValue === 'number' && !Number.isNaN(parsedValue)) {
+              capacityOverrideDb = parsedValue;
+            }
+            break;
+          case 'general_storage_available_override_bytes':
+            if (typeof parsedValue === 'number' && !Number.isNaN(parsedValue)) {
+              availableOverrideDb = parsedValue;
+            }
+            break;
+          default:
+            break;
+        }
+      });
+    } catch (error) {
+      console.error('Storage settings read error:', error.message);
+    }
+
+    const capacityOverrideEnv = parseEnvOverride('STORAGE_CAPACITY_OVERRIDE_BYTES', 'STORAGE_CAPACITY_OVERRIDE_GB');
+    const availableOverrideEnv = parseEnvOverride('STORAGE_AVAILABLE_OVERRIDE_BYTES', 'STORAGE_AVAILABLE_OVERRIDE_GB');
+
+    let capacityOverrideBytes = null;
+    let availableOverrideBytes = null;
+    let overrideSource = null;
+
+    if (capacityOverrideEnv != null || availableOverrideEnv != null) {
+      capacityOverrideBytes = capacityOverrideEnv;
+      availableOverrideBytes = availableOverrideEnv;
+      overrideSource = 'env';
+    } else if (capacityOverrideDb != null || availableOverrideDb != null) {
+      capacityOverrideBytes = capacityOverrideDb;
+      availableOverrideBytes = availableOverrideDb;
+      overrideSource = 'settings';
+    }
+
+    if (capacityOverrideBytes != null) {
+      diskTotal = capacityOverrideBytes;
+      if (availableOverrideBytes == null) {
+        diskAvailable = Math.max(capacityOverrideBytes - totalUsed, 0);
+      } else {
+        diskAvailable = Math.min(Math.max(availableOverrideBytes, 0), capacityOverrideBytes);
+      }
+      diskFree = diskAvailable;
+    } else if (availableOverrideBytes != null) {
+      diskAvailable = Math.max(availableOverrideBytes, 0);
+      diskFree = diskAvailable;
+    }
+
+    let recommendedSoftLimit = null;
+    if (diskTotal && diskAvailable) {
+      const projected = totalUsed + Math.floor(diskAvailable * 0.8);
+      recommendedSoftLimit = Math.min(diskTotal, Math.max(projected, Math.floor(diskTotal * 0.5)));
+    } else if (diskTotal) {
+      recommendedSoftLimit = Math.floor(diskTotal * 0.8);
+    } else if (diskAvailable) {
+      recommendedSoftLimit = Math.max(totalUsed, totalUsed + Math.floor(diskAvailable * 0.8));
+    }
+
+    if (recommendedSoftLimit && totalUsed > 0 && recommendedSoftLimit < totalUsed) {
+      recommendedSoftLimit = totalUsed;
+    }
+
+    const fallbackSoftLimit = recommendedSoftLimit || diskTotal || DEFAULT_SOFT_LIMIT_BYTES;
+    if (!recommendedSoftLimit && fallbackSoftLimit) {
+      recommendedSoftLimit = fallbackSoftLimit;
+    }
+    const effectiveSoftLimit = configuredSoftLimit || fallbackSoftLimit || DEFAULT_SOFT_LIMIT_BYTES;
+
+    const diskMetricsReliable = Boolean(diskTotal);
+
     res.json({
-      total_used: totalStorage.total || 0,
+      total_used: totalUsed,
       archive_storage: archiveStorage,
       storage_by_event: storageByEvent,
-      storage_limit: 10 * 1024 * 1024 * 1024 // 10GB default
+      storage_limit: effectiveSoftLimit,
+      storage_soft_limit: effectiveSoftLimit,
+      configured_soft_limit: configuredSoftLimit,
+      recommended_soft_limit: recommendedSoftLimit,
+      soft_limit_configured: Boolean(configuredSoftLimit),
+      disk_total: diskTotal,
+      disk_free: diskFree,
+      disk_available: diskAvailable,
+      disk_total_raw: rawDiskTotal,
+      disk_free_raw: rawDiskFree,
+      disk_available_raw: rawDiskAvailable,
+      disk_metrics_reliable: diskMetricsReliable,
+      disk_override_source: overrideSource
     });
   } catch (error) {
     console.error('Storage info error:', error);
@@ -714,6 +943,81 @@ router.put('/security/rate-limit', adminAuth, [
   } catch (error) {
     console.error('Rate limit settings update error:', error);
     res.status(500).json({ error: 'Failed to update rate limit settings' });
+  }
+});
+
+// Get default public site template
+router.get('/public-site/default', adminAuth, async (req, res) => {
+  try {
+    const defaults = await getDefaultPublicSitePayload();
+
+    res.json({
+      enabled: false,
+      html: DEFAULT_PUBLIC_SITE_HTML.trim(),
+      css: '',
+      baseCss: DEFAULT_PUBLIC_SITE_CSS.trim(),
+      branding: defaults.branding,
+      meta: {
+        title: defaults.title,
+      }
+    });
+  } catch (error) {
+    console.error('Failed to load public site defaults:', error);
+    res.status(500).json({ error: 'Failed to load defaults' });
+  }
+});
+
+// Reset public site template to defaults
+router.post('/public-site/reset', adminAuth, async (req, res) => {
+  try {
+    const entries = [
+      {
+        key: 'general_public_site_html',
+        value: DEFAULT_PUBLIC_SITE_HTML.trim()
+      },
+      {
+        key: 'general_public_site_custom_css',
+        value: ''
+      }
+    ];
+
+    for (const { key, value } of entries) {
+      await db('app_settings')
+        .insert({
+          setting_key: key,
+          setting_value: JSON.stringify(value),
+          setting_type: 'general',
+          updated_at: new Date()
+        })
+        .onConflict('setting_key')
+        .merge({
+          setting_value: JSON.stringify(value),
+          updated_at: new Date()
+        });
+    }
+
+    clearPublicSiteCache();
+
+    const defaults = await getDefaultPublicSitePayload();
+
+    await logActivity('public_site_reset_to_default',
+      {
+        template_length: DEFAULT_PUBLIC_SITE_HTML.length,
+      },
+      null,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({
+      message: 'Public site template reset to defaults',
+      html: DEFAULT_PUBLIC_SITE_HTML.trim(),
+      css: '',
+      baseCss: DEFAULT_PUBLIC_SITE_CSS.trim(),
+      branding: defaults.branding
+    });
+  } catch (error) {
+    console.error('Failed to reset public site template:', error);
+    res.status(500).json({ error: 'Failed to reset template' });
   }
 });
 

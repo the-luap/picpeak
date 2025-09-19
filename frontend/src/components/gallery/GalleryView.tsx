@@ -20,7 +20,6 @@ import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { api } from '../../config/api';
 import { Upload, Menu } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
-import { feedbackService } from '../../services/feedback.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
 import type { Photo } from '../../types';
 
@@ -462,7 +461,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           onDownloadAll={handleDownloadAll}
           onDownloadSelected={handleDownloadSelected}
           isDownloading={downloadAllMutation.isPending}
-          isExpired={isExpired}
           allowDownloads={allowDownloads}
           photoCounts={photoCounts}
           totalPhotos={data?.photos.length || 0}
@@ -473,7 +471,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           feedbackEnabled={feedbackEnabled}
           filterType={filterType}
           onFilterChange={setFilterType}
-          likeCount={data?.photos?.filter(p => p.like_count > 0).length || 0}
+          likeCount={data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0}
           ratedCount={data?.photos?.filter(p => (p.total_ratings || 0) > 0).length || 0}
         />
       ) : null}
@@ -486,7 +484,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         showDownloadAll={!showSidebar && allowDownloads}
         onDownloadAll={handleDownloadAll}
         isDownloading={downloadAllMutation.isPending}
-        isExpired={isExpired}
         menuButton={showSidebar ? (
           <Button
             variant="ghost"

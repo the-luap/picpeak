@@ -147,7 +147,6 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 error={errors.guest_name}
-                size="sm"
               />
               <Input
                 type="email"
@@ -155,7 +154,6 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
                 value={guestEmail}
                 onChange={(e) => setGuestEmail(e.target.value)}
                 error={errors.guest_email}
-                size="sm"
               />
             </div>
           )}

@@ -11,7 +11,6 @@ interface UseDevToolsProtectionOptions {
 export const useDevToolsProtection = (options: UseDevToolsProtectionOptions) => {
   const detectionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastConsoleCountRef = useRef(0);
-  const startTimeRef = useRef<number>(Date.now());
   const isDetectedRef = useRef(false);
 
   const handleDevToolsDetected = useCallback(() => {

@@ -16,6 +16,7 @@ import { format, parseISO } from 'date-fns';
 import { Button, Card, Loading } from '../../components/common';
 import { useQuery } from '@tanstack/react-query';
 import { adminService } from '../../services/admin.service';
+import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../config/api';
 
@@ -70,6 +71,11 @@ export const AnalyticsPage: React.FC = () => {
   const { data: dashboardStats } = useQuery({
     queryKey: ['admin-dashboard-stats'],
     queryFn: () => adminService.getDashboardStats(),
+  });
+
+  const { data: storageInfo } = useQuery({
+    queryKey: ['storage-info'],
+    queryFn: () => settingsService.getStorageInfo(),
   });
 
   // Fetch Umami config from admin settings since we're in admin panel
@@ -154,12 +160,12 @@ export const AnalyticsPage: React.FC = () => {
 
     // Get actual download data for top galleries - sort by downloads
     const topGalleriesWithDownloads = apiData.topGalleries
-      .filter(gallery => gallery.downloads > 0) // Only show galleries with downloads
-      .sort((a, b) => (b.downloads || 0) - (a.downloads || 0)) // Sort by downloads
+      .filter(gallery => (gallery.downloads ?? 0) > 0) // Only show galleries with downloads
+      .sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0)) // Sort by downloads
       .slice(0, 5) // Take top 5
       .map(gallery => ({
         name: gallery.event_name,
-        downloads: gallery.downloads || 0
+        downloads: gallery.downloads ?? 0
       }));
 
     return {
@@ -429,38 +435,68 @@ export const AnalyticsPage: React.FC = () => {
           </Card>
 
           {/* Storage Information */}
-          {dashboardStats && (
-            <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.storageUsage')}</h2>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-neutral-600">{t('analytics.used')}</span>
-                    <span className="font-medium">{adminService.formatBytes(dashboardStats.storageUsed)}</span>
+          {dashboardStats && (() => {
+            const softLimitBytes = storageInfo?.storage_soft_limit ?? storageInfo?.storage_limit ?? storageInfo?.recommended_soft_limit ?? null;
+            const safeSoftLimit = Math.max(
+              softLimitBytes ?? storageInfo?.recommended_soft_limit ?? (dashboardStats.storageUsed || 1),
+              1
+            );
+            const usageRatio = dashboardStats.storageUsed / safeSoftLimit;
+            const usagePercent = Math.round(usageRatio * 100);
+            const usageWidth = Math.min(usageRatio * 100, 100);
+            const overSoftLimit = softLimitBytes != null && dashboardStats.storageUsed >= softLimitBytes;
+            const limitDisplay = softLimitBytes != null
+              ? adminService.formatBytes(softLimitBytes)
+              : storageInfo?.recommended_soft_limit != null
+                ? adminService.formatBytes(storageInfo.recommended_soft_limit)
+                : t('settings.storage.unlimited');
+            const progressColor = overSoftLimit
+              ? 'bg-red-600'
+              : usagePercent >= 90
+                ? 'bg-amber-500'
+                : 'bg-primary-600';
+            const limitDescriptor = storageInfo
+              ? storageInfo.soft_limit_configured
+                ? t('admin.storageSoftLimitConfigured', { limit: limitDisplay })
+                : t('admin.storageSoftLimitRecommended', { limit: limitDisplay })
+              : t('admin.storageSoftLimitRecommended', { limit: limitDisplay });
+
+            return (
+              <Card padding="md">
+                <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.storageUsage')}</h2>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-neutral-600">{t('analytics.used')}</span>
+                      <span className="font-medium">{adminService.formatBytes(dashboardStats.storageUsed)}</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                      <div
+                        className={`${progressColor} h-2 rounded-full transition-all`}
+                        style={{ width: `${usageWidth}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {usagePercent}% {t('analytics.of')} {limitDisplay}
+                    </p>
+                    <p className={`text-xs mt-1 ${overSoftLimit ? 'text-red-600 font-semibold' : 'text-red-500 font-medium'}`}>
+                      {limitDescriptor}
+                    </p>
                   </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-2">
-                    <div
-                      className="bg-primary-600 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min((dashboardStats.storageUsed / (10 * 1024 * 1024 * 1024)) * 100, 100)}%` }}
-                    />
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">{t('analytics.totalPhotos')}</span>
+                      <span className="font-medium">{dashboardStats.totalPhotos.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-2">
+                      <span className="text-neutral-600">{t('analytics.activeEvents')}</span>
+                      <span className="font-medium">{dashboardStats.activeEvents}</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {Math.round((dashboardStats.storageUsed / (10 * 1024 * 1024 * 1024)) * 100)}% {t('analytics.of')} 10 GB
-                  </p>
                 </div>
-                <div className="pt-2 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-600">{t('analytics.totalPhotos')}</span>
-                    <span className="font-medium">{dashboardStats.totalPhotos.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-2">
-                    <span className="text-neutral-600">{t('analytics.activeEvents')}</span>
-                    <span className="font-medium">{dashboardStats.activeEvents}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
+              </Card>
+            );
+          })()}
         </div>
       </div>
 

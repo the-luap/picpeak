@@ -201,6 +201,15 @@ openssl rand -base64 32 | tr -d '$'
 - Escape `$` as `$$` (e.g., `Pass$$word` instead of `Pass$word`)
 - Quote the entire value: `DB_PASSWORD='Pass$word'` (less reliable)
 
+### Public Landing Page
+
+- `npm run migrate` now seeds three general settings: `general_public_site_enabled`, `general_public_site_html`, and `general_public_site_custom_css` so existing installs stay disabled by default.
+- Configure the feature from **Admin → CMS Pages**. The landing page panel exposes the toggle, HTML editor, optional CSS overrides, preview, and a reset-to-default action.
+- All HTML and CSS submitted through the UI is sanitized server-side. Scripts, inline event handlers, disallowed attributes, `@import` rules, and `javascript:` URLs are stripped before content is cached or rendered.
+- Resetting via the UI (or calling `POST /api/admin/settings/public-site/reset`) restores the bundled template and clears custom CSS.
+- The landing page response is cached in-memory. Override the default 60s cache window by setting `PUBLIC_SITE_CACHE_TTL_MS` (milliseconds) in your environment if you need faster cache busting.
+- When the toggle is off PicPeak continues to serve the SPA/login redirect at `/`, preserving legacy behaviour until you explicitly enable the feature.
+
 ### Backend Configuration (.env)
 Update `.env` with:
 - `JWT_SECRET` - Authentication secret (REQUIRED - generate a secure random value)

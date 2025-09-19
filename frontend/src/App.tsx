@@ -22,7 +22,6 @@ import {
   AnalyticsPage,
   BrandingPage,
   SettingsPage,
-  CMSPage,
   BackupManagement
 } from './pages/admin';
 import { CMSPageEnhanced } from './pages/admin/CMSPageEnhanced';

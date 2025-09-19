@@ -1,5 +1,5 @@
 const S3StorageAdapter = require('../s3Storage');
-const { S3Client } = require('@aws-sdk/client-s3');
+const { S3Client, HeadBucketCommand, HeadObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const { Upload } = require('@aws-sdk/lib-storage');
 const fs = require('fs');
 const stream = require('stream');
@@ -24,6 +24,10 @@ describe('S3StorageAdapter', () => {
       send: mockSend
     };
     S3Client.mockImplementation(() => mockS3Client);
+
+    HeadBucketCommand.mockImplementation((input) => ({ input }));
+    HeadObjectCommand.mockImplementation((input) => ({ input }));
+    ListObjectsV2Command.mockImplementation((input) => ({ input }));
     
     // Create adapter instance
     s3Storage = new S3StorageAdapter({
@@ -70,11 +74,7 @@ describe('S3StorageAdapter', () => {
       const result = await s3Storage.testConnection();
       
       expect(result).toBe(true);
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { Bucket: 'test-bucket' }
-        })
-      );
+      expect(HeadBucketCommand).toHaveBeenCalledWith({ Bucket: 'test-bucket' });
     });
     
     it('should throw error on connection failure', async () => {
@@ -132,24 +132,25 @@ describe('S3StorageAdapter', () => {
     
     it('should track upload progress', async () => {
       const onProgress = jest.fn();
-      let progressCallback;
-      
-      mockUpload.on.mockImplementation((event, callback) => {
-        if (event === 'httpUploadProgress') {
-          progressCallback = callback;
-        }
-        return mockUpload;
+      Upload.mockImplementation(() => {
+        const uploadInstance = {
+          on: jest.fn((event, handler) => {
+            if (event === 'httpUploadProgress') {
+              handler({ loaded: 512, total: 1024 });
+            }
+            return uploadInstance;
+          }),
+          done: mockDone
+        };
+        return uploadInstance;
       });
-      
+
       const uploadPromise = s3Storage.upload('/path/to/file.jpg', 'test-key', {
         onProgress
       });
-      
-      // Simulate progress
-      progressCallback({ loaded: 512, total: 1024 });
-      
+
       await uploadPromise;
-      
+
       expect(onProgress).toHaveBeenCalledWith(512, 1024);
     });
     
@@ -177,11 +178,10 @@ describe('S3StorageAdapter', () => {
       const result = await s3Storage.exists('test-key');
       
       expect(result).toBe(true);
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: { Bucket: 'test-bucket', Key: 'test-key' }
-        })
-      );
+      expect(HeadObjectCommand).toHaveBeenCalledWith({
+        Bucket: 'test-bucket',
+        Key: 'test-key'
+      });
     });
     
     it('should return false if object does not exist', async () => {
@@ -220,58 +220,51 @@ describe('S3StorageAdapter', () => {
     it('should retry on retryable errors', async () => {
       const retryableError = new Error('Connection reset');
       retryableError.code = 'ECONNRESET';
-      
-      // First attempt fails, second succeeds
-      mockSend
+
+      const operation = jest.fn()
         .mockRejectedValueOnce(retryableError)
-        .mockResolvedValueOnce({});
-      
-      // Mock setTimeout to speed up test
-      jest.useFakeTimers();
-      
-      const promise = s3Storage.exists('test-key');
-      
-      // Advance timers
-      jest.runAllTimers();
-      
-      const result = await promise;
-      
-      expect(result).toBe(true);
-      expect(mockSend).toHaveBeenCalledTimes(2);
-      
-      jest.useRealTimers();
+        .mockResolvedValueOnce('success');
+
+      const originalRandom = Math.random;
+      const originalDelay = s3Storage.config.retryDelay;
+      Math.random = jest.fn(() => 0);
+      s3Storage.config.retryDelay = 0;
+
+      const result = await s3Storage._retryOperation(operation);
+
+      expect(result).toBe('success');
+      expect(operation).toHaveBeenCalledTimes(2);
+
+      Math.random = originalRandom;
+      s3Storage.config.retryDelay = originalDelay;
     });
     
     it('should not retry on non-retryable errors', async () => {
       const nonRetryableError = new Error('Invalid credentials');
       nonRetryableError.code = 'InvalidCredentials';
       
-      mockSend.mockRejectedValueOnce(nonRetryableError);
-      
-      await expect(s3Storage.exists('test-key')).rejects.toThrow('Invalid credentials');
-      expect(mockSend).toHaveBeenCalledTimes(1);
+      const operation = jest.fn().mockRejectedValueOnce(nonRetryableError);
+
+      await expect(s3Storage._retryOperation(operation)).rejects.toThrow('Invalid credentials');
+      expect(operation).toHaveBeenCalledTimes(1);
     });
     
     it('should stop retrying after max attempts', async () => {
       const retryableError = new Error('Service unavailable');
       retryableError.code = 'ServiceUnavailable';
       
-      mockSend.mockRejectedValue(retryableError);
-      
-      // Mock setTimeout to speed up test
-      jest.useFakeTimers();
-      
-      const promise = s3Storage.exists('test-key');
-      
-      // Advance timers for all retries
-      for (let i = 0; i < 4; i++) {
-        jest.runAllTimers();
-      }
-      
-      await expect(promise).rejects.toThrow('Service unavailable');
-      expect(mockSend).toHaveBeenCalledTimes(4); // Initial + 3 retries
-      
-      jest.useRealTimers();
+      const operation = jest.fn().mockRejectedValue(retryableError);
+
+      const originalRandom = Math.random;
+      const originalDelay = s3Storage.config.retryDelay;
+      Math.random = jest.fn(() => 0);
+      s3Storage.config.retryDelay = 0;
+
+      await expect(s3Storage._retryOperation(operation)).rejects.toThrow('Service unavailable');
+      expect(operation).toHaveBeenCalledTimes(4); // initial + 3 retries
+
+      Math.random = originalRandom;
+      s3Storage.config.retryDelay = originalDelay;
     });
   });
   

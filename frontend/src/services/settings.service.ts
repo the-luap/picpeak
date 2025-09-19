@@ -53,6 +53,18 @@ export interface StorageInfo {
     size: number;
   }>;
   storage_limit: number;
+  storage_soft_limit: number;
+  configured_soft_limit: number | null;
+  recommended_soft_limit: number | null;
+  soft_limit_configured: boolean;
+  disk_total: number | null;
+  disk_free: number | null;
+  disk_available: number | null;
+  disk_total_raw: number | null;
+  disk_free_raw: number | null;
+  disk_available_raw: number | null;
+  disk_metrics_reliable: boolean;
+  disk_override_source: 'env' | 'settings' | null;
 }
 
 export interface SystemStatus {
@@ -102,6 +114,20 @@ export interface SystemStatus {
   timestamp: string;
 }
 
+export interface PublicSiteBranding {
+  companyName: string | null;
+  companyTagline: string | null;
+  supportEmail: string | null;
+  logoUrl: string | null;
+  footerText: string | null;
+  colors: {
+    primary: string;
+    accent: string;
+    background: string;
+    text: string;
+  };
+}
+
 export const settingsService = {
   // Get all settings
   async getAllSettings(): Promise<Record<string, any>> {
@@ -118,6 +144,28 @@ export const settingsService = {
   // Update branding settings
   async updateBranding(settings: BrandingSettings): Promise<void> {
     await api.put('/admin/settings/branding', settings);
+  },
+
+  async getPublicSiteDefaults(): Promise<{ html: string; css: string; baseCss: string; branding?: PublicSiteBranding; meta?: { title?: string } }> {
+    const response = await api.get('/admin/settings/public-site/default');
+    return response.data;
+  },
+
+  async resetPublicSite(): Promise<{ html: string; css: string; baseCss?: string; branding?: PublicSiteBranding }> {
+    const response = await api.post('/admin/settings/public-site/reset');
+    return response.data;
+  },
+
+  async updatePublicSite(settings: {
+    enabled: boolean;
+    html: string;
+    css: string;
+  }): Promise<void> {
+    await api.put('/admin/settings/general', {
+      general_public_site_enabled: settings.enabled,
+      general_public_site_html: settings.html,
+      general_public_site_custom_css: settings.css,
+    });
   },
 
   // Upload logo
@@ -184,7 +232,7 @@ export const settingsService = {
     // Determine the endpoint based on setting keys
     const firstKey = Object.keys(settings)[0];
     let endpoint = '/admin/settings/general';
-    
+
     if (firstKey?.startsWith('security_')) {
       endpoint = '/admin/settings/security';
     } else if (firstKey?.startsWith('analytics_')) {

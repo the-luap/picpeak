@@ -21,6 +21,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
+const BYTES_PER_GB = 1024 * 1024 * 1024;
+
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
@@ -82,6 +84,12 @@ export const SettingsPage: React.FC = () => {
     umami_share_url: ''
   });
 
+  const [softLimitGb, setSoftLimitGb] = useState<number | ''>('');
+  const [softLimitDirty, setSoftLimitDirty] = useState(false);
+  const [capacityOverrideGb, setCapacityOverrideGb] = useState<number | ''>('');
+  const [availableOverrideGb, setAvailableOverrideGb] = useState<number | ''>('');
+  const [overrideDirty, setOverrideDirty] = useState(false);
+
   React.useEffect(() => {
     if (settings) {
       // Set the language if it's different from current
@@ -109,14 +117,15 @@ export const SettingsPage: React.FC = () => {
 
       // Extract security settings
       setSecuritySettings({
-        require_password: settings.security_require_password || true,
-        password_min_length: settings.security_password_min_length || 8,
-        enable_2fa: settings.security_enable_2fa || false,
-        session_timeout_minutes: settings.security_session_timeout_minutes || 60,
-        max_login_attempts: settings.security_max_login_attempts || 5,
-        enable_recaptcha: settings.security_enable_recaptcha || false,
-        recaptcha_site_key: settings.security_recaptcha_site_key || '',
-        recaptcha_secret_key: settings.security_recaptcha_secret_key || ''
+        require_password: settings.security_require_password ?? true,
+        password_min_length: settings.security_password_min_length ?? 8,
+        password_complexity: settings.security_password_complexity ?? 'moderate',
+        enable_2fa: settings.security_enable_2fa ?? false,
+        session_timeout_minutes: settings.security_session_timeout_minutes ?? 60,
+        max_login_attempts: settings.security_max_login_attempts ?? 5,
+        enable_recaptcha: settings.security_enable_recaptcha ?? false,
+        recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
+        recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
       });
 
       // Extract analytics settings
@@ -128,6 +137,66 @@ export const SettingsPage: React.FC = () => {
       });
     }
   }, [settings, i18n]);
+
+  React.useEffect(() => {
+    if (!settings || overrideDirty) {
+      return;
+    }
+
+    const capacityOverrideBytes = settings.general_storage_capacity_override_bytes ?? null;
+    const availableOverrideBytes = settings.general_storage_available_override_bytes ?? null;
+
+    setCapacityOverrideGb(
+      capacityOverrideBytes != null
+        ? Number((capacityOverrideBytes / BYTES_PER_GB).toFixed(2))
+        : ''
+    );
+
+    setAvailableOverrideGb(
+      availableOverrideBytes != null
+        ? Number((availableOverrideBytes / BYTES_PER_GB).toFixed(2))
+        : ''
+    );
+  }, [settings, overrideDirty]);
+
+  React.useEffect(() => {
+    if (!storageInfo) {
+      return;
+    }
+
+    if (softLimitDirty) {
+      return;
+    }
+
+    const currentLimit = storageInfo.configured_soft_limit ?? storageInfo.storage_soft_limit ?? null;
+
+    if (currentLimit === null || currentLimit === undefined) {
+      setSoftLimitGb('');
+      return;
+    }
+
+    const limitGb = Number((currentLimit / BYTES_PER_GB).toFixed(2));
+    setSoftLimitGb(limitGb);
+  }, [storageInfo, softLimitDirty]);
+
+  React.useEffect(() => {
+    if (!storageInfo || overrideDirty) {
+      return;
+    }
+
+    if (storageInfo.disk_override_source === 'env') {
+      setCapacityOverrideGb(
+        storageInfo.disk_total
+          ? Number((storageInfo.disk_total / BYTES_PER_GB).toFixed(2))
+          : ''
+      );
+      setAvailableOverrideGb(
+        storageInfo.disk_available
+          ? Number((storageInfo.disk_available / BYTES_PER_GB).toFixed(2))
+          : ''
+      );
+    }
+  }, [storageInfo, overrideDirty]);
 
   // Save mutations
   const saveGeneralMutation = useMutation({
@@ -188,6 +257,103 @@ export const SettingsPage: React.FC = () => {
       toast.error(t('toast.saveError'));
     }
   });
+
+  const saveSoftLimitMutation = useMutation({
+    mutationFn: async (limitBytes: number | null) => {
+      return settingsService.updateSettings({
+        general_storage_soft_limit_bytes: limitBytes,
+      });
+    },
+    onSuccess: () => {
+      toast.success(t('toast.settingsSaved'));
+      setSoftLimitDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-storage-info'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-info'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const handleSaveSoftLimit = () => {
+    if (saveSoftLimitMutation.isPending) {
+      return;
+    }
+
+    if (softLimitGb === '') {
+      saveSoftLimitMutation.mutate(null);
+      return;
+    }
+
+    const numericValue = Number(softLimitGb);
+
+    if (!Number.isFinite(numericValue) || numericValue < 0) {
+      toast.error(t('settings.storage.invalidSoftLimit'));
+      return;
+    }
+
+    const limitBytes = Math.max(0, Math.round(numericValue * BYTES_PER_GB));
+    saveSoftLimitMutation.mutate(limitBytes);
+  };
+
+  const saveCapacityOverrideMutation = useMutation({
+    mutationFn: async (payload: { capacity: number | null; available: number | null }) => {
+      return settingsService.updateSettings({
+        general_storage_capacity_override_bytes: payload.capacity,
+        general_storage_available_override_bytes: payload.available,
+      });
+    },
+    onSuccess: () => {
+      toast.success(t('toast.settingsSaved'));
+      setOverrideDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-storage-info'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-info'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const handleSaveCapacityOverride = () => {
+    if (saveCapacityOverrideMutation.isPending) {
+      return;
+    }
+
+    if (capacityOverrideGb === '' && availableOverrideGb !== '') {
+      toast.error(t('settings.storage.capacityRequiredForAvailable'));
+      return;
+    }
+
+    const capacityValue = capacityOverrideGb === '' ? null : Number(capacityOverrideGb);
+    const availableValue = availableOverrideGb === '' ? null : Number(availableOverrideGb);
+
+    if ((capacityValue !== null && !Number.isFinite(capacityValue)) || (availableValue !== null && !Number.isFinite(availableValue))) {
+      toast.error(t('settings.storage.invalidSoftLimit'));
+      return;
+    }
+
+    if (capacityValue !== null && capacityValue < 0) {
+      toast.error(t('settings.storage.invalidSoftLimit'));
+      return;
+    }
+
+    if (availableValue !== null && availableValue < 0) {
+      toast.error(t('settings.storage.invalidSoftLimit'));
+      return;
+    }
+
+    const capacityBytes = capacityValue === null ? null : Math.max(0, Math.round(capacityValue * BYTES_PER_GB));
+    const availableBytes = availableValue === null ? null : Math.max(0, Math.round(availableValue * BYTES_PER_GB));
+
+    if (capacityBytes !== null && availableBytes !== null && availableBytes > capacityBytes) {
+      toast.error(t('settings.storage.availableExceedsCapacity'));
+      return;
+    }
+
+    saveCapacityOverrideMutation.mutate({ capacity: capacityBytes, available: availableBytes });
+  };
 
   if (isLoading) {
     return (
@@ -455,52 +621,298 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'status' && (
         <div className="space-y-6">
           {/* Storage Overview */}
-          {storageInfo && (
-            <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                <HardDrive className="w-5 h-5" />
-                {t('settings.systemStatus.storageOverview')}
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-neutral-50 rounded-lg p-4">
-                  <p className="text-sm text-neutral-600">{t('settings.storage.totalUsed')}</p>
-                  <p className="text-2xl font-bold text-neutral-900">
-                    {settingsService.formatBytes(storageInfo.total_used)}
-                  </p>
-                </div>
-                <div className="bg-neutral-50 rounded-lg p-4">
-                  <p className="text-sm text-neutral-600">{t('settings.storage.archiveStorage')}</p>
-                  <p className="text-2xl font-bold text-neutral-900">
-                    {settingsService.formatBytes(storageInfo.archive_storage)}
-                  </p>
-                </div>
-                <div className="bg-neutral-50 rounded-lg p-4">
-                  <p className="text-sm text-neutral-600">{t('settings.storage.storageLimit')}</p>
-                  <p className="text-2xl font-bold text-neutral-900">
-                    {settingsService.formatBytes(storageInfo.storage_limit)}
-                  </p>
-                </div>
-              </div>
+          {storageInfo && (() => {
+            const configuredSoftLimit = storageInfo.configured_soft_limit ?? null;
+            const effectiveSoftLimit = storageInfo.storage_soft_limit || storageInfo.storage_limit || storageInfo.recommended_soft_limit || 1;
+            const safeEffectiveSoftLimit = Math.max(effectiveSoftLimit, 1);
+            const usageRatio = storageInfo.total_used / safeEffectiveSoftLimit;
+            const usagePercentage = Math.round(usageRatio * 100);
+            const usageWidth = Math.min(usageRatio * 100, 100);
+            const overSoftLimit = configuredSoftLimit != null
+              ? storageInfo.total_used >= configuredSoftLimit
+              : usagePercentage >= 100;
+            const limitDisplayBytes = configuredSoftLimit ?? storageInfo.storage_soft_limit ?? storageInfo.storage_limit ?? null;
+            const limitDisplay = limitDisplayBytes != null
+              ? settingsService.formatBytes(limitDisplayBytes)
+              : t('settings.storage.unlimited');
+            const diskCapacityBytes = storageInfo.disk_total ?? storageInfo.disk_total_raw ?? null;
+            const diskAvailableBytes = storageInfo.disk_available ?? storageInfo.disk_available_raw ?? null;
+            const diskFreeBytes = storageInfo.disk_free ?? storageInfo.disk_free_raw ?? null;
 
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-neutral-600">{t('settings.storage.storageUsage')}</span>
-                  <span className="font-medium">
-                    {Math.round((storageInfo.total_used / storageInfo.storage_limit) * 100)}%
-                  </span>
+            const diskCapacityDisplay = diskCapacityBytes != null
+              ? settingsService.formatBytes(diskCapacityBytes)
+              : null;
+            const diskAvailableDisplay = diskAvailableBytes != null
+              ? settingsService.formatBytes(diskAvailableBytes)
+              : null;
+            const diskFreeDisplay = diskFreeBytes != null
+              ? settingsService.formatBytes(diskFreeBytes)
+              : null;
+
+            const recommendedDisplay = storageInfo.recommended_soft_limit != null
+              ? settingsService.formatBytes(storageInfo.recommended_soft_limit)
+              : null;
+            const progressColor = overSoftLimit
+              ? 'bg-red-600'
+              : usagePercentage >= 90
+                ? 'bg-amber-500'
+                : 'bg-primary-600';
+            const limitCardClass = overSoftLimit ? 'bg-amber-50 border border-amber-200' : 'bg-neutral-50';
+            const limitValueClass = overSoftLimit ? 'text-amber-700' : 'text-neutral-900';
+            const limitDescriptorClass = overSoftLimit ? 'text-amber-700 font-semibold' : 'text-neutral-600';
+            const recommendedDescriptorValue = (recommendedDisplay ?? limitDisplay);
+            const diskMetricsReliable = storageInfo.disk_metrics_reliable;
+            const overrideSource = storageInfo.disk_override_source;
+            const overrideControlled = overrideSource === 'env';
+
+            const diskSummaryCards: Array<{ label: string; value: string }> = [];
+            if (diskCapacityDisplay && (diskMetricsReliable || overrideSource)) {
+              const label = storageInfo.disk_total != null
+                ? t('settings.storage.diskCapacity')
+                : t('settings.storage.diskCapacityReported');
+              diskSummaryCards.push({ label, value: diskCapacityDisplay });
+            }
+            if (diskAvailableDisplay && (diskMetricsReliable || overrideSource)) {
+              const label = storageInfo.disk_available != null
+                ? t('settings.storage.diskAvailable')
+                : t('settings.storage.diskAvailableReported');
+              diskSummaryCards.push({ label, value: diskAvailableDisplay });
+            }
+            if (diskFreeDisplay && storageInfo.disk_free == null && (diskMetricsReliable || overrideSource)) {
+              diskSummaryCards.push({
+                label: t('settings.storage.diskFreeReported'),
+                value: diskFreeDisplay
+              });
+            }
+            if (recommendedDisplay) {
+              diskSummaryCards.push({
+                label: t('settings.storage.recommendedSoftLimit'),
+                value: recommendedDisplay
+              });
+            }
+
+            return (
+              <Card padding="md">
+                <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+                  <HardDrive className="w-5 h-5" />
+                  {t('settings.systemStatus.storageOverview')}
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <p className="text-sm text-neutral-600">{t('settings.storage.totalUsed')}</p>
+                    <p className="text-2xl font-bold text-neutral-900">
+                      {settingsService.formatBytes(storageInfo.total_used)}
+                    </p>
+                  </div>
+                  <div className="bg-neutral-50 rounded-lg p-4">
+                    <p className="text-sm text-neutral-600">{t('settings.storage.archiveStorage')}</p>
+                    <p className="text-2xl font-bold text-neutral-900">
+                      {settingsService.formatBytes(storageInfo.archive_storage)}
+                    </p>
+                  </div>
+                  <div className={`rounded-lg p-4 ${limitCardClass}`}>
+                    <p className="text-sm text-neutral-600">{t('settings.storage.storageLimit')}</p>
+                    <p className={`text-2xl font-bold ${limitValueClass}`}>
+                      {limitDisplay}
+                    </p>
+                    <p className={`text-xs mt-1 ${limitDescriptorClass}`}>
+                      {storageInfo.soft_limit_configured
+                        ? t('admin.storageSoftLimitConfigured', { limit: limitDisplay })
+                        : t('admin.storageSoftLimitRecommended', { limit: recommendedDescriptorValue })}
+                    </p>
+                  </div>
                 </div>
-                <div className="w-full bg-neutral-200 rounded-full h-3">
-                  <div
-                    className="bg-primary-600 h-3 rounded-full transition-all"
-                    style={{ 
-                      width: `${Math.min((storageInfo.total_used / storageInfo.storage_limit) * 100, 100)}%` 
-                    }}
-                  />
+
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-neutral-600">{t('settings.storage.storageUsage')}</span>
+                    <span className={`font-medium ${overSoftLimit ? 'text-red-600' : 'text-neutral-900'}`}>
+                      {usagePercentage}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-neutral-200 rounded-full h-3">
+                    <div
+                      className={`${progressColor} h-3 rounded-full transition-all`}
+                      style={{ width: `${usageWidth}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </Card>
-          )}
+
+                <div className="border-t border-neutral-200 pt-4 mt-6 space-y-4">
+                  <p className="text-sm text-neutral-600">
+                    {t('settings.storage.storageLimitHelper')}
+                  </p>
+
+                  {diskSummaryCards.length > 0 && (diskMetricsReliable || overrideSource) && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {diskSummaryCards.map((card) => (
+                        <div key={card.label} className="bg-neutral-50 rounded-lg p-4">
+                          <p className="text-xs text-neutral-500 uppercase tracking-wide">{card.label}</p>
+                          <p className="text-lg font-semibold text-neutral-900 mt-1">{card.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!diskMetricsReliable && !overrideSource && (
+                    <p className="text-xs text-neutral-500">
+                      {t('settings.storage.diskMetricsUnavailable')}
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)]">
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step="0.1"
+                      value={softLimitGb === '' ? '' : softLimitGb}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSoftLimitDirty(true);
+                        if (value === '') {
+                          setSoftLimitGb('');
+                          return;
+                        }
+                        const numeric = Number(value);
+                        if (Number.isNaN(numeric)) {
+                          return;
+                        }
+                        setSoftLimitGb(numeric);
+                      }}
+                      label={t('settings.storage.softLimitInputLabel')}
+                      helperText={t('settings.storage.softLimitHelper')}
+                      rightIcon={<span className="text-xs font-semibold text-neutral-500 uppercase">GB</span>}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      {t('settings.storage.limitNotEnforced')}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        if (storageInfo.recommended_soft_limit != null) {
+                          const value = Number((storageInfo.recommended_soft_limit / BYTES_PER_GB).toFixed(2));
+                          setSoftLimitGb(value);
+                          setSoftLimitDirty(true);
+                        }
+                      }}
+                      disabled={storageInfo.recommended_soft_limit == null}
+                    >
+                      {t('settings.storage.applyRecommended')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        if (storageInfo.disk_available != null) {
+                          const value = Number((storageInfo.disk_available / BYTES_PER_GB).toFixed(2));
+                          setSoftLimitGb(value);
+                          setSoftLimitDirty(true);
+                        }
+                      }}
+                      disabled={storageInfo.disk_available == null}
+                    >
+                      {t('settings.storage.applyAvailable')}
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleSaveSoftLimit}
+                      isLoading={saveSoftLimitMutation.isPending}
+                      leftIcon={<Save className="w-4 h-4" />}
+                    >
+                      {t('settings.storage.saveSoftLimit')}
+                    </Button>
+                  </div>
+
+                  <div className="border-t border-neutral-200 pt-4 mt-6 space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-neutral-700">{t('settings.storage.overrideTitle')}</p>
+                      {overrideControlled ? (
+                        <p className="text-xs text-neutral-500 mt-1">{t('settings.storage.diskOverrideEnvNote')}</p>
+                      ) : (
+                        <p className="text-xs text-neutral-500 mt-1">{t('settings.storage.diskOverrideSettingsHelp')}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.1"
+                        value={capacityOverrideGb === '' ? '' : capacityOverrideGb}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setOverrideDirty(true);
+                          if (value === '') {
+                            setCapacityOverrideGb('');
+                            return;
+                          }
+                          const numeric = Number(value);
+                          if (Number.isNaN(numeric)) {
+                            return;
+                          }
+                          setCapacityOverrideGb(numeric);
+                        }}
+                        label={t('settings.storage.overrideCapacityLabel')}
+                        helperText={t('settings.storage.overrideCapacityHelper')}
+                        rightIcon={<span className="text-xs font-semibold text-neutral-500 uppercase">GB</span>}
+                        disabled={overrideControlled}
+                      />
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.1"
+                        value={availableOverrideGb === '' ? '' : availableOverrideGb}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setOverrideDirty(true);
+                          if (value === '') {
+                            setAvailableOverrideGb('');
+                            return;
+                          }
+                          const numeric = Number(value);
+                          if (Number.isNaN(numeric)) {
+                            return;
+                          }
+                          setAvailableOverrideGb(numeric);
+                        }}
+                        label={t('settings.storage.overrideAvailableLabel')}
+                        helperText={t('settings.storage.overrideAvailableHelper')}
+                        rightIcon={<span className="text-xs font-semibold text-neutral-500 uppercase">GB</span>}
+                        disabled={overrideControlled}
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSaveCapacityOverride}
+                        isLoading={saveCapacityOverrideMutation.isPending}
+                        disabled={overrideControlled}
+                        leftIcon={<Save className="w-4 h-4" />}
+                      >
+                        {t('settings.storage.saveOverride')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })()}
 
           {/* System Information */}
           {systemStatus && (

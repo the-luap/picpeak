@@ -432,12 +432,12 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 }}
                 className="relative p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
                 aria-label="Toggle feedback"
-                title={`Photo feedback${currentPhoto.comment_count > 0 ? ` (${currentPhoto.comment_count} comments)` : ''}`}
+                title={`Photo feedback${(currentPhoto.comment_count ?? 0) > 0 ? ` (${currentPhoto.comment_count ?? 0} comments)` : ''}`}
               >
                 <MessageSquare className="w-5 h-5 text-white" />
-                {(currentPhoto.comment_count > 0 || currentPhoto.average_rating > 0) && (
+                {((currentPhoto.comment_count ?? 0) > 0 || (currentPhoto.average_rating ?? 0) > 0) && (
                   <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {currentPhoto.comment_count > 0 ? currentPhoto.comment_count : '★'}
+                    {(currentPhoto.comment_count ?? 0) > 0 ? currentPhoto.comment_count ?? 0 : '★'}
                   </span>
                 )}
               </button>
@@ -529,7 +529,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           </div>
           <div className="p-4 flex-1 overflow-y-auto">
             <PhotoFeedback
-              photoId={currentPhoto.id}
+              photoId={String(currentPhoto.id)}
               gallerySlug={slug}
               showComments={true}
               className="space-y-4"

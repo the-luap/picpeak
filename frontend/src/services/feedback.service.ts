@@ -21,6 +21,7 @@ export interface PhotoFeedback {
   feedback_type: 'rating' | 'like' | 'comment' | 'favorite';
   rating?: number;
   comment_text?: string;
+  comment?: string;
   guest_name?: string;
   guest_email?: string;
   is_approved: boolean;
@@ -29,6 +30,7 @@ export interface PhotoFeedback {
   updated_at?: string;
   filename?: string;
   path?: string;
+  photo_filename?: string;
   is_mine?: boolean;
 }
 
@@ -50,6 +52,11 @@ export interface FeedbackResponse {
   feedback: PhotoFeedback[];
   summary: FeedbackSummary;
   my_feedback: MyFeedback;
+  pagination?: {
+    page: number;
+    per_page: number;
+    total: number;
+  };
 }
 
 export interface FeedbackAnalytics {

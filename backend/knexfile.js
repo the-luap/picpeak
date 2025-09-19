@@ -3,6 +3,22 @@ require('dotenv').config();
 const path = require('path');
 
 // Database configuration for different environments
+const sqliteConnection = (filenameEnv) => ({
+  filename: path.join(__dirname, filenameEnv || './data/photo_sharing.db')
+});
+
+const baseSqliteConfig = {
+  client: 'sqlite3',
+  connection: sqliteConnection(),
+  useNullAsDefault: true,
+  migrations: {
+    directory: './migrations'
+  },
+  seeds: {
+    directory: './seeds'
+  }
+};
+
 const config = {
   development: {
     client: process.env.DATABASE_CLIENT || 'sqlite3',
@@ -23,6 +39,26 @@ const config = {
       directory: './seeds'
     }
   },
+
+  test: (() => {
+    const client = process.env.DATABASE_CLIENT || 'sqlite3';
+    const isPostgres = client === 'pg';
+
+    return {
+      ...baseSqliteConfig,
+      client,
+      useNullAsDefault: !isPostgres,
+      connection: isPostgres
+        ? {
+            host: process.env.DB_HOST || 'localhost',
+            port: process.env.DB_PORT || 5432,
+            user: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || 'postgres',
+            database: process.env.DB_NAME || 'photo_sharing_test'
+          }
+        : sqliteConnection(process.env.TEST_DATABASE_PATH || './data/photo_sharing_test.db')
+    };
+  })(),
 
   production: {
     client: process.env.DATABASE_CLIENT || 'pg',
@@ -63,5 +99,6 @@ const config = {
     acquireConnectionTimeout: 60000
   }
 };
+const env = process.env.NODE_ENV || 'development';
 
-module.exports = config[process.env.NODE_ENV || 'development'];
+module.exports = config[env] || config.development;

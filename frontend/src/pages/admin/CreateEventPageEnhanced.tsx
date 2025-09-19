@@ -69,7 +69,7 @@ const EVENT_TYPES = [
 
 export const CreateEventPageEnhanced: React.FC = () => {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const isMountedRef = useRef(true);
   const [showThemeCustomizer, setShowThemeCustomizer] = useState(false);

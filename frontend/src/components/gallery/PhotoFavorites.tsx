@@ -73,7 +73,10 @@ export const PhotoFavorites: React.FC<PhotoFavoritesProps> = ({
     if (requireNameEmail && !savedIdentity) {
       setShowIdentityModal(true);
     } else {
-      submitFavoriteMutation.mutate(savedIdentity || {});
+      const identityPayload = savedIdentity
+        ? { guest_name: savedIdentity.name, guest_email: savedIdentity.email }
+        : {};
+      submitFavoriteMutation.mutate(identityPayload);
     }
   };
 

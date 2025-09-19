@@ -32,7 +32,7 @@ export const PreviewPage: React.FC = () => {
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
 
   const mockPhotos = useMemo(() => generateMockPhotos(12), []);
   const mockEvent = {
@@ -77,6 +77,8 @@ export const PreviewPage: React.FC = () => {
           return a.filename.localeCompare(b.filename);
         case 'size':
           return b.size - a.size;
+        case 'rating':
+          return 0;
         case 'date':
         default:
           return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
@@ -129,7 +131,7 @@ export const PreviewPage: React.FC = () => {
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           sortBy={sortBy}
-          onSortChange={setSortBy}
+          onSortChange={(sort) => setSortBy(sort)}
           photoCount={filteredPhotos.length}
         />
 

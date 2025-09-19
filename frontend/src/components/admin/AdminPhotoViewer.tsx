@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Download, Trash2, Tag, Calendar, HardDrive, Eye, MousePointer, MessageSquare, Star, Heart, ThumbsUp, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, Trash2, Tag, Calendar, HardDrive, Eye, MousePointer, MessageSquare, Star, Heart, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { AdminPhoto } from '../../services/photos.service';
 import { photosService } from '../../services/photos.service';
-import { feedbackService } from '../../services/feedback.service';
+import { feedbackService, type PhotoFeedback, type FeedbackSummary } from '../../services/feedback.service';
 import { Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
+
+type AdminFeedbackResponse = {
+  feedback: PhotoFeedback[];
+  summary?: FeedbackSummary;
+};
 
 interface AdminPhotoViewerProps {
   photos: AdminPhoto[];
@@ -34,9 +39,16 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
   const queryClient = useQueryClient();
   
   const currentPhoto = photos[currentIndex];
+  const averageRating = currentPhoto?.average_rating ?? 0;
+  const likeCount = currentPhoto?.like_count ?? 0;
+  const favoriteCount = currentPhoto?.favorite_count ?? 0;
+
+  if (!currentPhoto) {
+    return null;
+  }
 
   // Fetch feedback for current photo
-  const { data: feedbackData } = useQuery({
+  const { data: feedbackData } = useQuery<AdminFeedbackResponse>({
     queryKey: ['admin-photo-feedback', eventId, currentPhoto?.id],
     queryFn: () => feedbackService.getEventFeedback(eventId.toString(), {
       photoId: currentPhoto?.id.toString(),
@@ -44,6 +56,8 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
     }),
     enabled: !!currentPhoto
   });
+
+  const comments = (feedbackData?.feedback ?? []).filter((item): item is PhotoFeedback => item.feedback_type === 'comment');
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
@@ -304,41 +318,41 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
               
               {/* Feedback Stats */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                {currentPhoto.average_rating > 0 && (
+                {averageRating > 0 && (
                   <div className="bg-neutral-800 rounded-lg p-3">
                     <div className="flex items-center gap-1 text-yellow-400 mb-1">
                       <Star className="w-4 h-4" fill="currentColor" />
-                      <span className="text-white font-medium">{Number(currentPhoto.average_rating).toFixed(1)}</span>
+                      <span className="text-white font-medium">{Number(averageRating).toFixed(1)}</span>
                     </div>
                     <p className="text-xs text-neutral-400">Avg Rating</p>
                   </div>
                 )}
                 
-                {currentPhoto.like_count > 0 && (
+                {likeCount > 0 && (
                   <div className="bg-neutral-800 rounded-lg p-3">
                     <div className="flex items-center gap-1 text-red-400 mb-1">
                       <Heart className="w-4 h-4" fill="currentColor" />
-                      <span className="text-white font-medium">{currentPhoto.like_count}</span>
+                      <span className="text-white font-medium">{likeCount}</span>
                     </div>
                     <p className="text-xs text-neutral-400">Likes</p>
                   </div>
                 )}
                 
-                {currentPhoto.favorite_count > 0 && (
+                {favoriteCount > 0 && (
                   <div className="bg-neutral-800 rounded-lg p-3">
                     <div className="flex items-center gap-1 text-blue-400 mb-1">
                       <Star className="w-4 h-4" />
-                      <span className="text-white font-medium">{currentPhoto.favorite_count}</span>
+                      <span className="text-white font-medium">{favoriteCount}</span>
                     </div>
                     <p className="text-xs text-neutral-400">Favorites</p>
                   </div>
                 )}
                 
-                {feedbackData.feedback && (
+                {comments.length > 0 && (
                   <div className="bg-neutral-800 rounded-lg p-3">
                     <div className="flex items-center gap-1 text-green-400 mb-1">
                       <MessageSquare className="w-4 h-4" />
-                      <span className="text-white font-medium">{feedbackData.feedback.filter(f => f.feedback_type === 'comment').length}</span>
+                      <span className="text-white font-medium">{comments.length}</span>
                     </div>
                     <p className="text-xs text-neutral-400">Comments</p>
                   </div>
@@ -346,20 +360,18 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
               </div>
               
               {/* Comments List */}
-              {feedbackData.feedback && feedbackData.feedback.filter(f => f.feedback_type === 'comment').length > 0 && (
+              {comments.length > 0 && (
                 <div className="space-y-2">
                   <button
                     onClick={() => setExpandedComments(!expandedComments)}
                     className="text-xs text-primary-400 hover:text-primary-300 mb-2"
                   >
-                    {expandedComments ? 'Hide' : 'Show'} Comments ({feedbackData.feedback.filter(f => f.feedback_type === 'comment').length})
+                    {expandedComments ? 'Hide' : 'Show'} Comments ({comments.length})
                   </button>
                   
                   {expandedComments && (
                     <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {feedbackData.feedback
-                        .filter(f => f.feedback_type === 'comment')
-                        .map((comment) => (
+                      {comments.map((comment) => (
                           <div key={comment.id} className="bg-neutral-800 rounded-lg p-3">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
@@ -459,7 +471,7 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
               )}
               
               {/* No feedback message */}
-              {(!feedbackData.feedback || feedbackData.feedback.length === 0) && (
+              {comments.length === 0 && (
                 <p className="text-neutral-400 text-sm">No feedback for this photo yet.</p>
               )}
             </div>
