@@ -1,12 +1,7 @@
 name: Version and Release
 
 on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - '.gitea/**'
-      - '.drone.yml'
+  workflow_dispatch:
 
 jobs:
   version-bump:
@@ -72,8 +67,8 @@ jobs:
           echo "Root files changed: $ROOT_CHANGED"
           
           # Get current versions
-          BACKEND_VERSION=$(node -p "require('./backend/package.json').version" 2>/dev/null || echo "1.0.0")
-          FRONTEND_VERSION=$(node -p "require('./frontend/package.json').version" 2>/dev/null || echo "1.0.0")
+          BACKEND_VERSION=$(node -p "require('./backend/package.json').version" 2>/dev/null || echo "1.1.0")
+          FRONTEND_VERSION=$(node -p "require('./frontend/package.json').version" 2>/dev/null || echo "1.1.0")
           
           echo "Current backend version: $BACKEND_VERSION"
           echo "Current frontend version: $FRONTEND_VERSION"
@@ -265,3 +260,4 @@ jobs:
           echo "Component(s) changed: ${{ needs.version-bump.outputs.component_changed }}"
           echo "Drone will automatically trigger on the new tag"
           # Drone CI will automatically trigger on the tag push event
+

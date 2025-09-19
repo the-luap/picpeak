@@ -1,10 +1,7 @@
 name: Mirror to GitHub
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:  # Allow manual triggering only
 
 jobs:
   mirror:
@@ -132,3 +129,4 @@ jobs:
           echo "✅ Mirror to GitHub workflow completed successfully!"
           echo "📊 Repository mirrored to: https://github.com/the-luap/picpeak"
           echo "🔒 Sensitive files have been removed from the mirror"
+
