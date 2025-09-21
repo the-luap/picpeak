@@ -75,17 +75,37 @@ if (enableHsts) {
 app.use(cookieParser());
 
 app.use((req, res, next) => {
-  if (!req.headers.authorization) {
-    const slugMatch = req.path.match(/\/api\/(?:gallery|secure-images)\/([^\/]+)/);
-    const slug = slugMatch ? slugMatch[1] : req.requestedSlug;
-    const galleryToken = getGalleryTokenFromRequest(req, slug);
-    const adminToken = getAdminTokenFromRequest(req);
+  if (req.headers.authorization) {
+    return next();
+  }
 
+  const path = req.path || '';
+  const slugMatch = path.match(/\/api\/(?:gallery|secure-images)\/([^\/]+)/);
+  const slug = slugMatch ? slugMatch[1] : req.requestedSlug;
+  const adminToken = getAdminTokenFromRequest(req);
+  const galleryToken = getGalleryTokenFromRequest(req, slug);
+
+  const isAdminRequest = path.startsWith('/api/admin') || path.startsWith('/admin');
+  const isGalleryRequest = Boolean(slugMatch)
+    || path.startsWith('/api/gallery')
+    || path.startsWith('/gallery')
+    || path.startsWith('/api/secure-images');
+
+  // Prefer admin credentials on admin routes so gallery sessions cannot override them.
+  if (isAdminRequest) {
+    if (adminToken) {
+      req.headers.authorization = `Bearer ${adminToken}`;
+    }
+  } else if (isGalleryRequest) {
     if (galleryToken) {
       req.headers.authorization = `Bearer ${galleryToken}`;
     } else if (adminToken) {
       req.headers.authorization = `Bearer ${adminToken}`;
     }
+  } else if (adminToken) {
+    req.headers.authorization = `Bearer ${adminToken}`;
+  } else if (galleryToken) {
+    req.headers.authorization = `Bearer ${galleryToken}`;
   }
 
   next();
