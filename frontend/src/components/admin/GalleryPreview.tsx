@@ -1,9 +1,19 @@
 import React, { useMemo } from 'react';
 import { Camera } from 'lucide-react';
 import { ThemeConfig, GalleryLayoutType } from '../../types/theme.types';
+import { buildResourceUrl } from '../../utils/url';
+
+interface GalleryPreviewBranding {
+  company_name?: string;
+  company_tagline?: string;
+  logo_url?: string;
+  logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
+  logo_position?: 'left' | 'center' | 'right';
+}
 
 interface GalleryPreviewProps {
   theme: ThemeConfig;
+  branding?: GalleryPreviewBranding;
   layoutType?: GalleryLayoutType;
   className?: string;
 }
@@ -56,6 +66,7 @@ const PreviewPhoto: React.FC<{
 
 export const GalleryPreview: React.FC<GalleryPreviewProps> = ({ 
   theme, 
+  branding,
   layoutType,
   className = '' 
 }) => {
@@ -63,6 +74,23 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
   
   // Use the provided layoutType or fallback to theme's gallery layout
   const activeLayout = layoutType || theme.galleryLayout || 'grid';
+
+  const displayMode = branding?.logo_display_mode || 'logo_and_text';
+  const showLogo = displayMode === 'logo_only' || displayMode === 'logo_and_text';
+  const showText = displayMode === 'text_only' || displayMode === 'logo_and_text';
+  const brandName = branding?.company_name?.trim() || 'Your Studio';
+  const brandTagline = branding?.company_tagline?.trim() || '';
+  const resolvedLogoUrl = showLogo && branding?.logo_url
+    ? (branding.logo_url.startsWith('http')
+        ? branding.logo_url
+        : buildResourceUrl(branding.logo_url))
+    : null;
+  const logoPosition = branding?.logo_position || 'left';
+  const brandFlexClass = logoPosition === 'center'
+    ? 'justify-center text-center'
+    : logoPosition === 'right'
+      ? 'justify-end text-right flex-row-reverse'
+      : 'justify-start text-left';
   
   const renderLayout = () => {
     const spacing = theme.gallerySettings?.spacing || 'normal';
@@ -163,14 +191,41 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
     >
       {/* Preview Header */}
       <div 
-        className="px-4 py-3 border-b"
+        className="px-4 py-3 border-b space-y-2"
         style={{
           borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb',
         }}
       >
-        <h3 className="text-sm font-medium">
-          Gallery Preview - <span className="capitalize">{activeLayout}</span> Layout
-        </h3>
+        <div className={`flex items-center gap-3 ${brandFlexClass}`}>
+          {showLogo && (
+            resolvedLogoUrl ? (
+              <img
+                src={resolvedLogoUrl}
+                alt={brandName}
+                className="h-8 w-auto object-contain"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-neutral-200 flex items-center justify-center">
+                <Camera className="w-4 h-4 text-neutral-500" />
+              </div>
+            )
+          )}
+          {showText && (
+            <div>
+              <p className="text-sm font-semibold leading-tight">{brandName}</p>
+              {brandTagline && (
+                <p className="text-xs text-neutral-500 leading-tight">{brandTagline}</p>
+              )}
+            </div>
+          )}
+          {!showLogo && !showText && (
+            <p className="text-sm font-semibold">{brandName}</p>
+          )}
+        </div>
+        <div className="text-xs text-neutral-500 flex justify-between">
+          <span>Gallery preview</span>
+          <span className="capitalize">{activeLayout} layout</span>
+        </div>
       </div>
       
       {/* Preview Content */}

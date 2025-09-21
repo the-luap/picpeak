@@ -120,7 +120,9 @@ async function runMigrations() {
     
     // Check if this is a new deployment
     // It's new if no essential tables exist OR no migrations have been applied
-    const isNewDeployment = (!hasEventsTable || !hasPhotosTable || !hasAdminTable || !hasActivityLogsTable) || appliedFilenames.length === 0;
+    const hasEssentialTables = hasEventsTable && hasPhotosTable && hasAdminTable && hasActivityLogsTable;
+    const isDatabaseEmpty = !hasEventsTable && !hasPhotosTable && !hasAdminTable && !hasActivityLogsTable;
+    const isNewDeployment = isDatabaseEmpty || (appliedFilenames.length === 0 && !hasEssentialTables);
     
     // Only detect existing schema for truly existing deployments
     if (!isNewDeployment) {

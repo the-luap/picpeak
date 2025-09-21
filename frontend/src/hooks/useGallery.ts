@@ -13,7 +13,7 @@ export const useGalleryInfo = (slug: string, token?: string) => {
 
 export const useGalleryPhotos = (
   slug: string,
-  filter?: 'liked' | 'commented' | 'rated' | 'all',
+  filter?: 'liked' | 'favorited' | 'commented' | 'rated' | 'all',
   guestId?: string,
   enabled: boolean = true
 ) => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, SortAsc, Grid, Heart, Star, MessageSquare } from 'lucide-react';
+import { Search, SortAsc, Grid, Heart, Star, MessageSquare, Bookmark } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../common';
 import type { FilterType } from './GalleryFilter';
@@ -50,7 +50,6 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showSortMenu, setShowSortMenu] = useState(false);
-
   return (
     <div className="space-y-4">
       {/* Search and Sort */}
@@ -196,6 +195,15 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                     <Heart className="w-3.5 h-3.5" />
                   </Button>
                   <Button
+                    variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => onFilterChange('favorited')}
+                    className="p-1 w-8 h-8 flex items-center justify-center"
+                    aria-label={t('gallery.favorited', 'Saved')}
+                  >
+                    <Bookmark className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
                     variant={currentFilter === 'rated' ? 'primary' : 'outline'}
                     size="sm"
                     onClick={() => onFilterChange('rated')}
@@ -247,6 +255,15 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                 aria-label={t('feedback.likes', 'Likes')}
               >
                 <Heart className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onFilterChange('favorited')}
+                className="p-1 w-8 h-8 flex items-center justify-center"
+                aria-label={t('gallery.favorited', 'Saved')}
+              >
+                <Bookmark className="w-3.5 h-3.5" />
               </Button>
               <Button
                 variant={currentFilter === 'rated' ? 'primary' : 'outline'}

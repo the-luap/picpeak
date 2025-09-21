@@ -7,9 +7,32 @@ const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
+function normalizeFiles(files) {
+  if (!files) return [];
+  if (Array.isArray(files)) return files.filter(Boolean);
+
+  // Multer may expose files as an iterable object
+  if (typeof files[Symbol.iterator] === 'function') {
+    return Array.from(files).filter(Boolean);
+  }
+
+  if (typeof files === 'object') {
+    return Object.values(files)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
 async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categoryId = null) {
   const uploadedPhotos = [];
-  
+  const fileList = normalizeFiles(files);
+
+  if (fileList.length === 0) {
+    return uploadedPhotos;
+  }
+
   // Get event details
   const event = await db('events').where({ id: eventId }).first();
   if (!event) {
@@ -17,7 +40,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
   }
   
   // Process each file
-  for (const file of files) {
+  for (const file of fileList) {
     const trx = await db.transaction();
     
     try {
@@ -35,8 +58,9 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         .where({ event_id: eventId, type: photoType })
         .count('id as count')
         .first();
-      
-      counter = (existingCount.count || 0) + 1;
+
+      const existingCountValue = Number(existingCount?.count ?? 0);
+      counter = existingCountValue + 1;
       
       // Generate new filename
       const extension = path.extname(file.originalname);
@@ -53,9 +77,24 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       await fs.mkdir(destPath, { recursive: true });
       
       const newPath = path.join(destPath, newFilename);
+      const tempPath = file?.path || file?.filepath || file?.tempFilePath;
+
+      if (!tempPath) {
+        throw new Error('Uploaded file is missing a temporary path');
+      }
+
       // Use copyFile and unlink instead of rename to avoid cross-device issues
-      await fs.copyFile(file.path, newPath);
-      await fs.unlink(file.path);
+      try {
+        await fs.copyFile(tempPath, newPath);
+      } finally {
+        try {
+          await fs.unlink(tempPath);
+        } catch (unlinkErr) {
+          if (unlinkErr?.code !== 'ENOENT') {
+            console.warn(`Failed to clean up temp upload ${tempPath}:`, unlinkErr);
+          }
+        }
+      }
       
       // Generate thumbnail
       const thumbnailPath = await generateThumbnail(newPath);
@@ -78,7 +117,9 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
             path: relativePath,
             thumbnail_path: relativeThumbPath,
             type: photoType,
-            size_bytes: file.size
+            size_bytes: file.size,
+            uploaded_by: uploadedBy,
+            source_origin: 'managed'
           })
           .returning('id');
       } else {
@@ -88,7 +129,9 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
           path: relativePath,
           thumbnail_path: relativeThumbPath,
           type: photoType,
-          size_bytes: file.size
+          size_bytes: file.size,
+          uploaded_by: uploadedBy,
+          source_origin: 'managed'
         });
       }
 

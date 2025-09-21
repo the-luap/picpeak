@@ -1,15 +1,16 @@
 import React from 'react';
-import { Heart, Star, MessageSquare } from 'lucide-react';
+import { Heart, Star, MessageSquare, Bookmark } from 'lucide-react';
 import { Button } from '../common';
 import { useTranslation } from 'react-i18next';
 
-export type FilterType = 'all' | 'liked' | 'rated' | 'commented';
+export type FilterType = 'all' | 'liked' | 'favorited' | 'rated' | 'commented';
 
 interface GalleryFilterProps {
   currentFilter: FilterType;
   onFilterChange: (filter: FilterType) => void;
   feedbackEnabled: boolean;
   likeCount?: number;
+  favoriteCount?: number;
   ratedCount?: number;
   className?: string;
   isMobile?: boolean;
@@ -21,6 +22,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
   onFilterChange,
   feedbackEnabled,
   likeCount = 0,
+  favoriteCount = 0,
   ratedCount = 0,
   className = '',
   isMobile = false,
@@ -58,6 +60,15 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               aria-label={t('feedback.likes', 'Likes')}
             >
               <Heart className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('favorited')}
+              className="p-1 w-8 h-8 flex items-center justify-center"
+              aria-label={t('gallery.favorited', 'Saved')}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant={currentFilter === 'rated' ? 'primary' : 'outline'}
@@ -110,6 +121,16 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               <Heart className="w-3 h-3" />
               <span>{likeCount > 0 ? likeCount : t('gallery.liked', 'Liked')}</span>
             </Button>
+
+            <Button
+              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('favorited')}
+              className="text-xs flex-1 min-w-[80px] flex items-center justify-center gap-1"
+            >
+              <Bookmark className="w-3 h-3" />
+              <span>{favoriteCount > 0 ? favoriteCount : t('gallery.favorited', 'Saved')}</span>
+            </Button>
             
             <Button
               variant={currentFilter === 'rated' ? 'primary' : 'outline'}
@@ -149,6 +170,21 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               {likeCount > 0 && (
                 <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
                   {likeCount}
+                </span>
+              )}
+            </Button>
+
+            <Button
+              variant={currentFilter === 'favorited' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onFilterChange('favorited')}
+              className="text-xs sm:text-sm flex items-center gap-1"
+            >
+              <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{t('gallery.favorited', 'Saved')}</span>
+              {favoriteCount > 0 && (
+                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
+                  {favoriteCount}
                 </span>
               )}
             </Button>

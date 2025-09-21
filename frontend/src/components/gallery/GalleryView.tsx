@@ -270,6 +270,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       case 'liked':
         photos = photos.filter(photo => (photo.like_count || 0) > 0);
         break;
+      case 'favorited':
+        photos = photos.filter(photo => (photo.favorite_count || 0) > 0);
+        break;
       case 'rated':
         photos = photos.filter(photo => (photo.average_rating || 0) > 0 || (photo.total_ratings || 0) > 0);
         break;
@@ -313,6 +316,21 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     
     return photos;
   }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType]);
+
+  const likeCount = useMemo(
+    () => data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0,
+    [data?.photos]
+  );
+
+  const favoriteCount = useMemo(
+    () => data?.photos?.filter(p => (p.favorite_count ?? 0) > 0).length || 0,
+    [data?.photos]
+  );
+
+  const ratedCount = useMemo(
+    () => data?.photos?.filter(p => (p.total_ratings || 0) > 0 || (p.average_rating || 0) > 0).length || 0,
+    [data?.photos]
+  );
 
   // Check if downloads are allowed (both event setting and not expired)
   const allowDownloads = !isExpired && (data?.event?.allow_downloads === true);
@@ -471,8 +489,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           feedbackEnabled={feedbackEnabled}
           filterType={filterType}
           onFilterChange={setFilterType}
-          likeCount={data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0}
-          ratedCount={data?.photos?.filter(p => (p.total_ratings || 0) > 0).length || 0}
+          likeCount={likeCount}
+          favoriteCount={favoriteCount}
+          ratedCount={ratedCount}
         />
       ) : null}
 

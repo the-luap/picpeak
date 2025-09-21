@@ -23,6 +23,35 @@ import { useTranslation } from 'react-i18next';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
+const toBoolean = (value: unknown, defaultValue = false): boolean => {
+  if (value === undefined || value === null) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) return defaultValue;
+    return value !== 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.toLowerCase().trim();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+    if (normalized === '') return defaultValue;
+    return Boolean(normalized);
+  }
+  return defaultValue;
+};
+
+const toNumber = (value: unknown, defaultValue: number): number => {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+};
+
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
@@ -100,13 +129,13 @@ export const SettingsPage: React.FC = () => {
       // Extract general settings
       setGeneralSettings({
         site_url: settings.general_site_url || '',
-        default_expiration_days: settings.general_default_expiration_days || 30,
-        max_file_size_mb: settings.general_max_file_size_mb || 50,
+        default_expiration_days: toNumber(settings.general_default_expiration_days, 30),
+        max_file_size_mb: toNumber(settings.general_max_file_size_mb, 50),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
-        enable_watermark: settings.general_enable_watermark || false,
-        enable_analytics: settings.general_enable_analytics || true,
-        enable_registration: settings.general_enable_registration || false,
-        maintenance_mode: settings.general_maintenance_mode || false,
+        enable_watermark: toBoolean(settings.general_enable_watermark, false),
+        enable_analytics: toBoolean(settings.general_enable_analytics, true),
+        enable_registration: toBoolean(settings.general_enable_registration, false),
+        maintenance_mode: toBoolean(settings.general_maintenance_mode, false),
         default_language: settings.general_default_language || 'en',
         date_format: settings.general_date_format 
           ? (typeof settings.general_date_format === 'string'
@@ -117,20 +146,20 @@ export const SettingsPage: React.FC = () => {
 
       // Extract security settings
       setSecuritySettings({
-        require_password: settings.security_require_password ?? true,
-        password_min_length: settings.security_password_min_length ?? 8,
+        require_password: toBoolean(settings.security_require_password, true),
+        password_min_length: toNumber(settings.security_password_min_length, 8),
         password_complexity: settings.security_password_complexity ?? 'moderate',
-        enable_2fa: settings.security_enable_2fa ?? false,
-        session_timeout_minutes: settings.security_session_timeout_minutes ?? 60,
-        max_login_attempts: settings.security_max_login_attempts ?? 5,
-        enable_recaptcha: settings.security_enable_recaptcha ?? false,
+        enable_2fa: toBoolean(settings.security_enable_2fa, false),
+        session_timeout_minutes: toNumber(settings.security_session_timeout_minutes, 60),
+        max_login_attempts: toNumber(settings.security_max_login_attempts, 5),
+        enable_recaptcha: toBoolean(settings.security_enable_recaptcha, false),
         recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
         recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
       });
 
       // Extract analytics settings
       setAnalyticsSettings({
-        umami_enabled: settings.analytics_umami_enabled || false,
+        umami_enabled: toBoolean(settings.analytics_umami_enabled, false),
         umami_url: settings.analytics_umami_url || '',
         umami_website_id: settings.analytics_umami_website_id || '',
         umami_share_url: settings.analytics_umami_share_url || ''

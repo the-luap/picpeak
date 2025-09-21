@@ -18,13 +18,15 @@ export const galleryService = {
   // Get gallery photos (requires auth)
   async getGalleryPhotos(
     slug: string,
-    filter?: 'liked' | 'commented' | 'rated' | 'all',
+    filter?: 'liked' | 'favorited' | 'commented' | 'rated' | 'all',
     guestId?: string
   ): Promise<GalleryData> {
     const params: any = {};
-    if (filter && filter !== 'all' && guestId) {
+    if (filter && filter !== 'all') {
       params.filter = filter;
-      params.guest_id = guestId;
+      if (guestId) {
+        params.guest_id = guestId;
+      }
     }
     const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params });
     return response.data;

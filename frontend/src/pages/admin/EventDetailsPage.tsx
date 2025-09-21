@@ -33,6 +33,13 @@ import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams } fro
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
+const resolveShareLink = (link: string): string => {
+  if (!link) return '#';
+  if (link.startsWith('http')) return link;
+  if (link.startsWith('/')) return link;
+  return `/gallery/${link}`;
+};
+
 const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
   const [entries, setEntries] = useState<{ path: string; entries: any[]; canNavigateUp: boolean } | null>(null);
@@ -104,15 +111,29 @@ export const EventDetailsPage: React.FC = () => {
     }
   }, [id, navigate]);
   
+  type EditFormState = {
+    welcome_message: string;
+    color_theme: string;
+    expires_at: string;
+    allow_user_uploads: boolean;
+    upload_category_id: number | null;
+    hero_photo_id: number | null;
+    host_name: string;
+    source_mode: 'managed' | 'reference';
+    external_path: string;
+  };
+
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<EditFormState>({
     welcome_message: '',
     color_theme: '',
     expires_at: '',
     allow_user_uploads: false,
-    upload_category_id: null as number | null,
-    hero_photo_id: null as number | null,
+    upload_category_id: null,
+    hero_photo_id: null,
     host_name: '',
+    source_mode: 'managed',
+    external_path: '',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -251,6 +272,8 @@ export const EventDetailsPage: React.FC = () => {
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
       host_name: event.host_name || '',
+      source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
+      external_path: event.external_path || '',
     });
     
     // Set feedback settings if available
@@ -298,6 +321,13 @@ export const EventDetailsPage: React.FC = () => {
       // Use preset name for non-custom themes
       themeToSave = currentPresetName;
     }
+
+    const externalPathToSave = editForm.external_path?.trim() || '';
+
+    if (editForm.source_mode === 'reference' && !externalPathToSave) {
+      toast.error(t('events.externalFolderRequired', 'Please select an external folder before saving.'));
+      return;
+    }
     
     // Clean up the data - remove undefined values
     const updateData: any = {
@@ -318,6 +348,10 @@ export const EventDetailsPage: React.FC = () => {
     if (editForm.hero_photo_id !== undefined) {
       updateData.hero_photo_id = editForm.hero_photo_id;
     }
+    updateData.source_mode = editForm.source_mode;
+    updateData.external_path = editForm.source_mode === 'reference'
+      ? externalPathToSave
+      : null;
     if (editForm.host_name !== undefined && editForm.host_name !== null) {
       updateData.host_name = editForm.host_name;
     }
@@ -461,11 +495,7 @@ export const EventDetailsPage: React.FC = () => {
             )}
             {event.share_link && !isEditing && (
               <a
-                href={
-                  event.share_link.startsWith('http') 
-                    ? event.share_link
-                    : `/gallery/${event.share_link}`
-                }
+                href={resolveShareLink(event.share_link)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
@@ -610,6 +640,47 @@ export const EventDetailsPage: React.FC = () => {
                   onSelect={(photoId) => setEditForm(prev => ({ ...prev, hero_photo_id: photoId }))}
                   isEditing={isEditing}
                 />
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('events.sourceMode', 'Source Mode')}
+                  </label>
+                  <select
+                    value={editForm.source_mode}
+                    onChange={(e) => {
+                      const mode = e.target.value as 'managed' | 'reference';
+                      setEditForm(prev => ({
+                        ...prev,
+                        source_mode: mode,
+                        external_path: mode === 'reference'
+                          ? (prev.external_path || event.external_path || '')
+                          : ''
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="managed">{t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}</option>
+                    <option value="reference">{t('events.sourceModeReference', 'Reference external folder')}</option>
+                  </select>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('events.sourceModeHelp', 'Use managed mode for direct uploads or reference an external folder that is mounted at /external-media in Docker.')}
+                  </p>
+                </div>
+
+                {editForm.source_mode === 'reference' && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      {t('events.externalFolder', 'External Folder')}
+                    </label>
+                    <ExternalFolderPicker
+                      value={editForm.external_path || ''}
+                      onChange={(folder) => setEditForm(prev => ({ ...prev, external_path: folder }))}
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('events.externalFolderHint', 'These folders come from the /external-media mount inside the container. Ensure it is accessible to the backend process.')}
+                    </p>
+                  </div>
+                )}
                 
                 <div>
                   <label className="flex items-center">

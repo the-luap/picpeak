@@ -150,13 +150,30 @@ export const BrandingPage: React.FC = () => {
       try {
         const logoUrl = await settingsService.uploadLogo(file);
         setBrandingSettings(prev => ({ ...prev, logo_url: logoUrl }));
-        setCurrentTheme(prev => ({ ...prev, logoUrl }));
+        setCurrentTheme(prev => {
+          const updated = { ...prev, logoUrl };
+          if (isPreviewMode) {
+            setTheme(updated);
+          }
+          return updated;
+        });
         toast.success(t('toast.uploadSuccess'));
       } catch (error) {
         console.error('Failed to upload logo:', error);
         toast.error(t('toast.uploadError'));
       }
     }
+  };
+
+  const handleRemoveLogo = () => {
+    setBrandingSettings(prev => ({ ...prev, logo_url: '' }));
+    setCurrentTheme(prev => {
+      const updated = { ...prev, logoUrl: '' };
+      if (isPreviewMode) {
+        setTheme(updated);
+      }
+      return updated;
+    });
   };
 
   const handleWatermarkLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,7 +368,7 @@ export const BrandingPage: React.FC = () => {
                       />
                       <button
                         type="button"
-                        onClick={() => handleBrandingChange('logo_url', '')}
+                        onClick={handleRemoveLogo}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
                       >
                         ×
@@ -685,7 +702,8 @@ export const BrandingPage: React.FC = () => {
                   {t('branding.livePreview')}
                 </h3>
                 <GalleryPreview 
-                  theme={currentTheme} 
+                  theme={currentTheme}
+                  branding={brandingSettings}
                   className="shadow-lg" 
                 />
               </Card>

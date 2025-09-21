@@ -396,7 +396,9 @@ router.put('/:id', adminAuth, [
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
-  body('watermark_text').optional().trim()
+  body('watermark_text').optional().trim(),
+  body('source_mode').optional().isIn(['managed', 'reference']),
+  body('external_path').optional({ nullable: true }).isString().trim()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -407,7 +409,24 @@ router.put('/:id', adminAuth, [
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'source_mode')) {
+      updates.source_mode = updates.source_mode === 'reference' ? 'reference' : 'managed';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'external_path')) {
+      const trimmedPath = updates.external_path ? String(updates.external_path).trim() : '';
+      updates.external_path = trimmedPath || null;
+    }
+
+    if (updates.source_mode === 'managed') {
+      updates.external_path = null;
+    }
+
+    if (updates.source_mode === 'reference' && (updates.external_path === null || updates.external_path === undefined)) {
+      return res.status(400).json({ error: 'external_path is required when source_mode is reference' });
+    }
 
     // Log the update request for debugging
     console.log('Update event request:', {
