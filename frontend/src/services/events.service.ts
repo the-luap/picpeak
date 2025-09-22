@@ -13,6 +13,14 @@ interface CreateEventData {
   expiration_days: number;
   allow_user_uploads?: boolean;
   upload_category_id?: number | null;
+  feedback_enabled?: boolean;
+  allow_ratings?: boolean;
+  allow_likes?: boolean;
+  allow_comments?: boolean;
+  allow_favorites?: boolean;
+  require_name_email?: boolean;
+  moderate_comments?: boolean;
+  show_feedback_to_guests?: boolean;
 }
 
 interface UpdateEventData {

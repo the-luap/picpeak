@@ -3,6 +3,12 @@ import type { ReactNode } from 'react';
 import { api } from '../config/api';
 import { authService, galleryService } from '../services';
 import { cleanupOldGalleryAuth } from '../utils/cleanupGalleryAuth';
+import {
+  clearActiveGallerySlug,
+  clearGalleryToken,
+  setActiveGallerySlug,
+  storeGalleryToken,
+} from '../utils/galleryAuthStorage';
 
 interface GalleryEvent {
   id: number;
@@ -55,6 +61,13 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
   useEffect(() => {
     cleanupOldGalleryAuth();
 
+    const slugAtMount = getCurrentGallerySlug();
+    if (slugAtMount) {
+      setActiveGallerySlug(slugAtMount);
+    } else {
+      clearActiveGallerySlug();
+    }
+
     const initialise = async () => {
       const currentSlug = getCurrentGallerySlug();
 
@@ -62,6 +75,8 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
         setIsLoading(false);
         return;
       }
+
+      setActiveGallerySlug(currentSlug);
 
       const storedEvent = sessionStorage.getItem(`gallery_event_${currentSlug}`);
       if (storedEvent) {
@@ -109,6 +124,10 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
               setEvent(response.event);
               setIsAuthenticated(true);
               sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(response.event));
+              if (response.token) {
+                storeGalleryToken(currentSlug, response.token);
+              }
+              setActiveGallerySlug(currentSlug);
               return;
             }
           }
@@ -118,16 +137,21 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
         setIsAuthenticated(false);
         sessionStorage.removeItem(`gallery_event_${currentSlug}`);
         setEvent(null);
+        clearGalleryToken(currentSlug);
       } catch (error) {
         setIsAuthenticated(false);
         sessionStorage.removeItem(`gallery_event_${currentSlug}`);
         setEvent(null);
+        clearGalleryToken(currentSlug);
       } finally {
         setIsLoading(false);
       }
     };
 
     initialise();
+    return () => {
+      clearActiveGallerySlug();
+    };
   }, []);
 
   const login = async (slug: string, password: string, recaptchaToken?: string | null) => {
@@ -137,7 +161,11 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       const response = await authService.verifyGalleryPassword(slug, password, recaptchaToken);
       setEvent(response.event);
       setIsAuthenticated(true);
-      
+      if (response.token) {
+        storeGalleryToken(slug, response.token);
+      }
+      setActiveGallerySlug(slug);
+
       // Store event data for quick reloads (non-sensitive)
       sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(response.event));
     } catch (err: any) {
@@ -152,12 +180,13 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
     const currentSlug = getCurrentGallerySlug();
     if (currentSlug) {
       sessionStorage.removeItem(`gallery_event_${currentSlug}`);
+      clearGalleryToken(currentSlug);
     }
     authService.galleryLogout(currentSlug || undefined);
     setIsAuthenticated(false);
     setEvent(null);
-  }
-;
+    clearActiveGallerySlug();
+  };
 
   return (
     <GalleryAuthContext.Provider

@@ -23,4 +23,5 @@ export const cleanupOldGalleryAuth = () => {
   // Also clear session storage
   sessionStorage.removeItem('gallery_event');
   sessionStorage.removeItem('gallery_token');
+  sessionStorage.removeItem('gallery_active_slug');
 };

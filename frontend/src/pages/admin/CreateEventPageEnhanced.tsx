@@ -225,7 +225,9 @@ export const CreateEventPageEnhanced: React.FC = () => {
     if (!validateForm()) {
       return;
     }
-    
+
+    const feedbackSettings = formData.feedback_settings;
+
     const payload = {
       event_type: formData.event_type,
       event_name: formData.event_name,
@@ -239,9 +241,16 @@ export const CreateEventPageEnhanced: React.FC = () => {
       expiration_days: formData.expires_in_days,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
-      feedback_settings: formData.feedback_settings,
+      feedback_enabled: feedbackSettings.feedback_enabled,
+      allow_ratings: feedbackSettings.allow_ratings,
+      allow_likes: feedbackSettings.allow_likes,
+      allow_comments: feedbackSettings.allow_comments,
+      allow_favorites: feedbackSettings.allow_favorites,
+      require_name_email: feedbackSettings.require_name_email,
+      moderate_comments: feedbackSettings.moderate_comments,
+      show_feedback_to_guests: feedbackSettings.show_feedback_to_guests,
     };
-    
+
     createMutation.mutate(payload);
   };
 

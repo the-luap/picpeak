@@ -1,4 +1,10 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
+import {
+  getActiveGallerySlug,
+  getGalleryToken,
+  inferGallerySlugFromLocation,
+  resolveSlugFromRequestUrl,
+} from '../utils/galleryAuthStorage';
 
 // Maintenance mode callback
 let maintenanceModeCallback: ((enabled: boolean) => void) | null = null;
@@ -21,6 +27,60 @@ api.interceptors.request.use(
   (config) => {
     if (config.data instanceof FormData) {
       delete config.headers?.['Content-Type'];
+    }
+
+    if (typeof window !== 'undefined') {
+      const pathSlug = resolveSlugFromRequestUrl(config.url || '');
+      const params = config.params as Record<string, unknown> | undefined;
+      const paramSlug = typeof params?.slug === 'string' ? (params.slug as string) : null;
+
+      const rawPath = (() => {
+        if (!config.url) return '';
+        try {
+          if (config.url.startsWith('http://') || config.url.startsWith('https://')) {
+            return new URL(config.url).pathname;
+          }
+        } catch (error) {
+          return config.url;
+        }
+        return config.url;
+      })();
+
+      const pathname = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+
+      const isGalleryEndpoint = /^\/gallery\//.test(pathname)
+        || /^\/secure-images\//.test(pathname)
+        || /^\/auth\/gallery\//.test(pathname);
+
+      const isGallerySessionCheck = pathname === '/auth/session'
+        && (!!paramSlug || window.location.pathname.startsWith('/gallery/'));
+
+      if (isGalleryEndpoint || isGallerySessionCheck) {
+        const fallbackSlug = getActiveGallerySlug()
+          || inferGallerySlugFromLocation();
+        const slug = pathSlug || paramSlug || fallbackSlug;
+
+        if (slug) {
+          const token = getGalleryToken(slug);
+          if (token) {
+            if (!config.headers) {
+              config.headers = new AxiosHeaders();
+            }
+
+            if (config.headers instanceof AxiosHeaders) {
+              const existing = config.headers.get('Authorization');
+              if (!existing) {
+                config.headers.set('Authorization', `Bearer ${token}`);
+              }
+            } else {
+              const headersRecord = config.headers as Record<string, string | undefined>;
+              if (!headersRecord.Authorization) {
+                headersRecord.Authorization = `Bearer ${token}`;
+              }
+            }
+          }
+        }
+      }
     }
 
     return config;
