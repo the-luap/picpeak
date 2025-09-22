@@ -1,5 +1,6 @@
 const path = require('path');
 const { resolveExternalPath } = require('./externalMediaService');
+const { safePathJoin } = require('../utils/fileSecurityUtils');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -33,10 +34,15 @@ function resolvePhotoFilePath(event, photo) {
   }
 
   const storagePath = getStoragePath();
+  const eventsRoot = path.join(storagePath, 'events/active');
+
   if (photo.path && photo.path.startsWith('events/active/')) {
-    return path.join(storagePath, photo.path);
+    // Legacy paths already include prefix; normalize via safe join
+    return safePathJoin(storagePath, photo.path.replace(/^events\/active\/?/, 'events/active/'));
   }
-  return path.join(storagePath, 'events/active', photo.path || '');
+
+  const relativeSegment = photo.path ? photo.path.replace(/^\/+/, '') : '';
+  return safePathJoin(eventsRoot, relativeSegment);
 }
 
 module.exports = {
