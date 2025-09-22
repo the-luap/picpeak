@@ -62,11 +62,38 @@ router.post('/events/:id/import-external', adminAuth, async (req, res) => {
       .map(e => ({ full: path.join(baseAbs, e.name), rel: e.name, name: e.name }))
       .filter(f => ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f.name).toLowerCase()));
 
-    let imported = 0;
+    // Prepare file metadata and deduplicate by filename within type (keep largest)
     let skipped = 0;
+    const preparedFiles = [];
+    for (const f of files) {
+      try {
+        const stats = await fs.stat(f.full);
+        const segs = f.rel.split(path.sep);
+        let type = 'individual';
+        if (segs[0] === map.collages) type = 'collage';
+        if (segs[0] === map.individual) type = 'individual';
+        preparedFiles.push({ ...f, type, size: stats.size });
+      } catch (err) {
+        skipped++;
+      }
+    }
+
+    const dedupeMap = new Map();
+    for (const file of preparedFiles) {
+      const dedupeKey = `${file.type}:${path.basename(file.rel).toLowerCase()}`;
+      const existing = dedupeMap.get(dedupeKey);
+      if (!existing || file.size > existing.size) {
+        if (existing) skipped++;
+        dedupeMap.set(dedupeKey, file);
+      } else {
+        skipped++;
+      }
+    }
+
+    let imported = 0;
 
     // Insert photos
-    for (const f of files) {
+    for (const f of dedupeMap.values()) {
       // Infer type by subfolder names
       const segs = f.rel.split(path.sep);
       let type = 'individual';
@@ -79,7 +106,6 @@ router.post('/events/:id/import-external', adminAuth, async (req, res) => {
           .where({ event_id: eventId, external_relpath: f.rel })
           .first();
         if (exists) { skipped++; continue; }
-
         const stats = await fs.stat(f.full);
         const inserted = await db('photos')
           .insert({
