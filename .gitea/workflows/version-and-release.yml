@@ -128,9 +128,16 @@ jobs:
           MINOR="${version_parts[1]}"
           PATCH="${version_parts[2]}"
           
-          # Increment patch version
+          # Increment patch version and ensure tag uniqueness
+          git fetch --tags --quiet || true
           NEW_PATCH=$((PATCH + 1))
           NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          
+          while git rev-parse "v${NEW_VERSION}" >/dev/null 2>&1; do
+            echo "Tag v${NEW_VERSION} already exists, bumping patch version again"
+            NEW_PATCH=$((NEW_PATCH + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          done
           
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -260,4 +267,3 @@ jobs:
           echo "Component(s) changed: ${{ needs.version-bump.outputs.component_changed }}"
           echo "Drone will automatically trigger on the new tag"
           # Drone CI will automatically trigger on the tag push event
-
