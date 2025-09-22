@@ -1,4 +1,4 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Add build arguments
 ARG CACHEBUST=1
@@ -23,7 +23,7 @@ RUN npm ci --only=production
 COPY . .
 
 # Production stage
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
