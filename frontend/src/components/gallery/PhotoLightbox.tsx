@@ -18,6 +18,7 @@ interface PhotoLightboxProps {
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
   initialShowFeedback?: boolean;
+  onFeedbackChange?: () => void;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -30,6 +31,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   protectionLevel = 'standard',
   useEnhancedProtection = false,
   initialShowFeedback = false,
+  onFeedbackChange,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -533,6 +535,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               gallerySlug={slug}
               showComments={true}
               className="space-y-4"
+              onFeedbackUpdate={() => {
+                if (onFeedbackChange) onFeedbackChange();
+              }}
             />
           </div>
         </div>

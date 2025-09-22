@@ -291,6 +291,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
           initialShowFeedback={openFeedbackInitially}
+          onFeedbackChange={onFeedbackChange}
         />
       )}
     </>
