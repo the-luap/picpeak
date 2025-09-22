@@ -132,6 +132,37 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+ensure_storage_layout() {
+    local base_dir="$1"
+    local storage_root="$base_dir/storage"
+    local storage_events_dir="$storage_root/events"
+
+    mkdir -p "$storage_events_dir/active" \
+             "$storage_events_dir/archived" \
+             "$storage_root/thumbnails" \
+             "$storage_root/tmp"
+
+    local legacy_dir="$base_dir/events"
+    if [[ -d "$legacy_dir" ]]; then
+        log_step "Migrating legacy events directory to storage/events..."
+        mkdir -p "$storage_events_dir"
+
+        local existing=""
+        if [[ -d "$storage_events_dir" ]]; then
+            existing=$(ls -A "$storage_events_dir" 2>/dev/null || true)
+        fi
+
+        if [[ ! -d "$storage_events_dir" || -z "$existing" ]]; then
+            rm -rf "$storage_events_dir"
+            mv "$legacy_dir" "$storage_events_dir"
+        else
+            cp -a "$legacy_dir/." "$storage_events_dir/"
+            rm -rf "$legacy_dir"
+        fi
+    fi
+    mkdir -p "$storage_events_dir/active" "$storage_events_dir/archived"
+}
+
 generate_password() {
     openssl rand -base64 32 | tr -d "=+/" | cut -c1-16
 }
@@ -602,7 +633,8 @@ setup_native_installation() {
     
     # Create application directory
     log_step "Creating application directory..."
-    mkdir -p "$NATIVE_APP_DIR"/{app,events/{active,archived},logs,config}
+    mkdir -p "$NATIVE_APP_DIR"/{app,logs,config}
+    ensure_storage_layout "$NATIVE_APP_DIR"
     chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR"
     
     # Clone repository
@@ -668,7 +700,7 @@ DATABASE_CLIENT=sqlite3
 DATABASE_PATH=$NATIVE_APP_DIR/app/backend/data/photo_sharing.db
 
 # Storage root (thumbnails/uploads live under this path)
-STORAGE_PATH=$NATIVE_APP_DIR
+STORAGE_PATH=$NATIVE_APP_DIR/storage
 
 # Email
 SMTP_ENABLED=${SMTP_HOST:+true}
@@ -1100,6 +1132,17 @@ update_native_installation() {
     fi
     if ! grep -q '^FRONTEND_DIR=' "$NATIVE_APP_DIR/app/backend/.env"; then
       echo "FRONTEND_DIR=$NATIVE_APP_DIR/app/frontend/dist" >> "$NATIVE_APP_DIR/app/backend/.env"
+    fi
+
+    ensure_storage_layout "$NATIVE_APP_DIR"
+    chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR/storage"
+
+    if [[ -f "$NATIVE_APP_DIR/app/backend/.env" ]]; then
+      if grep -q '^STORAGE_PATH=' "$NATIVE_APP_DIR/app/backend/.env"; then
+        sed -i "s|^STORAGE_PATH=.*|STORAGE_PATH=$NATIVE_APP_DIR/storage|" "$NATIVE_APP_DIR/app/backend/.env"
+      else
+        echo "STORAGE_PATH=$NATIVE_APP_DIR/storage" >> "$NATIVE_APP_DIR/app/backend/.env"
+      fi
     fi
     
     # Restart services
