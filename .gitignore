@@ -54,8 +54,6 @@ coverage/
 # Backup and test directories
 backups/
 test-archiver/
-tests/
-test-assets/
 
 # Keep directory structure
 !storage/events/active/.gitkeep
