@@ -55,6 +55,7 @@ CUSTOM_PORT=""
 UNATTENDED=false
 UPDATE_MODE=false
 UNINSTALL_MODE=false
+FORCE_ADMIN_PASSWORD_RESET=false
 
 ################################################################################
 # Helper Functions
@@ -487,6 +488,15 @@ EOF
     # Run database migrations
     log_step "Running database migrations..."
     docker compose exec -T backend npm run migrate
+
+    if [[ "$FORCE_ADMIN_PASSWORD_RESET" == "true" ]]; then
+        log_step "Resetting admin credentials..."
+        if docker compose exec -T backend node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt; then
+            docker compose cp backend:/app/data/ADMIN_CREDENTIALS.txt "$app_dir/data/ADMIN_CREDENTIALS.txt" 2>/dev/null || true
+        else
+            log_warn "Automatic admin password reset failed; run reset-admin-password.js inside the backend container."
+        fi
+    fi
     
     log_success "Docker installation completed!"
 }
@@ -737,6 +747,13 @@ EOF
     log_step "Initializing database..."
     cd "$NATIVE_APP_DIR/app/backend"
     run_as_user "npm run migrate"
+
+    if [[ "$FORCE_ADMIN_PASSWORD_RESET" == "true" ]]; then
+        log_step "Resetting admin credentials..."
+        if ! run_as_user "node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt"; then
+            log_warn "Automatic admin password reset failed; please run reset-admin-password.js manually."
+        fi
+    fi
     
     # Create systemd services
     create_systemd_services
@@ -989,7 +1006,7 @@ print_success_message() {
         fi
       else
         echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
-        echo -e "Password: ${YELLOW}(credentials file not found)${NC}"
+        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run node scripts/reset-admin-password.js manually)${NC}"
       fi
     echo
     echo -e "${YELLOW}⚠️  IMPORTANT: Change the admin password on first login!${NC}"
@@ -1256,6 +1273,10 @@ parse_arguments() {
                 SMTP_PASS="$2"
                 shift 2
                 ;;
+            --force-admin-password-reset)
+                FORCE_ADMIN_PASSWORD_RESET=true
+                shift
+                ;;
             --enable-ssl)
                 ENABLE_SSL=true
                 shift
@@ -1301,6 +1322,7 @@ Options:
   --smtp-port PORT    SMTP server port
   --smtp-user USER    SMTP username
   --smtp-pass PASS    SMTP password
+  --force-admin-password-reset  Regenerate admin credentials after setup
   --enable-ssl        Enable HTTPS with Let's Encrypt
   --port PORT         Custom port (native only)
   --update            Update existing installation

@@ -420,7 +420,17 @@ Upon first login, the system will **automatically redirect** you to change your 
 
 If you lose your admin credentials after the first login, you'll need to manually reset the password in the database or create a new admin user through the database.
 
-**Note**: The credentials file (`ADMIN_CREDENTIALS.txt`) is only created during initial deployment and contains the first admin password. After changing the password, this file becomes outdated but is kept for reference.
+**Note**: The credentials file (`ADMIN_CREDENTIALS.txt`) is only created during initial deployment and contains the first admin password. After changing the password, this file becomes outdated but is kept for reference. If you need to regenerate the password and file during a reinstall, re-run the installer with the `--force-admin-password-reset` flag:
+
+```bash
+# Native reinstall example
+sudo ./setup.sh --native --force-admin-password-reset
+
+# Docker reinstall example
+sudo ./setup.sh --docker --force-admin-password-reset
+```
+
+The flag calls `scripts/reset-admin-password.js` in non-interactive mode, writes a fresh random password into `data/ADMIN_CREDENTIALS.txt`, and prints the new credentials at the end of the installer run.
 
 #### Configuring Admin Email
 
