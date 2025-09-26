@@ -20,10 +20,12 @@ const {
 const { sanitizeCss } = require('../utils/cssSanitizer');
 const router = express.Router();
 
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+
 // Configure multer for logo uploads
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../storage/uploads/logos');
+    const uploadDir = path.join(getStoragePath(), 'uploads/logos');
     await fs.mkdir(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
@@ -53,7 +55,7 @@ const upload = multer({
 // Configure multer for favicon uploads
 const faviconStorage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../storage/uploads/favicons');
+    const uploadDir = path.join(getStoragePath(), 'uploads/favicons');
     await fs.mkdir(uploadDir, { recursive: true });
     cb(null, uploadDir);
   },
@@ -228,7 +230,8 @@ router.put('/branding', adminAuth, async (req, res) => {
         
         if (currentFaviconUrl && typeof currentFaviconUrl === 'string' && currentFaviconUrl.startsWith('/uploads/favicons/')) {
           // Delete the file from filesystem
-          const faviconPath = path.join(__dirname, '..', '..', 'storage', currentFaviconUrl.replace('/uploads/', ''));
+          const relativePath = currentFaviconUrl.replace(/^\//, '');
+          const faviconPath = path.join(getStoragePath(), relativePath);
           try {
             await fs.unlink(faviconPath);
             console.log('Deleted favicon file:', faviconPath);
@@ -258,7 +261,8 @@ router.put('/branding', adminAuth, async (req, res) => {
         
         if (currentLogoUrl && typeof currentLogoUrl === 'string' && currentLogoUrl.startsWith('/uploads/logos/')) {
           // Delete the file from filesystem
-          const logoPath = path.join(__dirname, '..', '..', 'storage', currentLogoUrl.replace('/uploads/', ''));
+          const relativePath = currentLogoUrl.replace(/^\//, '');
+          const logoPath = path.join(getStoragePath(), relativePath);
           try {
             await fs.unlink(logoPath);
             console.log('Deleted logo file:', logoPath);
@@ -643,7 +647,7 @@ router.get('/storage/info', adminAuth, async (req, res) => {
     for (const archive of archives) {
       if (archive.archive_path) {
         try {
-          const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+          const storagePath = getStoragePath();
           const fullArchivePath = path.join(storagePath, archive.archive_path);
           const stats = await fs.stat(fullArchivePath);
           archiveStorage += stats.size;
@@ -654,7 +658,7 @@ router.get('/storage/info', adminAuth, async (req, res) => {
     }
 
     const DEFAULT_SOFT_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // 10GB fallback
-    const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+    const storagePath = getStoragePath();
 
     let diskStats = null;
     let rawDiskTotal = null;
