@@ -94,7 +94,6 @@ export const SettingsPage: React.FC = () => {
 
   // Security settings state
   const [securitySettings, setSecuritySettings] = useState({
-    require_password: true,
     password_min_length: 8,
     password_complexity: 'moderate',
     enable_2fa: false,
@@ -146,7 +145,6 @@ export const SettingsPage: React.FC = () => {
 
       // Extract security settings
       setSecuritySettings({
-        require_password: toBoolean(settings.security_require_password, true),
         password_min_length: toNumber(settings.security_password_min_length, 8),
         password_complexity: settings.security_password_complexity ?? 'moderate',
         enable_2fa: toBoolean(settings.security_enable_2fa, false),
@@ -1105,16 +1103,6 @@ export const SettingsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.security.passwordSettings')}</h2>
             
             <div className="space-y-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={securitySettings.require_password}
-                  onChange={(e) => setSecuritySettings(prev => ({ ...prev, require_password: e.target.checked }))}
-                  className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                />
-                <span className="ml-2 text-sm text-neutral-700">{t('settings.security.requirePassword')}</span>
-              </label>
-
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   {t('settings.security.minPasswordLength')}
