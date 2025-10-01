@@ -17,6 +17,7 @@ export interface Event {
   is_archived: boolean;
   archive_path?: string;
   archived_at?: string;
+  require_password?: boolean;
   photo_count?: number;
   total_size?: number;
   recent_photos?: Array<{
@@ -92,6 +93,7 @@ export interface GalleryData {
     disable_right_click?: boolean;
     watermark_downloads?: boolean;
     watermark_text?: string;
+    require_password?: boolean;
     protection_level?: 'basic' | 'standard' | 'enhanced' | 'maximum';
     image_quality?: number;
     use_canvas_rendering?: boolean;
@@ -134,6 +136,7 @@ export interface GalleryAuthResponse {
     expires_at: string;
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
+    require_password?: boolean;
   };
 }
 

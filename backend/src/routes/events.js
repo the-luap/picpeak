@@ -4,10 +4,33 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
+const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const { adminAuth } = require('../middleware/auth-enhanced-v2');
 const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
+
+const parseBooleanInput = (value, defaultValue = true) => {
+  if (value === undefined || value === null) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+  }
+  return defaultValue;
+};
 
 // Create new event
 router.post('/', adminAuth, [
@@ -16,7 +39,17 @@ router.post('/', adminAuth, [
   body('event_date').isDate(),
   body('host_email').isEmail(),
   body('admin_email').isEmail(),
-  body('password').isLength({ min: 6 }),
+  body('require_password').optional().isBoolean(),
+  body('password').optional().isString().custom((value, { req }) => {
+    const requirePassword = parseBooleanInput(req.body.require_password, true);
+    if (!requirePassword) {
+      return true;
+    }
+    if (typeof value !== 'string' || value.trim().length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    return true;
+  }),
   body('expiration_days').isInt({ min: 1, max: 365 }).optional()
 ], async (req, res) => {
   try {
@@ -32,10 +65,28 @@ router.post('/', adminAuth, [
       host_email,
       admin_email,
       password,
+      require_password: requirePasswordInput = true,
       welcome_message,
       color_theme,
       expiration_days = 30
     } = req.body;
+
+    const requirePassword = parseBooleanInput(requirePasswordInput, true);
+
+    if (requirePassword) {
+      const passwordValidation = await validatePasswordInContext(password, 'gallery', {
+        eventName: event_name
+      });
+
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ 
+          error: 'Password does not meet security requirements',
+          details: passwordValidation.errors,
+          score: passwordValidation.score,
+          feedback: passwordValidation.feedback
+        });
+      }
+    }
     
     // Generate unique slug
     const baseSlug = `${event_type}-${event_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${event_date}`;
@@ -49,10 +100,15 @@ router.post('/', adminAuth, [
     
     // Generate share link (just slug/token, not full URL)
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const shareLink = `${slug}/${shareToken}`;
+    const sharePath = `/gallery/${slug}/${shareToken}`;
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+    const fullShareLink = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
+    const shareLinkSlug = `${slug}/${shareToken}`;
     
-    // Hash password
-    const password_hash = await bcrypt.hash(password, 10);
+    // Hash password (or placeholder when not required)
+    const password_hash = requirePassword
+      ? await bcrypt.hash(password, getBcryptRounds())
+      : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     
     // Calculate expiration date (days after event date)
     const expires_at = new Date(event_date);
@@ -75,8 +131,9 @@ router.post('/', adminAuth, [
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLink,
-      expires_at
+      share_link: shareLinkSlug,
+      expires_at,
+      require_password: formatBoolean(requirePassword)
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -88,17 +145,18 @@ router.post('/', adminAuth, [
       host_name: host_email.split('@')[0], // Extract name from email
       event_name,
       event_date: event_date,  // Pass raw date - will be formatted by email processor
-      gallery_link: shareLink,
-      gallery_password: password,
+      gallery_link: fullShareLink,
+      gallery_password: requirePassword ? password : 'No password required',
       expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
       welcome_message: welcome_message || ''
     });
-    
+
     res.json({
       id: eventId,
       slug,
-      share_link: shareLink,
-      expires_at
+      share_link: fullShareLink,
+      expires_at,
+      require_password: requirePassword
     });
   } catch (error) {
     console.error(error);
@@ -137,17 +195,46 @@ router.get('/', adminAuth, async (req, res) => {
 router.put('/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
     
     // Don't allow updating certain fields
     delete updates.id;
     delete updates.slug;
     delete updates.created_at;
-    
-    // If updating password, hash it
-    if (updates.password) {
-      updates.password_hash = await bcrypt.hash(updates.password, 10);
-      delete updates.password;
+    delete updates.password_confirmation;
+
+    const hasRequirePasswordUpdate = Object.prototype.hasOwnProperty.call(updates, 'require_password');
+    let requirePasswordUpdate;
+    if (hasRequirePasswordUpdate) {
+      requirePasswordUpdate = parseBooleanInput(updates.require_password, true);
+      updates.require_password = formatBoolean(requirePasswordUpdate);
+    }
+
+    let newPasswordPlain;
+    if (Object.prototype.hasOwnProperty.call(updates, 'password')) {
+      if (updates.password === undefined || updates.password === null || updates.password === '') {
+        delete updates.password;
+      } else {
+        newPasswordPlain = updates.password;
+        delete updates.password;
+      }
+    }
+
+    const event = await db('events').where('id', id).first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const currentRequirePassword = parseBooleanInput(event.require_password, true);
+
+    if (hasRequirePasswordUpdate && requirePasswordUpdate === true && !currentRequirePassword && !newPasswordPlain) {
+      return res.status(400).json({ error: 'Password must be provided when enabling password requirement.' });
+    }
+
+    if (newPasswordPlain) {
+      updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
+    } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
+      updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     }
     
     await db('events').where('id', id).update(updates);

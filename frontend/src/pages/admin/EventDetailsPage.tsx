@@ -17,7 +17,10 @@ import {
   Image,
   Key,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -27,6 +30,7 @@ import { Button, Input, Card, Loading } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams } from '../../services/photos.service';
@@ -121,6 +125,9 @@ export const EventDetailsPage: React.FC = () => {
     host_name: string;
     source_mode: 'managed' | 'reference';
     external_path: string;
+    require_password: boolean;
+    new_password: string;
+    confirm_new_password: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -134,6 +141,9 @@ export const EventDetailsPage: React.FC = () => {
     host_name: '',
     source_mode: 'managed',
     external_path: '',
+    require_password: true,
+    new_password: '',
+    confirm_new_password: '',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -156,6 +166,7 @@ export const EventDetailsPage: React.FC = () => {
   const [importing, setImporting] = useState<boolean>(false);
   const [selectedPhoto, setSelectedPhoto] = useState<{ photo: AdminPhoto; index: number } | null>(null);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   
@@ -274,7 +285,12 @@ export const EventDetailsPage: React.FC = () => {
       host_name: event.host_name || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
+      require_password: normalizeRequirePassword(event.require_password),
+      new_password: '',
+      confirm_new_password: '',
     });
+
+    setShowNewPassword(false);
     
     // Set feedback settings if available
     if (eventFeedbackSettings) {
@@ -324,6 +340,26 @@ export const EventDetailsPage: React.FC = () => {
 
     const externalPathToSave = editForm.external_path?.trim() || '';
 
+    const currentRequirePassword = normalizeRequirePassword(event.require_password);
+    const requirePasswordChanged = editForm.require_password !== currentRequirePassword;
+
+    if (editForm.require_password) {
+      if (requirePasswordChanged && !editForm.new_password) {
+        toast.error(t('events.newPasswordRequired', 'Please set a password before enabling protection.'));
+        return;
+      }
+      if (editForm.new_password) {
+        if (editForm.new_password.length < 6) {
+          toast.error(t('validation.passwordMinLength'));
+          return;
+        }
+        if (editForm.new_password !== editForm.confirm_new_password) {
+          toast.error(t('validation.passwordsDoNotMatch'));
+          return;
+        }
+      }
+    }
+
     if (editForm.source_mode === 'reference' && !externalPathToSave) {
       toast.error(t('events.externalFolderRequired', 'Please select an external folder before saving.'));
       return;
@@ -333,6 +369,7 @@ export const EventDetailsPage: React.FC = () => {
     const updateData: any = {
       expires_at: editForm.expires_at,
       allow_user_uploads: editForm.allow_user_uploads,
+      require_password: editForm.require_password,
     };
     
     // Only include fields that have defined values
@@ -354,6 +391,10 @@ export const EventDetailsPage: React.FC = () => {
       : null;
     if (editForm.host_name !== undefined && editForm.host_name !== null) {
       updateData.host_name = editForm.host_name;
+    }
+
+    if (editForm.new_password) {
+      updateData.password = editForm.new_password;
     }
     
     // Remove any keys with undefined values
@@ -437,6 +478,15 @@ export const EventDetailsPage: React.FC = () => {
                 {format(parseISO(event.event_date), 'PPP')}
               </span>
               <span className="capitalize">{event.event_type}</span>
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  isGalleryPublic(event.require_password)
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                {isGalleryPublic(event.require_password) ? t('events.publicAccess', 'Public access') : t('events.passwordProtected', 'Password protected')}
+              </span>
               {event.is_archived ? (
                 <span className="text-neutral-500 flex items-center">
                   <Archive className="w-4 h-4 mr-1" />
@@ -640,6 +690,84 @@ export const EventDetailsPage: React.FC = () => {
                   onSelect={(photoId) => setEditForm(prev => ({ ...prev, hero_photo_id: photoId }))}
                   isEditing={isEditing}
                 />
+
+                <div>
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      checked={editForm.require_password}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setEditForm(prev => ({
+                          ...prev,
+                          require_password: checked,
+                          new_password: checked ? prev.new_password : '',
+                          confirm_new_password: checked ? prev.confirm_new_password : '',
+                        }));
+                        if (!checked) {
+                          setShowNewPassword(false);
+                        }
+                      }}
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-neutral-700">{t('events.requirePasswordToggle')}</span>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {t('events.requirePasswordToggleHelp', 'Disable this if you want to share the gallery without a password. Anyone with the link will be able to view the photos.')}
+                      </p>
+                    </div>
+                  </label>
+
+                  {!editForm.require_password && (
+                    <div className="mt-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+                      {t('events.publicGalleryWarning', 'Public galleries are accessible to anyone with the link. Consider enabling download watermarks and monitoring activity.')} 
+                    </div>
+                  )}
+                </div>
+
+                {editForm.require_password && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        {t('events.newPasswordLabel', 'New gallery password')}
+                      </label>
+                      <div className="relative">
+                        <Input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={editForm.new_password}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, new_password: e.target.value }))}
+                          placeholder={t('events.enterPassword')}
+                          leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        >
+                          {showNewPassword ? (
+                            <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                          ) : (
+                            <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        {t('events.confirmPassword')}
+                      </label>
+                      <Input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={editForm.confirm_new_password}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, confirm_new_password: e.target.value }))}
+                        placeholder={t('events.confirmPasswordPlaceholder')}
+                        leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -848,7 +976,9 @@ export const EventDetailsPage: React.FC = () => {
             </div>
             
             <p className="text-sm text-neutral-600 mt-2">
-              {t('events.shareWithGuests')}
+              {isGalleryPublic(event.require_password)
+                ? t('events.shareWithGuestsPublic', 'Anyone with this link can view the gallery. No password is required.')
+                : t('events.shareWithGuests')}
             </p>
             
             {!event.is_archived && (

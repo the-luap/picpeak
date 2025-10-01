@@ -132,6 +132,12 @@ async function processTemplate(template, variables, language = 'en') {
       ? '(Aus Sicherheitsgründen nicht angezeigt)' 
       : '(Not shown for security reasons)';
   }
+
+  if (processedVariables.gallery_password === 'No password required') {
+    processedVariables.gallery_password = language === 'de'
+      ? 'Kein Passwort erforderlich'
+      : 'No password required';
+  }
   
   // Format dates if they exist
   if (processedVariables.event_date) {

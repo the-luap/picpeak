@@ -82,6 +82,7 @@ async function initializeDatabase() {
       table.boolean('watermark_downloads').defaultTo(false);
       table.text('watermark_text');
       table.integer('hero_photo_id').references('id').inTable('photos').onDelete('SET NULL');
+      table.boolean('require_password').defaultTo(true);
     });
   } else {
     // Check if color_theme needs to be updated to TEXT type
@@ -116,7 +117,8 @@ async function initializeDatabase() {
             disable_right_click BOOLEAN DEFAULT 0,
             watermark_downloads BOOLEAN DEFAULT 0,
             watermark_text TEXT,
-            hero_photo_id INTEGER
+            hero_photo_id INTEGER,
+            require_password BOOLEAN DEFAULT 1
           )
         `);
         
@@ -138,6 +140,8 @@ async function initializeDatabase() {
               return 'watermark_text';
             case 'hero_photo_id':
               return 'hero_photo_id';
+            case 'require_password':
+              return 'COALESCE(require_password, 1) as require_password';
             default:
               return col;
           }

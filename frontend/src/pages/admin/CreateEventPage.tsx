@@ -27,6 +27,7 @@ interface FormData {
   event_date: string;
   host_email: string;
   admin_email: string;
+  require_password: boolean;
   password: string;
   confirm_password: string;
   welcome_message: string;
@@ -123,6 +124,7 @@ export const CreateEventPage: React.FC = () => {
     event_date: format(new Date(), 'yyyy-MM-dd'),
     host_email: '',
     admin_email: '',
+    require_password: true,
     password: '',
     confirm_password: '',
     welcome_message: '',
@@ -208,17 +210,18 @@ export const CreateEventPage: React.FC = () => {
       newErrors.admin_email = t('validation.invalidEmailFormat');
     }
 
-    if (!formData.password) {
-      newErrors.password = t('validation.passwordRequired');
-    } else if (formData.password.length < 6) {
-      newErrors.password = t('validation.passwordMinLength');
-    } else if (/^\d{1,6}$/.test(formData.password)) {
-      // Prevent simple numeric passwords like "123456"
-      newErrors.password = t('validation.passwordTooSimple', 'Password cannot be just numbers. Consider using a date format like "04.07.2025"');
-    }
+    if (formData.require_password) {
+      if (!formData.password) {
+        newErrors.password = t('validation.passwordRequired');
+      } else if (formData.password.length < 6) {
+        newErrors.password = t('validation.passwordMinLength');
+      } else if (/^\d{1,6}$/.test(formData.password)) {
+        newErrors.password = t('validation.passwordTooSimple', 'Password cannot be just numbers. Consider using a date format like "04.07.2025"');
+      }
 
-    if (formData.password !== formData.confirm_password) {
-      newErrors.confirm_password = t('validation.passwordsDoNotMatch');
+      if (formData.password !== formData.confirm_password) {
+        newErrors.confirm_password = t('validation.passwordsDoNotMatch');
+      }
     }
 
     if (formData.expires_in_days < 1 || formData.expires_in_days > 365) {
@@ -244,7 +247,8 @@ export const CreateEventPage: React.FC = () => {
       event_date: formData.event_date,
       host_email: formData.host_email,
       admin_email: formData.admin_email,
-      password: formData.password,
+      require_password: formData.require_password,
+      password: formData.require_password ? formData.password : '',
       welcome_message: formData.welcome_message || '',
       color_theme: selectedTheme ? JSON.stringify(selectedTheme.theme) : undefined,
       expiration_days: formData.expires_in_days,
@@ -426,81 +430,109 @@ export const CreateEventPage: React.FC = () => {
         <Card padding="md" className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.securityAndAccess')}</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('events.galleryPassword')}
-              </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={handleInputChange('password')}
-                  error={errors.password}
-                  placeholder={t('events.enterPassword')}
-                  helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
-                  leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  style={{ top: errors.password ? '0' : '0' }}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
-                  )}
-                </button>
+          <div className="space-y-4">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                checked={formData.require_password}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData(prev => ({ ...prev, require_password: checked }));
+                  if (!checked) {
+                    setErrors(prev => ({ ...prev, password: '', confirm_password: '' }));
+                  }
+                }}
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700">{t('events.requirePasswordToggle')}</span>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {t('events.requirePasswordToggleHelp', 'Disable this if you want to share the gallery without a password. Anyone with the link will be able to view the photos.')}
+                </p>
               </div>
-              
-              {/* Password Generator */}
-              <div className="mt-2">
-                <PasswordGenerator
-                  eventName={formData.event_name}
-                  eventDate={formData.event_date}
-                  eventType={formData.event_type}
-                  onPasswordGenerated={handlePasswordGenerated}
-                  passwordComplexity={passwordComplexity?.complexityLevel || 'moderate'}
-                  className="w-full"
-                />
-              </div>
-            </div>
+            </label>
 
-            {/* Confirm Password */}
-            <div>
-              <label htmlFor="confirm_password" className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('events.confirmPassword')}
-              </label>
-              <div className="relative">
-                <Input
-                  id="confirm_password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.confirm_password}
-                  onChange={handleInputChange('confirm_password')}
-                  error={errors.confirm_password}
-                  placeholder={t('events.confirmPasswordPlaceholder')}
-                  leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  style={{ top: errors.confirm_password ? '0' : '0' }}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
-                  ) : (
-                    <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
-                  )}
-                </button>
+            {!formData.require_password && (
+              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+                {t('events.publicGalleryWarning', 'Public galleries are accessible to anyone with the link. Consider enabling download watermarks and monitoring activity.')} 
               </div>
-            </div>
+            )}
+
+            {formData.require_password && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('events.galleryPassword')}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={handleInputChange('password')}
+                      error={errors.password}
+                      placeholder={t('events.enterPassword')}
+                      helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
+                      leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      style={{ top: errors.password ? '0' : '0' }}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                      ) : (
+                        <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="mt-2">
+                    <PasswordGenerator
+                      eventName={formData.event_name}
+                      eventDate={formData.event_date}
+                      eventType={formData.event_type}
+                      onPasswordGenerated={handlePasswordGenerated}
+                      passwordComplexity={passwordComplexity?.complexityLevel || 'moderate'}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="confirm_password" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('events.confirmPassword')}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="confirm_password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.confirm_password}
+                      onChange={handleInputChange('confirm_password')}
+                      error={errors.confirm_password}
+                      placeholder={t('events.confirmPasswordPlaceholder')}
+                      leftIcon={<Lock className="w-5 h-5 text-neutral-400" />}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      style={{ top: errors.confirm_password ? '0' : '0' }}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                      ) : (
+                        <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

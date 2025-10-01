@@ -13,6 +13,29 @@ const { queueEmail } = require('../services/emailProcessor');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 // formatDate import removed - dates are formatted by email processor
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
+const logger = require('../utils/logger');
+
+const parseBooleanInput = (value, defaultValue = true) => {
+  if (value === undefined || value === null) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+  }
+  return defaultValue;
+};
 
 // Create new event
 router.post('/', adminAuth, [
@@ -21,7 +44,30 @@ router.post('/', adminAuth, [
   body('event_date').isDate(),
   body('host_email').isEmail().normalizeEmail(),
   body('admin_email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
+  body('require_password').optional().isBoolean(),
+  body('password').optional().isString().custom((value, { req }) => {
+    const input = req.body.require_password;
+    const normalizeBoolean = (val, defaultValue = true) => {
+      if (val === undefined || val === null) return defaultValue;
+      if (typeof val === 'boolean') return val;
+      if (typeof val === 'number') return val !== 0;
+      if (typeof val === 'string') {
+        const normalized = val.trim().toLowerCase();
+        if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+        if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+      }
+      return defaultValue;
+    };
+
+    const requirePassword = normalizeBoolean(input, true);
+    if (!requirePassword) {
+      return true;
+    }
+    if (typeof value !== 'string' || value.trim().length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    return true;
+  }),
   body('expiration_days').isInt({ min: 1, max: 365 }).optional(),
   body('welcome_message').optional().trim(),
   body('color_theme').optional().trim(),
@@ -34,7 +80,7 @@ router.post('/', adminAuth, [
   body('watermark_text').optional().trim()
 ], async (req, res) => {
   try {
-    console.log('Create event request body:', req.body);
+    logger.debug('Create event request body', { body: req.body });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.error('Validation errors:', errors.array());
@@ -58,6 +104,7 @@ router.post('/', adminAuth, [
       disable_right_click = false,
       watermark_downloads = false,
       watermark_text = null,
+      require_password: requirePasswordInput = true,
       // Feedback settings
       feedback_enabled = false,
       allow_ratings = true,
@@ -69,12 +116,15 @@ router.post('/', adminAuth, [
       show_feedback_to_guests = true
     } = req.body;
     
+    const requirePassword = parseBooleanInput(requirePasswordInput, true);
+
     // Debug logging
-    console.log('Download control values:', {
+    logger.debug('Download control values', {
       allow_downloads,
       disable_right_click,
       watermark_downloads,
       watermark_text,
+      require_password: requirePassword,
       types: {
         allow_downloads: typeof allow_downloads,
         disable_right_click: typeof disable_right_click,
@@ -82,18 +132,24 @@ router.post('/', adminAuth, [
       }
     });
     
-    // Validate password strength
-    const passwordValidation = await validatePasswordInContext(password, 'gallery', {
-      eventName: event_name
-    });
-    
-    if (!passwordValidation.valid) {
-      return res.status(400).json({ 
-        error: 'Password does not meet security requirements',
-        details: passwordValidation.errors,
-        score: passwordValidation.score,
-        feedback: passwordValidation.feedback
+    let passwordValidation = null;
+    let galleryPassword = password;
+
+    if (requirePassword) {
+      passwordValidation = await validatePasswordInContext(password, 'gallery', {
+        eventName: event_name
       });
+
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ 
+          error: 'Password does not meet security requirements',
+          details: passwordValidation.errors,
+          score: passwordValidation.score,
+          feedback: passwordValidation.feedback
+        });
+      }
+    } else {
+      galleryPassword = '';
     }
     
     // Generate unique slug
@@ -113,10 +169,14 @@ router.post('/', adminAuth, [
     
     // Generate share link
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const shareLink = `${process.env.FRONTEND_URL}/gallery/${slug}/${shareToken}`;
+    const sharePath = `/gallery/${slug}/${shareToken}`;
+    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+    const shareLink = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
     
-    // Hash password with configurable rounds
-    const password_hash = await bcrypt.hash(password, getBcryptRounds());
+    // Hash password with configurable rounds (random placeholder when not required)
+    const password_hash = requirePassword
+      ? await bcrypt.hash(password, getBcryptRounds())
+      : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     
     // Calculate expiration date (days after event date)
     // Parse YYYY-MM-DD format as local date to avoid timezone issues
@@ -155,7 +215,8 @@ router.post('/', adminAuth, [
       allow_downloads: formatBoolean(allow_downloads !== undefined ? allow_downloads : true),
       disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
-      watermark_text
+      watermark_text,
+      require_password: formatBoolean(requirePassword)
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -180,7 +241,7 @@ router.post('/', adminAuth, [
     
     // Log activity
     await logActivity('event_created', 
-      { event_type, expires_at }, 
+      { event_type, expires_at, require_password: requirePassword, password_strength: passwordValidation?.score }, 
       eventId, 
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
@@ -197,7 +258,7 @@ router.post('/', adminAuth, [
         event_name,
         event_date: event_date,  // Pass raw date - will be formatted by email processor
         gallery_link: shareLink,
-        gallery_password: password,
+        gallery_password: requirePassword ? password : 'No password required',
         expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
         welcome_message: welcome_message || ''
       }),
@@ -211,6 +272,7 @@ router.post('/', adminAuth, [
       slug,
       event_name,
       event_type,
+      require_password: requirePassword,
       share_link: shareLink,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString()
@@ -398,18 +460,44 @@ router.put('/:id', adminAuth, [
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
   body('source_mode').optional().isIn(['managed', 'reference']),
-  body('external_path').optional({ nullable: true }).isString().trim()
+  body('external_path').optional({ nullable: true }).isString().trim(),
+  body('require_password').optional().isBoolean(),
+  body('password').optional().isString().custom((value, { req }) => {
+    if (value === undefined || value === null || value === '') {
+      return true;
+    }
+    if (typeof value !== 'string' || value.trim().length < 6) {
+      throw new Error('Password must be at least 6 characters long');
+    }
+    return true;
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Update event validation errors:', JSON.stringify(errors.array(), null, 2));
-      console.log('Request body:', req.body);
+      logger.debug('Update event validation errors', { errors: errors.array(), body: req.body });
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { id } = req.params;
     const updates = { ...req.body };
+
+    const hasRequirePasswordUpdate = Object.prototype.hasOwnProperty.call(updates, 'require_password');
+    let requirePasswordUpdate;
+    if (hasRequirePasswordUpdate) {
+      requirePasswordUpdate = parseBooleanInput(updates.require_password, true);
+      updates.require_password = formatBoolean(requirePasswordUpdate);
+    }
+
+    let newPasswordPlain;
+    if (Object.prototype.hasOwnProperty.call(updates, 'password')) {
+      if (updates.password === undefined || updates.password === null || updates.password === '') {
+        delete updates.password;
+      } else {
+        newPasswordPlain = updates.password;
+        delete updates.password;
+      }
+    }
 
     if (Object.prototype.hasOwnProperty.call(updates, 'source_mode')) {
       updates.source_mode = updates.source_mode === 'reference' ? 'reference' : 'managed';
@@ -429,7 +517,7 @@ router.put('/:id', adminAuth, [
     }
 
     // Log the update request for debugging
-    console.log('Update event request:', {
+    logger.debug('Update event request', {
       id,
       updates,
       color_theme_length: updates.color_theme ? updates.color_theme.length : 0,
@@ -442,6 +530,18 @@ router.put('/:id', adminAuth, [
     const event = await db('events').where('id', id).first();
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const currentRequirePassword = parseBooleanInput(event.require_password, true);
+
+    if (hasRequirePasswordUpdate && requirePasswordUpdate === true && !currentRequirePassword && !newPasswordPlain) {
+      return res.status(400).json({ error: 'Password must be provided when enabling password requirement.' });
+    }
+
+    if (newPasswordPlain) {
+      updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
+    } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
+      updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     }
 
     // Update event

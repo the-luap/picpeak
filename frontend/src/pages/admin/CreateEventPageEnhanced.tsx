@@ -30,6 +30,7 @@ interface FormData {
   host_name: string;
   host_email: string;
   admin_email: string;
+  require_password: boolean;
   password: string;
   confirm_password: string;
   welcome_message: string;
@@ -88,6 +89,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
     host_name: '',
     host_email: '',
     admin_email: '',
+    require_password: true,
     password: '',
     confirm_password: '',
     welcome_message: '',
@@ -198,17 +200,19 @@ export const CreateEventPageEnhanced: React.FC = () => {
       newErrors.admin_email = t('validation.invalidEmailFormat');
     }
 
-    if (!formData.password) {
-      newErrors.password = t('validation.passwordRequired');
-    } else if (formData.password.length < 6) {
-      newErrors.password = t('validation.passwordMinLength');
-    } else if (/^\d{1,6}$/.test(formData.password)) {
-      // Prevent simple numeric passwords like "123456"
-      newErrors.password = t('validation.passwordTooSimple', 'Password cannot be just numbers. Consider using a date format like "04.07.2025"');
-    }
+    if (formData.require_password) {
+      if (!formData.password) {
+        newErrors.password = t('validation.passwordRequired');
+      } else if (formData.password.length < 6) {
+        newErrors.password = t('validation.passwordMinLength');
+      } else if (/^\d{1,6}$/.test(formData.password)) {
+        // Prevent simple numeric passwords like "123456"
+        newErrors.password = t('validation.passwordTooSimple', 'Password cannot be just numbers. Consider using a date format like "04.07.2025"');
+      }
 
-    if (formData.password !== formData.confirm_password) {
-      newErrors.confirm_password = t('validation.passwordsDoNotMatch');
+      if (formData.password !== formData.confirm_password) {
+        newErrors.confirm_password = t('validation.passwordsDoNotMatch');
+      }
     }
 
     if (formData.expires_in_days < 1 || formData.expires_in_days > 365) {
@@ -235,7 +239,8 @@ export const CreateEventPageEnhanced: React.FC = () => {
       host_name: formData.host_name,
       host_email: formData.host_email,
       admin_email: formData.admin_email,
-      password: formData.password,
+      require_password: formData.require_password,
+      password: formData.require_password ? formData.password : '',
       welcome_message: formData.welcome_message || '',
       color_theme: JSON.stringify(formData.theme_config),
       expiration_days: formData.expires_in_days,
@@ -495,51 +500,87 @@ export const CreateEventPageEnhanced: React.FC = () => {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div className="space-y-3">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  checked={formData.require_password}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData(prev => ({
+                      ...prev,
+                      require_password: checked,
+                    }));
+                    if (!checked) {
+                      setErrors(prev => ({ ...prev, password: undefined, confirm_password: undefined }));
+                    }
+                  }}
+                />
+                <div>
+                  <span className="text-sm font-medium text-neutral-700">
+                    {t('events.requirePasswordToggle')}
+                  </span>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('events.requirePasswordToggleHelp', 'Disable this if you want to share the gallery without a password. Anyone with the link will be able to view the photos.')}
+                  </p>
+                </div>
+              </label>
+
+              {!formData.require_password && (
+                <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+                  {t('events.publicGalleryWarning', 'Public galleries are accessible to anyone with the link. Consider enabling download watermarks and monitoring activity.')} 
+                </div>
+              )}
+            </div>
+
+            {formData.require_password && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    label={t('events.galleryPassword')}
+                    placeholder={t('events.passwordPlaceholder')}
+                    value={formData.password}
+                    onChange={handleInputChange('password')}
+                    error={errors.password}
+                    helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
+                    leftIcon={<Lock className="w-5 h-5" />}
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    }
+                  />
+                  
+                  {/* Password Generator */}
+                  <div className="mt-2">
+                    <PasswordGenerator
+                      eventName={formData.event_name}
+                      eventDate={formData.event_date}
+                      eventType={formData.event_type}
+                      onPasswordGenerated={handlePasswordGenerated}
+                      passwordComplexity="moderate"
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
                 <Input
                   type={showPassword ? 'text' : 'password'}
-                  label={t('events.galleryPassword')}
-                  placeholder={t('events.passwordPlaceholder')}
-                  value={formData.password}
-                  onChange={handleInputChange('password')}
-                  error={errors.password}
-                  helperText={t('events.passwordHelperText', 'You can use dates like "04.07.2025" or any text with 6+ characters')}
+                  label={t('events.confirmPassword')}
+                  placeholder={t('events.confirmPasswordPlaceholder')}
+                  value={formData.confirm_password}
+                  onChange={handleInputChange('confirm_password')}
+                  error={errors.confirm_password}
                   leftIcon={<Lock className="w-5 h-5" />}
-                  rightIcon={
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="p-1"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  }
                 />
-                
-                {/* Password Generator */}
-                <div className="mt-2">
-                  <PasswordGenerator
-                    eventName={formData.event_name}
-                    eventDate={formData.event_date}
-                    eventType={formData.event_type}
-                    onPasswordGenerated={handlePasswordGenerated}
-                    passwordComplexity="moderate"
-                    className="w-full"
-                  />
-                </div>
               </div>
-
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                label={t('events.confirmPassword')}
-                placeholder={t('events.confirmPasswordPlaceholder')}
-                value={formData.confirm_password}
-                onChange={handleInputChange('confirm_password')}
-                error={errors.confirm_password}
-                leftIcon={<Lock className="w-5 h-5" />}
-              />
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">

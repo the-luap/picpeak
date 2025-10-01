@@ -3,13 +3,12 @@ const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+const logger = require('../utils/logger');
 
 async function photoAuth(req, res, next) {
   try {
     // Extract event slug from the path
     let eventSlug;
-    
-    console.log('PhotoAuth middleware - path:', req.path);
     
     // For thumbnails, we need to parse the filename to get the event info
     if (req.path.startsWith('/thumb_')) {
@@ -80,29 +79,36 @@ async function photoAuth(req, res, next) {
           // For both thumbnails and photos with admin token, allow access
           return next();
         }
-      } catch (err) {
-        // Token invalid, fall through to password check
-        console.error('JWT verification failed:', err.message);
+    } catch (err) {
+      // Token invalid, fall through to password check
+      logger.warn('JWT verification failed in photoAuth', { error: err.message });
       }
     }
     
     // Check for password header (legacy support)
     const password = req.headers['x-gallery-password'];
     
-    if (!password && !tokenFromRequest) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    
     // If no eventSlug (thumbnails), and we don't have valid auth yet, deny access
-    if (!eventSlug && !password) {
+    if (!eventSlug && !password && !tokenFromRequest) {
       return res.status(401).json({ error: 'Authentication required for thumbnails' });
     }
-    
+
     const event = await db('events').where({ slug: eventSlug, is_active: formatBoolean(true) }).first();
     if (!event) {
       return res.status(404).json({ error: 'Gallery not found' });
     }
+
+    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
+    if (!requiresPassword) {
+      req.event = event;
+      return next();
+    }
     
+    if (!password && !tokenFromRequest) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     if (password) {
       const validPassword = await bcrypt.compare(password, event.password_hash);
       if (!validPassword) {
@@ -122,7 +128,7 @@ async function photoAuth(req, res, next) {
     req.event = event;
     next();
   } catch (error) {
-    console.error('Photo auth error:', error);
+    logger.error('Photo auth error', { error: error.message, stack: error.stack });
     res.status(500).json({ error: 'Authentication error' });
   }
 }

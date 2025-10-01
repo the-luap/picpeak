@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { api } from '../config/api';
 import { authService, galleryService } from '../services';
 import { cleanupOldGalleryAuth } from '../utils/cleanupGalleryAuth';
+import { normalizeRequirePassword } from '../utils/accessControl';
 import {
   clearActiveGallerySlug,
   clearGalleryToken,
@@ -18,12 +19,24 @@ interface GalleryEvent {
   welcome_message?: string;
   color_theme?: string;
   expires_at: string;
+  require_password?: boolean;
 }
+
+const normalizeEvent = (incoming: GalleryEvent | null | undefined): GalleryEvent | null => {
+  if (!incoming) {
+    return null;
+  }
+
+  return {
+    ...incoming,
+    require_password: normalizeRequirePassword(incoming.require_password, true),
+  };
+};
 
 interface GalleryAuthContextType {
   isAuthenticated: boolean;
   event: GalleryEvent | null;
-  login: (slug: string, password: string, recaptchaToken?: string | null) => Promise<void>;
+  login: (slug: string, password?: string, recaptchaToken?: string | null) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -83,7 +96,11 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
         try {
           const parsed = JSON.parse(storedEvent);
           if (parsed && parsed.id) {
-            setEvent(parsed);
+            const normalizedStored = normalizeEvent(parsed);
+            setEvent(normalizedStored);
+            if (normalizedStored) {
+              sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(normalizedStored));
+            }
           }
         } catch (err) {
           sessionStorage.removeItem(`gallery_event_${currentSlug}`);
@@ -104,8 +121,11 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
             // Fetch gallery details to hydrate context
             const galleryData = await galleryService.getGalleryPhotos(currentSlug);
             if (galleryData?.event) {
-              setEvent(galleryData.event);
-              sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(galleryData.event));
+              const normalizedEvent = normalizeEvent(galleryData.event);
+              setEvent(normalizedEvent);
+              if (normalizedEvent) {
+                sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(normalizedEvent));
+              }
             }
           }
 
@@ -121,9 +141,12 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
           if (verify?.valid) {
             const response = await authService.shareLinkLogin(currentSlug, urlToken);
             if (response?.event) {
-              setEvent(response.event);
+              const normalizedEvent = normalizeEvent(response.event);
+              setEvent(normalizedEvent);
               setIsAuthenticated(true);
-              sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(response.event));
+              if (normalizedEvent) {
+                sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(normalizedEvent));
+              }
               if (response.token) {
                 storeGalleryToken(currentSlug, response.token);
               }
@@ -154,12 +177,13 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
     };
   }, []);
 
-  const login = async (slug: string, password: string, recaptchaToken?: string | null) => {
+  const login = async (slug: string, password?: string, recaptchaToken?: string | null) => {
     try {
       setError(null);
       setIsLoading(true);
       const response = await authService.verifyGalleryPassword(slug, password, recaptchaToken);
-      setEvent(response.event);
+      const normalizedEvent = normalizeEvent(response.event);
+      setEvent(normalizedEvent);
       setIsAuthenticated(true);
       if (response.token) {
         storeGalleryToken(slug, response.token);
@@ -167,7 +191,9 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       setActiveGallerySlug(slug);
 
       // Store event data for quick reloads (non-sensitive)
-      sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(response.event));
+      if (normalizedEvent) {
+        sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(normalizedEvent));
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid password');
       throw err;

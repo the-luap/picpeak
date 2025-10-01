@@ -1,5 +1,11 @@
 import { api } from '../config/api';
 import type { Event } from '../types';
+import { normalizeRequirePassword } from '../utils/accessControl';
+
+const normalizeEvent = (event: Event): Event => ({
+  ...event,
+  require_password: normalizeRequirePassword((event as any)?.require_password, true),
+});
 
 interface CreateEventData {
   event_type: string;
@@ -7,6 +13,7 @@ interface CreateEventData {
   event_date: string;
   host_email: string;
   admin_email: string;
+  require_password?: boolean;
   password: string;
   welcome_message?: string;
   color_theme?: string;
@@ -28,6 +35,7 @@ interface UpdateEventData {
   event_date?: string;
   host_email?: string;
   admin_email?: string;
+  require_password?: boolean;
   password?: string;
   welcome_message?: string;
   color_theme?: string;
@@ -64,19 +72,25 @@ export const eventsService = {
     }
 
     const response = await api.get<EventsListResponse>(`/admin/events?${params}`);
-    return response.data;
+    const data: any = response.data;
+    if (Array.isArray(data?.events)) {
+      data.events = data.events.map((event: Event) => normalizeEvent(event));
+    } else if (Array.isArray(data)) {
+      return data.map((event: Event) => normalizeEvent(event)) as any;
+    }
+    return data;
   },
 
   // Get single event details (admin)
   async getEvent(id: number): Promise<Event> {
     const response = await api.get<Event>(`/admin/events/${id}`);
-    return response.data;
+    return normalizeEvent(response.data as Event);
   },
 
   // Create new event (admin)
   async createEvent(data: CreateEventData): Promise<Event> {
     const response = await api.post<Event>('/admin/events', data);
-    return response.data;
+    return normalizeEvent(response.data as Event);
   },
 
   // Update event (admin)

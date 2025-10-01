@@ -20,7 +20,7 @@ router.get('/:slug/verify-token/:token', async (req, res) => {
     const { slug, token } = req.params;
     
     const event = await db('events')
-      .where({ share_link: slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
       .select('id', 'share_link')
       .first();
     
@@ -50,7 +50,7 @@ router.get('/:slug/info', async (req, res) => {
     const event = await db('events')
       .where({ slug: slug })
       .select('event_name', 'event_type', 'event_date', 'expires_at', 'is_active', 'is_archived', 'share_link', 
-              'allow_downloads', 'disable_right_click', 'watermark_downloads', 'watermark_text')
+              'allow_downloads', 'disable_right_click', 'watermark_downloads', 'watermark_text', 'require_password', 'color_theme')
       .first();
     
     if (!event) {
@@ -74,6 +74,8 @@ router.get('/:slug/info', async (req, res) => {
       }
     }
     
+    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
     res.json({
       event_name: event.event_name,
       event_type: event.event_type,
@@ -81,11 +83,11 @@ router.get('/:slug/info', async (req, res) => {
       expires_at: event.expires_at,
       is_active: event.is_active,
       is_expired: !event.is_active || new Date(event.expires_at) < new Date(),
-      requires_password: true,
+      requires_password: requiresPassword,
       color_theme: event.color_theme,
-      allow_downloads: event.allow_downloads !== false,
-      disable_right_click: event.disable_right_click === true,
-      watermark_downloads: event.watermark_downloads === true,
+      allow_downloads: !(event.allow_downloads === false || event.allow_downloads === 0 || event.allow_downloads === '0'),
+      disable_right_click: event.disable_right_click === true || event.disable_right_click === 1 || event.disable_right_click === '1',
+      watermark_downloads: event.watermark_downloads === true || event.watermark_downloads === 1 || event.watermark_downloads === '1',
       watermark_text: event.watermark_text
     });
   } catch (error) {

@@ -14,6 +14,7 @@ import { analyticsService } from '../services/analytics.service';
 import { api } from '../config/api';
 import { GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { buildResourceUrl } from '../utils/url';
+import { isGalleryPublic, normalizeRequirePassword } from '../utils/accessControl';
 
 export const GalleryPage: React.FC = () => {
   const { slug, token } = useParams<{ slug: string; token?: string }>();
@@ -25,9 +26,11 @@ export const GalleryPage: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
 
   // Fetch gallery info (public data)
   const { data: galleryInfo, isLoading: isLoadingInfo, error: infoError } = useGalleryInfo(slug!, token);
+  const requiresPassword = normalizeRequirePassword(galleryInfo?.requires_password, true);
   
   // Fetch branding settings
   const { data: settingsData } = useQuery({
@@ -87,6 +90,30 @@ export const GalleryPage: React.FC = () => {
     }
   }, [galleryInfo, settingsData, isAuthenticated, setTheme]);
 
+  React.useEffect(() => {
+    if (!slug) {
+      return;
+    }
+
+    if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted) {
+      setAutoLoginAttempted(true);
+      setIsLoggingIn(true);
+      login(slug, '')
+        .then(() => {
+          setLoginError(null);
+        })
+        .catch((error: any) => {
+          const message = error?.response?.data?.error;
+          if (message) {
+            setLoginError(message);
+          }
+        })
+        .finally(() => {
+          setIsLoggingIn(false);
+        });
+    }
+  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, slug]);
+
   // Calculate days until expiration
   const daysUntilExpiration = galleryInfo
     ? differenceInDays(parseISO(galleryInfo.expires_at), new Date())
@@ -96,7 +123,7 @@ export const GalleryPage: React.FC = () => {
     e.preventDefault();
     e.stopPropagation(); // Prevent any bubbling
     
-    if (!password.trim()) {
+    if (requiresPassword && !password.trim()) {
       setLoginError(t('auth.pleaseEnterPassword'));
       return;
     }
@@ -104,13 +131,14 @@ export const GalleryPage: React.FC = () => {
     try {
       setIsLoggingIn(true);
       setLoginError(null);
-      await login(slug!, password, recaptchaToken);
+      await login(slug!, requiresPassword ? password : '', recaptchaToken);
       
-      // Track successful password entry
-      analyticsService.trackGalleryEvent('password_entry', {
-        gallery: slug,
-        success: true
-      });
+      if (requiresPassword) {
+        analyticsService.trackGalleryEvent('password_entry', {
+          gallery: slug,
+          success: true
+        });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error.response?.data?.error || 'Invalid password';
@@ -128,11 +156,13 @@ export const GalleryPage: React.FC = () => {
       }
       
       // Track failed password entry
-      analyticsService.trackGalleryEvent('password_entry', {
-        gallery: slug,
-        success: false,
-        statusCode
-      });
+      if (requiresPassword) {
+        analyticsService.trackGalleryEvent('password_entry', {
+          gallery: slug,
+          success: false,
+          statusCode
+        });
+      }
       
       // Keep the password field to allow retry
       // Do not clear the password
@@ -311,43 +341,61 @@ export const GalleryPage: React.FC = () => {
             </div>
           )}
 
-          {/* Login Card */}
           <Card>
             <CardContent className="p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
-              
-              <form onSubmit={handleLogin} className="space-y-4">
-                <Input
-                  type="password"
-                  label={t('auth.password')}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={loginError || undefined}
-                  autoFocus
-                  className="text-sm sm:text-base"
-                />
-                
-                <ReCaptcha
-                  onChange={setRecaptchaToken}
-                  onExpired={() => setRecaptchaToken(null)}
-                />
-                
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-full text-sm sm:text-base"
-                  isLoading={isLoggingIn}
-                  disabled={isLoggingIn}
-                >
-                  {t('gallery.viewGallery')}
-                </Button>
-              </form>
+              {requiresPassword ? (
+                <>
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
+                  
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <Input
+                      type="password"
+                      label={t('auth.password')}
+                      placeholder={t('auth.passwordPlaceholder')}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      error={loginError || undefined}
+                      autoFocus
+                      className="text-sm sm:text-base"
+                    />
+                    
+                    <ReCaptcha
+                      onChange={setRecaptchaToken}
+                      onExpired={() => setRecaptchaToken(null)}
+                    />
+                    
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      className="w-full text-sm sm:text-base"
+                      isLoading={isLoggingIn}
+                      disabled={isLoggingIn}
+                    >
+                      {t('gallery.viewGallery')}
+                    </Button>
+                  </form>
 
-              <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
-                {t('auth.passwordHint')}
-              </p>
+                  <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
+                    {t('auth.passwordHint')}
+                  </p>
+                </>
+              ) : (
+                <div className="text-center space-y-3">
+                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
+                    {t('gallery.publicGalleryTitle', 'This gallery is publicly accessible')}
+                  </h2>
+                  <p className="text-sm text-neutral-600">
+                    {t('gallery.publicGallerySubtitle', 'Loading the photos now...')}
+                  </p>
+                  <div className="flex justify-center py-4">
+                    <Loading size="sm" text={t('gallery.loading')} />
+                  </div>
+                  {loginError && (
+                    <p className="text-xs text-red-600">{loginError}</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

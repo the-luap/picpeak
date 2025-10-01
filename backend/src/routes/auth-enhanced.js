@@ -162,7 +162,7 @@ router.post('/logout', async (req, res) => {
 // Gallery password verification with enhanced security
 router.post('/gallery/verify', [
   body('slug').notEmpty().trim(),
-  body('password').notEmpty()
+  body('password').optional().isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -173,55 +173,68 @@ router.post('/gallery/verify', [
     const { slug, password, recaptchaToken } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || '';
-    
-    // Check gallery-specific lockout
-    const lockoutStatus = await checkAccountLockout(`gallery:${slug}`);
-    if (lockoutStatus.isLocked) {
-      logger.warn('Gallery access attempt on locked gallery', { slug, ipAddress });
-      return res.status(423).json({ 
-        error: 'Too many failed attempts. Please try again later.',
-        retryAfter: lockoutStatus.remainingTime
-      });
-    }
-    
-    // Verify reCAPTCHA
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaValid) {
-      await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
-      return res.status(400).json({ error: 'reCAPTCHA verification failed' });
-    }
-    
-    const event = await db('events').where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) }).first();
+    const event = await db('events')
+      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .first();
+
     if (!event) {
-      // Don't reveal if gallery exists
       await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
       return res.status(401).json({ error: 'Invalid gallery or password' });
     }
-    
-    const validPassword = await bcrypt.compare(password, event.password_hash);
-    if (!validPassword) {
-      await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
+
+    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
+    if (requiresPassword) {
+      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`);
+      if (lockoutStatus.isLocked) {
+        logger.warn('Gallery access attempt on locked gallery', { slug, ipAddress });
+        return res.status(423).json({ 
+          error: 'Too many failed attempts. Please try again later.',
+          retryAfter: lockoutStatus.remainingTime
+        });
+      }
+
+      const recaptchaValid = await verifyRecaptcha(recaptchaToken);
+      if (!recaptchaValid) {
+        await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
+        return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+      }
+
+      if (!password) {
+        await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
+        return res.status(401).json({ error: 'Invalid gallery or password' });
+      }
+
+      const validPassword = await bcrypt.compare(password, event.password_hash);
+      if (!validPassword) {
+        await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
+        await db('access_logs').insert({
+          event_id: event.id,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          action: 'login_fail'
+        });
+        return res.status(401).json({ error: 'Invalid gallery or password' });
+      }
+
+      await trackSuccessfulLogin(`gallery:${slug}`, ipAddress, userAgent);
       await db('access_logs').insert({
         event_id: event.id,
         ip_address: ipAddress,
         user_agent: userAgent,
-        action: 'login_fail'
+        action: 'login_success'
       });
-      return res.status(401).json({ error: 'Invalid gallery or password' });
+    } else {
+      logger.info('Public gallery access granted without password', { slug, ipAddress });
+      await trackSuccessfulLogin(`gallery:${slug}`, ipAddress, userAgent);
+      await db('access_logs').insert({
+        event_id: event.id,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        action: 'login_success'
+      });
     }
-    
-    // Successful access
-    await trackSuccessfulLogin(`gallery:${slug}`, ipAddress, userAgent);
-    
-    // Log successful access
-    await db('access_logs').insert({
-      event_id: event.id,
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      action: 'login_success'
-    });
-    
-    // Generate session token with additional security info
+
     const token = jwt.sign({ 
       eventId: event.id, 
       eventSlug: event.slug,
@@ -246,7 +259,8 @@ router.post('/gallery/verify', [
         color_theme: event.color_theme,
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
-        upload_category_id: event.upload_category_id
+        upload_category_id: event.upload_category_id,
+        require_password: requiresPassword
       }
     });
   } catch (error) {
@@ -301,6 +315,8 @@ router.post('/gallery/share-login', [
     await trackSuccessfulLogin(`gallery:${slug}:share`, ipAddress, userAgent);
     setGalleryAuthCookies(res, jwtToken, event.slug);
 
+    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
     res.json({
       token: jwtToken,
       event: {
@@ -312,7 +328,8 @@ router.post('/gallery/share-login', [
         color_theme: event.color_theme,
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
-        upload_category_id: event.upload_category_id
+        upload_category_id: event.upload_category_id,
+        require_password: requiresPassword
       }
     });
   } catch (error) {

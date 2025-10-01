@@ -1,5 +1,16 @@
 import { api } from '../config/api';
 import type { LoginResponse, GalleryAuthResponse } from '../types';
+import { normalizeRequirePassword } from '../utils/accessControl';
+
+const normalizeGalleryResponse = (response: GalleryAuthResponse): GalleryAuthResponse => ({
+  ...response,
+  event: response.event
+    ? {
+        ...response.event,
+        require_password: normalizeRequirePassword((response.event as any)?.require_password, true),
+      }
+    : response.event,
+});
 
 export const authService = {
   // Admin authentication
@@ -24,7 +35,7 @@ export const authService = {
   },
 
   // Gallery authentication
-  async verifyGalleryPassword(slug: string, password: string, recaptchaToken?: string | null): Promise<GalleryAuthResponse> {
+  async verifyGalleryPassword(slug: string, password?: string, recaptchaToken?: string | null): Promise<GalleryAuthResponse> {
     const response = await api.post<GalleryAuthResponse>('/auth/gallery/verify', {
       slug,
       password,
@@ -32,7 +43,7 @@ export const authService = {
     });
     
     // Token is now handled by GalleryAuthContext with slug-specific storage
-    return response.data;
+    return normalizeGalleryResponse(response.data);
   },
 
   async shareLinkLogin(slug: string, token: string): Promise<GalleryAuthResponse> {
@@ -40,7 +51,7 @@ export const authService = {
       slug,
       token,
     });
-    return response.data;
+    return normalizeGalleryResponse(response.data);
   },
 
   async galleryLogout(slug?: string | null) {

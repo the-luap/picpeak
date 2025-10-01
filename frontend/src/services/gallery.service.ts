@@ -1,5 +1,6 @@
 import { api } from '../config/api';
 import type { GalleryInfo, GalleryData, GalleryStats } from '../types';
+import { normalizeRequirePassword } from '../utils/accessControl';
 
 export const galleryService = {
   // Verify share token
@@ -12,7 +13,11 @@ export const galleryService = {
   async getGalleryInfo(slug: string, token?: string): Promise<GalleryInfo> {
     const params = token ? { token } : {};
     const response = await api.get<GalleryInfo>(`/gallery/${slug}/info`, { params });
-    return response.data;
+    const data = response.data;
+    return {
+      ...data,
+      requires_password: normalizeRequirePassword((data as any)?.requires_password, true),
+    };
   },
 
   // Get gallery photos (requires auth)
@@ -29,7 +34,17 @@ export const galleryService = {
       }
     }
     const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params });
-    return response.data;
+    const data = response.data;
+    const normalizedEvent = data?.event
+      ? {
+          ...data.event,
+          require_password: normalizeRequirePassword((data.event as any)?.require_password, true),
+        }
+      : data.event;
+    return {
+      ...data,
+      event: normalizedEvent,
+    };
   },
 
   // Download single photo

@@ -22,6 +22,7 @@ import { Button, Input, Card, SkeletonTable, ErrorBoundary } from '../../compone
 import { BulkArchiveModal } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { isGalleryPublic } from '../../utils/accessControl';
 import type { Event } from '../../types';
 import { useTranslation } from 'react-i18next';
 
@@ -428,6 +429,17 @@ export const EventsListPage: React.FC = () => {
                         <div>
                           <p className="text-sm font-medium text-neutral-900">{event.event_name}</p>
                           <p className="text-xs text-neutral-500">{event.host_email}</p>
+                          <div className="mt-1">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                                isGalleryPublic(event.require_password)
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-neutral-100 text-neutral-700'
+                              }`}
+                            >
+                              {isGalleryPublic(event.require_password) ? t('events.publicAccess', 'Public access') : t('events.passwordProtected', 'Password protected')}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-700">
