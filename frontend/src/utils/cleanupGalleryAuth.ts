@@ -24,4 +24,19 @@ export const cleanupOldGalleryAuth = () => {
   sessionStorage.removeItem('gallery_event');
   sessionStorage.removeItem('gallery_token');
   sessionStorage.removeItem('gallery_active_slug');
+
+  // Remove slug-specific session storage entries as well
+  try {
+    const sessionKeysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const key = sessionStorage.key(i);
+      if (key && (key.startsWith('gallery_event_') || key.startsWith('gallery_token_'))) {
+        sessionKeysToRemove.push(key);
+      }
+    }
+
+    sessionKeysToRemove.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    // Session storage may be unavailable; ignore cleanup failures
+  }
 };

@@ -1,16 +1,13 @@
 const express = require('express');
-const path = require('path');
 const { db } = require('../database/db');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const secureImageMiddleware = require('../middleware/secureImageMiddleware');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
+const { resolvePhotoFilePath } = require('../services/photoResolver');
 
 const router = express.Router();
-
-// Get storage path from environment or default
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 /**
  * Generate secure token for image access
@@ -94,11 +91,11 @@ router.get('/:slug/secure/:photoId/:token',
     const { slug, photoId, token } = req.params; // Move outside try block for error handler access
     
     try {
-      console.log('Secure image route hit:', { 
-        slug: slug, 
-        photoId: photoId, 
+      logger.debug('Secure image route hit', {
+        slug,
+        photoId,
         tokenLength: token?.length,
-        headers: req.headers.authorization ? 'present' : 'absent'
+        hasAuthHeader: Boolean(req.headers.authorization),
       });
       const { fragment } = req.query;
 
@@ -142,7 +139,18 @@ router.get('/:slug/secure/:photoId/:token',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      const filePath = path.join(getStoragePath(), 'events/active', photo.path);
+      let filePath;
+      try {
+        filePath = resolvePhotoFilePath(req.event, photo);
+      } catch (resolveError) {
+        logger.error('Failed to resolve photo path for secure token generation', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          error: resolveError.message,
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
 
       // Get protection settings for this event
       const protectionSettings = {
@@ -284,7 +292,18 @@ router.get('/:slug/secure-download/:photoId/:token',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      const filePath = path.join(getStoragePath(), 'events/active', photo.path);
+      let filePath;
+      try {
+        filePath = resolvePhotoFilePath(req.event, photo);
+      } catch (resolveError) {
+        logger.error('Failed to resolve photo path for secure download', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          error: resolveError.message,
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
 
       // Apply watermark if enabled
       const watermarkService = require('../services/watermarkService');

@@ -1,5 +1,4 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const archiver = require('archiver');
@@ -8,8 +7,8 @@ const router = express.Router();
 const watermarkService = require('../services/watermarkService');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
-const secureImageMiddleware = require('../middleware/secureImageMiddleware');
 const logger = require('../utils/logger');
+const { resolvePhotoFilePath } = require('../services/photoResolver');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
@@ -48,9 +47,22 @@ router.get('/:slug/info', async (req, res) => {
     const { token } = req.query;
     
     const event = await db('events')
-      .where({ slug: slug })
-      .select('event_name', 'event_type', 'event_date', 'expires_at', 'is_active', 'is_archived', 'share_link', 
-              'allow_downloads', 'disable_right_click', 'watermark_downloads', 'watermark_text', 'require_password', 'color_theme')
+      .where({ slug })
+      .select(
+        'event_name',
+        'event_type',
+        'event_date',
+        'expires_at',
+        'is_active',
+        'is_archived',
+        'share_link',
+        'allow_downloads',
+        'disable_right_click',
+        'watermark_downloads',
+        'watermark_text',
+        'require_password',
+        'color_theme'
+      )
       .first();
     
     if (!event) {
@@ -101,7 +113,6 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
     // Get filter parameters from query
     const { filter, guest_id } = req.query;
-    const feedbackService = require('../services/feedbackService');
     
     // First get all photos
     let photos = await db('photos')
@@ -319,16 +330,17 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       photo_id: photoId
     });
     
-    // Photo path should be in storage/events/active directory
-    // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
-    const storagePath = getStoragePath();
     let filePath;
-    if (photo.path.startsWith('events/active/')) {
-      // New format: path already includes events/active/ prefix
-      filePath = path.join(storagePath, photo.path);
-    } else {
-      // Legacy format: path is just slug/filename
-      filePath = path.join(storagePath, 'events/active', photo.path);
+    try {
+      filePath = resolvePhotoFilePath(req.event, photo);
+    } catch (resolveError) {
+      logger.error('Failed to resolve photo path for download', {
+        slug: req.params.slug,
+        photoId,
+        eventId: req.event.id,
+        error: resolveError.message,
+      });
+      return res.status(404).json({ error: 'Photo file not found' });
     }
     
     // Get watermark settings
@@ -347,9 +359,24 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       res.send(watermarkedBuffer);
     } else {
       // Send original file
-      res.download(filePath, photo.filename);
+      res.download(filePath, photo.filename, (downloadError) => {
+        if (downloadError) {
+          logger.error('Error streaming gallery download', {
+            slug: req.params.slug,
+            photoId,
+            eventId: req.event.id,
+            error: downloadError.message,
+          });
+        }
+      });
     }
   } catch (error) {
+    logger.error('Unexpected error processing gallery download', {
+      slug: req.params.slug,
+      photoId: req.params.photoId,
+      eventId: req.event?.id,
+      error: error.message,
+    });
     res.status(500).json({ error: 'Failed to download photo' });
   }
 });
@@ -392,16 +419,17 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     
     // Add photos to archive
     for (const photo of photos) {
-      // Photo path should be in storage/events/active directory
-      // Handle both legacy paths (just slug/filename) and new paths (events/active/slug/filename)
-      const storagePath = getStoragePath();
       let filePath;
-      if (photo.path.startsWith('events/active/')) {
-        // New format: path already includes events/active/ prefix
-        filePath = path.join(storagePath, photo.path);
-      } else {
-        // Legacy format: path is just slug/filename
-        filePath = path.join(storagePath, 'events/active', photo.path);
+      try {
+        filePath = resolvePhotoFilePath(req.event, photo);
+      } catch (resolveError) {
+        logger.warn('Skipping photo in bulk download due to unresolved path', {
+          slug: req.params.slug,
+          photoId: photo.id,
+          eventId: req.event.id,
+          error: resolveError.message,
+        });
+        continue;
       }
       
       // Determine the file name in the archive
@@ -416,11 +444,18 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       }
       
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Apply watermark
-        const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-        archive.append(watermarkedBuffer, { name: archiveName });
+        try {
+          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+          archive.append(watermarkedBuffer, { name: archiveName });
+        } catch (watermarkError) {
+          logger.warn('Failed to watermark photo for bulk download, skipping original to avoid leak', {
+            slug: req.params.slug,
+            photoId: photo.id,
+            eventId: req.event.id,
+            error: watermarkError.message,
+          });
+        }
       } else {
-        // Add original file
         archive.file(filePath, { name: archiveName });
       }
     }
@@ -435,6 +470,11 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       action: 'download_all'
     });
   } catch (error) {
+    logger.error('Error creating bulk gallery download', {
+      slug: req.params.slug,
+      eventId: req.event?.id,
+      error: error.message,
+    });
     res.status(500).json({ error: 'Failed to create download archive' });
   }
 });
@@ -479,30 +519,47 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
 
     const archive = archiver('zip', { zlib: { level: 5 } });
     archive.on('error', (err) => {
-      console.error('Zip error:', err);
-      try { res.status(500).end(); } catch (e) {}
+      logger.error('Zip error generating selected download', {
+        slug: req.params.slug,
+        eventId: req.event?.id,
+        error: err.message,
+      });
+      try {
+        res.status(500).end();
+      } catch (_) {
+        // ignore double-send errors
+      }
     });
     archive.pipe(res);
 
-    const { resolvePhotoFilePath } = require('../services/photoResolver');
-    const fs = require('fs');
     // Check watermark settings similar to download-all
     const watermarkSettings = await watermarkService.getWatermarkSettings();
     for (const photo of photos) {
       try {
         const filePath = resolvePhotoFilePath(req.event, photo);
-        if (filePath && fs.existsSync(filePath)) {
-          const name = photo.filename || `photo-${photo.id}.jpg`;
-          if (watermarkSettings && watermarkSettings.enabled) {
-            // Apply watermark like download-all
+        const name = photo.filename || `photo-${photo.id}.jpg`;
+        if (watermarkSettings && watermarkSettings.enabled) {
+          try {
             const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
             archive.append(watermarkedBuffer, { name });
-          } else {
-            archive.file(filePath, { name });
+          } catch (watermarkError) {
+            logger.warn('Failed to watermark selected photo, skipping original to avoid leak', {
+              slug: req.params.slug,
+              photoId: photo.id,
+              eventId: req.event.id,
+              error: watermarkError.message,
+            });
           }
+        } else {
+          archive.file(filePath, { name });
         }
-      } catch (e) {
-        // skip missing/inaccessible files
+      } catch (resolveError) {
+        logger.warn('Skipping selected photo due to unresolved path', {
+          slug: req.params.slug,
+          photoId: photo.id,
+          eventId: req.event.id,
+          error: resolveError.message,
+        });
       }
     }
 
@@ -515,7 +572,11 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
       action: 'download_selected'
     });
   } catch (error) {
-    console.error('Error in download-selected:', error);
+    logger.error('Error in download-selected:', {
+      slug: req.params.slug,
+      eventId: req.event?.id,
+      error: error.message,
+    });
     res.status(500).json({ error: 'Failed to download selected photos' });
   }
 });

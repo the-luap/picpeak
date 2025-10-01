@@ -240,7 +240,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
       host_email: formData.host_email,
       admin_email: formData.admin_email,
       require_password: formData.require_password,
-      password: formData.require_password ? formData.password : '',
+      password: formData.require_password ? formData.password : undefined,
       welcome_message: formData.welcome_message || '',
       color_theme: JSON.stringify(formData.theme_config),
       expiration_days: formData.expires_in_days,
@@ -511,6 +511,8 @@ export const CreateEventPageEnhanced: React.FC = () => {
                     setFormData(prev => ({
                       ...prev,
                       require_password: checked,
+                      password: checked ? prev.password : '',
+                      confirm_password: checked ? prev.confirm_password : '',
                     }));
                     if (!checked) {
                       setErrors(prev => ({ ...prev, password: undefined, confirm_password: undefined }));

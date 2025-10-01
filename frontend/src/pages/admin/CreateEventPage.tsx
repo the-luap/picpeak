@@ -241,20 +241,22 @@ export const CreateEventPage: React.FC = () => {
 
     const selectedTheme = COLOR_THEMES.find(t => t.value === formData.color_theme);
     
-    createMutation.mutate({
+    const payload = {
       event_type: formData.event_type,
       event_name: formData.event_name,
       event_date: formData.event_date,
       host_email: formData.host_email,
       admin_email: formData.admin_email,
       require_password: formData.require_password,
-      password: formData.require_password ? formData.password : '',
+      password: formData.require_password ? formData.password : undefined,
       welcome_message: formData.welcome_message || '',
       color_theme: selectedTheme ? JSON.stringify(selectedTheme.theme) : undefined,
       expiration_days: formData.expires_in_days,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
-    });
+    };
+
+    createMutation.mutate(payload);
   };
 
   const handleInputChange = (field: keyof FormData) => (
@@ -438,7 +440,12 @@ export const CreateEventPage: React.FC = () => {
                 checked={formData.require_password}
                 onChange={(e) => {
                   const checked = e.target.checked;
-                  setFormData(prev => ({ ...prev, require_password: checked }));
+                  setFormData(prev => ({
+                    ...prev,
+                    require_password: checked,
+                    password: checked ? prev.password : '',
+                    confirm_password: checked ? prev.confirm_password : ''
+                  }));
                   if (!checked) {
                     setErrors(prev => ({ ...prev, password: '', confirm_password: '' }));
                   }

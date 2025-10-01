@@ -14,7 +14,7 @@ interface CreateEventData {
   host_email: string;
   admin_email: string;
   require_password?: boolean;
-  password: string;
+  password?: string;
   welcome_message?: string;
   color_theme?: string;
   expiration_days: number;

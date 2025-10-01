@@ -1,9 +1,52 @@
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const { safePathJoin } = require('../utils/fileSecurityUtils');
 
+let cachedRoot = null;
+
+function resolveDefaultRoot() {
+  const containerDefault = '/external-media';
+  try {
+    if (fsSync.existsSync(containerDefault)) {
+      return containerDefault;
+    }
+  } catch (error) {
+    // ignore lookup errors, fallback below
+  }
+
+  const localFallback = path.resolve(__dirname, '../../..', 'storage/external-media');
+  try {
+    if (fsSync.existsSync(localFallback)) {
+      return localFallback;
+    }
+  } catch (error) {
+    // ignore and return container default
+  }
+
+  return containerDefault;
+}
+
 function getExternalMediaRoot() {
-  return process.env.EXTERNAL_MEDIA_ROOT || '/external-media';
+  if (cachedRoot) {
+    return cachedRoot;
+  }
+
+  const configured = process.env.EXTERNAL_MEDIA_ROOT;
+  if (configured && configured.trim()) {
+    const resolvedConfigured = path.resolve(configured.trim());
+    try {
+      if (fsSync.existsSync(resolvedConfigured)) {
+        cachedRoot = resolvedConfigured;
+        return cachedRoot;
+      }
+    } catch (error) {
+      // ignore lookup errors and fall back to defaults
+    }
+  }
+
+  cachedRoot = resolveDefaultRoot();
+  return cachedRoot;
 }
 
 function isUnderRoot(p) {
@@ -64,4 +107,3 @@ module.exports = {
   list,
   resolveExternalPath,
 };
-
