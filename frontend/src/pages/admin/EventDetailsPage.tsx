@@ -236,6 +236,28 @@ export const EventDetailsPage: React.FC = () => {
     },
   });
 
+  const applyThemeMutation = useMutation({
+    mutationFn: async ({ theme, presetName }: { theme: ThemeConfig; presetName: string }) => {
+      if (!id) {
+        throw new Error('Missing event identifier');
+      }
+
+      const colorThemeValue = presetName && presetName !== 'custom'
+        ? presetName
+        : JSON.stringify(theme);
+
+      return eventsService.updateEvent(parseInt(id), { color_theme: colorThemeValue });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+      toast.success(t('branding.themeApplied', 'Theme updated'));
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || t('branding.themeApplyError', 'Failed to apply theme');
+      toast.error(message);
+    }
+  });
+
   // Archive mutation
   const archiveMutation = useMutation({
     mutationFn: () => eventsService.archiveEvent(parseInt(id!)),
@@ -1124,6 +1146,20 @@ export const EventDetailsPage: React.FC = () => {
                 }}
                 isPreviewMode={false}
                 showGalleryLayouts={true}
+                onApply={async (theme, { presetName }) => {
+                  const resolvedPreset = presetName || 'custom';
+                  setCurrentTheme(theme);
+                  setCurrentPresetName(resolvedPreset);
+
+                  const themeValue = resolvedPreset !== 'custom'
+                    ? resolvedPreset
+                    : JSON.stringify(theme);
+
+                  setEditForm(prev => ({ ...prev, color_theme: themeValue }));
+
+                  await applyThemeMutation.mutateAsync({ theme, presetName: resolvedPreset });
+                }}
+                isApplying={applyThemeMutation.isPending}
               />
             </Card>
           )}

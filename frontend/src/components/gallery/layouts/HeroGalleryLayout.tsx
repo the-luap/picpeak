@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Download, Maximize2, Check, ChevronDown, Calendar, Clock, Heart, MessageSquare } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -163,12 +163,22 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
         
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <ChevronDown className="w-8 h-8 text-white drop-shadow-lg" />
+          <button
+            type="button"
+            onClick={handleScrollToGrid}
+            className="rounded-full border border-white/30 bg-white/10 p-3 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 hover:bg-white/20"
+            aria-label={t('gallery.scrollToGallery', 'Scroll to gallery')}
+          >
+            <ChevronDown className="w-8 h-8 drop-shadow-lg" />
+          </button>
         </div>
       </div>
 
       {/* Grid Section */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
         {remainingPhotos.map((photo) => {
           const actualIndex = photos.findIndex(p => p.id === photo.id);
           return (
@@ -313,3 +323,9 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
     </>
   );
 };
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const handleScrollToGrid = useCallback(() => {
+    if (gridRef.current) {
+      gridRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);

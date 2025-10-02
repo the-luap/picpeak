@@ -13,6 +13,24 @@ const router = express.Router();
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
+const parseCategoryId = (value) => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return value === 0 ? null : value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === 'null') return null;
+    if (/^\d+$/.test(trimmed)) {
+      const parsed = parseInt(trimmed, 10);
+      if (!Number.isNaN(parsed)) {
+        return parsed === 0 ? null : parsed;
+      }
+    }
+  }
+  return null;
+};
+
 // Configure multer for file uploads
 // IMPORTANT: Using synchronous functions to prevent file corruption
 const storage = multer.diskStorage({
@@ -158,16 +176,16 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
     }
     
     // Parse category_id to number if provided
-    const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+    const numericCategoryId = parseCategoryId(category_id);
     
     // Determine photo type from category_id parameter (for backwards compatibility)
     let photoType = 'individual'; // default
     let categoryName = 'individual';
     
-    if (parsedCategoryId === 1 || category_id === 'collage') {
+    if (numericCategoryId === 1 || category_id === 'collage') {
       photoType = 'collage';
       categoryName = 'collages';
-    } else if (parsedCategoryId === 2 || category_id === 'individual') {
+    } else if (numericCategoryId === 2 || category_id === 'individual') {
       photoType = 'individual';
       categoryName = 'individual';
     }
@@ -239,7 +257,9 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, nex
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
-              size_bytes: tempStats.size // Use actual file size from stat
+              size_bytes: tempStats.size, // Use actual file size from stat
+              category_id: numericCategoryId,
+              source_origin: 'managed'
             };
             
             batchPhotos.push(photoData);
@@ -475,9 +495,11 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     }
     
     // Update photo
+    const normalizedCategoryId = parseCategoryId(category_id);
+
     await db('photos')
       .where({ id: photoId })
-      .update({ category_id: category_id || null });
+      .update({ category_id: normalizedCategoryId });
     
     res.json({ message: 'Photo updated successfully' });
   } catch (error) {
@@ -578,7 +600,7 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
     // Update photos
     const updateData = {};
     if (updates.category_id !== undefined) {
-      updateData.category_id = updates.category_id || null;
+      updateData.category_id = parseCategoryId(updates.category_id);
     }
     
     await db('photos')
@@ -632,14 +654,22 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
     
     let query = db('photos')
+      .leftJoin('photo_categories as pc', 'pc.id', 'photos.category_id')
       .where({ 'photos.event_id': eventId })
-      .select('photos.*');
+      .select(
+        'photos.*',
+        'pc.name as category_display_name',
+        'pc.slug as category_display_slug'
+      );
     
     // Filter by type (individual/collage) - category_id maps to type
     if (category_id !== undefined) {
-      if (category_id === '' || category_id === '0') {
-        // For backwards compatibility, empty category means no filter
-        // Don't filter anything
+      if (category_id === '') {
+        // No filter when empty string is provided
+      } else if (category_id === '0') {
+        query = query.whereNull('photos.category_id');
+      } else if (/^\d+$/.test(category_id)) {
+        query = query.where('photos.category_id', parseInt(category_id, 10));
       } else if (category_id === 'individual' || category_id === 'collage') {
         query = query.where({ 'photos.type': category_id });
       }
@@ -665,7 +695,11 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     }
     
     const photos = await query.orderBy(orderByColumn, order);
-    
+
+    if (photos.length === 0) {
+      return res.json({ photos: [] });
+    }
+
     // Get comment counts separately
     const commentCounts = await db('photo_feedback')
       .whereIn('photo_id', photos.map(p => p.id))
@@ -690,9 +724,11 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
         // Always expose a thumbnail URL; backend will generate on demand if missing
         thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
         type: photo.type,
-        category_id: photo.type,
-        category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
-        category_slug: photo.type,
+        category_id: photo.category_id !== null && photo.category_id !== undefined
+          ? Number(photo.category_id)
+          : null,
+        category_name: photo.category_display_name || (photo.type === 'individual' ? 'Individual Photos' : 'Collages'),
+        category_slug: photo.category_display_slug || photo.type,
         size: photo.size_bytes,
         uploaded_at: photo.uploaded_at,
         // Feedback data

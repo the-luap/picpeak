@@ -14,6 +14,8 @@ interface ThemeCustomizerEnhancedProps {
   isPreviewMode?: boolean;
   showGalleryLayouts?: boolean;
   hideActions?: boolean;
+  onApply?: (theme: ThemeConfig, metadata: { presetName: string }) => Promise<void> | void;
+  isApplying?: boolean;
 }
 
 const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
@@ -34,7 +36,9 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   onPresetChange,
   isPreviewMode = false,
   showGalleryLayouts = true,
-  hideActions = false
+  hideActions = false,
+  onApply,
+  isApplying = false
 }) => {
   const { t } = useTranslation();
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
@@ -80,8 +84,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     }
   };
 
-  const handleApply = () => {
-    onChange({ ...localTheme, customCss });
+  const handleApply = async () => {
+    const themeWithCss = { ...localTheme, customCss };
+    onChange(themeWithCss);
+
+    if (onApply) {
+      await onApply(themeWithCss, { presetName: selectedPreset });
+    }
   };
 
   const handleReset = () => {
@@ -587,8 +596,9 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             variant="primary"
             leftIcon={<Palette className="w-4 h-4" />}
             onClick={handleApply}
+            disabled={isApplying}
           >
-            {t('branding.applyTheme')}
+            {isApplying ? t('common.applying', 'Applying...') : t('branding.applyTheme')}
           </Button>
         </div>
       )}

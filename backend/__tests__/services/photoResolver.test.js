@@ -66,6 +66,16 @@ describe('resolvePhotoFilePath', () => {
     expect(result).toBe(path.join('/mock/external', 'picsum-demo/individual', 'look-02.jpg'));
   });
 
+  it('falls back to managed storage when external metadata is missing', () => {
+    const event = { slug: 'fashion-show', source_mode: 'reference', external_path: 'picsum-demo' };
+    const photo = { path: 'fashion-show/new-upload.jpg' };
+
+    const result = resolvePhotoFilePath(event, photo);
+
+    expect(resolveExternalPath).not.toHaveBeenCalled();
+    expect(result).toBe(path.join(backendRoot, 'storage', 'events/active', 'fashion-show', 'new-upload.jpg'));
+  });
+
   it('throws when external photo is missing relative path data', () => {
     const event = { slug: 'fashion-show', source_mode: 'reference', external_path: 'picsum-demo' };
     const photo = { source_origin: 'external' };
