@@ -50,6 +50,12 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   const overlayOpacity = gallerySettings.heroOverlayOpacity || 0.3;
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const handleScrollToGrid = useCallback(() => {
+    if (gridRef.current) {
+      gridRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   // If an override is provided, always use it and skip initialization logic
   useEffect(() => {
@@ -184,19 +190,19 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
           return (
             <div
               key={photo.id}
-              className="relative group cursor-pointer aspect-square"
+              className="relative group cursor-pointer overflow-hidden rounded-lg"
               onClick={() => onPhotoClick(actualIndex)}
             >
               <AuthenticatedImage
                 src={photo.thumbnail_url || photo.url}
                 alt={photo.filename}
-                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+                className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
                 isGallery={true}
                 protectFromDownload={!allowDownloads}
               />
-              
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
                 {!isSelectionMode && (
                   <>
                     <button
@@ -323,9 +329,3 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
     </>
   );
 };
-  const gridRef = useRef<HTMLDivElement | null>(null);
-  const handleScrollToGrid = useCallback(() => {
-    if (gridRef.current) {
-      gridRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, []);
