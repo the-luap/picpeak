@@ -1,5 +1,5 @@
 import { api } from '../config/api';
-import type { LoginResponse, GalleryAuthResponse } from '../types';
+import type { LoginResponse, GalleryAuthResponse, AdminUser } from '../types';
 import { normalizeRequirePassword } from '../utils/accessControl';
 
 const normalizeGalleryResponse = (response: GalleryAuthResponse): GalleryAuthResponse => ({
@@ -60,5 +60,10 @@ export const authService = {
     } catch (err) {
       // Ignore; cookie will naturally expire if removal fails
     }
+  },
+
+  async updateAdminProfile(profile: { username: string; email: string }): Promise<AdminUser> {
+    const response = await api.put<{ user: AdminUser }>('/auth/admin/profile', profile);
+    return response.data.user;
   },
 };

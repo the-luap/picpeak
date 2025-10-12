@@ -55,12 +55,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
     },
   });
 
-  // Clear old notifications mutation
-  const clearOldMutation = useMutation({
-    mutationFn: notificationsService.clearOldNotifications,
+  // Clear notifications mutation
+  const clearAllMutation = useMutation({
+    mutationFn: notificationsService.clearAllNotifications,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success(t('admin.notificationToasts.clearedOld', { count: data.deletedCount }));
+      toast.success(t('admin.notificationToasts.clearedAll', { count: data.deletedCount }));
     },
   });
 
@@ -128,12 +128,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                         </button>
                       )}
                       <button
-                        onClick={() => clearOldMutation.mutate()}
+                        onClick={() => clearAllMutation.mutate()}
                         className="text-xs text-neutral-600 hover:text-neutral-700 flex items-center gap-1"
-                        title={t('admin.clearOld')}
+                        title={t('admin.clearAll')}
                       >
                         <Trash2 className="w-3 h-3" />
-                        {t('admin.clearOld')}
+                        {t('admin.clearAll')}
                       </button>
                     </div>
                   </div>

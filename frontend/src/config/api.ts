@@ -5,6 +5,7 @@ import {
   inferGallerySlugFromLocation,
   resolveSlugFromRequestUrl,
 } from '../utils/galleryAuthStorage';
+import { getApiBaseUrl } from '../utils/url';
 
 // Maintenance mode callback
 let maintenanceModeCallback: ((enabled: boolean) => void) | null = null;
@@ -15,7 +16,7 @@ export const setMaintenanceModeCallback = (callback: (enabled: boolean) => void)
 
 // Create axios instance
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

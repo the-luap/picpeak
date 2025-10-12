@@ -119,4 +119,18 @@ router.delete('/clear-old', adminAuth, async (req, res) => {
   }
 });
 
+// Delete all notifications
+router.delete('/clear-all', adminAuth, async (req, res) => {
+  try {
+    const deletedCount = await db('activity_logs').delete();
+    res.json({
+      message: 'All notifications cleared',
+      deletedCount
+    });
+  } catch (error) {
+    console.error('Clear all notifications error:', error);
+    res.status(500).json({ error: 'Failed to clear notifications' });
+  }
+});
+
 module.exports = router;

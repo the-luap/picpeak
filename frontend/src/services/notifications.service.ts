@@ -38,9 +38,9 @@ export const notificationsService = {
     await api.put('/admin/notifications/read-all');
   },
 
-  // Clear old notifications
-  async clearOldNotifications(): Promise<{ deletedCount: number }> {
-    const response = await api.delete('/admin/notifications/clear-old');
+  // Clear all notifications
+  async clearAllNotifications(): Promise<{ deletedCount: number }> {
+    const response = await api.delete('/admin/notifications/clear-all');
     return response.data;
   },
 
@@ -133,6 +133,10 @@ export const notificationsService = {
         return t('admin.notificationMessages.generalSettingsUpdated');
       case 'security_settings_updated':
         return t('admin.notificationMessages.securitySettingsUpdated');
+      case 'admin_profile_updated':
+        return t('admin.notificationMessages.adminProfileUpdated', {
+          actorName: notification.actorName,
+        });
       case 'theme_updated':
         return t('admin.notificationMessages.themeUpdated');
       case 'archive_downloaded':
@@ -184,6 +188,8 @@ export const notificationsService = {
       case 'security_settings_updated':
       case 'theme_updated':
         return { icon: 'Settings', color: 'text-gray-600' };
+      case 'admin_profile_updated':
+        return { icon: 'User', color: 'text-primary-600' };
       case 'email_template_updated':
       case 'email_config_updated':
         return { icon: 'Mail', color: 'text-teal-600' };

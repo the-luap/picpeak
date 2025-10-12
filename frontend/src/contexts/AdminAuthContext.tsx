@@ -13,6 +13,7 @@ interface AdminAuthContextType {
   error: string | null;
   mustChangePassword: boolean;
   updatePasswordChanged: () => void;
+  updateProfile: (user: AdminUser) => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -104,6 +105,11 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     }
   };
 
+  const updateProfile = (updatedUser: AdminUser) => {
+    setUser(updatedUser);
+    sessionStorage.setItem('admin_user', JSON.stringify(updatedUser));
+  };
+
   return (
     <AdminAuthContext.Provider
       value={{
@@ -115,6 +121,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         error,
         mustChangePassword,
         updatePasswordChanged,
+        updateProfile,
       }}
     >
       {children}

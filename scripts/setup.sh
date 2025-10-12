@@ -630,7 +630,11 @@ setup_native_installation() {
             apt-get install -y build-essential python3
             ;;
         dnf|yum)
-            $PACKAGE_MANAGER groupinstall -y "Development Tools"
+            if "$PACKAGE_MANAGER" --version 2>/dev/null | grep -Ei 'dnf( |-)5' >/dev/null; then
+                $PACKAGE_MANAGER install -y @development-tools
+            else
+                $PACKAGE_MANAGER groupinstall -y "Development Tools"
+            fi
             $PACKAGE_MANAGER install -y python3
             ;;
     esac
@@ -1006,7 +1010,13 @@ print_success_message() {
         fi
       else
         echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
-        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run node scripts/reset-admin-password.js manually)${NC}"
+        local reset_hint
+        if [[ "$INSTALL_METHOD" == "docker" ]]; then
+          reset_hint="docker compose exec backend node scripts/reset-admin-password.js"
+        else
+          reset_hint="cd $NATIVE_APP_DIR/app/backend && node scripts/reset-admin-password.js"
+        fi
+        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run $reset_hint)${NC}"
       fi
     echo
     echo -e "${YELLOW}⚠️  IMPORTANT: Change the admin password on first login!${NC}"

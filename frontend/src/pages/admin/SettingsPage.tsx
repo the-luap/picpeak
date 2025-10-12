@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Save, 
   Database,
@@ -19,7 +19,9 @@ import { CategoryManager } from '../../components/admin/CategoryManager';
 import { WordFilterManager } from '../../components/admin/WordFilterManager';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
+import { authService } from '../../services/auth.service';
 import { useTranslation } from 'react-i18next';
+import { useAdminAuth } from '../../contexts';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -56,6 +58,23 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
+  const { user, updateProfile: updateAuthProfile } = useAdminAuth();
+
+  const [profileForm, setProfileForm] = useState({
+    username: user?.username ?? '',
+    email: user?.email ?? '',
+  });
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({ username: user.username, email: user.email });
+    }
+  }, [user]);
+
+  const isProfileDirty = user
+    ? (profileForm.username !== user.username || profileForm.email !== user.email)
+    : Boolean(profileForm.username.trim() || profileForm.email.trim());
 
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
@@ -76,6 +95,20 @@ export const SettingsPage: React.FC = () => {
     queryFn: () => settingsService.getSystemStatus(),
     enabled: activeTab === 'status',
     refetchInterval: 30000 // Refresh every 30 seconds
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: authService.updateAdminProfile,
+    onSuccess: (updatedUser) => {
+      updateAuthProfile(updatedUser);
+      setProfileError(null);
+      toast.success(t('admin.notificationToasts.profileUpdated'));
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || t('admin.profileUpdateError');
+      setProfileError(message);
+      toast.error(message);
+    },
   });
 
   // General settings state
@@ -343,6 +376,19 @@ export const SettingsPage: React.FC = () => {
     }
   });
 
+  const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isProfileDirty || updateProfileMutation.isPending) {
+      return;
+    }
+
+    setProfileError(null);
+    updateProfileMutation.mutate({
+      username: profileForm.username.trim(),
+      email: profileForm.email.trim(),
+    });
+  };
+
   const handleSaveCapacityOverride = () => {
     if (saveCapacityOverrideMutation.isPending) {
       return;
@@ -466,6 +512,46 @@ export const SettingsPage: React.FC = () => {
       {/* General Settings Tab */}
       {activeTab === 'general' && (
         <div className="space-y-6">
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-2">{t('admin.accountSettings.title')}</h2>
+            <p className="text-sm text-neutral-500 mb-4">{t('admin.accountSettings.description')}</p>
+            <form className="space-y-4" onSubmit={handleProfileSubmit}>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  {t('admin.accountSettings.username')}
+                </label>
+                <Input
+                  value={profileForm.username}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder={t('admin.accountSettings.usernamePlaceholder')}
+                  maxLength={120}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  {t('admin.accountSettings.email')}
+                </label>
+                <Input
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder={t('admin.accountSettings.emailPlaceholder')}
+                />
+              </div>
+              {profileError && (
+                <p className="text-sm text-red-600">{profileError}</p>
+              )}
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={!isProfileDirty || updateProfileMutation.isPending}
+                >
+                  {updateProfileMutation.isPending ? t('common.saving') : t('admin.accountSettings.updateButton')}
+                </Button>
+              </div>
+            </form>
+          </Card>
+
           <Card padding="md">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.general.siteConfiguration')}</h2>
             

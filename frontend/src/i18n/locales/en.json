@@ -818,7 +818,7 @@
     "viewAllNotifications": "View all notifications",
     "noNotifications": "No new notifications",
     "markAllRead": "Mark all read",
-    "clearOld": "Clear old",
+    "clearAll": "Clear all",
     "close": "Close",
     "noNotificationsMessage": "No notifications",
     "notificationMessages": {
@@ -851,16 +851,28 @@
       "archiveDownloaded": "Archive downloaded for \"{{eventName}}\"",
       "archiveDeleted": "Archive deleted for \"{{eventName}}\"",
       "archiveRestored": "Archive restored for \"{{eventName}}\"",
-      "systemActivity": "System activity: {{type}}"
+      "systemActivity": "System activity: {{type}}",
+      "adminProfileUpdated": "Admin profile updated by {{actorName}}"
     },
     "notificationToasts": {
       "markedAllRead": "All notifications marked as read",
-      "clearedOld": "Cleared {{count}} old notifications"
+      "clearedAll": "Cleared {{count}} notifications",
+      "profileUpdated": "Admin profile updated"
     },
     "markAsRead": "Mark as read",
     "markAllAsRead": "Mark all as read",
     "notificationSettings": "Notification Settings",
     "changePassword": "Change Password",
+    "accountSettings": {
+      "title": "Admin account",
+      "description": "Update the credentials used to sign in to PicPeak.",
+      "username": "Username",
+      "usernamePlaceholder": "Admin",
+      "email": "Email",
+      "emailPlaceholder": "admin@example.com",
+      "updateButton": "Update profile"
+    },
+    "profileUpdateError": "Unable to update admin profile. Please try again.",
     "loadingDashboard": "Loading dashboard...",
     "activeEvents": "Active Events",
     "expiringSoon": "Expiring Soon",

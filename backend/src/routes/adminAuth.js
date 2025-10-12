@@ -72,6 +72,68 @@ router.post('/change-password', [
   }
 });
 
+// Update admin profile
+router.put('/profile', [
+  adminAuth,
+  body('username').trim().notEmpty().withMessage('Username is required'),
+  body('email').trim().isEmail().withMessage('Valid email is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { username, email } = req.body;
+    const userId = req.admin.id;
+
+    // Check for email conflicts
+    const existingEmail = await db('admin_users')
+      .where('email', email)
+      .whereNot('id', userId)
+      .first();
+
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email is already in use by another admin' });
+    }
+
+    // Check username conflict (if multiple admins are supported)
+    const existingUsername = await db('admin_users')
+      .where('username', username)
+      .whereNot('id', userId)
+      .first();
+
+    if (existingUsername) {
+      return res.status(409).json({ error: 'Username is already in use by another admin' });
+    }
+
+    await db('admin_users')
+      .where('id', userId)
+      .update({
+        username,
+        email,
+        updated_at: new Date()
+      });
+
+    const updatedUser = await db('admin_users')
+      .select('id', 'username', 'email', 'must_change_password')
+      .where('id', userId)
+      .first();
+
+    await logActivity(
+      'admin_profile_updated',
+      { admin_id: userId, updated_fields: ['username', 'email'] },
+      null,
+      { type: 'admin', id: userId, name: username }
+    );
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    console.error('Admin profile update error:', error);
+    res.status(500).json({ error: 'Failed to update admin profile' });
+  }
+});
+
 // Logout
 router.post('/logout', adminAuth, async (req, res) => {
   try {
