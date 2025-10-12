@@ -383,17 +383,27 @@ setup_docker_installation() {
         app_dir="/home/$SUDO_USER/picpeak"
     fi
     
-    log_step "Creating application directory at $app_dir"
-    mkdir -p "$app_dir"/{storage/events/{active,archived},logs,backup,config,data,events}
-    
-    # Clone repository
-    log_step "Downloading PicPeak..."
+    log_step "Preparing application directory at $app_dir"
+    local app_parent_dir
+    app_parent_dir=$(dirname "$app_dir")
+    mkdir -p "$app_parent_dir"
+
     if [[ -d "$app_dir/.git" ]]; then
+        log_step "Existing PicPeak repository detected; pulling latest changes"
         cd "$app_dir"
-        git pull
+        git pull --rebase --autostash || git pull
     else
+        if [[ -d "$app_dir" && -n "$(find "$app_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+            die "Target directory $app_dir already exists and is not empty. Remove it or specify --install-dir before retrying."
+        fi
+
+        log_step "Cloning PicPeak..."
+        rm -rf "$app_dir"
         git clone "$REPO_URL" "$app_dir"
     fi
+
+    # Ensure storage layout exists after cloning
+    mkdir -p "$app_dir"/{storage/events/{active,archived},logs,backup,config,data,events}
     
     # Determine host user for container mapping (PUID/PGID)
     local host_uid host_gid
