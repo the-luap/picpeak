@@ -29,9 +29,9 @@ test('admin can create event via UI', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^Create$/i })).toBeVisible({ timeout: 10000 });
 
   await page.getByLabel(/Event Name/i).fill(eventName);
-  await page.getByLabel(/Host Name/i).fill('Host User');
+  await page.getByLabel(/Event Owner Name/i).fill('Host User');
   await page.getByLabel(/Event Date/i).fill('2025-12-31');
-  await page.getByLabel(/Host Email/i).fill(hostEmail);
+  await page.getByLabel(/Event Owner Email/i).fill(hostEmail);
   await page.getByLabel(/Admin Email/i).fill(ADMIN_EMAIL);
   await page.getByLabel(/Gallery Password/i).fill('UiPlay123!');
   await page.getByLabel(/Confirm Password/i).fill('UiPlay123!');

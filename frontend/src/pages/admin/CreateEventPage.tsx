@@ -388,7 +388,7 @@ export const CreateEventPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.contactInformation')}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Host Email */}
+            {/* Event Owner Email */}
             <div>
               <label htmlFor="host_email" className="block text-sm font-medium text-neutral-700 mb-1">
                 {t('events.hostEmail')}
