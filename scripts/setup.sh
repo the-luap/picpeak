@@ -393,6 +393,29 @@ setup_docker_installation() {
     if [[ -d "$app_dir/.git" ]]; then
         cd "$app_dir"
         git pull
+    elif [[ -d "$app_dir" ]]; then
+        if [[ -z "$(ls -A "$app_dir" 2>/dev/null)" ]]; then
+            log_warn "Existing directory $app_dir is empty but not a git repository; recreating it..."
+            rm -rf "$app_dir"
+            git clone "$REPO_URL" "$app_dir"
+        else
+            log_warn "Directory $app_dir already exists and is not a git repository."
+            if [[ "$UNATTENDED" == "true" ]]; then
+                local backup_dir="${app_dir}.backup-$(date +%Y%m%d-%H%M%S)"
+                log_warn "Unattended mode: backing up directory to $backup_dir and cloning a fresh copy."
+                mv "$app_dir" "$backup_dir"
+                git clone "$REPO_URL" "$app_dir"
+            else
+                if confirm "Replace existing directory $app_dir with a fresh clone? This will move the current contents to a backup folder." "y"; then
+                    local backup_dir="${app_dir}.backup-$(date +%Y%m%d-%H%M%S)"
+                    mv "$app_dir" "$backup_dir"
+                    log_step "Existing directory moved to $backup_dir"
+                    git clone "$REPO_URL" "$app_dir"
+                else
+                    die "Installation aborted because $app_dir already exists and is not a PicPeak git repository."
+                fi
+            fi
+        fi
     else
         git clone "$REPO_URL" "$app_dir"
     fi
