@@ -791,7 +791,18 @@
       "saveGeneralSettings": "Allgemeine Einstellungen speichern",
       "dateTimeFormat": "Datums- & Zeitformat",
       "dateFormat": "Datumsformat",
-      "dateFormatHelp": "Wie Daten in E-Mails und in der gesamten Anwendung angezeigt werden"
+      "dateFormatHelp": "Wie Daten in E-Mails und in der gesamten Anwendung angezeigt werden",
+      "accountSection": "Admin-Konto",
+      "accountUsername": "Admin-Benutzername",
+      "accountUsernameHelp": "Wird im Admin-Bereich angezeigt und in Aktivitätsprotokollen verwendet.",
+      "accountUsernameRequired": "Benutzername ist erforderlich",
+      "accountUsernameLength": "Benutzername muss mindestens 3 Zeichen lang sein",
+      "accountEmail": "Admin-E-Mail",
+      "accountEmailHelp": "Wird für die Anmeldung und für Sicherheitsbenachrichtigungen verwendet.",
+      "accountEmailRequired": "E-Mail-Adresse ist erforderlich",
+      "accountEmailInvalid": "Bitte eine gültige E-Mail-Adresse eingeben",
+      "accountSaveButton": "Kontodaten speichern",
+      "accountSaveSuccess": "Kontodaten aktualisiert"
     },
     "publicSite": {
       "tabLabel": "Öffentliche Seite",

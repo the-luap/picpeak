@@ -471,7 +471,18 @@
       "saveGeneralSettings": "Save General Settings",
       "dateTimeFormat": "Date & Time Format",
       "dateFormat": "Date Format",
-      "dateFormatHelp": "How dates are displayed in emails and throughout the application"
+      "dateFormatHelp": "How dates are displayed in emails and throughout the application",
+      "accountSection": "Admin Account",
+      "accountUsername": "Admin Username",
+      "accountUsernameHelp": "Displayed in the admin interface and used in activity logs.",
+      "accountUsernameRequired": "Username is required",
+      "accountUsernameLength": "Username must be at least 3 characters",
+      "accountEmail": "Admin Email",
+      "accountEmailHelp": "Used for login and receiving security notifications.",
+      "accountEmailRequired": "Email address is required",
+      "accountEmailInvalid": "Enter a valid email address",
+      "accountSaveButton": "Save account details",
+      "accountSaveSuccess": "Account details updated"
     },
     "publicSite": {
       "tabLabel": "Public Site",

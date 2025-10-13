@@ -47,6 +47,17 @@ export interface Activity {
   createdAt: string;
 }
 
+export interface AdminProfile {
+  id: number;
+  username: string;
+  email: string;
+  mustChangePassword?: boolean;
+  last_login?: string | null;
+  last_login_ip?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface AnalyticsData {
   chartData: Array<{
     date: string;
@@ -130,5 +141,15 @@ export const adminService = {
   // Change password
   async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
     await api.post('/admin/auth/change-password', data);
+  },
+
+  async getAdminProfile(): Promise<AdminProfile> {
+    const response = await api.get<AdminProfile>('/admin/auth/profile');
+    return response.data;
+  },
+
+  async updateAdminProfile(data: { username: string; email: string }): Promise<AdminProfile> {
+    const response = await api.put<{ user: AdminProfile }>('/admin/auth/profile', data);
+    return response.data.user;
   }
 };

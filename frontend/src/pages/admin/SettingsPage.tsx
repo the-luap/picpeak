@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Save, 
+import {
+  Save,
   Database,
   Globe,
   Key,
@@ -10,7 +10,9 @@ import {
   CheckCircle,
   Clock,
   HardDrive,
-  Activity
+  Activity,
+  Mail,
+  User
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -19,7 +21,9 @@ import { CategoryManager } from '../../components/admin/CategoryManager';
 import { WordFilterManager } from '../../components/admin/WordFilterManager';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
+import { adminService } from '../../services/admin.service';
 import { useTranslation } from 'react-i18next';
+import { useAdminAuth } from '../../contexts';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -56,11 +60,17 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
+  const { updateUserProfile } = useAdminAuth();
 
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
     queryKey: ['admin-settings'],
     queryFn: () => settingsService.getAllSettings(),
+  });
+
+  const { data: adminProfile, isLoading: adminProfileLoading } = useQuery({
+    queryKey: ['admin-profile'],
+    queryFn: () => adminService.getAdminProfile(),
   });
 
   // Fetch storage info
@@ -117,6 +127,11 @@ export const SettingsPage: React.FC = () => {
   const [capacityOverrideGb, setCapacityOverrideGb] = useState<number | ''>('');
   const [availableOverrideGb, setAvailableOverrideGb] = useState<number | ''>('');
   const [overrideDirty, setOverrideDirty] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    username: '',
+    email: ''
+  });
+  const [accountErrors, setAccountErrors] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
     if (settings) {
@@ -164,6 +179,15 @@ export const SettingsPage: React.FC = () => {
       });
     }
   }, [settings, i18n]);
+
+  React.useEffect(() => {
+    if (adminProfile) {
+      setAccountForm({
+        username: adminProfile.username || '',
+        email: adminProfile.email || ''
+      });
+    }
+  }, [adminProfile]);
 
   React.useEffect(() => {
     if (!settings || overrideDirty) {
@@ -284,6 +308,83 @@ export const SettingsPage: React.FC = () => {
       toast.error(t('toast.saveError'));
     }
   });
+
+  const updateAdminProfileMutation = useMutation({
+    mutationFn: (payload: { username: string; email: string }) => adminService.updateAdminProfile(payload),
+    onSuccess: (updatedUser) => {
+      toast.success(t('settings.general.accountSaveSuccess'));
+      setAccountErrors({});
+      setAccountForm({
+        username: updatedUser.username,
+        email: updatedUser.email
+      });
+      updateUserProfile(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ['admin-profile'] });
+    },
+    onError: (error: any) => {
+      if (error.response?.data?.errors) {
+        const fieldErrors: Record<string, string> = {};
+        for (const err of error.response.data.errors) {
+          if (err.path === 'username') {
+            fieldErrors.username = err.msg;
+          }
+          if (err.path === 'email') {
+            fieldErrors.email = err.msg;
+          }
+        }
+        setAccountErrors(fieldErrors);
+        return;
+      }
+
+      if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error(t('toast.saveError'));
+      }
+    }
+  });
+
+  const handleAccountChange = (field: 'username' | 'email') => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setAccountForm((prev) => ({ ...prev, [field]: value }));
+    if (accountErrors[field]) {
+      setAccountErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleAccountSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (updateAdminProfileMutation.isPending) {
+      return;
+    }
+
+    const trimmedUsername = accountForm.username.trim();
+    const trimmedEmail = accountForm.email.trim();
+    const errors: Record<string, string> = {};
+
+    if (!trimmedUsername) {
+      errors.username = t('settings.general.accountUsernameRequired');
+    } else if (trimmedUsername.length < 3) {
+      errors.username = t('settings.general.accountUsernameLength');
+    }
+
+    if (!trimmedEmail) {
+      errors.email = t('settings.general.accountEmailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = t('settings.general.accountEmailInvalid');
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAccountErrors(errors);
+      return;
+    }
+
+    updateAdminProfileMutation.mutate({
+      username: trimmedUsername,
+      email: trimmedEmail
+    });
+  };
 
   const saveSoftLimitMutation = useMutation({
     mutationFn: async (limitBytes: number | null) => {
@@ -466,6 +567,64 @@ export const SettingsPage: React.FC = () => {
       {/* General Settings Tab */}
       {activeTab === 'general' && (
         <div className="space-y-6">
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.general.accountSection')}</h2>
+            {adminProfileLoading ? (
+              <div className="py-8 flex justify-center">
+                <Loading size="md" />
+              </div>
+            ) : (
+              <form className="space-y-4" onSubmit={handleAccountSubmit}>
+                <div>
+                  <label htmlFor="admin-account-username" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.accountUsername')}
+                  </label>
+                  <Input
+                    id="admin-account-username"
+                    type="text"
+                    value={accountForm.username}
+                    onChange={handleAccountChange('username')}
+                    placeholder="admin"
+                    leftIcon={<User className="w-5 h-5 text-neutral-400" />}
+                    error={accountErrors.username}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.accountUsernameHelp')}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="admin-account-email" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.accountEmail')}
+                  </label>
+                  <Input
+                    id="admin-account-email"
+                    type="email"
+                    value={accountForm.email}
+                    onChange={handleAccountChange('email')}
+                    placeholder="admin@example.com"
+                    leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+                    error={accountErrors.email}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.accountEmailHelp')}
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    leftIcon={<Save className="w-5 h-5" />}
+                    isLoading={updateAdminProfileMutation.isPending}
+                  >
+                    {t('settings.general.accountSaveButton')}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </Card>
+
           <Card padding="md">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.general.siteConfiguration')}</h2>
             

@@ -8,6 +8,93 @@ const { validatePasswordStrength } = require('../utils/passwordGenerator');
 const router = express.Router();
 
 // Change password
+router.get('/profile', adminAuth, async (req, res) => {
+  try {
+    const admin = await db('admin_users')
+      .where('id', req.admin.id)
+      .select('id', 'username', 'email', 'last_login', 'last_login_ip', 'created_at', 'updated_at', 'must_change_password as mustChangePassword')
+      .first();
+
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin user not found' });
+    }
+
+    res.json(admin);
+  } catch (error) {
+    console.error('Admin profile fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin profile' });
+  }
+});
+
+router.put('/profile', [
+  adminAuth,
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage('Username must be between 3 and 50 characters'),
+  body('email')
+    .trim()
+    .isEmail()
+    .withMessage('A valid email address is required')
+    .normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const username = req.body.username.trim();
+    const email = req.body.email.trim().toLowerCase();
+    const adminId = req.admin.id;
+
+    const existingUsername = await db('admin_users')
+      .where('username', username)
+      .whereNot('id', adminId)
+      .first();
+
+    if (existingUsername) {
+      return res.status(409).json({ error: 'Username is already in use' });
+    }
+
+    const existingEmail = await db('admin_users')
+      .where('email', email)
+      .whereNot('id', adminId)
+      .first();
+
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email address is already in use' });
+    }
+
+    await db('admin_users')
+      .where('id', adminId)
+      .update({
+        username,
+        email,
+        updated_at: new Date()
+      });
+
+    await logActivity('admin_profile_updated',
+      { username, email },
+      null,
+      { type: 'admin', id: adminId, name: req.admin.username }
+    );
+
+    const updatedAdmin = await db('admin_users')
+      .where('id', adminId)
+      .select('id', 'username', 'email', 'must_change_password as mustChangePassword')
+      .first();
+
+    res.json({
+      message: 'Admin profile updated successfully',
+      user: updatedAdmin
+    });
+  } catch (error) {
+    console.error('Admin profile update error:', error);
+    res.status(500).json({ error: 'Failed to update admin profile' });
+  }
+});
+
 router.post('/change-password', [
   adminAuth,
   body('currentPassword').notEmpty().withMessage('Current password is required'),
