@@ -64,17 +64,19 @@ FORCE_ADMIN_PASSWORD_RESET=false
 # Run a command as the application user, even if sudo is not available
 run_as_user() {
     local cmd="$*"
+    local current_dir_escaped
+    current_dir_escaped=$(printf '%q' "$(pwd)")
     if [[ "$(id -u)" -ne 0 ]]; then
-        # Already non-root; just run
-        bash -lc "$cmd"
+        # Already non-root; preserve working directory
+        bash -lc "cd $current_dir_escaped && $cmd"
         return $?
     fi
     if command_exists sudo; then
-        sudo -H -u "$NATIVE_APP_USER" bash -lc "$cmd"
+        sudo -H -u "$NATIVE_APP_USER" bash -lc "cd $current_dir_escaped && $cmd"
     elif command_exists runuser; then
-        runuser -u "$NATIVE_APP_USER" -- bash -lc "$cmd"
+        runuser -u "$NATIVE_APP_USER" -- bash -lc "cd $current_dir_escaped && $cmd"
     else
-        su -s /bin/bash - "$NATIVE_APP_USER" -c "$cmd"
+        su -s /bin/bash - "$NATIVE_APP_USER" -c "cd $current_dir_escaped && $cmd"
     fi
 }
 
@@ -629,7 +631,14 @@ setup_native_installation() {
         apt)
             apt-get install -y build-essential python3
             ;;
-        dnf|yum)
+        dnf)
+            if ! $PACKAGE_MANAGER install -y @development-tools; then
+                log_warn "dnf @development-tools group install failed, retrying with legacy groupinstall syntax..."
+                $PACKAGE_MANAGER groupinstall -y "Development Tools"
+            fi
+            $PACKAGE_MANAGER install -y python3
+            ;;
+        yum)
             $PACKAGE_MANAGER groupinstall -y "Development Tools"
             $PACKAGE_MANAGER install -y python3
             ;;
@@ -953,15 +962,17 @@ configure_email() {
 }
 
 print_success_message() {
-    local app_dir port
+    local app_dir port manual_reset_hint
     
     if [[ "$INSTALL_METHOD" == "docker" ]]; then
         app_dir="$DOCKER_APP_DIR"
         [[ -n "${SUDO_USER:-}" ]] && app_dir="/home/$SUDO_USER/picpeak"
         port="${CUSTOM_PORT:-$DEFAULT_PORT}"
+        manual_reset_hint="cd $(printf %q "$app_dir") && docker compose exec -T backend node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt"
     else
         app_dir="$NATIVE_APP_DIR"
         port="${CUSTOM_PORT:-$DEFAULT_PORT}"
+        manual_reset_hint="cd $(printf %q "${NATIVE_APP_DIR}/app/backend") && sudo -H -u $(printf %q "$NATIVE_APP_USER") node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt"
     fi
     
     print_header "🎉 Installation Complete!"
@@ -1006,7 +1017,7 @@ print_success_message() {
         fi
       else
         echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
-        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run node scripts/reset-admin-password.js manually)${NC}"
+        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run '${manual_reset_hint}')${NC}"
       fi
     echo
     echo -e "${YELLOW}⚠️  IMPORTANT: Change the admin password on first login!${NC}"
