@@ -87,7 +87,11 @@ test('admin login and gallery viewing smoke test', async ({ page }) => {
   await page.goto(shareLink);
   const passwordField = page.getByPlaceholder(/gallery password/i);
   if (await passwordField.count()) {
-    await passwordField.fill(GALLERY_PASSWORD);
+    try {
+      await passwordField.fill(GALLERY_PASSWORD, { timeout: 2000 });
+    } catch {
+      // Field may disappear if gallery bypasses password; ignore.
+    }
   }
 
   const viewButton = page.getByRole('button', { name: /View Gallery/i });

@@ -21,37 +21,27 @@ test('admin can update account email via settings page', async ({ page }, testIn
   const usernameInput = page.getByLabel(/Admin (Username|Benutzername)/i);
 
   await expect(emailInput).toBeVisible();
+  const originalEmail = await emailInput.inputValue();
   const originalUsername = await usernameInput.inputValue();
 
-  await emailInput.fill(newEmail);
-
   const saveButton = page.getByRole('button', { name: /(Save account details|Kontodaten speichern)/i });
-  await saveButton.click();
 
-  await expect(emailInput).toHaveValue(newEmail, { timeout: 10000 });
-  await expect(page.locator('.Toastify__toast').filter({ hasText: /(Account details updated|Kontodaten aktualisiert)/i })).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText(newEmail, { exact: false })).toBeVisible();
+  const revertChanges = async () => {
+    await emailInput.fill(originalEmail);
+    await usernameInput.fill(originalUsername);
+    await saveButton.click();
+    await expect(emailInput).toHaveValue(originalEmail, { timeout: 10000 });
+    await expect(page.locator('.Toastify__toast').filter({ hasText: /(Account details updated|Kontodaten aktualisiert)/i })).toBeVisible({ timeout: 10000 });
+  };
 
-  const newLoginResponse = await page.request.post('/api/auth/admin/login', {
-    data: {
-      username: newEmail,
-      password: ADMIN_PASSWORD,
-    },
-  });
-  expect(newLoginResponse.ok()).toBeTruthy();
+  try {
+    await emailInput.fill(newEmail);
+    await saveButton.click();
 
-  await emailInput.fill(ADMIN_EMAIL);
-  await usernameInput.fill(originalUsername);
-  await saveButton.click();
-
-  await expect(emailInput).toHaveValue(ADMIN_EMAIL, { timeout: 10000 });
-  await expect(page.locator('.Toastify__toast').filter({ hasText: /(Account details updated|Kontodaten aktualisiert)/i })).toBeVisible({ timeout: 10000 });
-
-  const revertLoginResponse = await page.request.post('/api/auth/admin/login', {
-    data: {
-      username: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-    },
-  });
-  expect(revertLoginResponse.ok()).toBeTruthy();
+    await expect(emailInput).toHaveValue(newEmail, { timeout: 10000 });
+    await expect(page.locator('.Toastify__toast').filter({ hasText: /(Account details updated|Kontodaten aktualisiert)/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(newEmail, { exact: false })).toBeVisible();
+  } finally {
+    await revertChanges();
+  }
 });

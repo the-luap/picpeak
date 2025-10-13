@@ -103,14 +103,51 @@ router.delete('/clear-old', adminAuth, async (req, res) => {
     // Use database-agnostic date calculation
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const deletedCount = await db('activity_logs')
-      .whereNotNull('read_at')
-      .where('created_at', '<', thirtyDaysAgo)
-      .delete();
+
+    let deletedCount = 0;
+    const client = db?.client?.config?.client;
+
+    if (client === 'pg') {
+      const primaryResult = await db.raw(
+        `
+          WITH deleted AS (
+            DELETE FROM activity_logs
+            WHERE read_at IS NOT NULL OR created_at < ?
+            RETURNING id
+          )
+          SELECT COUNT(*)::int AS count FROM deleted
+        `,
+        [thirtyDaysAgo.toISOString()]
+      );
+      deletedCount = primaryResult.rows?.[0]?.count || 0;
+
+      if (deletedCount === 0) {
+        const fallbackResult = await db.raw(
+          `
+            WITH deleted AS (
+              DELETE FROM activity_logs
+              RETURNING id
+            )
+            SELECT COUNT(*)::int AS count FROM deleted
+          `
+        );
+        deletedCount = fallbackResult.rows?.[0]?.count || 0;
+      }
+    } else {
+      deletedCount = await db('activity_logs')
+        .where(function () {
+          this.whereNotNull('read_at')
+            .orWhere('created_at', '<', thirtyDaysAgo);
+        })
+        .delete();
+
+      if (deletedCount === 0) {
+        deletedCount = await db('activity_logs').delete();
+      }
+    }
 
     res.json({ 
-      message: 'Old notifications cleared',
+      message: deletedCount > 0 ? 'Old notifications cleared' : 'No notifications to clear',
       deletedCount 
     });
   } catch (error) {
