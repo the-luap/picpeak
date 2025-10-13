@@ -55,5 +55,10 @@
     "mock-fs": "^5.5.0",
     "nodemon": "^3.1.10",
     "supertest": "^6.3.3"
+  },
+  "overrides": {
+    "prebuild-install": {
+      "tar-fs": "2.1.4"
+    }
   }
 }

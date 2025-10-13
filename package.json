@@ -10,5 +10,10 @@
   "devDependencies": {
     "puppeteer": "^24.17.0",
     "@playwright/test": "^1.48.2"
+  },
+  "overrides": {
+    "prebuild-install": {
+      "tar-fs": "2.1.4"
+    }
   }
 }
