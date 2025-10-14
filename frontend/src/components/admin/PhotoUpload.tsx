@@ -6,12 +6,16 @@ import { api } from '../../config/api';
 import { toast } from 'react-toastify';
 import { useQuery } from '@tanstack/react-query';
 import { categoriesService } from '../../services/categories.service';
+import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
 interface PhotoUploadProps {
   eventId: number;
   onUploadComplete?: () => void;
 }
+
+const DEFAULT_MAX_FILES_PER_UPLOAD = 500;
+const MAX_FILES_PER_UPLOAD_LIMIT = 2000;
 
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadComplete }) => {
   const { t } = useTranslation();
@@ -29,6 +33,22 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     queryFn: () => categoriesService.getEventCategories(eventId),
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => settingsService.getAllSettings(),
+  });
+
+  const maxFilesPerUpload = React.useMemo(() => {
+    const rawValue = settings?.general_max_files_per_upload;
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+      return DEFAULT_MAX_FILES_PER_UPLOAD;
+    }
+    return Math.min(MAX_FILES_PER_UPLOAD_LIMIT, Math.max(1, Math.floor(parsed)));
+  }, [settings]);
+
+  const remainingSlots = Math.max(maxFilesPerUpload - selectedFiles.length, 0);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const imageFiles = files.filter(file => 
@@ -37,13 +57,19 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     
     // Check total file count with existing files
     const totalFiles = selectedFiles.length + imageFiles.length;
-    if (totalFiles > 500) {
-      const allowedNewFiles = 500 - selectedFiles.length;
+    if (totalFiles > maxFilesPerUpload) {
+      const allowedNewFiles = maxFilesPerUpload - selectedFiles.length;
       if (allowedNewFiles <= 0) {
-        toast.error(t('upload.maxFilesReached') || 'Maximum 500 files allowed');
+        toast.error(
+          t('upload.maxFilesReached', { limit: maxFilesPerUpload }) ||
+          `Maximum ${maxFilesPerUpload} files allowed`
+        );
         return;
       }
-      toast.warning(t('upload.someFilesSkipped') || `Only ${allowedNewFiles} more files can be added (500 max)`);
+      toast.warning(
+        t('upload.someFilesSkipped', { allowed: allowedNewFiles, limit: maxFilesPerUpload }) ||
+        `Only ${allowedNewFiles} more files can be added (limit ${maxFilesPerUpload})`
+      );
       setSelectedFiles(prev => [...prev, ...imageFiles.slice(0, allowedNewFiles)]);
       return;
     }
@@ -59,8 +85,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     if (selectedFiles.length === 0) return;
     
     // Validate file count
-    if (selectedFiles.length > 500) {
-      toast.error(t('upload.tooManyFiles') || 'Maximum 500 files can be uploaded at once');
+    if (selectedFiles.length > maxFilesPerUpload) {
+      toast.error(
+        t('upload.tooManyFiles', { limit: maxFilesPerUpload }) ||
+        `Maximum ${maxFilesPerUpload} files can be uploaded at once`
+      );
       return;
     }
 
@@ -68,7 +97,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     setUploadProgress(0);
 
     // For large uploads, chunk the files to prevent memory issues
-    const CHUNK_SIZE = 50; // Upload 50 files at a time
+    const CHUNK_SIZE = Math.max(1, Math.min(50, maxFilesPerUpload)); // Upload up to 50 (or limit) files at a time
     const chunks = [];
     
     for (let i = 0; i < selectedFiles.length; i += CHUNK_SIZE) {
@@ -187,7 +216,21 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           {t('upload.clickToUpload')}
         </p>
         <p className="text-sm text-neutral-500">
-          {t('upload.fileRequirements')}
+          {t('upload.fileRequirements', { limit: maxFilesPerUpload })}
+        </p>
+        <p
+          className={clsx(
+            "text-xs mt-2",
+            remainingSlots === 0 ? "text-red-600" : "text-neutral-500"
+          )}
+        >
+          {remainingSlots === 0
+            ? t('upload.limitReached', { limit: maxFilesPerUpload })
+            : t('upload.limitInfo', {
+                selected: selectedFiles.length,
+                limit: maxFilesPerUpload,
+                remaining: remainingSlots,
+              })}
         </p>
         <input
           ref={fileInputRef}

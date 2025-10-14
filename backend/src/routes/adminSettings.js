@@ -19,6 +19,7 @@ const {
 } = require('../services/publicSiteService');
 const { sanitizeCss } = require('../utils/cssSanitizer');
 const router = express.Router();
+const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -472,8 +473,23 @@ router.put('/theme', adminAuth, async (req, res) => {
 router.put('/general', adminAuth, async (req, res) => {
   try {
     const settings = { ...req.body };
+    let uploadLimitTouched = false;
 
     const publicSiteKeysTouched = Object.keys(settings).some((key) => key.startsWith('general_public_site_'));
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'general_max_files_per_upload')) {
+      uploadLimitTouched = true;
+      const rawValue = Number(settings.general_max_files_per_upload);
+      const normalizedValue = Number.isFinite(rawValue) ? Math.floor(rawValue) : NaN;
+
+      if (!Number.isInteger(normalizedValue) || normalizedValue < 1 || normalizedValue > MAX_ALLOWED_FILES_PER_UPLOAD) {
+        return res.status(400).json({
+          error: `general_max_files_per_upload must be an integer between 1 and ${MAX_ALLOWED_FILES_PER_UPLOAD}`
+        });
+      }
+
+      settings.general_max_files_per_upload = normalizedValue;
+    }
 
     if (publicSiteKeysTouched) {
       if (Object.prototype.hasOwnProperty.call(settings, 'general_public_site_custom_css')) {
@@ -528,6 +544,9 @@ router.put('/general', adminAuth, async (req, res) => {
 
     if (publicSiteKeysTouched) {
       clearPublicSiteCache();
+    }
+    if (uploadLimitTouched) {
+      clearMaxFilesPerUploadCache();
     }
 
     // Log activity

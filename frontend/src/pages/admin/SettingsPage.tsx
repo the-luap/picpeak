@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '../../contexts';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
+const MAX_FILES_PER_UPLOAD_LIMIT = 2000;
 
 const toBoolean = (value: unknown, defaultValue = false): boolean => {
   if (value === undefined || value === null) {
@@ -93,6 +94,7 @@ export const SettingsPage: React.FC = () => {
     site_url: '',
     default_expiration_days: 30,
     max_file_size_mb: 50,
+    max_files_per_upload: 500,
     allowed_file_types: 'jpg,jpeg,png,gif,webp',
     enable_watermark: false,
     enable_analytics: true,
@@ -145,6 +147,10 @@ export const SettingsPage: React.FC = () => {
         site_url: settings.general_site_url || '',
         default_expiration_days: toNumber(settings.general_default_expiration_days, 30),
         max_file_size_mb: toNumber(settings.general_max_file_size_mb, 50),
+        max_files_per_upload: Math.min(
+          MAX_FILES_PER_UPLOAD_LIMIT,
+          Math.max(1, toNumber(settings.general_max_files_per_upload, 500))
+        ),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
         enable_watermark: toBoolean(settings.general_enable_watermark, false),
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
@@ -645,7 +651,7 @@ export const SettingsPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('settings.general.defaultExpiration')}
@@ -669,6 +675,29 @@ export const SettingsPage: React.FC = () => {
                     min="1"
                     max="500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.maxFilesPerUpload')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={generalSettings.max_files_per_upload}
+                    onChange={(e) => {
+                      const parsed = parseInt(e.target.value, 10);
+                      setGeneralSettings(prev => ({
+                        ...prev,
+                        max_files_per_upload: Number.isFinite(parsed)
+                          ? Math.min(MAX_FILES_PER_UPLOAD_LIMIT, Math.max(1, parsed))
+                          : prev.max_files_per_upload
+                      }));
+                    }}
+                    min="1"
+                    max={MAX_FILES_PER_UPLOAD_LIMIT}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.maxFilesPerUploadHelp', { max: MAX_FILES_PER_UPLOAD_LIMIT })}
+                  </p>
                 </div>
               </div>
 

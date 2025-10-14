@@ -8,6 +8,7 @@ const { generateThumbnail, ensureThumbnail } = require('../services/imageProcess
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
+const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -48,7 +49,7 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit per file
-    files: 500, // Maximum 500 files
+    files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
     // Add part size limits to prevent incomplete uploads
@@ -99,17 +100,25 @@ const uploadTimeout = (timeout = 300000) => { // 5 minutes default
 };
 
 // Upload photos for an event
-// Increased limit to 500 files, but recommend chunked uploads for better performance
-router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, next) => { // 10 minute timeout
-  upload.array('photos', 500)(req, res, (err) => {
+// Max file count is configurable via general settings
+router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, res, next) => { // 10 minute timeout
+  let maxFilesPerUpload;
+  try {
+    maxFilesPerUpload = await getMaxFilesPerUpload();
+  } catch (error) {
+    console.error('Failed to resolve max files per upload:', error);
+    return res.status(500).json({ error: 'Unable to determine upload limits' });
+  }
+
+  upload.array('photos', maxFilesPerUpload)(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err);
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ error: 'File too large. Maximum size is 50MB per file.' });
         }
-        if (err.code === 'LIMIT_FILE_COUNT') {
-          return res.status(400).json({ error: 'Too many files. Maximum 500 files per upload.' });
+        if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ error: `Too many files. Maximum ${maxFilesPerUpload} files per upload.` });
         }
         return res.status(400).json({ error: `Upload error: ${err.message}` });
       }
