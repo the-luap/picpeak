@@ -109,7 +109,7 @@ If ADMIN_CREDENTIALS.txt is missing:
 - File is created in the backend directory root
 - File might have been deleted for security (as recommended)
 - Regenerate it by running `node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt`
-- When using the unified `setup.sh` installer for a reinstall, append `--force-admin-password-reset` to have the script perform the reset automatically
+- When using the unified `picpeak-setup.sh` installer for a reinstall, append `--force-admin-password-reset` to have the script perform the reset automatically
 
 ## Best Practices
 

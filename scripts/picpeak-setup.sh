@@ -2,7 +2,7 @@
 
 ################################################################################
 # PicPeak Unified Setup Script
-# Version: 2.0.0
+# Version: 2.1.0
 # Description: Universal installer for PicPeak with Docker and Native options
 # Supports: Ubuntu, Debian, Fedora, RHEL/CentOS, Raspberry Pi OS
 ################################################################################
@@ -11,7 +11,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # Script configuration
-readonly SCRIPT_VERSION="2.0.0"
+readonly SCRIPT_VERSION="2.1.0"
 readonly APP_NAME="PicPeak"
 readonly REPO_URL="https://github.com/the-luap/picpeak.git"
 readonly NODE_VERSION="20"
