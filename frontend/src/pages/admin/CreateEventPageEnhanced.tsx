@@ -27,8 +27,8 @@ interface FormData {
   event_type: string;
   event_name: string;
   event_date: string;
-  host_name: string;
-  host_email: string;
+  customer_name: string;
+  customer_email: string;
   admin_email: string;
   require_password: boolean;
   password: string;
@@ -86,8 +86,8 @@ export const CreateEventPageEnhanced: React.FC = () => {
     event_type: 'wedding',
     event_name: '',
     event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
-    host_name: '',
-    host_email: '',
+    customer_name: '',
+    customer_email: '',
     admin_email: '',
     require_password: true,
     password: '',
@@ -184,14 +184,14 @@ export const CreateEventPageEnhanced: React.FC = () => {
       newErrors.event_date = t('validation.eventDateRequired');
     }
 
-    if (!formData.host_name) {
-      newErrors.host_name = t('validation.hostNameRequired');
+    if (!formData.customer_name) {
+      newErrors.customer_name = t('validation.hostNameRequired');
     }
 
-    if (!formData.host_email) {
-      newErrors.host_email = t('validation.hostEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.host_email)) {
-      newErrors.host_email = t('validation.invalidEmailFormat');
+    if (!formData.customer_email) {
+      newErrors.customer_email = t('validation.hostEmailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+      newErrors.customer_email = t('validation.invalidEmailFormat');
     }
 
     if (!formData.admin_email) {
@@ -236,8 +236,8 @@ export const CreateEventPageEnhanced: React.FC = () => {
       event_type: formData.event_type,
       event_name: formData.event_name,
       event_date: formData.event_date,
-      host_name: formData.host_name,
-      host_email: formData.host_email,
+      customer_name: formData.customer_name,
+      customer_email: formData.customer_email,
       admin_email: formData.admin_email,
       require_password: formData.require_password,
       password: formData.require_password ? formData.password : undefined,
@@ -472,9 +472,9 @@ export const CreateEventPageEnhanced: React.FC = () => {
                 <Input
                   label={t('events.hostName')}
                   placeholder={t('events.hostNamePlaceholder')}
-                  value={formData.host_name}
-                  onChange={handleInputChange('host_name')}
-                  error={errors.host_name}
+                  value={formData.customer_name}
+                  onChange={handleInputChange('customer_name')}
+                  error={errors.customer_name}
                   leftIcon={<Calendar className="w-5 h-5" />}
                 />
 
@@ -482,9 +482,9 @@ export const CreateEventPageEnhanced: React.FC = () => {
                   type="email"
                   label={t('events.hostEmail')}
                   placeholder={t('events.hostEmailPlaceholder')}
-                  value={formData.host_email}
-                  onChange={handleInputChange('host_email')}
-                  error={errors.host_email}
+                  value={formData.customer_email}
+                  onChange={handleInputChange('customer_email')}
+                  error={errors.customer_email}
                   leftIcon={<Mail className="w-5 h-5" />}
                 />
               </div>

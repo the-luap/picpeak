@@ -37,12 +37,67 @@ const parseBooleanInput = (value, defaultValue = true) => {
   return defaultValue;
 };
 
+const getCustomerNameFromPayload = (payload = {}) => {
+  if (typeof payload.customer_name === 'string') {
+    const trimmed = payload.customer_name.trim();
+    return trimmed || null;
+  }
+  return null;
+};
+
+const getCustomerEmailFromPayload = (payload = {}) => {
+  if (typeof payload.customer_email === 'string') {
+    const trimmed = payload.customer_email.trim();
+    return trimmed || null;
+  }
+  return null;
+};
+
+const mapEventForApi = (event) => {
+  if (!event || typeof event !== 'object') {
+    return event;
+  }
+
+  const {
+    host_name,
+    host_email,
+    customer_name,
+    customer_email,
+    ...rest
+  } = event;
+
+  return {
+    ...rest,
+    customer_name: customer_name ?? host_name ?? null,
+    customer_email: customer_email ?? host_email ?? null
+  };
+};
+
+let customerColumnCache = null;
+const hasCustomerContactColumns = async () => {
+  if (customerColumnCache === true) {
+    return true;
+  }
+
+  try {
+    const hasColumn = await db.schema.hasColumn('events', 'customer_email');
+    if (hasColumn) {
+      customerColumnCache = true;
+    }
+    return hasColumn;
+  } catch (error) {
+    logger.debug('Failed to detect customer_email column', { error: error.message });
+    return false;
+  }
+};
+
 // Create new event
 router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
-  body('host_email').isEmail().normalizeEmail(),
+  body('customer_name').notEmpty().trim(),
+  body('customer_email').isEmail().normalizeEmail(),
   body('admin_email').isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
@@ -73,7 +128,6 @@ router.post('/', adminAuth, [
   body('color_theme').optional().trim(),
   body('allow_user_uploads').optional().isBoolean().toBoolean(),
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
-  body('host_name').notEmpty().trim(),
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
@@ -91,8 +145,6 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
       admin_email,
       password,
       welcome_message = '',
@@ -115,7 +167,16 @@ router.post('/', adminAuth, [
       moderate_comments = true,
       show_feedback_to_guests = true
     } = req.body;
-    
+
+    const customerName = getCustomerNameFromPayload(req.body);
+    const customerEmail = getCustomerEmailFromPayload(req.body);
+
+    const customerColumnsAvailable = await hasCustomerContactColumns();
+
+    if (!customerName || !customerEmail) {
+      return res.status(400).json({ error: 'customer_name and customer_email are required' });
+    }
+
     const requirePassword = parseBooleanInput(requirePasswordInput, true);
 
     // Debug logging
@@ -133,7 +194,6 @@ router.post('/', adminAuth, [
     });
     
     let passwordValidation = null;
-    let galleryPassword = password;
 
     if (requirePassword) {
       passwordValidation = await validatePasswordInContext(password, 'gallery', {
@@ -148,8 +208,6 @@ router.post('/', adminAuth, [
           feedback: passwordValidation.feedback
         });
       }
-    } else {
-      galleryPassword = '';
     }
     
     // Generate unique slug
@@ -201,8 +259,9 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
+      ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
+      host_name: customerName,
+      host_email: customerEmail,
       admin_email,
       password_hash,
       welcome_message,
@@ -251,10 +310,12 @@ router.post('/', adminAuth, [
     
     await db('email_queue').insert({
       event_id: eventId,
-      recipient_email: host_email,
+      recipient_email: customerEmail,
       email_type: 'gallery_created',
       email_data: JSON.stringify({
-        host_name: host_name,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
         event_name,
         event_date: event_date,  // Pass raw date - will be formatted by email processor
         gallery_link: shareLink,
@@ -272,6 +333,8 @@ router.post('/', adminAuth, [
       slug,
       event_name,
       event_type,
+      customer_name: customerName,
+      customer_email: customerEmail,
       require_password: requirePassword,
       share_link: shareLink,
       expires_at: expires_at.toISOString(),
@@ -356,7 +419,7 @@ router.get('/', adminAuth, async (req, res) => {
       created_at: event.created_at ? new Date(event.created_at).toISOString() : null,
       expires_at: event.expires_at ? new Date(event.expires_at).toISOString() : null,
       archived_at: event.archived_at ? new Date(event.archived_at).toISOString() : null
-    }));
+    })).map(mapEventForApi);
 
     res.json({
       events: eventsWithCounts,
@@ -418,7 +481,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       .where('event_id', id)
       .countDistinct('ip_address as uniqueVisitors');
 
-    res.json({
+    res.json(mapEventForApi({
       ...event,
       photo_count: parseInt(photoCount) || 0,
       total_size: parseInt(totalSize) || 0,
@@ -426,7 +489,7 @@ router.get('/:id', adminAuth, async (req, res) => {
       total_downloads: parseInt(totalDownloads) || 0,
       unique_visitors: parseInt(uniqueVisitors) || 0,
       recent_photos: recentPhotos
-    });
+    }));
   } catch (error) {
     console.error('Error fetching event:', error);
     res.status(500).json({ error: 'Failed to fetch event details' });
@@ -442,7 +505,8 @@ router.put('/:id', adminAuth, [
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
-  body('host_name').optional().trim().notEmpty(),
+  body('customer_name').optional().trim().notEmpty(),
+  body('customer_email').optional().isEmail().normalizeEmail(),
   body('upload_category_id').optional().custom((value) => {
     // Accept null, undefined, or integer values
     if (value === null || value === undefined) return true;
@@ -481,6 +545,39 @@ router.put('/:id', adminAuth, [
 
     const { id } = req.params;
     const updates = { ...req.body };
+    const customerColumnsAvailable = await hasCustomerContactColumns();
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'host_name') || Object.prototype.hasOwnProperty.call(updates, 'host_email')) {
+      return res.status(400).json({ error: 'host_name and host_email are no longer supported. Use customer_name and customer_email instead.' });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_name')) {
+      const nextName = getCustomerNameFromPayload(updates);
+      if (nextName) {
+        if (customerColumnsAvailable) {
+          updates.customer_name = nextName;
+        } else {
+          delete updates.customer_name;
+        }
+        updates.host_name = nextName;
+      } else {
+        delete updates.customer_name;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_email')) {
+      const nextEmail = getCustomerEmailFromPayload(updates);
+      if (nextEmail) {
+        if (customerColumnsAvailable) {
+          updates.customer_email = nextEmail;
+        } else {
+          delete updates.customer_email;
+        }
+        updates.host_email = nextEmail;
+      } else {
+        delete updates.customer_email;
+      }
+    }
 
     const hasRequirePasswordUpdate = Object.prototype.hasOwnProperty.call(updates, 'require_password');
     let requirePasswordUpdate;
@@ -715,10 +812,13 @@ router.post('/:id/reset-password', adminAuth, async (req, res) => {
 
     // Queue email notification if requested
     if (sendEmail) {
-      // For password reset, we'll need to create a template or use a different approach
-      // For now, let's use the gallery_created template with updated password
-      await queueEmail(id, event.host_email, 'gallery_created', {
-        host_name: event.host_email.split('@')[0],
+      const recipientEmail = event.customer_email || event.host_email;
+      const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+
+      await queueEmail(id, recipientEmail, 'gallery_created', {
+        customer_name: recipientName,
+        customer_email: recipientEmail,
+        host_name: recipientName,
         event_name: event.event_name,
         event_date: event.event_date,  // Pass raw date - will be formatted by email processor
         gallery_link: event.share_link,
@@ -773,8 +873,13 @@ router.post('/:id/resend-email', adminAuth, async (req, res) => {
     // Dates will be formatted by the email processor based on recipient language
     
     // Queue the email
-    await queueEmail(id, event.host_email, 'gallery_created', {
-      host_name: event.host_name || event.host_email.split('@')[0],
+    const recipientEmail = event.customer_email || event.host_email;
+    const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+
+    await queueEmail(id, recipientEmail, 'gallery_created', {
+      customer_name: recipientName,
+      customer_email: recipientEmail,
+      host_name: recipientName,
       event_name: event.event_name,
       event_date: event.event_date,  // Pass raw date - will be formatted by email processor
       gallery_link: event.share_link,
@@ -789,7 +894,7 @@ router.post('/:id/resend-email', adminAuth, async (req, res) => {
     try {
       await logActivity('email_resent', {
         email_type: 'gallery_created',
-        recipient: event.host_email,
+        recipient: recipientEmail,
         ip_address: req.ip || '0.0.0.0',
         user_agent: req.get('user-agent') || 'Unknown'
       }, id, {

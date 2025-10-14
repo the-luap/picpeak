@@ -63,6 +63,8 @@ async function initializeDatabase() {
       table.string('event_type').notNullable();
       table.string('event_name').notNullable();
       table.date('event_date').notNullable();
+      table.string('customer_name');
+      table.string('customer_email');
       table.string('host_email').notNullable();
       table.string('admin_email').notNullable();
       table.string('password_hash').notNullable();
@@ -99,6 +101,8 @@ async function initializeDatabase() {
             event_type TEXT NOT NULL,
             event_name TEXT NOT NULL,
             event_date DATE NOT NULL,
+            customer_name TEXT,
+            customer_email TEXT,
             host_email TEXT NOT NULL,
             admin_email TEXT NOT NULL,
             password_hash TEXT NOT NULL,

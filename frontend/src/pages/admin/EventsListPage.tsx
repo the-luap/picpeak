@@ -159,7 +159,7 @@ export const EventsListPage: React.FC = () => {
       events = events.filter(e => 
         e.event_name.toLowerCase().includes(term) ||
         e.event_type.toLowerCase().includes(term) ||
-        e.host_email.toLowerCase().includes(term)
+        (e.customer_email || '').toLowerCase().includes(term)
       );
     }
     
@@ -428,7 +428,7 @@ export const EventsListPage: React.FC = () => {
                       <td className="px-6 py-4">
                         <div>
                           <p className="text-sm font-medium text-neutral-900">{event.event_name}</p>
-                          <p className="text-xs text-neutral-500">{event.host_email}</p>
+                          <p className="text-xs text-neutral-500">{event.customer_email}</p>
                           <div className="mt-1">
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${

@@ -25,7 +25,7 @@ interface FormData {
   event_type: string;
   event_name: string;
   event_date: string;
-  host_email: string;
+  customer_email: string;
   admin_email: string;
   require_password: boolean;
   password: string;
@@ -122,7 +122,7 @@ export const CreateEventPage: React.FC = () => {
     event_type: 'wedding',
     event_name: '',
     event_date: format(new Date(), 'yyyy-MM-dd'),
-    host_email: '',
+    customer_email: '',
     admin_email: '',
     require_password: true,
     password: '',
@@ -198,10 +198,10 @@ export const CreateEventPage: React.FC = () => {
       newErrors.event_name = t('validation.eventNameRequired');
     }
 
-    if (!formData.host_email) {
-      newErrors.host_email = t('validation.hostEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.host_email)) {
-      newErrors.host_email = t('validation.invalidEmailFormat');
+    if (!formData.customer_email) {
+      newErrors.customer_email = t('validation.hostEmailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+      newErrors.customer_email = t('validation.invalidEmailFormat');
     }
 
     if (!formData.admin_email) {
@@ -245,7 +245,8 @@ export const CreateEventPage: React.FC = () => {
       event_type: formData.event_type,
       event_name: formData.event_name,
       event_date: formData.event_date,
-      host_email: formData.host_email,
+      customer_name: formData.customer_email.split('@')[0],
+      customer_email: formData.customer_email,
       admin_email: formData.admin_email,
       require_password: formData.require_password,
       password: formData.require_password ? formData.password : undefined,
@@ -390,15 +391,15 @@ export const CreateEventPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Customer Email */}
             <div>
-              <label htmlFor="host_email" className="block text-sm font-medium text-neutral-700 mb-1">
+              <label htmlFor="customer_email" className="block text-sm font-medium text-neutral-700 mb-1">
                 {t('events.hostEmail')}
               </label>
               <Input
-                id="host_email"
+                id="customer_email"
                 type="email"
-                value={formData.host_email}
-                onChange={handleInputChange('host_email')}
-                error={errors.host_email}
+                value={formData.customer_email}
+                onChange={handleInputChange('customer_email')}
+                error={errors.customer_email}
                 placeholder={t('events.hostEmailPlaceholder')}
                 leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
               />

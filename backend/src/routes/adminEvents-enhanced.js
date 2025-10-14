@@ -8,7 +8,7 @@ router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
-  body('host_email').isEmail().normalizeEmail(),
+  body('customer_email').isEmail().normalizeEmail(),
   body('admin_email').isEmail().normalizeEmail(),
   body('password').notEmpty(), // Remove the weak isLength validation
   body('expiration_days').isInt({ min: 1, max: 365 }).optional(),
@@ -16,7 +16,7 @@ router.post('/', adminAuth, [
   body('color_theme').optional().trim(),
   body('allow_user_uploads').optional().isBoolean().toBoolean(),
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
-  body('host_name').notEmpty().trim()
+  body('customer_name').notEmpty().trim()
 ], async (req, res) => {
   try {
     console.log('Create event request body:', req.body);
@@ -30,8 +30,8 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
+      customer_name,
+      customer_email,
       admin_email,
       password,
       welcome_message = '',
@@ -88,8 +88,10 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
+      customer_name,
+      customer_email,
+      host_name: customer_name,
+      host_email: customer_email,
       admin_email,
       password_hash,
       welcome_message,

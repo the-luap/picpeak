@@ -58,11 +58,15 @@ async function queueExpirationWarning(event) {
   const daysRemaining = Math.ceil((new Date(event.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
   
   // Determine language based on email domain
-  const emailLang = event.host_email.endsWith('.de') ? 'de' : 'en';
+  const recipientEmail = event.customer_email || event.host_email;
+  const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+  const emailLang = recipientEmail && recipientEmail.endsWith('.de') ? 'de' : 'en';
   
-  // Queue email to host
-  await queueEmail(event.id, event.host_email, 'expiration_warning', {
-    host_name: event.host_name || event.host_email.split('@')[0],
+  // Queue email to customer
+  await queueEmail(event.id, recipientEmail, 'expiration_warning', {
+    customer_name: recipientName,
+    customer_email: recipientEmail,
+    host_name: recipientName,
     event_name: event.event_name,
     days_remaining: daysRemaining.toString(),
     expiration_date: await formatDate(event.expires_at, emailLang),
@@ -78,9 +82,14 @@ async function handleExpiredEvent(event) {
     await db('events').where('id', event.id).update({ is_active: formatBoolean(false) });
     
     // Queue expiration emails
-    await queueEmail(event.id, event.host_email, 'gallery_expired', {
+    const recipientEmail = event.customer_email || event.host_email;
+    const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+
+    await queueEmail(event.id, recipientEmail, 'gallery_expired', {
       event_name: event.event_name,
-      admin_email: event.admin_email
+      admin_email: event.admin_email,
+      customer_name: recipientName,
+      customer_email: recipientEmail
     });
     
     // Also notify admin

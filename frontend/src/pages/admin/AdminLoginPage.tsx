@@ -68,6 +68,7 @@ export const AdminLoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    toast.dismiss();
     
     if (!validateForm()) {
       return;
