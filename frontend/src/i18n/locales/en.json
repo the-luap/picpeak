@@ -463,6 +463,8 @@
       "enableWatermark": "Enable watermark on photos",
       "enableAnalytics": "Enable analytics tracking",
       "enableRegistration": "Allow self-registration for admins",
+      "enableShortGalleryUrls": "Use short gallery URLs",
+      "enableShortGalleryUrlsHelp": "Removes the event slug from new share links while keeping existing links working.",
       "maintenanceMode": "Enable maintenance mode",
       "language": "Language",
       "defaultLanguage": "Default Language",

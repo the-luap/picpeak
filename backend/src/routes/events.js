@@ -9,6 +9,7 @@ const { adminAuth } = require('../middleware/auth-enhanced-v2');
 const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
+const { buildShareLinkVariants } = require('../services/shareLinkService');
 
 const parseBooleanInput = (value, defaultValue = true) => {
   if (value === undefined || value === null) {
@@ -160,12 +161,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link (just slug/token, not full URL)
+    // Generate share link variants (auto-detects short URL preference)
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const sharePath = `/gallery/${slug}/${shareToken}`;
-    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
-    const fullShareLink = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
-    const shareLinkSlug = `${slug}/${shareToken}`;
+    const { sharePath, shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password (or placeholder when not required)
     const password_hash = requirePassword
@@ -195,7 +193,8 @@ router.post('/', adminAuth, [
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLinkSlug,
+      share_link: shareLinkToStore,
+      share_token: shareToken,
       expires_at,
       require_password: formatBoolean(requirePassword)
     }).returning('id');
@@ -211,7 +210,7 @@ router.post('/', adminAuth, [
       host_name: customerName,
       event_name,
       event_date: event_date,  // Pass raw date - will be formatted by email processor
-      gallery_link: fullShareLink,
+      gallery_link: shareUrl,
       gallery_password: requirePassword ? password : 'No password required',
       expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
       welcome_message: welcome_message || ''
@@ -220,7 +219,7 @@ router.post('/', adminAuth, [
     res.json({
       id: eventId,
       slug,
-      share_link: fullShareLink,
+      share_link: shareUrl,
       expires_at,
       require_password: requirePassword,
       customer_name: customerName,

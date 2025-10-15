@@ -2,12 +2,18 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { galleryService } from '../services';
 import { toast } from 'react-toastify';
 
-export const useGalleryInfo = (slug: string, token?: string) => {
+export const useGalleryInfo = (slug?: string, token?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: ['gallery-info', slug, token],
-    queryFn: () => galleryService.getGalleryInfo(slug, token),
+    queryFn: () => {
+      if (!slug) {
+        throw new Error('Gallery slug is required');
+      }
+      return galleryService.getGalleryInfo(slug, token);
+    },
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: Boolean(slug) && enabled,
   });
 };
 

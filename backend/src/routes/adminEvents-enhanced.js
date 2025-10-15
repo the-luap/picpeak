@@ -2,6 +2,7 @@
 // Only the relevant parts are shown - merge with existing adminEvents.js
 
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
+const { buildShareLinkVariants } = require('../services/shareLinkService');
 
 // Enhanced event creation with password validation
 router.post('/', adminAuth, [
@@ -65,9 +66,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link
+    // Generate share link based on configured style
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const shareLink = `${process.env.FRONTEND_URL}/gallery/${slug}/${shareToken}`;
+    const { shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password with configurable rounds
     const password_hash = await bcrypt.hash(password, getBcryptRounds());
@@ -96,7 +97,8 @@ router.post('/', adminAuth, [
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLink,
+      share_link: shareLinkToStore,
+      share_token: shareToken,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
       allow_user_uploads,

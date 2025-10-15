@@ -111,6 +111,17 @@ export interface GalleryStats {
   unique_visitors: number;
 }
 
+export interface ResolvedGalleryIdentifier {
+  slug: string;
+  token: string;
+  matchType: string;
+  share_link: string;
+  share_path: string;
+  share_url: string;
+  short_enabled: boolean;
+  requires_password: boolean;
+}
+
 // Auth types
 export interface AdminUser {
   id: number;

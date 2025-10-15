@@ -14,6 +14,7 @@ const { escapeLikePattern } = require('../utils/sqlSecurity');
 // formatDate import removed - dates are formatted by email processor
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const logger = require('../utils/logger');
+const { buildShareLinkVariants } = require('../services/shareLinkService');
 
 const parseBooleanInput = (value, defaultValue = true) => {
   if (value === undefined || value === null) {
@@ -225,11 +226,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link
+    // Generate share link respecting configured format
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const sharePath = `/gallery/${slug}/${shareToken}`;
-    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
-    const shareLink = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
+    const { sharePath, shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password with configurable rounds (random placeholder when not required)
     const password_hash = requirePassword
@@ -266,7 +265,8 @@ router.post('/', adminAuth, [
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLink,
+      share_link: shareLinkToStore,
+      share_token: shareToken,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
       allow_user_uploads,
@@ -318,7 +318,7 @@ router.post('/', adminAuth, [
         host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
         event_name,
         event_date: event_date,  // Pass raw date - will be formatted by email processor
-        gallery_link: shareLink,
+        gallery_link: shareUrl,
         gallery_password: requirePassword ? password : 'No password required',
         expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
         welcome_message: welcome_message || ''
@@ -336,7 +336,7 @@ router.post('/', adminAuth, [
       customer_name: customerName,
       customer_email: customerEmail,
       require_password: requirePassword,
-      share_link: shareLink,
+      share_link: shareUrl,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString()
     });

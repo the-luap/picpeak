@@ -3,6 +3,7 @@ const path = require('path');
 const knex = require('knex');
 const knexConfig = require('../../knexfile');
 const logger = require('../utils/logger');
+const { extractShareToken } = require('../utils/shareLinkUtils');
 
 // Ensure SQLite directory exists when using file-based DB (native installs)
 try {
@@ -66,11 +67,13 @@ async function initializeDatabase() {
       table.string('customer_name');
       table.string('customer_email');
       table.string('host_email').notNullable();
+      table.string('host_name');
       table.string('admin_email').notNullable();
       table.string('password_hash').notNullable();
       table.text('welcome_message');
       table.text('color_theme');
       table.string('share_link').unique().notNullable();
+      table.string('share_token').unique();
       table.datetime('created_at').defaultTo(db.fn.now());
       table.datetime('expires_at').notNullable();
       table.boolean('is_active').defaultTo(true);
@@ -103,12 +106,14 @@ async function initializeDatabase() {
             event_date DATE NOT NULL,
             customer_name TEXT,
             customer_email TEXT,
+            host_name TEXT,
             host_email TEXT NOT NULL,
             admin_email TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             welcome_message TEXT,
             color_theme TEXT,
             share_link TEXT UNIQUE NOT NULL,
+            share_token TEXT UNIQUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME NOT NULL,
             is_active BOOLEAN DEFAULT 1,
@@ -159,6 +164,37 @@ async function initializeDatabase() {
         logger.debug('Color theme migration may have already been applied');
       }
     }
+  }
+
+  const hasShareTokenColumn = await db.schema.hasColumn('events', 'share_token');
+  if (!hasShareTokenColumn) {
+    await db.schema.table('events', (table) => {
+      table.string('share_token').unique();
+    });
+  }
+
+  const hasHostNameColumn = await db.schema.hasColumn('events', 'host_name');
+  if (!hasHostNameColumn) {
+    await db.schema.table('events', (table) => {
+      table.string('host_name');
+    });
+  }
+
+  try {
+    const eventsWithoutToken = await db('events')
+      .whereNull('share_token')
+      .select('id', 'share_link');
+
+    for (const event of eventsWithoutToken) {
+      const token = extractShareToken(event.share_link);
+      if (token) {
+        await db('events')
+          .where({ id: event.id })
+          .update({ share_token: token });
+      }
+    }
+  } catch (error) {
+    logger.warn('Share token backfill skipped', { error: error.message });
   }
 
   // Photo metadata table

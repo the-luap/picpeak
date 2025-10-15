@@ -783,6 +783,8 @@
       "enableWatermark": "Wasserzeichen auf Fotos aktivieren",
       "enableAnalytics": "Analytics-Tracking aktivieren",
       "enableRegistration": "Selbstregistrierung für Admins erlauben",
+      "enableShortGalleryUrls": "Kurze Galerie-Links verwenden",
+      "enableShortGalleryUrlsHelp": "Entfernt den Veranstaltungs-Slug aus neuen Freigabelinks und lässt bestehende Links weiterhin funktionieren.",
       "maintenanceMode": "Wartungsmodus aktivieren",
       "language": "Sprache",
       "defaultLanguage": "Standardsprache",

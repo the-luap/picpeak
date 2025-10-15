@@ -100,6 +100,7 @@ export const SettingsPage: React.FC = () => {
     enable_analytics: true,
     enable_registration: false,
     maintenance_mode: false,
+    short_gallery_urls: false,
     default_language: 'en',
     date_format: { format: 'dd/MM/yyyy', locale: 'en-GB' }
   });
@@ -156,6 +157,7 @@ export const SettingsPage: React.FC = () => {
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),
+        short_gallery_urls: toBoolean(settings.general_short_gallery_urls, false),
         default_language: settings.general_default_language || 'en',
         date_format: settings.general_date_format 
           ? (typeof settings.general_date_format === 'string'
@@ -761,6 +763,21 @@ export const SettingsPage: React.FC = () => {
                 />
                 <span className="ml-2 text-sm text-neutral-700">{t('settings.general.maintenanceMode')}</span>
               </label>
+
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={generalSettings.short_gallery_urls}
+                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, short_gallery_urls: e.target.checked }))}
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <span className="ml-2 text-sm text-neutral-700">{t('settings.general.enableShortGalleryUrls')}</span>
+                </label>
+                <p className="text-xs text-neutral-500 ml-6 mt-1">
+                  {t('settings.general.enableShortGalleryUrlsHelp')}
+                </p>
+              </div>
             </div>
           </Card>
 

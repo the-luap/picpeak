@@ -18,6 +18,7 @@ const {
   getRawPublicSiteSettings,
 } = require('../services/publicSiteService');
 const { sanitizeCss } = require('../utils/cssSanitizer');
+const { clearShareLinkSettingsCache } = require('../services/shareLinkService');
 const router = express.Router();
 const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
 
@@ -547,6 +548,9 @@ router.put('/general', adminAuth, async (req, res) => {
     }
     if (uploadLimitTouched) {
       clearMaxFilesPerUploadCache();
+    }
+    if (Object.prototype.hasOwnProperty.call(settings, 'general_short_gallery_urls')) {
+      clearShareLinkSettingsCache();
     }
 
     // Log activity
