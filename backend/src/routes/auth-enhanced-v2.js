@@ -12,13 +12,14 @@ const {
   checkSuspiciousActivity,
   getGenericAuthError
 } = require('../utils/authSecurity');
-const { 
+const {
   validatePasswordInContext,
   getBcryptRounds,
   logPasswordValidationFailure
 } = require('../utils/passwordValidation');
 const { endSession } = require('../middleware/sessionTimeout');
 const logger = require('../utils/logger');
+const { getClientIp } = require('../utils/requestIp');
 const router = express.Router();
 
 // Admin login with enhanced security
@@ -33,7 +34,7 @@ router.post('/admin/login', [
     }
     
     const { username, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     
     // Check account lockout first
@@ -175,7 +176,7 @@ router.post('/admin/change-password', [
     logger.info('Admin password changed', {
       userId: adminId,
       username: admin.username,
-      ip: req.ip
+      ip: ipAddress
     });
     
     res.json({ 
@@ -229,14 +230,14 @@ router.post('/gallery/verify', [
     }
     
     const { slug, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     
     const event = await db('events').where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) }).first();
     const requiresPassword = !(event && (event.require_password === false || event.require_password === 0 || event.require_password === '0'));
 
     if (requiresPassword) {
-      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`);
+      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`, ipAddress);
       if (lockoutStatus.isLocked) {
         logger.warn('Gallery access attempt on locked gallery', { slug, ipAddress });
         return res.status(423).json({ 

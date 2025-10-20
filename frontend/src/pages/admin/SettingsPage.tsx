@@ -112,6 +112,8 @@ export const SettingsPage: React.FC = () => {
     enable_2fa: false,
     session_timeout_minutes: 60,
     max_login_attempts: 5,
+    attempt_window_minutes: 15,
+    lockout_duration_minutes: 30,
     enable_recaptcha: false,
     recaptcha_site_key: '',
     recaptcha_secret_key: ''
@@ -173,6 +175,8 @@ export const SettingsPage: React.FC = () => {
         enable_2fa: toBoolean(settings.security_enable_2fa, false),
         session_timeout_minutes: toNumber(settings.security_session_timeout_minutes, 60),
         max_login_attempts: toNumber(settings.security_max_login_attempts, 5),
+        attempt_window_minutes: toNumber(settings.security_attempt_window_minutes, 15),
+        lockout_duration_minutes: toNumber(settings.security_lockout_duration_minutes, 30),
         enable_recaptcha: toBoolean(settings.security_enable_recaptcha, false),
         recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
         recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
@@ -1346,7 +1350,7 @@ export const SettingsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.security.sessionAuth')}</h2>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('settings.security.sessionTimeout')}
@@ -1354,10 +1358,40 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     type="number"
                     value={securitySettings.session_timeout_minutes}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, session_timeout_minutes: parseInt(e.target.value) || 60 }))}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, session_timeout_minutes: parseInt(e.target.value, 10) || 60 }))}
                     min="5"
                     max="1440"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.security.attemptWindowMinutes')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={securitySettings.attempt_window_minutes}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, attempt_window_minutes: parseInt(e.target.value, 10) || 15 }))}
+                    min="1"
+                    max="1440"
+                  />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.attemptWindowMinutesHelp')}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.security.lockoutDurationMinutes')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={securitySettings.lockout_duration_minutes}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, lockout_duration_minutes: parseInt(e.target.value, 10) || 30 }))}
+                    min="1"
+                    max="1440"
+                  />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.lockoutDurationMinutesHelp')}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1366,10 +1400,13 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     type="number"
                     value={securitySettings.max_login_attempts}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, max_login_attempts: parseInt(e.target.value) || 5 }))}
-                    min="3"
-                    max="10"
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, max_login_attempts: parseInt(e.target.value, 10) || 5 }))}
+                    min="1"
+                    max="50"
                   />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.maxLoginAttemptsHelp')}
+                  </p>
                 </div>
               </div>
 

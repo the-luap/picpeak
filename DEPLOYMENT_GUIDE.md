@@ -219,13 +219,16 @@ Update `.env` with:
 - **URL Configuration** (for backend CORS):
   - `FRONTEND_URL` - Frontend origin (use full URL with scheme, no trailing slash)
     - Example (Docker): `http://localhost:3000`
-  - `ADMIN_URL` - Admin origin (same as `FRONTEND_URL` for Docker; full URL, no trailing slash)
-    - Example (Docker): `http://localhost:3000`
+- `ADMIN_URL` - Admin origin (same as `FRONTEND_URL` for Docker; full URL, no trailing slash)
+  - Example (Docker): `http://localhost:3000`
   
   Notes:
   - Do not include trailing `/` (e.g., use `http://host:3000`, not `http://host:3000/`).
   - Always include the scheme (`http://` or `https://`).
   - The backend compares origins strictly for CORS; malformed values will cause login requests to fail with 500.
+
+#### Authentication Security
+- Configure login attempt thresholds from **Admin → Settings → Security**. Defaults are 5 failed attempts per IP within 15 minutes, resulting in a 30 minute lockout.
 
 #### External Database Example
 To use an external PostgreSQL instead of the bundled container, set the following in `.env` and ensure the `postgres` service is disabled or removed:

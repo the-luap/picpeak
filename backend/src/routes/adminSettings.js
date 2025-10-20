@@ -19,6 +19,7 @@ const {
 } = require('../services/publicSiteService');
 const { sanitizeCss } = require('../utils/cssSanitizer');
 const { clearShareLinkSettingsCache } = require('../services/shareLinkService');
+const { resetSecurityConfigCache } = require('../utils/authSecurity');
 const router = express.Router();
 const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
 
@@ -589,6 +590,8 @@ router.put('/security', adminAuth, async (req, res) => {
           updated_at: new Date()
         });
     }
+
+    resetSecurityConfigCache();
 
     // Log activity
     await db('activity_logs').insert({

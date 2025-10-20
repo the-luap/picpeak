@@ -23,6 +23,7 @@ const {
   getGalleryTokenFromRequest,
 } = require('../utils/tokenUtils');
 const { getEventShareToken, resolveShareIdentifier } = require('../services/shareLinkService');
+const { getClientIp } = require('../utils/requestIp');
 const router = express.Router();
 
 // Admin login with enhanced security
@@ -37,7 +38,7 @@ router.post('/admin/login', [
     }
     
     const { username, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     
     // Check account lockout first
@@ -172,7 +173,7 @@ router.post('/gallery/verify', [
     }
     
     const { slug, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     const event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
@@ -186,7 +187,7 @@ router.post('/gallery/verify', [
     const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
 
     if (requiresPassword) {
-      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`);
+      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`, ipAddress);
       if (lockoutStatus.isLocked) {
         logger.warn('Gallery access attempt on locked gallery', { slug, ipAddress });
         return res.status(423).json({ 
@@ -282,7 +283,7 @@ router.post('/gallery/share-login', [
     }
 
     const { slug, token } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
 
     let event = await db('events')
