@@ -209,7 +209,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
               }
             }
           }
-        } catch (e) {
+        } catch {
           // Invalid theme format - use default
           // Fall back to global theme
           if (settingsData.theme_config) {

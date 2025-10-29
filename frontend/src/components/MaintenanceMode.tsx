@@ -25,7 +25,7 @@ export const MaintenanceMode: React.FC = () => {
       try {
         const response = await api.get('/public/settings');
         return response.data;
-      } catch (error) {
+      } catch {
         // Return empty object if settings can't be fetched
         return {};
       }

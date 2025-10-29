@@ -18,11 +18,13 @@ export const AdminAuthenticatedImage: React.FC<AdminAuthenticatedImageProps> = (
 
   useEffect(() => {
     let cancelled = false;
+    let objectUrl: string | null = null;
 
     const loadImage = async () => {
       try {
         setLoading(true);
         setError(false);
+        setImageSrc(null);
 
         // Make authenticated request to get the image
         const response = await api.get(src, {
@@ -31,11 +33,11 @@ export const AdminAuthenticatedImage: React.FC<AdminAuthenticatedImageProps> = (
 
         if (!cancelled) {
           // Create object URL from blob
-          const imageUrl = URL.createObjectURL(response.data);
-          setImageSrc(imageUrl);
+          objectUrl = URL.createObjectURL(response.data);
+          setImageSrc(objectUrl);
           setLoading(false);
         }
-      } catch (err: any) {
+      } catch {
         // Image loading failed - handled by error state
         if (!cancelled) {
           setError(true);
@@ -51,8 +53,8 @@ export const AdminAuthenticatedImage: React.FC<AdminAuthenticatedImageProps> = (
     // Cleanup function
     return () => {
       cancelled = true;
-      if (imageSrc) {
-        URL.revokeObjectURL(imageSrc);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
       }
     };
   }, [src]);
