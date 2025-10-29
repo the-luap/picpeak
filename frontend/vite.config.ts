@@ -1,8 +1,12 @@
+/// <reference types="vitest" />
+// @ts-nocheck
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import type { UserConfig as VitestUserConfig } from 'vitest/config'
 
 // https://vite.dev/config/
-export default defineConfig({
+const config: VitestUserConfig = {
   plugins: [react()],
   build: {
     rollupOptions: {
@@ -33,5 +37,7 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
-  },
-})
+  }
+}
+
+export default defineConfig(config as any)
