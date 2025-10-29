@@ -12,7 +12,7 @@ interface GridPhotoProps {
   photo: Photo;
   isSelected: boolean;
   isSelectionMode: boolean;
-  onClick: (e: React.MouseEvent) => void;
+  onClick: () => void;
   onDownload: (e: React.MouseEvent) => void;
   onToggleSelect: () => void;
   animationType?: string;
@@ -57,6 +57,79 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   liked = false,
   onLikeSuccess
 }) => {
+  const [overlayVisible, setOverlayVisible] = React.useState(false);
+  const [isTouchDevice, setIsTouchDevice] = React.useState(false);
+  const overlayTimeoutRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+    const updateTouchState = () => {
+      const hasNavigator = typeof navigator !== 'undefined';
+      setIsTouchDevice(
+        mediaQuery.matches ||
+        ('ontouchstart' in window) ||
+        (hasNavigator && navigator.maxTouchPoints > 0)
+      );
+    };
+
+    updateTouchState();
+
+    const listener = (event: MediaQueryListEvent) => {
+      setIsTouchDevice(event.matches);
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', listener);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(listener);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', listener);
+      } else if (mediaQuery.removeListener) {
+        mediaQuery.removeListener(listener);
+      }
+    };
+  }, []);
+
+  const hideOverlay = React.useCallback(() => {
+    if (overlayTimeoutRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(overlayTimeoutRef.current);
+    }
+    overlayTimeoutRef.current = null;
+    setOverlayVisible(false);
+  }, []);
+
+  const showOverlayTemporarily = React.useCallback(() => {
+    setOverlayVisible(true);
+    if (overlayTimeoutRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(overlayTimeoutRef.current);
+    }
+    if (typeof window !== 'undefined') {
+      overlayTimeoutRef.current = window.setTimeout(() => {
+        overlayTimeoutRef.current = null;
+        setOverlayVisible(false);
+      }, 2500);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      if (overlayTimeoutRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(overlayTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (isSelectionMode) {
+      hideOverlay();
+    }
+  }, [isSelectionMode, hideOverlay]);
+
   // handled by parent layout; kept here for type completeness but not used
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -73,11 +146,34 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   const commentCount = photo.comment_count ?? 0;
   const showFeedbackActions = feedbackEnabled && Boolean(feedbackOptions);
 
+  const overlayVisibilityClass = overlayVisible
+    ? 'opacity-100 md:opacity-100'
+    : 'opacity-0 md:opacity-0';
+
+  const checkboxVisibilityClass =
+    isSelected || isSelectionMode || overlayVisible
+      ? 'opacity-100 md:opacity-100'
+      : 'opacity-0 md:opacity-0';
+
+  const handlePhotoClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isTouchDevice && !overlayVisible && !isSelectionMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      showOverlayTemporarily();
+      return;
+    }
+
+    onClick();
+    if (isTouchDevice) {
+      hideOverlay();
+    }
+  };
+
   return (
     <div
       ref={ref}
       className={`relative group cursor-pointer aspect-square ${animationClass}`}
-      onClick={onClick}
+      onClick={handlePhotoClick}
       style={{
         opacity: !inView && animationType === 'fade' ? 0 : 1
       }}
@@ -108,14 +204,15 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             }}
           />
           
-          <div className="absolute inset-0 bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+          <div className={`absolute inset-0 bg-black/40 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2 ${overlayVisibilityClass} md:group-hover:opacity-100`}>
             {!isSelectionMode && (
               <>
                 <button
                   className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onClick(e);
+                    onClick();
+                    hideOverlay();
                   }}
                   aria-label="View full size"
                 >
@@ -124,7 +221,11 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                 {allowDownloads && (
                   <button
                     className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                    onClick={onDownload}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDownload(e);
+                      hideOverlay();
+                    }}
                     aria-label="Download photo"
                   >
                     <Download className="w-5 h-5 text-neutral-800" />
@@ -133,7 +234,11 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                 {showFeedbackActions && onQuickComment && (
                   <button
                     className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
-                    onClick={(e) => { e.stopPropagation(); onQuickComment(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onQuickComment();
+                      hideOverlay();
+                    }}
                     aria-label="Comment on photo"
                     title="Comment"
                   >
@@ -148,6 +253,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                       e.stopPropagation();
                       if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
                         onRequireIdentity('like', photo.id);
+                        hideOverlay();
                         return;
                       }
                       // Optimistic UI: mark as liked immediately
@@ -163,6 +269,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                         console.warn('Like submit failed, keeping optimistic UI', err);
                       }
                       if (onFeedbackChange) onFeedbackChange();
+                      hideOverlay();
                     }}
                     aria-label="Like photo"
                     aria-pressed={liked}
@@ -182,9 +289,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             role="checkbox"
             aria-checked={isSelected}
             data-testid={`gallery-photo-checkbox-${photo.id}`}
-            className={`absolute top-2 right-2 z-20 transition-opacity ${
-              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
+            className={`absolute top-2 right-2 z-20 transition-opacity ${checkboxVisibilityClass} md:group-hover:opacity-100`}
             onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
           >
             <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>

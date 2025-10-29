@@ -62,7 +62,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       await photosService.deletePhoto(eventId, photo.id);
       toast.success('Photo deleted successfully');
       onPhotosDeleted();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete photo');
       setDeletingPhotos(prev => {
         const newSet = new Set(prev);
@@ -90,7 +90,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       setSelectedPhotos(new Set());
       setIsSelectionMode(false);
       onPhotosDeleted();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete photos');
       setDeletingPhotos(new Set());
     } finally {
@@ -103,7 +103,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
     try {
       await photosService.downloadPhoto(eventId, photo.id, photo.filename);
       toast.success('Download started');
-    } catch (error) {
+    } catch {
       toast.error('Failed to download photo');
     }
   };

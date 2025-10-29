@@ -31,7 +31,7 @@ export const MaintenanceWrapper: React.FC<MaintenanceWrapperProps> = ({ children
         if (isMounted) {
           setHasAdminSession(Boolean(response.data?.valid && response.data.type === 'admin'));
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
           setHasAdminSession(false);
         }
