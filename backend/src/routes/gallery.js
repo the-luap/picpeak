@@ -800,22 +800,35 @@ router.get('/:slug/stats', verifyGalleryAccess, async (req, res) => {
 router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
   try {
     const eventId = parseInt(req.params.eventId);
-    
+
     // Verify the event matches the token
     if (req.event.id !== eventId) {
       return res.status(403).json({ error: 'Access denied' });
     }
-    
+
     // Check if user uploads are allowed
     if (!req.event.allow_user_uploads) {
       return res.status(403).json({ error: 'User uploads are not allowed for this event' });
     }
-    
+
+    // Ensure temp upload directory exists
+    const fs = require('fs');
+    const tempUploadDir = '/tmp/uploads/';
+    if (!fs.existsSync(tempUploadDir)) {
+      try {
+        fs.mkdirSync(tempUploadDir, { recursive: true, mode: 0o755 });
+        logger.info('Created temp upload directory:', tempUploadDir);
+      } catch (mkdirErr) {
+        logger.error('Failed to create temp upload directory:', mkdirErr);
+        return res.status(500).json({ error: 'Server configuration error: unable to create upload directory' });
+      }
+    }
+
     // Import multer and photo processing
     const multer = require('multer');
-    const upload = multer({ 
-      dest: '/tmp/uploads/',
-      limits: { 
+    const upload = multer({
+      dest: tempUploadDir,
+      limits: {
         fileSize: 50 * 1024 * 1024, // 50MB
         files: 10 // Max 10 files at once
       },

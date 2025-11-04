@@ -71,8 +71,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     setGuestId(storedGuestId);
   }, []);
   
-  // Fetch photos with filter support
-  const { data, isLoading, error, refetch } = useGalleryPhotos(slug, filterType, guestId);
+  // Fetch photos WITHOUT filter (always get all photos, filter on frontend)
+  // This ensures counts are always calculated from the full dataset
+  const { data, isLoading, error, refetch } = useGalleryPhotos(slug, 'all', guestId);
   
   // Set protection level when data is available
   useEffect(() => {
