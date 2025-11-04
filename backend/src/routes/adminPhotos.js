@@ -4,35 +4,15 @@ const path = require('path');
 const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
-const { generateThumbnail, ensureThumbnail, generateVideoPlaceholder } = require('../services/imageProcessor');
+const { generateThumbnail, ensureThumbnail } = require('../services/imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const router = express.Router();
-const { isVideoMimeType, validateFileType, createFileUploadValidator } = require('../utils/fileSecurityUtils');
-const mime = require('mime-types');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-
-const parseCategoryId = (value) => {
-  if (value === undefined || value === null) return null;
-  if (typeof value === 'number' && Number.isInteger(value)) {
-    return value === 0 ? null : value;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed || trimmed === 'null') return null;
-    if (/^\d+$/.test(trimmed)) {
-      const parsed = parseInt(trimmed, 10);
-      if (!Number.isNaN(parsed)) {
-        return parsed === 0 ? null : parsed;
-      }
-    }
-  }
-  return null;
-};
 
 // Configure multer for file uploads
 // IMPORTANT: Using synchronous functions to prevent file corruption
@@ -63,10 +43,12 @@ const storage = multer.diskStorage({
   }
 });
 
+const { validateFileType } = require('../utils/fileSecurityUtils');
+
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit per file
+    fileSize: 500 * 1024 * 1024, // 500MB limit per file to support videos
     files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
@@ -75,12 +57,12 @@ const upload = multer({
     headerPairs: 2000 // Maximum number of header key-value pairs
   },
   fileFilter: (req, file, cb) => {
-    // Accept images and common video formats with proper validation
+    // Accept images and videos with proper validation
     const allowedMimeTypes = [
       'image/jpeg', 'image/png', 'image/webp',
       'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
     ];
-    
+
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
@@ -91,14 +73,15 @@ const upload = multer({
   abortOnLimit: true
 });
 
+const { createFileUploadValidator } = require('../utils/fileSecurityUtils');
+
 // Create content validator middleware
 const validateUploadContent = createFileUploadValidator({
   allowedTypes: [
     'image/jpeg', 'image/png', 'image/webp',
     'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
   ],
-  // 10GB per file to accommodate large videos; overall limits enforced elsewhere
-  maxFileSize: 10 * 1024 * 1024 * 1024,
+  maxFileSize: 500 * 1024 * 1024, // 500MB to support videos
   validateContent: true
 });
 
@@ -190,14 +173,26 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     }
     
     // Parse category_id to number if provided
-    const numericCategoryId = parseCategoryId(category_id);
-
-    const resolveCategoryName = (type) => {
-      if (type === 'collage') return 'collages';
-      if (type === 'video') return 'videos';
-      return 'individual';
-    };
-
+    const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+    
+    // Determine photo type from category_id parameter (for backwards compatibility)
+    let photoType = 'individual'; // default
+    let categoryName = 'individual';
+    
+    if (parsedCategoryId === 1 || category_id === 'collage') {
+      photoType = 'collage';
+      categoryName = 'collages';
+    } else if (parsedCategoryId === 2 || category_id === 'individual') {
+      photoType = 'individual';
+      categoryName = 'individual';
+    }
+    
+    // For backwards compatibility, accept string values
+    if (category_id === 'collage') {
+      photoType = 'collage';
+      categoryName = 'collages';
+    }
+    
     // Create final destination directory
     const finalDestPath = path.join(getStoragePath(), 'events/active', event.slug);
     await fs.mkdir(finalDestPath, { recursive: true });
@@ -215,49 +210,20 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
       const trx = await db.transaction();
       
       try {
-        const preparedBatch = batch.map((file) => {
-          const resolvedMime = file?.mimetype || mime.lookup(file?.originalname || '') || 'application/octet-stream';
-          const video = isVideoMimeType(resolvedMime, file?.originalname);
-          let inferredType = video ? 'video' : 'individual';
-
-          if (!video) {
-            if (numericCategoryId === 1 || category_id === 'collage') {
-              inferredType = 'collage';
-            } else if (numericCategoryId === 2 || category_id === 'individual') {
-              inferredType = 'individual';
-            }
-          }
-
-          return {
-            file,
-            resolvedMime,
-            isVideo: video,
-            photoType: inferredType
-          };
-        });
-
-        const typesInBatch = Array.from(new Set(preparedBatch.map((item) => item.photoType)));
-        const typeCounters = {};
-
-        if (typesInBatch.length > 0) {
-          const existingCounts = await trx('photos')
-            .where({ event_id: eventId })
-            .whereIn('type', typesInBatch)
-            .select('type')
-            .count('id as count')
-            .groupBy('type');
-
-          existingCounts.forEach((row) => {
-            typeCounters[row.type] = parseInt(row.count) || 0;
-          });
-        }
+        // Get initial counter for this batch based on photo type
+        const existingCount = await trx('photos')
+          .where({ event_id: eventId, type: photoType })
+          .count('id as count')
+          .first();
+        let batchCounter = (parseInt(existingCount.count) || 0) + 1;
         
         const batchPhotos = [];
         const fileRenameOperations = []; // Store rename operations to do after commit
         
         // First pass: prepare data and move files from temp to final location
-        for (let fileIndex = 0; fileIndex < preparedBatch.length; fileIndex++) {
-          const { file, resolvedMime, isVideo, photoType } = preparedBatch[fileIndex];
+        for (let fileIndex = 0; fileIndex < batch.length; fileIndex++) {
+          const file = batch[fileIndex];
+          const counter = batchCounter + fileIndex;
           const tempPath = file.path; // Original temp path
           
           try {
@@ -266,15 +232,12 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
             if (tempStats.size === 0) {
               throw new Error('File is empty - upload may have been interrupted');
             }
-
-            typeCounters[photoType] = (typeCounters[photoType] || 0) + 1;
-            const counter = typeCounters[photoType];
             
             // Generate new filename
             const extension = path.extname(file.originalname);
             const newFilename = generatePhotoFilename(
               event.event_name,
-              resolveCategoryName(photoType),
+              categoryName,
               counter,
               extension
             );
@@ -291,10 +254,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
-              size_bytes: tempStats.size, // Use actual file size from stat
-              category_id: numericCategoryId,
-              source_origin: 'managed',
-              mime_type: resolvedMime
+              size_bytes: tempStats.size // Use actual file size from stat
             };
             
             batchPhotos.push(photoData);
@@ -304,8 +264,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               tempPath: tempPath,
               finalPath: finalPath,
               filename: newFilename,
-              photoData: photoData,
-              isVideo
+              photoData: photoData
             });
           } catch (error) {
             console.error(`Error preparing file ${file.originalname}:`, error);
@@ -315,7 +274,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
         
         // Insert all photos in this batch
         if (batchPhotos.length > 0) {
-          console.log(`Inserting batch of ${batchPhotos.length} files with types: ${typesInBatch.join(', ')}`);
+          console.log(`Inserting batch of ${batchPhotos.length} photos with type: ${photoType}`);
           
           const insertedIds = await trx('photos').insert(batchPhotos).returning('id');
           
@@ -340,31 +299,27 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               }
               
               // Generate thumbnail with final path
-      let thumbnailPath = null;
-      try {
-        thumbnailPath = operation.isVideo
-          ? await generateVideoPlaceholder(operation.filename)
-          : await generateThumbnail(operation.finalPath);
-        
-        // Update the database with thumbnail path
-        if (thumbnailPath && insertedIds[idx]) {
-          const photoId = insertedIds[idx]?.id || insertedIds[idx];
-          await db('photos')
-            .where({ id: photoId })
-            .update({ thumbnail_path: thumbnailPath });
-        }
-      } catch (thumbError) {
-        console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
-      }
+              let thumbnailPath = null;
+              try {
+                thumbnailPath = await generateThumbnail(operation.finalPath);
+                
+                // Update the database with thumbnail path
+                if (thumbnailPath && insertedIds[idx]) {
+                  const photoId = insertedIds[idx]?.id || insertedIds[idx];
+                  await db('photos')
+                    .where({ id: photoId })
+                    .update({ thumbnail_path: thumbnailPath });
+                }
+              } catch (thumbError) {
+                console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
+              }
               
               // Add to successful uploads
               uploadedPhotos.push({
                 id: insertedIds[idx]?.id || insertedIds[idx],
                 filename: operation.filename,
                 size: operation.photoData.size_bytes,
-                category_id: operation.photoData.category_id,
-                type: operation.photoData.type,
-                mime_type: operation.photoData.mime_type
+                category_id: operation.photoData.category_id
               });
             } catch (moveError) {
               console.error(`Failed to move file ${operation.tempPath} to ${operation.finalPath}:`, moveError);
@@ -431,7 +386,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     // Prepare response
     const totalAttempted = req.files.length + (req.invalidFiles ? req.invalidFiles.length : 0);
     const response = {
-      message: `Successfully uploaded ${uploadedPhotos.length} files`,
+      message: `Successfully uploaded ${uploadedPhotos.length} photos`,
       photos: uploadedPhotos,
       totalFiles: totalAttempted,
       successCount: uploadedPhotos.length,
@@ -441,7 +396,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     // Include error details if any files failed
     if (totalInvalidFiles.length > 0) {
       response.errors = totalInvalidFiles;
-      response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} files. ${totalInvalidFiles.length} failed.`;
+      response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} photos. ${totalInvalidFiles.length} failed.`;
     }
     
     res.json(response);
@@ -458,7 +413,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
       }
     }
     
-    res.status(500).json({ error: 'Failed to upload files' });
+    res.status(500).json({ error: 'Failed to upload photos' });
   }
 });
 
@@ -488,7 +443,7 @@ router.delete('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     
     // Delete thumbnail if exists
     if (photo.thumbnail_path) {
-      const thumbPath = path.join(storagePath, photo.thumbnail_path);
+      const thumbPath = path.join(storagePath, 'events/active', photo.thumbnail_path);
       try {
         // Check if file exists before attempting to delete
         await fs.access(thumbPath);
@@ -535,44 +490,24 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     }
 
     // Prepare update data
-    const updateData = {
-      updated_at: new Date()
-    };
+    const updateData = {};
 
     // Handle type-based categories ('individual' or 'collage')
     // These are string values that map to the photo.type field
     if (category_id === 'individual' || category_id === 'collage') {
       updateData.type = category_id;
       updateData.category_id = null; // Clear legacy category_id
-    } else if (category_id === null || category_id === undefined) {
-      // Explicitly clear category
-      updateData.category_id = null;
     } else {
-      // Handle numeric category IDs from photo_categories table
-      const numericCategoryId = parseInt(category_id, 10);
-      if (!isNaN(numericCategoryId)) {
-        updateData.category_id = numericCategoryId;
-      } else {
-        updateData.category_id = null;
-      }
+      // Handle legacy numeric category IDs
+      updateData.category_id = category_id || null;
     }
 
     // Update photo
-    const normalizedCategoryId = parseCategoryId(category_id);
-
     await db('photos')
-      .where({ id: photoId, event_id: eventId })
+      .where({ id: photoId })
       .update(updateData);
 
-    // Fetch and return updated photo for confirmation
-    const updatedPhoto = await db('photos')
-      .where({ id: photoId })
-      .first();
-
-    res.json({
-      message: 'Photo updated successfully',
-      photo: updatedPhoto
-    });
+    res.json({ message: 'Photo updated successfully' });
   } catch (error) {
     console.error('Error updating photo:', error);
     res.status(500).json({ error: 'Failed to update photo' });
@@ -652,44 +587,33 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds, updates } = req.body;
-
+    
     if (!Array.isArray(photoIds) || photoIds.length === 0) {
       return res.status(400).json({ error: 'Invalid photo IDs' });
     }
-
+    
     // Verify all photos belong to the event
     const photoCount = await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .count('id as count')
       .first();
-
-    if (parseInt(photoCount.count) !== photoIds.length) {
+    
+    if (photoCount.count !== photoIds.length) {
       return res.status(400).json({ error: 'Some photos do not belong to this event' });
     }
-
+    
     // Prepare update data
-    const updateData = {
-      updated_at: new Date()
-    };
-
+    const updateData = {};
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')
       // These are string values that map to the photo.type field
       if (updates.category_id === 'individual' || updates.category_id === 'collage') {
         updateData.type = updates.category_id;
         updateData.category_id = null; // Clear legacy category_id
-      } else if (updates.category_id === null) {
-        // Explicitly clear category
-        updateData.category_id = null;
       } else {
-        // Handle numeric category IDs from photo_categories table
-        const numericCategoryId = parseInt(updates.category_id, 10);
-        if (!isNaN(numericCategoryId)) {
-          updateData.category_id = numericCategoryId;
-        } else {
-          updateData.category_id = null;
-        }
+        // Handle legacy numeric category IDs
+        updateData.category_id = updates.category_id || null;
       }
     }
 
@@ -741,25 +665,17 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, async (req, res) => 
 router.get('/:eventId/photos', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, media_type, search, sort = 'date', order = 'desc' } = req.query;
+    const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
     
     let query = db('photos')
-      .leftJoin('photo_categories as pc', 'pc.id', 'photos.category_id')
       .where({ 'photos.event_id': eventId })
-      .select(
-        'photos.*',
-        'pc.name as category_display_name',
-        'pc.slug as category_display_slug'
-      );
+      .select('photos.*');
     
     // Filter by type (individual/collage) - category_id maps to type
     if (category_id !== undefined) {
-      if (category_id === '') {
-        // No filter when empty string is provided
-      } else if (category_id === '0') {
-        query = query.whereNull('photos.category_id');
-      } else if (/^\d+$/.test(category_id)) {
-        query = query.where('photos.category_id', parseInt(category_id, 10));
+      if (category_id === '' || category_id === '0') {
+        // For backwards compatibility, empty category means no filter
+        // Don't filter anything
       } else if (category_id === 'individual' || category_id === 'collage') {
         query = query.where({ 'photos.type': category_id });
       }
@@ -768,20 +684,6 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     // Keep type filter for backwards compatibility
     if (type) {
       query = query.where({ 'photos.type': type });
-    }
-
-    if (media_type === 'video') {
-      query = query.where((qb) => {
-        qb.where('photos.type', 'video')
-          .orWhere('photos.mime_type', 'like', 'video/%');
-      });
-    } else if (media_type === 'photo') {
-      query = query.where((qb) => {
-        qb.whereNot('photos.type', 'video')
-          .andWhere(function(inner) {
-            inner.whereNull('photos.mime_type').orWhere('photos.mime_type', 'not like', 'video/%');
-          });
-      });
     }
     
     // Search by filename
@@ -799,11 +701,7 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     }
     
     const photos = await query.orderBy(orderByColumn, order);
-
-    if (photos.length === 0) {
-      return res.json({ photos: [] });
-    }
-
+    
     // Get comment counts separately
     const commentCounts = await db('photo_feedback')
       .whereIn('photo_id', photos.map(p => p.id))
@@ -820,37 +718,26 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     });
     
     res.json({
-      photos: photos.map(photo => {
-        const mediaType = (photo.mime_type && photo.mime_type.startsWith('video/')) || photo.type === 'video' ? 'video' : 'photo';
-        const categoryName = photo.category_display_name 
-          || (photo.type === 'individual' ? 'Individual Photos' : photo.type === 'video' ? 'Videos' : 'Collages');
-        const normalizedCategoryId = photo.category_id !== null && photo.category_id !== undefined
-          ? (Number.isNaN(Number(photo.category_id)) ? photo.category_id : Number(photo.category_id))
-          : null;
-
-        return ({
-          id: photo.id,
-          filename: photo.filename,
-          // Use the correct admin photos router base for serving images
-          url: `/admin/photos/${eventId}/photo/${photo.id}`,
-          // Always expose a thumbnail URL; backend will generate on demand if missing
-          thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
-          type: photo.type,
-          category_id: normalizedCategoryId,
-          mime_type: photo.mime_type,
-          media_type: mediaType,
-          category_name: categoryName,
-          category_slug: photo.category_display_slug || photo.type,
-          size: photo.size_bytes,
-          uploaded_at: photo.uploaded_at,
-          // Feedback data
-          has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
-          average_rating: photo.average_rating || 0,
-          comment_count: commentMap[photo.id] || 0,
-          like_count: photo.like_count || 0,
-          favorite_count: photo.favorite_count || 0
-        });
-      })
+      photos: photos.map(photo => ({
+        id: photo.id,
+        filename: photo.filename,
+        // Use the correct admin photos router base for serving images
+        url: `/admin/photos/${eventId}/photo/${photo.id}`,
+        // Always expose a thumbnail URL; backend will generate on demand if missing
+        thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
+        type: photo.type,
+        category_id: photo.type,
+        category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
+        category_slug: photo.type,
+        size: photo.size_bytes,
+        uploaded_at: photo.uploaded_at,
+        // Feedback data
+        has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
+        average_rating: photo.average_rating || 0,
+        comment_count: commentMap[photo.id] || 0,
+        like_count: photo.like_count || 0,
+        favorite_count: photo.favorite_count || 0
+      }))
     });
   } catch (error) {
     console.error('Error fetching photos:', error);
@@ -882,10 +769,8 @@ router.get('/:eventId/photo/:photoId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Photo file not found' });
     }
     
-    const mimeType = photo.mime_type || `image/${path.extname(photo.filename).slice(1)}`;
-
     // Set appropriate headers
-    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Type', `image/${path.extname(photo.filename).slice(1)}`);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
@@ -911,30 +796,8 @@ router.get('/:eventId/thumbnail/:photoId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
     // Ensure thumbnail exists and is valid, regenerate if needed
-    let thumbnailPath = photo.thumbnail_path;
-    const thumbMissing = !thumbnailPath || !(await (async () => {
-      try {
-        const fs = require('fs').promises;
-        await fs.access(path.join(getStoragePath(), thumbnailPath));
-        return true;
-      } catch {
-        return false;
-      }
-    })());
-
-    if (isVideo) {
-      if (!thumbnailPath || thumbMissing) {
-        const regenerated = await generateVideoPlaceholder(photo.filename, { regenerate: true });
-        if (regenerated) {
-          thumbnailPath = regenerated;
-          await db('photos').where({ id: photo.id }).update({ thumbnail_path: regenerated });
-        }
-      }
-    } else {
-      thumbnailPath = await ensureThumbnail(photo);
-    }
+    const thumbnailPath = await ensureThumbnail(photo);
     
     if (!thumbnailPath) {
       console.error(`Failed to generate thumbnail for photo ${photoId}`);

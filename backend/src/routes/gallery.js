@@ -10,8 +10,6 @@ const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
-const { ensureThumbnail, generateVideoPlaceholder } = require('../services/imageProcessor');
-const { isVideoMimeType } = require('../utils/fileSecurityUtils');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
@@ -250,17 +248,10 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       .distinct('type')
       .orderBy('type', 'asc');
     
-    const resolveCategoryName = (type, mimeType, filename) => {
-      if (type === 'video' || isVideoMimeType(mimeType, filename)) return 'Videos';
-      if (type === 'individual') return 'Individual Photos';
-      if (type === 'collage') return 'Collages';
-      return type || 'Uncategorized';
-    };
-
     // Convert types to category-like objects
     const categories = categoryResults.map(result => ({
       id: result.type,
-      name: resolveCategoryName(result.type),
+      name: result.type === 'individual' ? 'Individual Photos' : 'Collages',
       slug: result.type,
       is_global: false
     }));
@@ -301,13 +292,10 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       },
       categories: categories,
       photos: photos.map(photo => {
-        const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
-        const mediaType = isVideo ? 'video' : 'photo';
-        const useJwtUrl = isVideo || (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
+        const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
         const photoUrl = useJwtUrl ? 
           `/api/gallery/${req.params.slug}/photo/${photo.id}` : 
           `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`;
-        const categoryName = resolveCategoryName(photo.type, photo.mime_type, photo.filename);
         
         return {
           id: photo.id,
@@ -318,14 +306,12 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
           category_id: photo.type,
-          category_name: categoryName,
+          category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
           category_slug: photo.type,
           size: photo.size_bytes,
           uploaded_at: photo.uploaded_at,
-          media_type: mediaType,
-          mime_type: photo.mime_type,
           // Fixed: Use the calculated useJwtUrl variable instead of recalculating
-          requires_token: !useJwtUrl && !isVideo,
+          requires_token: !useJwtUrl,
           // Feedback data
           has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
           average_rating: photo.average_rating || 0,
@@ -359,7 +345,6 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
     // Update download count
     await db('photos').where('id', photoId).increment('download_count', 1);
     
@@ -388,7 +373,7 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
     // Get watermark settings
     const watermarkSettings = await watermarkService.getWatermarkSettings();
     
-    if (watermarkSettings && watermarkSettings.enabled && !isVideo) {
+    if (watermarkSettings && watermarkSettings.enabled) {
       // Apply watermark and send
       const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
       
@@ -401,9 +386,6 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       res.send(watermarkedBuffer);
     } else {
       // Send original file
-      if (isVideo) {
-        res.set({ 'Content-Type': photo.mime_type || 'application/octet-stream' });
-      }
       res.download(filePath, photo.filename, (downloadError) => {
         if (downloadError) {
           logger.error('Error streaming gallery download', {
@@ -481,16 +463,14 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       let archiveName;
       if (hasMultipleTypes) {
         // Use photo type as folder
-        const folderName = photo.type === 'individual' ? 'Individual Photos' : photo.type === 'video' ? 'Videos' : 'Collages';
+        const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
         archiveName = path.join(folderName, photo.filename);
       } else {
         // No folders, just the filename
         archiveName = photo.filename;
       }
       
-      const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
-
-      if (watermarkSettings && watermarkSettings.enabled && !isVideo) {
+      if (watermarkSettings && watermarkSettings.enabled) {
         try {
           const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
           archive.append(watermarkedBuffer, { name: archiveName });
@@ -585,9 +565,7 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
       try {
         const filePath = resolvePhotoFilePath(req.event, photo);
         const name = photo.filename || `photo-${photo.id}.jpg`;
-        const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
-
-        if (watermarkSettings && watermarkSettings.enabled && !isVideo) {
+        if (watermarkSettings && watermarkSettings.enabled) {
           try {
             const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
             archive.append(watermarkedBuffer, { name });
@@ -632,43 +610,41 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
 
 
 // View single photo (with watermark if enabled)
-router.get('/:slug/photo/:photoId', 
-  verifyGalleryAccess, 
+router.get('/:slug/photo/:photoId',
+  verifyGalleryAccess,
   async (req, res) => {
     try {
       const { photoId } = req.params;
-      const numericPhotoId = parseInt(photoId, 10);
-      if (!Number.isInteger(numericPhotoId)) {
-        return res.status(400).json({ error: 'Invalid photo id' });
-      }
-      
+
       const photo = await db('photos')
-        .where({ id: numericPhotoId, event_id: req.event.id })
+        .where({ id: photoId, event_id: req.event.id })
         .first();
-      
-      
+
+
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      const isVideo = (photo.mime_type && photo.mime_type.startsWith('video/')) || photo.type === 'video';
+      // Check if this is a video
+      const isVideo = photo.media_type === 'video' || (photo.mime_type && photo.mime_type.startsWith('video/'));
+
       // Check protection level - basic and standard protection allow direct JWT access
       const protectionLevel = req.event.protection_level || 'standard';
-      
-      if (!isVideo && (protectionLevel === 'enhanced' || protectionLevel === 'maximum')) {
+
+      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
         // For enhanced/maximum protection, redirect to secure endpoint
-        return res.status(302).json({ 
+        return res.status(302).json({
           error: 'Secure access required',
           secureEndpoint: `/api/secure-images/${req.params.slug}/generate-token`,
           photoId: photoId
         });
       }
-      
+
       // Resolve the absolute file path for this photo, supporting both managed and external reference modes
       const { resolvePhotoFilePath } = require('../services/photoResolver');
       const filePath = resolvePhotoFilePath(req.event, photo);
-      
-      
+
+
       // Log access - temporarily disabled for debugging
       // await secureImageService.logImageAccess(
       //   photoId,
@@ -676,20 +652,61 @@ router.get('/:slug/photo/:photoId',
       //   req.clientInfo,
       //   'view_basic'
       // );
-      
+
+      // Handle video streaming with range requests
+      if (isVideo) {
+        const fs = require('fs');
+        const stat = fs.statSync(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+
+        if (range) {
+          // Parse range header
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunksize = (end - start) + 1;
+          const file = fs.createReadStream(filePath, { start, end });
+
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize,
+            'Content-Type': photo.mime_type || 'video/mp4',
+            'Cache-Control': 'private, max-age=1800',
+            'X-Protection-Level': 'basic'
+          });
+
+          file.pipe(res);
+        } else {
+          // No range request, send entire file
+          res.writeHead(200, {
+            'Content-Length': fileSize,
+            'Content-Type': photo.mime_type || 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'private, max-age=1800',
+            'X-Protection-Level': 'basic'
+          });
+
+          fs.createReadStream(filePath).pipe(res);
+        }
+        return;
+      }
+
+      // Handle images (existing logic)
       // Get watermark settings
       const watermarkSettings = await watermarkService.getWatermarkSettings();
-      
-      if (watermarkSettings && watermarkSettings.enabled && !isVideo) {
+
+      if (watermarkSettings && watermarkSettings.enabled) {
         // Apply watermark and send
         const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-        
+
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
           'Cache-Control': 'private, max-age=1800', // Cache for 30 minutes
           'X-Protection-Level': 'basic'
         });
-        
+
         res.send(watermarkedBuffer);
       } else {
         // Send original file with basic protection headers
@@ -699,9 +716,6 @@ router.get('/:slug/photo/:photoId',
         });
         // Ensure absolute path for res.sendFile
         const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
-        if (isVideo) {
-          res.set({ 'Content-Type': photo.mime_type || 'application/octet-stream' });
-        }
         res.sendFile(absolutePath);
       }
     } catch (error) {
@@ -722,62 +736,32 @@ router.get('/:slug/thumbnail/:photoId',
   async (req, res) => {
     try {
       const { photoId } = req.params;
-      const numericPhotoId = parseInt(photoId, 10);
-      if (!Number.isInteger(numericPhotoId)) {
-        return res.status(400).json({ error: 'Invalid photo id' });
-      }
       
       const photo = await db('photos')
-        .where({ id: numericPhotoId, event_id: req.event.id })
+        .where({ id: photoId, event_id: req.event.id })
         .first();
       
-      if (!photo) {
+      if (!photo || !photo.thumbnail_path) {
         return res.status(404).json({ error: 'Thumbnail not found' });
       }
-      const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
-
-      let thumbnailPath = photo.thumbnail_path;
-      let thumbFilePath = thumbnailPath ? path.join(getStoragePath(), thumbnailPath) : null;
-
-      if (isVideo) {
-        const fs = require('fs').promises;
-        const missing = !thumbFilePath || !(await (async () => { try { await fs.access(thumbFilePath); return true; } catch { return false; } })());
-        if (missing) {
-          const regenerated = await generateVideoPlaceholder(photo.filename, { regenerate: true });
-          if (regenerated) {
-            thumbnailPath = regenerated;
-            thumbFilePath = path.join(getStoragePath(), regenerated);
-            await db('photos').where({ id: photo.id }).update({ thumbnail_path: regenerated });
-          }
-        }
-      } else {
-        thumbnailPath = await ensureThumbnail(photo);
-        thumbFilePath = thumbnailPath ? path.join(getStoragePath(), thumbnailPath) : null;
-      }
-
-      if (!thumbFilePath) {
-        return res.status(404).json({ error: 'Thumbnail not found' });
-      }
+      
+      const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
       
       // Check if file exists
       const fs = require('fs').promises;
       try {
-        await fs.access(thumbFilePath);
+        await fs.access(thumbPath);
       } catch (error) {
         return res.status(404).json({ error: 'Thumbnail file not found' });
       }
 
       // Log thumbnail access
-      try {
-        await secureImageService.logImageAccess(
-          numericPhotoId,
-          req.event.id,
-          req.clientInfo,
-          'thumbnail'
-        );
-      } catch (logErr) {
-        logger.warn('Thumbnail access log failed', { photoId, eventId: req.event.id, error: logErr.message });
-      }
+      await secureImageService.logImageAccess(
+        photoId,
+        req.event.id,
+        req.clientInfo,
+        'thumbnail'
+      );
       
       // Set appropriate headers with enhanced security
       res.set({
@@ -789,14 +773,8 @@ router.get('/:slug/thumbnail/:photoId',
       });
       
       // Send file
-      res.sendFile(path.resolve(thumbFilePath));
+      res.sendFile(path.resolve(thumbPath));
     } catch (error) {
-      console.error('Thumbnail route error', {
-        message: error?.message,
-        stack: error?.stack,
-        photoId: req.params.photoId,
-        eventId: req.event?.id,
-      });
       logger.error('Error serving thumbnail:', {
         error: error.message,
         photoId: req.params.photoId,
