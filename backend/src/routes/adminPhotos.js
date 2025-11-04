@@ -48,7 +48,7 @@ const { validateFileType } = require('../utils/fileSecurityUtils');
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit per file
+    fileSize: 500 * 1024 * 1024, // 500MB limit per file to support videos
     files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
@@ -57,13 +57,16 @@ const upload = multer({
     headerPairs: 2000 // Maximum number of header key-value pairs
   },
   fileFilter: (req, file, cb) => {
-    // Accept images only with proper validation
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    
+    // Accept images and videos with proper validation
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/png', 'image/webp',
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+    ];
+
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG and WebP images are allowed'));
+      cb(new Error('Only JPEG, PNG, WebP images and MP4, WebM, MOV, AVI videos are allowed'));
     }
   },
   // Add abort on limit to stop processing when limits are exceeded
@@ -74,8 +77,11 @@ const { createFileUploadValidator } = require('../utils/fileSecurityUtils');
 
 // Create content validator middleware
 const validateUploadContent = createFileUploadValidator({
-  allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-  maxFileSize: 50 * 1024 * 1024,
+  allowedTypes: [
+    'image/jpeg', 'image/png', 'image/webp',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+  ],
+  maxFileSize: 500 * 1024 * 1024, // 500MB to support videos
   validateContent: true
 });
 

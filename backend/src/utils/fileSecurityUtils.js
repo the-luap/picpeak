@@ -45,7 +45,7 @@ function isPathSafe(filePath) {
 }
 
 /**
- * Enhanced MIME type validation
+ * Enhanced MIME type validation for images and videos
  */
 const ALLOWED_IMAGE_TYPES = {
   'image/jpeg': {
@@ -81,6 +81,40 @@ const ALLOWED_IMAGE_TYPES = {
   }
 };
 
+const ALLOWED_VIDEO_TYPES = {
+  'video/mp4': {
+    extensions: ['.mp4', '.m4v'],
+    magicNumbers: [
+      { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] } // 'ftyp' signature for MP4
+    ]
+  },
+  'video/webm': {
+    extensions: ['.webm'],
+    magicNumbers: [
+      { offset: 0, bytes: [0x1A, 0x45, 0xDF, 0xA3] } // EBML header for WebM/MKV
+    ]
+  },
+  'video/quicktime': {
+    extensions: ['.mov'],
+    magicNumbers: [
+      { offset: 4, bytes: [0x66, 0x74, 0x79, 0x70, 0x71, 0x74] } // 'ftypqt' signature for QuickTime
+    ]
+  },
+  'video/x-msvideo': {
+    extensions: ['.avi'],
+    magicNumbers: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+      { offset: 8, bytes: [0x41, 0x56, 0x49, 0x20] }  // 'AVI '
+    ]
+  }
+};
+
+// Combined media types
+const ALLOWED_MEDIA_TYPES = {
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_VIDEO_TYPES
+};
+
 /**
  * Validate file type by MIME type and extension
  * @param {string} filename - The filename
@@ -93,16 +127,16 @@ function validateFileType(filename, mimetype, allowedTypes) {
   if (!allowedTypes.includes(mimetype)) {
     return false;
   }
-  
+
   // Get file extension
   const ext = path.extname(filename).toLowerCase();
-  
+
   // Check if extension matches the MIME type
-  const typeConfig = ALLOWED_IMAGE_TYPES[mimetype];
+  const typeConfig = ALLOWED_MEDIA_TYPES[mimetype];
   if (!typeConfig || !typeConfig.extensions.includes(ext)) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -114,22 +148,22 @@ function validateFileType(filename, mimetype, allowedTypes) {
  */
 async function validateFileContent(filePath, expectedMimeType) {
   try {
-    const typeConfig = ALLOWED_IMAGE_TYPES[expectedMimeType];
+    const typeConfig = ALLOWED_MEDIA_TYPES[expectedMimeType];
     if (!typeConfig) {
       return false;
     }
-    
+
     // Skip validation for file types without magic numbers (like SVG)
     if (!typeConfig.magicNumbers) {
       return true;
     }
-    
+
     // Read the first 20 bytes of the file (enough for most magic numbers)
     const buffer = Buffer.alloc(20);
     const fileHandle = await fs.open(filePath, 'r');
     await fileHandle.read(buffer, 0, 20, 0);
     await fileHandle.close();
-    
+
     // Check magic numbers
     return typeConfig.magicNumbers.every(magic => {
       for (let i = 0; i < magic.bytes.length; i++) {
@@ -154,13 +188,13 @@ function getSafeFilename(originalFilename) {
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 15);
   const ext = path.extname(originalFilename).toLowerCase();
-  
-  // Validate extension
-  const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.ico'];
+
+  // Validate extension - including both image and video extensions
+  const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.ico', '.mp4', '.m4v', '.webm', '.mov', '.avi'];
   if (!validExtensions.includes(ext)) {
     throw new Error('Invalid file extension');
   }
-  
+
   return `upload_${timestamp}_${randomString}${ext}`;
 }
 
@@ -229,5 +263,7 @@ module.exports = {
   validateFileContent,
   getSafeFilename,
   createFileUploadValidator,
-  ALLOWED_IMAGE_TYPES
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  ALLOWED_MEDIA_TYPES
 };

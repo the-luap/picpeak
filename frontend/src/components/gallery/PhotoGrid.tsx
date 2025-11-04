@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Maximize2, Check, Package, MessageSquare, Star } from 'lucide-react';
+import { Download, Maximize2, Check, Package, MessageSquare, Star, Play } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { toast as toastify } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -336,14 +336,25 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
             </div>
           )}
 
-          {/* Photo type badge */}
-          {photo.type === 'collage' && (
-            <div className="absolute bottom-2 left-2">
+          {/* Media type badges */}
+          <div className="absolute bottom-2 left-2 flex gap-2">
+            {photo.type === 'collage' && (
               <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">
                 Collage
               </span>
-            </div>
-          )}
+            )}
+            {photo.media_type === 'video' && (
+              <span className="px-2 py-1 bg-black/60 text-white text-xs rounded flex items-center gap-1">
+                <Play className="w-3 h-3" fill="white" />
+                Video
+                {photo.duration && (
+                  <span className="ml-1">
+                    {Math.floor(photo.duration / 60)}:{String(photo.duration % 60).padStart(2, '0')}
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
         </>
       ) : (
         <div className="skeleton aspect-square w-full" />

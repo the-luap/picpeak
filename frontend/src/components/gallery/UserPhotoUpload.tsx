@@ -143,7 +143,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                     type="file"
                     className="hidden"
                     multiple
-                    accept="image/jpeg,image/png,image/webp"
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo"
                     onChange={handleFileSelect}
                     disabled={uploading}
                   />
