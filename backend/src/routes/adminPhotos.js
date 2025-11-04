@@ -473,21 +473,34 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     const { category_id } = req.body;
-    
+
     // Verify photo belongs to event
     const photo = await db('photos')
       .where({ id: photoId, event_id: eventId })
       .first();
-    
+
     if (!photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Prepare update data
+    const updateData = {};
+
+    // Handle type-based categories ('individual' or 'collage')
+    // These are string values that map to the photo.type field
+    if (category_id === 'individual' || category_id === 'collage') {
+      updateData.type = category_id;
+      updateData.category_id = null; // Clear legacy category_id
+    } else {
+      // Handle legacy numeric category IDs
+      updateData.category_id = category_id || null;
+    }
+
     // Update photo
     await db('photos')
       .where({ id: photoId })
-      .update({ category_id: category_id || null });
-    
+      .update(updateData);
+
     res.json({ message: 'Photo updated successfully' });
   } catch (error) {
     console.error('Error updating photo:', error);
@@ -584,17 +597,25 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Some photos do not belong to this event' });
     }
     
-    // Update photos
+    // Prepare update data
     const updateData = {};
     if (updates.category_id !== undefined) {
-      updateData.category_id = updates.category_id || null;
+      // Handle type-based categories ('individual' or 'collage')
+      // These are string values that map to the photo.type field
+      if (updates.category_id === 'individual' || updates.category_id === 'collage') {
+        updateData.type = updates.category_id;
+        updateData.category_id = null; // Clear legacy category_id
+      } else {
+        // Handle legacy numeric category IDs
+        updateData.category_id = updates.category_id || null;
+      }
     }
-    
+
     await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .update(updateData);
-    
+
     res.json({ message: `${photoIds.length} photos updated successfully` });
   } catch (error) {
     console.error('Error bulk updating photos:', error);

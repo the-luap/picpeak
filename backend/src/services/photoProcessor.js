@@ -8,20 +8,46 @@ const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 function normalizeFiles(files) {
-  if (!files) return [];
-  if (Array.isArray(files)) return files.filter(Boolean);
-
-  // Multer may expose files as an iterable object
-  if (typeof files[Symbol.iterator] === 'function') {
-    return Array.from(files).filter(Boolean);
+  // Handle null, undefined, or falsy values
+  if (!files) {
+    console.log('[normalizeFiles] No files provided');
+    return [];
   }
 
+  // Handle arrays
+  if (Array.isArray(files)) {
+    const validFiles = files.filter(Boolean);
+    console.log(`[normalizeFiles] Normalized ${validFiles.length} files from array`);
+    return validFiles;
+  }
+
+  // Handle iterable objects (some multer configurations)
+  try {
+    if (typeof files === 'object' && typeof files[Symbol.iterator] === 'function') {
+      const validFiles = Array.from(files).filter(Boolean);
+      console.log(`[normalizeFiles] Normalized ${validFiles.length} files from iterable`);
+      return validFiles;
+    }
+  } catch (err) {
+    console.warn('[normalizeFiles] Failed to iterate files object:', err.message);
+  }
+
+  // Handle plain objects (multer fieldname mapping)
   if (typeof files === 'object') {
-    return Object.values(files)
-      .flatMap((value) => (Array.isArray(value) ? value : [value]))
-      .filter(Boolean);
+    try {
+      const validFiles = Object.values(files)
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .filter(Boolean);
+      console.log(`[normalizeFiles] Normalized ${validFiles.length} files from object`);
+      return validFiles;
+    } catch (err) {
+      console.warn('[normalizeFiles] Failed to process files object:', err.message);
+      return [];
+    }
   }
 
+  // Unexpected type
+  console.warn('[normalizeFiles] Unexpected files type:', typeof files);
   return [];
 }
 
@@ -80,18 +106,46 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       const tempPath = file?.path || file?.filepath || file?.tempFilePath;
 
       if (!tempPath) {
-        throw new Error('Uploaded file is missing a temporary path');
+        const fileInfo = JSON.stringify({
+          originalname: file?.originalname,
+          mimetype: file?.mimetype,
+          size: file?.size,
+          availableKeys: Object.keys(file || {})
+        });
+        throw new Error(`Uploaded file is missing a temporary path. File info: ${fileInfo}`);
+      }
+
+      // Verify temp file exists before copying
+      try {
+        await fs.access(tempPath);
+      } catch (accessErr) {
+        console.error(`Temp file not accessible: ${tempPath}`, {
+          originalname: file?.originalname,
+          error: accessErr.message
+        });
+        throw new Error(`Uploaded file not found at temporary location: ${tempPath}`);
       }
 
       // Use copyFile and unlink instead of rename to avoid cross-device issues
       try {
         await fs.copyFile(tempPath, newPath);
+        console.log(`Successfully copied ${file.originalname} to ${newPath}`);
+      } catch (copyErr) {
+        console.error(`Failed to copy file from ${tempPath} to ${newPath}:`, copyErr);
+        throw new Error(`Failed to copy uploaded file: ${copyErr.message}`);
       } finally {
+        // Clean up temp file with better error handling
         try {
           await fs.unlink(tempPath);
+          console.log(`Cleaned up temp file: ${tempPath}`);
         } catch (unlinkErr) {
+          // Only warn if file exists but couldn't be deleted
+          // ENOENT means file was already deleted, which is fine
           if (unlinkErr?.code !== 'ENOENT') {
-            console.warn(`Failed to clean up temp upload ${tempPath}:`, unlinkErr);
+            console.warn(`Failed to clean up temp upload ${tempPath}:`, {
+              error: unlinkErr.message,
+              code: unlinkErr.code
+            });
           }
         }
       }
@@ -154,10 +208,28 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         size: file.size,
         type: photoType
       });
+
+      console.log(`Successfully processed file ${file.originalname} (ID: ${photoId})`);
     } catch (error) {
-      console.error(`Error processing file ${file.originalname}:`, error);
-      if (trx) await trx.rollback();
+      console.error(`Error processing file ${file.originalname}:`, {
+        error: error.message,
+        stack: error.stack,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        tempPath: file?.path || file?.filepath || file?.tempFilePath
+      });
+
+      if (trx) {
+        try {
+          await trx.rollback();
+        } catch (rollbackErr) {
+          console.error('Failed to rollback transaction:', rollbackErr);
+        }
+      }
+
       // Continue with other files
+      // Note: Individual file failures don't stop the entire upload batch
     }
   }
   

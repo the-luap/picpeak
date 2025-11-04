@@ -12,8 +12,12 @@ const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '.
 function resolvePhotoFilePath(event, photo) {
   if (!event || !photo) throw new Error('resolvePhotoFilePath requires event and photo');
 
-  const mode = (event.source_mode || photo.source_origin || 'managed');
-  if (mode === 'reference' || photo.source_origin === 'external') {
+  // IMPORTANT: photo.source_origin takes precedence over event.source_mode
+  // This allows events in "reference" mode to have mixed sources:
+  // - Imported photos: source_origin = 'external'
+  // - Uploaded photos: source_origin = 'managed'
+  const mode = (photo.source_origin || event.source_mode || 'managed');
+  if (mode === 'reference' || mode === 'external') {
     if (!photo.external_relpath) {
       throw new Error('Missing external_relpath for external photo');
     }
