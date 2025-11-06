@@ -60,9 +60,6 @@ services:
     image: postgres:15-alpine
     container_name: picpeak-postgres
     restart: unless-stopped
-    # User namespace configuration for Docker daemon sysctl compatibility
-    # Fixes OCI runtime errors on systems with custom sysctl configurations
-    # See: https://github.com/the-luap/picpeak/issues/46
     userns_mode: "host"
     environment:
       - POSTGRES_USER=${DB_USER}
@@ -87,9 +84,6 @@ services:
     image: redis:7-alpine
     container_name: picpeak-redis
     restart: unless-stopped
-    # User namespace configuration for Docker daemon sysctl compatibility
-    # Fixes OCI runtime errors on systems with custom sysctl configurations
-    # See: https://github.com/the-luap/picpeak/issues/46
     userns_mode: "host"
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-picpeak_redis_pass}
     volumes:
