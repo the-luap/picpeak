@@ -147,9 +147,18 @@ When enabling video uploads, consider these additional resources:
 
 **Technical Notes:**
 - FFmpeg is bundled via npm (`@ffmpeg-installer/ffmpeg`) - no system installation required
-- Maximum upload size: 500MB per video file
+- Maximum upload size: **10GB per video file**
+- Chunked upload support for files >100MB (resumable uploads)
 - Supported formats: MP4, WebM, MOV, AVI
 - Video thumbnails are automatically generated from the first few seconds
+
+**For Nginx/Reverse Proxy:**
+If using Nginx, increase the client max body size:
+```nginx
+client_max_body_size 10G;
+proxy_read_timeout 3600;
+proxy_send_timeout 3600;
+```
 
 ## 🤝 Contributing
 
