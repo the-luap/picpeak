@@ -18,7 +18,8 @@ router.get('/config', adminAuth, async (req, res) => {
         smtp_user: '',
         smtp_pass: '', // Don't send actual password
         from_email: '',
-        from_name: ''
+        from_name: '',
+        tls_reject_unauthorized: true
       });
     }
 
@@ -53,7 +54,8 @@ router.post('/config', [
       smtp_user,
       smtp_pass,
       from_email,
-      from_name
+      from_name,
+      tls_reject_unauthorized
     } = req.body;
 
     // Check if config exists
@@ -66,6 +68,7 @@ router.post('/config', [
       smtp_user: smtp_user || '',
       from_email,
       from_name: from_name || 'Photo Sharing',
+      tls_reject_unauthorized: tls_reject_unauthorized !== false, // Default to true
       updated_at: new Date()
     };
 
@@ -137,6 +140,10 @@ router.post('/test', adminAuth, async (req, res) => {
         user: config.smtp_user,
         pass: config.smtp_pass
       } : undefined,
+      tls: {
+        // Allow ignoring SSL certificate errors when tls_reject_unauthorized is false
+        rejectUnauthorized: config.tls_reject_unauthorized !== false
+      },
       logger: process.env.NODE_ENV === 'development',
       debug: process.env.NODE_ENV === 'development'
     };
