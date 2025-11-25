@@ -117,7 +117,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                 <Download className="w-5 h-5 text-neutral-800" />
               </button>
             )}
-            {onQuickComment && (
+            {feedbackEnabled && feedbackOptions?.allowComments && onQuickComment && (
               <button
                 className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                 onClick={(e) => { e.stopPropagation(); onQuickComment(); }}
@@ -127,7 +127,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                 <MessageSquare className="w-5 h-5 text-neutral-800" />
               </button>
             )}
-            {feedbackOptions?.allowLikes && (
+            {feedbackEnabled && feedbackOptions?.allowLikes && (
               <button
                 className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                 onClick={async (e) => {

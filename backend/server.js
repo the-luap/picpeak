@@ -324,9 +324,9 @@ async function initializeRateLimiters() {
 
 // Note: Rate limiters will be initialized after database connection
 
-// Body parsing middleware with increased limits for large uploads
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+// Body parsing middleware with increased limits for large batch uploads
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Request logging for API routes (with timestamps)
 const apiRequestLogger = (req, res, next) => {

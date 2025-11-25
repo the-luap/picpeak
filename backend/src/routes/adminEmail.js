@@ -173,26 +173,57 @@ router.post('/test', adminAuth, async (req, res) => {
   } catch (error) {
     console.error('Test email error:', error);
     console.error('Error stack:', error.stack);
-    
-    // Provide more specific error messages
-    let errorMessage = 'Failed to send test email';
+
+    // Provide more specific error messages with translation keys
+    let errorMessage = 'Error sending email';
+    let errorKey = 'email.errors.sendFailed';
     let details = error.message;
-    
+    let detailsKey = 'email.errors.unknownError';
+
     if (error.code === 'ECONNREFUSED') {
       errorMessage = 'Failed to connect to SMTP server';
+      errorKey = 'email.errors.connectionRefused';
       details = 'Please check your SMTP host and port settings';
+      detailsKey = 'email.errors.checkHostPort';
     } else if (error.code === 'EAUTH') {
       errorMessage = 'SMTP authentication failed';
+      errorKey = 'email.errors.authFailed';
       details = 'Please check your SMTP username and password';
+      detailsKey = 'email.errors.checkCredentials';
     } else if (error.code === 'ESOCKET') {
-      errorMessage = 'Network error';
+      errorMessage = 'Network error connecting to SMTP server';
+      errorKey = 'email.errors.networkError';
       details = 'Could not establish connection to SMTP server';
+      detailsKey = 'email.errors.connectionFailed';
+    } else if (error.code === 'ETIMEDOUT') {
+      errorMessage = 'Connection to SMTP server timed out';
+      errorKey = 'email.errors.timeout';
+      details = 'The server took too long to respond. Please check your network and SMTP settings.';
+      detailsKey = 'email.errors.timeoutDetails';
+    } else if (error.code === 'ENOTFOUND') {
+      errorMessage = 'SMTP server not found';
+      errorKey = 'email.errors.serverNotFound';
+      details = 'The SMTP host could not be resolved. Please verify the hostname.';
+      detailsKey = 'email.errors.checkHostname';
+    } else if (error.responseCode >= 500) {
+      errorMessage = 'SMTP server error';
+      errorKey = 'email.errors.serverError';
+      details = `Server returned error code ${error.responseCode}`;
+      detailsKey = 'email.errors.serverErrorDetails';
+    } else if (error.responseCode >= 400) {
+      errorMessage = 'Email rejected by server';
+      errorKey = 'email.errors.rejected';
+      details = error.response || 'The email was rejected. Check recipient address and settings.';
+      detailsKey = 'email.errors.rejectedDetails';
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: errorMessage,
+      errorKey: errorKey,
       details: details,
-      code: error.code
+      detailsKey: detailsKey,
+      code: error.code,
+      responseCode: error.responseCode
     });
   }
 });

@@ -191,7 +191,8 @@ router.put('/branding', adminAuth, async (req, res) => {
       logo_position,
       logo_display_header,
       logo_display_hero,
-      logo_display_mode
+      logo_display_mode,
+      hide_powered_by
     } = req.body;
 
     const brandingSettings = {
@@ -211,7 +212,8 @@ router.put('/branding', adminAuth, async (req, res) => {
       logo_position,
       logo_display_header,
       logo_display_hero,
-      logo_display_mode
+      logo_display_mode,
+      hide_powered_by
     };
 
     // Handle favicon deletion if empty string or null is provided

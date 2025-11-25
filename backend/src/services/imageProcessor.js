@@ -18,6 +18,29 @@ const DEFAULT_THUMBNAIL_FORMAT = 'jpeg';
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 const getThumbnailPath = () => path.join(getStoragePath(), 'thumbnails');
 
+// Helper to parse setting value (handles both JSON-encoded and plain values)
+function parseSettingValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  // Try to parse as JSON first (in case it's a JSON-encoded string like '"cover"')
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    // If it's not valid JSON, return the raw value
+    return value;
+  }
+}
+
+// Validate that fit value is valid for Sharp
+function validateFitValue(fit) {
+  const validFitValues = ['cover', 'contain', 'fill', 'inside', 'outside'];
+  if (fit && validFitValues.includes(fit)) {
+    return fit;
+  }
+  return DEFAULT_THUMBNAIL_FIT;
+}
+
 // Get thumbnail settings from database
 async function getThumbnailSettings() {
   try {
@@ -30,16 +53,19 @@ async function getThumbnailSettings() {
         'thumbnail_format'
       ])
       .select('setting_key', 'setting_value');
-    
+
     const settingsMap = {};
     settings.forEach(s => {
-      settingsMap[s.setting_key] = s.setting_value;
+      settingsMap[s.setting_key] = parseSettingValue(s.setting_value);
     });
-    
+
+    // Parse and validate fit value
+    const fitValue = validateFitValue(settingsMap.thumbnail_fit);
+
     return {
       width: parseInt(settingsMap.thumbnail_width) || DEFAULT_THUMBNAIL_WIDTH,
       height: parseInt(settingsMap.thumbnail_height) || DEFAULT_THUMBNAIL_HEIGHT,
-      fit: settingsMap.thumbnail_fit || DEFAULT_THUMBNAIL_FIT,
+      fit: fitValue,
       quality: parseInt(settingsMap.thumbnail_quality) || DEFAULT_THUMBNAIL_QUALITY,
       format: settingsMap.thumbnail_format || DEFAULT_THUMBNAIL_FORMAT
     };
