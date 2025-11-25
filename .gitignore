@@ -75,6 +75,7 @@ certbot/
 
 # Ignore local contributor guide copy
 AGENTS.md
+CLAUDE.md
 
 # Local artifacts from browser tooling
 .playwright-mcp/
