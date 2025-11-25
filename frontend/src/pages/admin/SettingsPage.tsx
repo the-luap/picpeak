@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  Save, 
+import React, { useState } from 'react';
+import {
+  Save,
   Database,
   Globe,
   Key,
@@ -10,7 +10,9 @@ import {
   CheckCircle,
   Clock,
   HardDrive,
-  Activity
+  Activity,
+  Mail,
+  User
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -19,11 +21,12 @@ import { CategoryManager } from '../../components/admin/CategoryManager';
 import { WordFilterManager } from '../../components/admin/WordFilterManager';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
-import { authService } from '../../services/auth.service';
+import { adminService } from '../../services/admin.service';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '../../contexts';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
+const MAX_FILES_PER_UPLOAD_LIMIT = 2000;
 
 const toBoolean = (value: unknown, defaultValue = false): boolean => {
   if (value === undefined || value === null) {
@@ -58,28 +61,17 @@ export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
-  const { user, updateProfile: updateAuthProfile } = useAdminAuth();
-
-  const [profileForm, setProfileForm] = useState({
-    username: user?.username ?? '',
-    email: user?.email ?? '',
-  });
-  const [profileError, setProfileError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      setProfileForm({ username: user.username, email: user.email });
-    }
-  }, [user]);
-
-  const isProfileDirty = user
-    ? (profileForm.username !== user.username || profileForm.email !== user.email)
-    : Boolean(profileForm.username.trim() || profileForm.email.trim());
+  const { updateUserProfile } = useAdminAuth();
 
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
     queryKey: ['admin-settings'],
     queryFn: () => settingsService.getAllSettings(),
+  });
+
+  const { data: adminProfile, isLoading: adminProfileLoading } = useQuery({
+    queryKey: ['admin-profile'],
+    queryFn: () => adminService.getAdminProfile(),
   });
 
   // Fetch storage info
@@ -116,11 +108,13 @@ export const SettingsPage: React.FC = () => {
     site_url: '',
     default_expiration_days: 30,
     max_file_size_mb: 50,
+    max_files_per_upload: 500,
     allowed_file_types: 'jpg,jpeg,png,gif,webp',
     enable_watermark: false,
     enable_analytics: true,
     enable_registration: false,
     maintenance_mode: false,
+    short_gallery_urls: false,
     default_language: 'en',
     date_format: { format: 'dd/MM/yyyy', locale: 'en-GB' }
   });
@@ -132,6 +126,8 @@ export const SettingsPage: React.FC = () => {
     enable_2fa: false,
     session_timeout_minutes: 60,
     max_login_attempts: 5,
+    attempt_window_minutes: 15,
+    lockout_duration_minutes: 30,
     enable_recaptcha: false,
     recaptcha_site_key: '',
     recaptcha_secret_key: ''
@@ -150,6 +146,11 @@ export const SettingsPage: React.FC = () => {
   const [capacityOverrideGb, setCapacityOverrideGb] = useState<number | ''>('');
   const [availableOverrideGb, setAvailableOverrideGb] = useState<number | ''>('');
   const [overrideDirty, setOverrideDirty] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    username: '',
+    email: ''
+  });
+  const [accountErrors, setAccountErrors] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
     if (settings) {
@@ -163,11 +164,16 @@ export const SettingsPage: React.FC = () => {
         site_url: settings.general_site_url || '',
         default_expiration_days: toNumber(settings.general_default_expiration_days, 30),
         max_file_size_mb: toNumber(settings.general_max_file_size_mb, 50),
+        max_files_per_upload: Math.min(
+          MAX_FILES_PER_UPLOAD_LIMIT,
+          Math.max(1, toNumber(settings.general_max_files_per_upload, 500))
+        ),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
         enable_watermark: toBoolean(settings.general_enable_watermark, false),
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),
+        short_gallery_urls: toBoolean(settings.general_short_gallery_urls, false),
         default_language: settings.general_default_language || 'en',
         date_format: settings.general_date_format 
           ? (typeof settings.general_date_format === 'string'
@@ -183,6 +189,8 @@ export const SettingsPage: React.FC = () => {
         enable_2fa: toBoolean(settings.security_enable_2fa, false),
         session_timeout_minutes: toNumber(settings.security_session_timeout_minutes, 60),
         max_login_attempts: toNumber(settings.security_max_login_attempts, 5),
+        attempt_window_minutes: toNumber(settings.security_attempt_window_minutes, 15),
+        lockout_duration_minutes: toNumber(settings.security_lockout_duration_minutes, 30),
         enable_recaptcha: toBoolean(settings.security_enable_recaptcha, false),
         recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
         recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
@@ -197,6 +205,15 @@ export const SettingsPage: React.FC = () => {
       });
     }
   }, [settings, i18n]);
+
+  React.useEffect(() => {
+    if (adminProfile) {
+      setAccountForm({
+        username: adminProfile.username || '',
+        email: adminProfile.email || ''
+      });
+    }
+  }, [adminProfile]);
 
   React.useEffect(() => {
     if (!settings || overrideDirty) {
@@ -317,6 +334,83 @@ export const SettingsPage: React.FC = () => {
       toast.error(t('toast.saveError'));
     }
   });
+
+  const updateAdminProfileMutation = useMutation({
+    mutationFn: (payload: { username: string; email: string }) => adminService.updateAdminProfile(payload),
+    onSuccess: (updatedUser) => {
+      toast.success(t('settings.general.accountSaveSuccess'));
+      setAccountErrors({});
+      setAccountForm({
+        username: updatedUser.username,
+        email: updatedUser.email
+      });
+      updateUserProfile(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ['admin-profile'] });
+    },
+    onError: (error: any) => {
+      if (error.response?.data?.errors) {
+        const fieldErrors: Record<string, string> = {};
+        for (const err of error.response.data.errors) {
+          if (err.path === 'username') {
+            fieldErrors.username = err.msg;
+          }
+          if (err.path === 'email') {
+            fieldErrors.email = err.msg;
+          }
+        }
+        setAccountErrors(fieldErrors);
+        return;
+      }
+
+      if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else {
+        toast.error(t('toast.saveError'));
+      }
+    }
+  });
+
+  const handleAccountChange = (field: 'username' | 'email') => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setAccountForm((prev) => ({ ...prev, [field]: value }));
+    if (accountErrors[field]) {
+      setAccountErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleAccountSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (updateAdminProfileMutation.isPending) {
+      return;
+    }
+
+    const trimmedUsername = accountForm.username.trim();
+    const trimmedEmail = accountForm.email.trim();
+    const errors: Record<string, string> = {};
+
+    if (!trimmedUsername) {
+      errors.username = t('settings.general.accountUsernameRequired');
+    } else if (trimmedUsername.length < 3) {
+      errors.username = t('settings.general.accountUsernameLength');
+    }
+
+    if (!trimmedEmail) {
+      errors.email = t('settings.general.accountEmailRequired');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = t('settings.general.accountEmailInvalid');
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAccountErrors(errors);
+      return;
+    }
+
+    updateAdminProfileMutation.mutate({
+      username: trimmedUsername,
+      email: trimmedEmail
+    });
+  };
 
   const saveSoftLimitMutation = useMutation({
     mutationFn: async (limitBytes: number | null) => {
@@ -513,43 +607,61 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'general' && (
         <div className="space-y-6">
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-2">{t('admin.accountSettings.title')}</h2>
-            <p className="text-sm text-neutral-500 mb-4">{t('admin.accountSettings.description')}</p>
-            <form className="space-y-4" onSubmit={handleProfileSubmit}>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('admin.accountSettings.username')}
-                </label>
-                <Input
-                  value={profileForm.username}
-                  onChange={(e) => setProfileForm(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder={t('admin.accountSettings.usernamePlaceholder')}
-                  maxLength={120}
-                />
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.general.accountSection')}</h2>
+            {adminProfileLoading ? (
+              <div className="py-8 flex justify-center">
+                <Loading size="md" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  {t('admin.accountSettings.email')}
-                </label>
-                <Input
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder={t('admin.accountSettings.emailPlaceholder')}
-                />
-              </div>
-              {profileError && (
-                <p className="text-sm text-red-600">{profileError}</p>
-              )}
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={!isProfileDirty || updateProfileMutation.isPending}
-                >
-                  {updateProfileMutation.isPending ? t('common.saving') : t('admin.accountSettings.updateButton')}
-                </Button>
-              </div>
-            </form>
+            ) : (
+              <form className="space-y-4" onSubmit={handleAccountSubmit}>
+                <div>
+                  <label htmlFor="admin-account-username" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.accountUsername')}
+                  </label>
+                  <Input
+                    id="admin-account-username"
+                    type="text"
+                    value={accountForm.username}
+                    onChange={handleAccountChange('username')}
+                    placeholder="admin"
+                    leftIcon={<User className="w-5 h-5 text-neutral-400" />}
+                    error={accountErrors.username}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.accountUsernameHelp')}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="admin-account-email" className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.accountEmail')}
+                  </label>
+                  <Input
+                    id="admin-account-email"
+                    type="email"
+                    value={accountForm.email}
+                    onChange={handleAccountChange('email')}
+                    placeholder="admin@example.com"
+                    leftIcon={<Mail className="w-5 h-5 text-neutral-400" />}
+                    error={accountErrors.email}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.accountEmailHelp')}
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    leftIcon={<Save className="w-5 h-5" />}
+                    isLoading={updateAdminProfileMutation.isPending}
+                  >
+                    {t('settings.general.accountSaveButton')}
+                  </Button>
+                </div>
+              </form>
+            )}
           </Card>
 
           <Card padding="md">
@@ -572,7 +684,7 @@ export const SettingsPage: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('settings.general.defaultExpiration')}
@@ -596,6 +708,29 @@ export const SettingsPage: React.FC = () => {
                     min="1"
                     max="500"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.general.maxFilesPerUpload')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={generalSettings.max_files_per_upload}
+                    onChange={(e) => {
+                      const parsed = parseInt(e.target.value, 10);
+                      setGeneralSettings(prev => ({
+                        ...prev,
+                        max_files_per_upload: Number.isFinite(parsed)
+                          ? Math.min(MAX_FILES_PER_UPLOAD_LIMIT, Math.max(1, parsed))
+                          : prev.max_files_per_upload
+                      }));
+                    }}
+                    min="1"
+                    max={MAX_FILES_PER_UPLOAD_LIMIT}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {t('settings.general.maxFilesPerUploadHelp', { max: MAX_FILES_PER_UPLOAD_LIMIT })}
+                  </p>
                 </div>
               </div>
 
@@ -659,6 +794,21 @@ export const SettingsPage: React.FC = () => {
                 />
                 <span className="ml-2 text-sm text-neutral-700">{t('settings.general.maintenanceMode')}</span>
               </label>
+
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={generalSettings.short_gallery_urls}
+                    onChange={(e) => setGeneralSettings(prev => ({ ...prev, short_gallery_urls: e.target.checked }))}
+                    className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <span className="ml-2 text-sm text-neutral-700">{t('settings.general.enableShortGalleryUrls')}</span>
+                </label>
+                <p className="text-xs text-neutral-500 ml-6 mt-1">
+                  {t('settings.general.enableShortGalleryUrlsHelp')}
+                </p>
+              </div>
             </div>
           </Card>
 
@@ -1227,7 +1377,7 @@ export const SettingsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('settings.security.sessionAuth')}</h2>
             
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('settings.security.sessionTimeout')}
@@ -1235,10 +1385,40 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     type="number"
                     value={securitySettings.session_timeout_minutes}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, session_timeout_minutes: parseInt(e.target.value) || 60 }))}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, session_timeout_minutes: parseInt(e.target.value, 10) || 60 }))}
                     min="5"
                     max="1440"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.security.attemptWindowMinutes')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={securitySettings.attempt_window_minutes}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, attempt_window_minutes: parseInt(e.target.value, 10) || 15 }))}
+                    min="1"
+                    max="1440"
+                  />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.attemptWindowMinutesHelp')}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    {t('settings.security.lockoutDurationMinutes')}
+                  </label>
+                  <Input
+                    type="number"
+                    value={securitySettings.lockout_duration_minutes}
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, lockout_duration_minutes: parseInt(e.target.value, 10) || 30 }))}
+                    min="1"
+                    max="1440"
+                  />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.lockoutDurationMinutesHelp')}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1247,10 +1427,13 @@ export const SettingsPage: React.FC = () => {
                   <Input
                     type="number"
                     value={securitySettings.max_login_attempts}
-                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, max_login_attempts: parseInt(e.target.value) || 5 }))}
-                    min="3"
-                    max="10"
+                    onChange={(e) => setSecuritySettings(prev => ({ ...prev, max_login_attempts: parseInt(e.target.value, 10) || 5 }))}
+                    min="1"
+                    max="50"
                   />
+                  <p className="mt-1 text-sm text-neutral-600">
+                    {t('settings.security.maxLoginAttemptsHelp')}
+                  </p>
                 </div>
               </div>
 

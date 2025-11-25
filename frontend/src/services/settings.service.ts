@@ -18,6 +18,7 @@ export interface BrandingSettings {
   logo_display_header?: boolean;
   logo_display_hero?: boolean;
   logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
+  hide_powered_by?: boolean;
 }
 
 export interface ThemeSettings {
@@ -256,6 +257,13 @@ export const settingsService = {
     return response.data;
   },
 
+  // Helper to parse boolean values that might come as strings or actual booleans
+  _parseBoolean(value: any, defaultValue: boolean): boolean {
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return defaultValue;
+  },
+
   // Format branding settings from raw data
   formatBrandingSettings(rawSettings: Record<string, any>): BrandingSettings {
     return {
@@ -263,7 +271,7 @@ export const settingsService = {
       company_tagline: rawSettings.branding_company_tagline || '',
       support_email: rawSettings.branding_support_email || '',
       footer_text: rawSettings.branding_footer_text || '',
-      watermark_enabled: rawSettings.branding_watermark_enabled || false,
+      watermark_enabled: this._parseBoolean(rawSettings.branding_watermark_enabled, false),
       watermark_position: rawSettings.branding_watermark_position || 'bottom-right',
       watermark_opacity: rawSettings.branding_watermark_opacity || 50,
       watermark_size: rawSettings.branding_watermark_size || 15,
@@ -273,9 +281,10 @@ export const settingsService = {
       logo_size: rawSettings.branding_logo_size || 'medium',
       logo_max_height: rawSettings.branding_logo_max_height || 48,
       logo_position: rawSettings.branding_logo_position || 'left',
-      logo_display_header: rawSettings.branding_logo_display_header !== false,
-      logo_display_hero: rawSettings.branding_logo_display_hero !== false,
-      logo_display_mode: rawSettings.branding_logo_display_mode || 'logo_and_text'
+      logo_display_header: this._parseBoolean(rawSettings.branding_logo_display_header, true),
+      logo_display_hero: this._parseBoolean(rawSettings.branding_logo_display_hero, true),
+      logo_display_mode: rawSettings.branding_logo_display_mode || 'logo_and_text',
+      hide_powered_by: this._parseBoolean(rawSettings.branding_hide_powered_by, false)
     };
   },
 

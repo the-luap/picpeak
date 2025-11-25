@@ -8,6 +8,7 @@ const { generateThumbnail, ensureThumbnail } = require('../services/imageProcess
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
+const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -66,7 +67,7 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit per file
-    files: 500, // Maximum 500 files
+    files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
     // Add part size limits to prevent incomplete uploads
@@ -117,17 +118,25 @@ const uploadTimeout = (timeout = 300000) => { // 5 minutes default
 };
 
 // Upload photos for an event
-// Increased limit to 500 files, but recommend chunked uploads for better performance
-router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), (req, res, next) => { // 10 minute timeout
-  upload.array('photos', 500)(req, res, (err) => {
+// Max file count is configurable via general settings
+router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, res, next) => { // 10 minute timeout
+  let maxFilesPerUpload;
+  try {
+    maxFilesPerUpload = await getMaxFilesPerUpload();
+  } catch (error) {
+    console.error('Failed to resolve max files per upload:', error);
+    return res.status(500).json({ error: 'Unable to determine upload limits' });
+  }
+
+  upload.array('photos', maxFilesPerUpload)(req, res, (err) => {
     if (err) {
       console.error('Multer error:', err);
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
           return res.status(400).json({ error: 'File too large. Maximum size is 50MB per file.' });
         }
-        if (err.code === 'LIMIT_FILE_COUNT') {
-          return res.status(400).json({ error: 'Too many files. Maximum 500 files per upload.' });
+        if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ error: `Too many files. Maximum ${maxFilesPerUpload} files per upload.` });
         }
         return res.status(400).json({ error: `Upload error: ${err.message}` });
       }
@@ -484,24 +493,55 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     const { category_id } = req.body;
-    
+
     // Verify photo belongs to event
     const photo = await db('photos')
       .where({ id: photoId, event_id: eventId })
       .first();
-    
+
     if (!photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Prepare update data
+    const updateData = {
+      updated_at: new Date()
+    };
+
+    // Handle type-based categories ('individual' or 'collage')
+    // These are string values that map to the photo.type field
+    if (category_id === 'individual' || category_id === 'collage') {
+      updateData.type = category_id;
+      updateData.category_id = null; // Clear legacy category_id
+    } else if (category_id === null || category_id === undefined) {
+      // Explicitly clear category
+      updateData.category_id = null;
+    } else {
+      // Handle numeric category IDs from photo_categories table
+      const numericCategoryId = parseInt(category_id, 10);
+      if (!isNaN(numericCategoryId)) {
+        updateData.category_id = numericCategoryId;
+      } else {
+        updateData.category_id = null;
+      }
+    }
+
     // Update photo
     const normalizedCategoryId = parseCategoryId(category_id);
 
     await db('photos')
+      .where({ id: photoId, event_id: eventId })
+      .update(updateData);
+
+    // Fetch and return updated photo for confirmation
+    const updatedPhoto = await db('photos')
       .where({ id: photoId })
-      .update({ category_id: normalizedCategoryId });
-    
-    res.json({ message: 'Photo updated successfully' });
+      .first();
+
+    res.json({
+      message: 'Photo updated successfully',
+      photo: updatedPhoto
+    });
   } catch (error) {
     console.error('Error updating photo:', error);
     res.status(500).json({ error: 'Failed to update photo' });
@@ -581,33 +621,52 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds, updates } = req.body;
-    
+
     if (!Array.isArray(photoIds) || photoIds.length === 0) {
       return res.status(400).json({ error: 'Invalid photo IDs' });
     }
-    
+
     // Verify all photos belong to the event
     const photoCount = await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .count('id as count')
       .first();
-    
-    if (photoCount.count !== photoIds.length) {
+
+    if (parseInt(photoCount.count) !== photoIds.length) {
       return res.status(400).json({ error: 'Some photos do not belong to this event' });
     }
-    
-    // Update photos
-    const updateData = {};
+
+    // Prepare update data
+    const updateData = {
+      updated_at: new Date()
+    };
+
     if (updates.category_id !== undefined) {
-      updateData.category_id = parseCategoryId(updates.category_id);
+      // Handle type-based categories ('individual' or 'collage')
+      // These are string values that map to the photo.type field
+      if (updates.category_id === 'individual' || updates.category_id === 'collage') {
+        updateData.type = updates.category_id;
+        updateData.category_id = null; // Clear legacy category_id
+      } else if (updates.category_id === null) {
+        // Explicitly clear category
+        updateData.category_id = null;
+      } else {
+        // Handle numeric category IDs from photo_categories table
+        const numericCategoryId = parseInt(updates.category_id, 10);
+        if (!isNaN(numericCategoryId)) {
+          updateData.category_id = numericCategoryId;
+        } else {
+          updateData.category_id = null;
+        }
+      }
     }
-    
+
     await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .update(updateData);
-    
+
     res.json({ message: `${photoIds.length} photos updated successfully` });
   } catch (error) {
     console.error('Error bulk updating photos:', error);

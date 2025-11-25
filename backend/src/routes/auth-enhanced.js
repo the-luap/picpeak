@@ -22,6 +22,8 @@ const {
   getAdminTokenFromRequest,
   getGalleryTokenFromRequest,
 } = require('../utils/tokenUtils');
+const { getEventShareToken, resolveShareIdentifier } = require('../services/shareLinkService');
+const { getClientIp } = require('../utils/requestIp');
 const router = express.Router();
 
 // Admin login with enhanced security
@@ -36,7 +38,7 @@ router.post('/admin/login', [
     }
     
     const { username, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     
     // Check account lockout first
@@ -171,7 +173,7 @@ router.post('/gallery/verify', [
     }
     
     const { slug, password, recaptchaToken } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
     const event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
@@ -185,7 +187,7 @@ router.post('/gallery/verify', [
     const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
 
     if (requiresPassword) {
-      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`);
+      const lockoutStatus = await checkAccountLockout(`gallery:${slug}`, ipAddress);
       if (lockoutStatus.isLocked) {
         logger.warn('Gallery access attempt on locked gallery', { slug, ipAddress });
         return res.status(423).json({ 
@@ -281,21 +283,25 @@ router.post('/gallery/share-login', [
     }
 
     const { slug, token } = req.body;
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
 
-    const event = await db('events')
+    let event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
       .first();
+
+    if (!event) {
+      const resolved = await resolveShareIdentifier(slug);
+      if (resolved?.event) {
+        event = resolved.event;
+      }
+    }
 
     if (!event) {
       return res.status(404).json({ error: 'Gallery not found' });
     }
 
-    let expectedToken = event.share_link;
-    if (expectedToken && expectedToken.includes('/')) {
-      expectedToken = expectedToken.split('/').pop();
-    }
+    const expectedToken = getEventShareToken(event);
 
     if (!expectedToken || token !== expectedToken) {
       return res.status(401).json({ error: 'Invalid or expired share link' });
@@ -312,7 +318,7 @@ router.post('/gallery/share-login', [
       issuer: 'picpeak-auth'
     });
 
-    await trackSuccessfulLogin(`gallery:${slug}:share`, ipAddress, userAgent);
+    await trackSuccessfulLogin(`gallery:${event.slug}:share`, ipAddress, userAgent);
     setGalleryAuthCookies(res, jwtToken, event.slug);
 
     const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');

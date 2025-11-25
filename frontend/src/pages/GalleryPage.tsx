@@ -11,13 +11,14 @@ import { useGalleryAuth, useTheme } from '../contexts';
 import { useGalleryInfo } from '../hooks/useGallery';
 import { GalleryView } from '../components/gallery';
 import { analyticsService } from '../services/analytics.service';
+import { galleryService } from '../services';
 import { api } from '../config/api';
 import { GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { buildResourceUrl } from '../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../utils/accessControl';
 
 export const GalleryPage: React.FC = () => {
-  const { slug, token } = useParams<{ slug: string; token?: string }>();
+  const { slug: rawSlug, token: rawToken } = useParams<{ slug: string; token?: string }>();
   const { isAuthenticated, login, event } = useGalleryAuth();
   const { t, i18n } = useTranslation();
   const { format } = useLocalizedDate();
@@ -27,10 +28,82 @@ export const GalleryPage: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+  const [resolvedSlug, setResolvedSlug] = useState<string | null>(() => {
+    if (rawSlug && !rawToken && /^[0-9a-fA-F]{32}$/.test(rawSlug)) {
+      return null;
+    }
+    return rawSlug || null;
+  });
+  const [resolvedToken, setResolvedToken] = useState<string | undefined>(rawToken);
+  const [isResolvingIdentifier, setIsResolvingIdentifier] = useState<boolean>(() =>
+    Boolean(rawSlug && !rawToken && /^[0-9a-fA-F]{32}$/.test(rawSlug))
+  );
+  const [identifierError, setIdentifierError] = useState<string | null>(null);
+  const lastResolvedIdentifier = React.useRef<string | null>(null);
 
-  // Fetch gallery info (public data)
-  const { data: galleryInfo, isLoading: isLoadingInfo, error: infoError } = useGalleryInfo(slug!, token);
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const looksLikeToken = Boolean(rawSlug && !rawToken && /^[0-9a-fA-F]{32}$/.test(rawSlug));
+
+    if (!rawSlug) {
+      lastResolvedIdentifier.current = null;
+      setResolvedSlug(null);
+      setResolvedToken(rawToken);
+      setIsResolvingIdentifier(false);
+      setIdentifierError(null);
+    } else if (!looksLikeToken) {
+      lastResolvedIdentifier.current = null;
+      setResolvedSlug(rawSlug);
+      setResolvedToken(rawToken);
+      setIsResolvingIdentifier(false);
+      setIdentifierError(null);
+    } else if (lastResolvedIdentifier.current !== rawSlug) {
+      setIsResolvingIdentifier(true);
+      setIdentifierError(null);
+
+      galleryService.resolveIdentifier(rawSlug)
+        .then((data) => {
+          if (cancelled) return;
+          lastResolvedIdentifier.current = rawSlug;
+          setResolvedSlug(data.slug);
+          setResolvedToken(data.token);
+          setIdentifierError(null);
+        })
+        .catch((error: any) => {
+          if (cancelled) return;
+          lastResolvedIdentifier.current = rawSlug;
+          setResolvedSlug(null);
+          setResolvedToken(undefined);
+          const message = error?.response?.data?.error || 'Unable to resolve gallery link';
+          setIdentifierError(message);
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsResolvingIdentifier(false);
+          }
+        });
+    } else {
+      setIsResolvingIdentifier(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawSlug, rawToken]);
+
+  const canFetchGalleryInfo = Boolean(resolvedSlug) && !isResolvingIdentifier;
+  const {
+    data: galleryInfo,
+    isLoading: isLoadingInfoQuery,
+    error: infoError
+  } = useGalleryInfo(canFetchGalleryInfo ? resolvedSlug ?? undefined : undefined, resolvedToken, canFetchGalleryInfo);
+  const isLoadingInfo = isLoadingInfoQuery || isResolvingIdentifier;
   const requiresPassword = normalizeRequirePassword(galleryInfo?.requires_password, true);
+
+  React.useEffect(() => {
+    setAutoLoginAttempted(false);
+  }, [resolvedSlug]);
   
   // Fetch branding settings
   const { data: settingsData } = useQuery({
@@ -91,14 +164,14 @@ export const GalleryPage: React.FC = () => {
   }, [galleryInfo, settingsData, isAuthenticated, setTheme]);
 
   React.useEffect(() => {
-    if (!slug) {
+    if (!resolvedSlug || isResolvingIdentifier) {
       return;
     }
 
     if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted) {
       setAutoLoginAttempted(true);
       setIsLoggingIn(true);
-      login(slug, '')
+      login(resolvedSlug, '')
         .then(() => {
           setLoginError(null);
         })
@@ -112,7 +185,7 @@ export const GalleryPage: React.FC = () => {
           setIsLoggingIn(false);
         });
     }
-  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, slug]);
+  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier]);
 
   // Calculate days until expiration
   const daysUntilExpiration = galleryInfo
@@ -131,11 +204,16 @@ export const GalleryPage: React.FC = () => {
     try {
       setIsLoggingIn(true);
       setLoginError(null);
-      await login(slug!, requiresPassword ? password : '', recaptchaToken);
+      if (!resolvedSlug) {
+        setLoginError(t('errors.galleryNotFound'));
+        return;
+      }
+
+      await login(resolvedSlug, requiresPassword ? password : '', recaptchaToken);
       
       if (requiresPassword) {
         analyticsService.trackGalleryEvent('password_entry', {
-          gallery: slug,
+          gallery: resolvedSlug,
           success: true
         });
       }
@@ -158,7 +236,7 @@ export const GalleryPage: React.FC = () => {
       // Track failed password entry
       if (requiresPassword) {
         analyticsService.trackGalleryEvent('password_entry', {
-          gallery: slug,
+          gallery: resolvedSlug ?? rawSlug ?? 'unknown',
           success: false,
           statusCode
         });
@@ -177,6 +255,59 @@ export const GalleryPage: React.FC = () => {
       <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
         <div className="min-h-screen flex items-center justify-center">
           <Loading size="lg" text={t('gallery.loading')} />
+        </div>
+      </div>
+    );
+  }
+
+  if (identifierError && !resolvedSlug && !isResolvingIdentifier) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
+        <div className="min-h-screen flex flex-col">
+          {settingsData?.branding_logo_url && (
+            <div className="p-8 text-center">
+              <img
+                src={buildResourceUrl(settingsData.branding_logo_url)}
+                alt={settingsData.branding_company_name || 'Company Logo'}
+                className="h-16 w-auto object-contain mx-auto"
+              />
+            </div>
+          )}
+
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="max-w-md w-full mx-4">
+              <CardContent className="text-center py-12">
+                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">
+                  {t('errors.galleryNotFound')}
+                </h2>
+                <p className="text-neutral-600">
+                  {identifierError}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="p-8 text-center">
+            <div className="flex items-center justify-center gap-4">
+              <Link
+                to="/impressum"
+                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                {t('legal.impressum')}
+              </Link>
+              <span className="text-xs text-neutral-400">|</span>
+              <Link
+                to="/datenschutz"
+                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                {t('legal.datenschutz')}
+              </Link>
+            </div>
+            <p className="text-xs mt-2 text-neutral-500">
+              Powered by <span className="font-semibold">PicPeak</span>
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -299,9 +430,11 @@ export const GalleryPage: React.FC = () => {
     );
   }
 
+  const gallerySlugForView = resolvedSlug ?? rawSlug ?? '';
+
   // Show gallery view if authenticated
   if (isAuthenticated && event) {
-    return <GalleryView slug={slug!} event={event} />;
+    return <GalleryView slug={gallerySlugForView} event={event} />;
   }
 
   // Show login form

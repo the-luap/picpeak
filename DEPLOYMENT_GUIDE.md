@@ -7,9 +7,9 @@ This guide covers multiple deployment options for PicPeak, from simple local set
 For the easiest installation without Docker or complex configurations, use our **unified setup script**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/setup.sh -o setup.sh && \
-chmod +x setup.sh && \
-sudo ./setup.sh
+curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/picpeak-setup.sh -o picpeak-setup.sh && \
+chmod +x picpeak-setup.sh && \
+sudo ./picpeak-setup.sh
 ```
 
 This automated script handles everything including:
@@ -219,13 +219,16 @@ Update `.env` with:
 - **URL Configuration** (for backend CORS):
   - `FRONTEND_URL` - Frontend origin (use full URL with scheme, no trailing slash)
     - Example (Docker): `http://localhost:3000`
-  - `ADMIN_URL` - Admin origin (same as `FRONTEND_URL` for Docker; full URL, no trailing slash)
-    - Example (Docker): `http://localhost:3000`
+- `ADMIN_URL` - Admin origin (same as `FRONTEND_URL` for Docker; full URL, no trailing slash)
+  - Example (Docker): `http://localhost:3000`
   
   Notes:
   - Do not include trailing `/` (e.g., use `http://host:3000`, not `http://host:3000/`).
   - Always include the scheme (`http://` or `https://`).
   - The backend compares origins strictly for CORS; malformed values will cause login requests to fail with 500.
+
+#### Authentication Security
+- Configure login attempt thresholds from **Admin → Settings → Security**. Defaults are 5 failed attempts per IP within 15 minutes, resulting in a 30 minute lockout.
 
 #### External Database Example
 To use an external PostgreSQL instead of the bundled container, set the following in `.env` and ensure the `postgres` service is disabled or removed:
@@ -424,10 +427,10 @@ If you lose your admin credentials after the first login, you'll need to manuall
 
 ```bash
 # Native reinstall example
-sudo ./setup.sh --native --force-admin-password-reset
+sudo ./picpeak-setup.sh --native --force-admin-password-reset
 
 # Docker reinstall example
-sudo ./setup.sh --docker --force-admin-password-reset
+sudo ./picpeak-setup.sh --docker --force-admin-password-reset
 ```
 
 The flag calls `scripts/reset-admin-password.js` in non-interactive mode, writes a fresh random password into `data/ADMIN_CREDENTIALS.txt`, and prints the new credentials at the end of the installer run.

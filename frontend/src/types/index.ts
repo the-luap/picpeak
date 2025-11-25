@@ -5,8 +5,8 @@ export interface Event {
   event_type: string;
   event_name: string;
   event_date: string;
-  host_name?: string;
-  host_email: string;
+  customer_name?: string;
+  customer_email: string;
   admin_email: string;
   welcome_message?: string;
   color_theme?: string;
@@ -109,6 +109,17 @@ export interface GalleryStats {
   total_views: number;
   total_downloads: number;
   unique_visitors: number;
+}
+
+export interface ResolvedGalleryIdentifier {
+  slug: string;
+  token: string;
+  matchType: string;
+  share_link: string;
+  share_path: string;
+  share_url: string;
+  short_enabled: boolean;
+  requires_password: boolean;
 }
 
 // Auth types

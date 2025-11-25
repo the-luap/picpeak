@@ -2,7 +2,7 @@
 
 ################################################################################
 # PicPeak Unified Setup Script
-# Version: 2.0.0
+# Version: 2.1.0
 # Description: Universal installer for PicPeak with Docker and Native options
 # Supports: Ubuntu, Debian, Fedora, RHEL/CentOS, Raspberry Pi OS
 ################################################################################
@@ -11,7 +11,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # Script configuration
-readonly SCRIPT_VERSION="2.0.0"
+readonly SCRIPT_VERSION="2.1.0"
 readonly APP_NAME="PicPeak"
 readonly REPO_URL="https://github.com/the-luap/picpeak.git"
 readonly NODE_VERSION="20"
@@ -64,17 +64,19 @@ FORCE_ADMIN_PASSWORD_RESET=false
 # Run a command as the application user, even if sudo is not available
 run_as_user() {
     local cmd="$*"
+    local current_dir_escaped
+    current_dir_escaped=$(printf '%q' "$(pwd)")
     if [[ "$(id -u)" -ne 0 ]]; then
-        # Already non-root; just run
-        bash -lc "$cmd"
+        # Already non-root; preserve working directory
+        bash -lc "cd $current_dir_escaped && $cmd"
         return $?
     fi
     if command_exists sudo; then
-        sudo -H -u "$NATIVE_APP_USER" bash -lc "$cmd"
+        sudo -H -u "$NATIVE_APP_USER" bash -lc "cd $current_dir_escaped && $cmd"
     elif command_exists runuser; then
-        runuser -u "$NATIVE_APP_USER" -- bash -lc "$cmd"
+        runuser -u "$NATIVE_APP_USER" -- bash -lc "cd $current_dir_escaped && $cmd"
     else
-        su -s /bin/bash - "$NATIVE_APP_USER" -c "$cmd"
+        su -s /bin/bash - "$NATIVE_APP_USER" -c "cd $current_dir_escaped && $cmd"
     fi
 }
 
@@ -391,7 +393,30 @@ setup_docker_installation() {
     if [[ -d "$app_dir/.git" ]]; then
         log_step "Existing PicPeak repository detected; pulling latest changes"
         cd "$app_dir"
-        git pull --rebase --autostash || git pull
+        git pull
+    elif [[ -d "$app_dir" ]]; then
+        if [[ -z "$(ls -A "$app_dir" 2>/dev/null)" ]]; then
+            log_warn "Existing directory $app_dir is empty but not a git repository; recreating it..."
+            rm -rf "$app_dir"
+            git clone "$REPO_URL" "$app_dir"
+        else
+            log_warn "Directory $app_dir already exists and is not a git repository."
+            if [[ "$UNATTENDED" == "true" ]]; then
+                local backup_dir="${app_dir}.backup-$(date +%Y%m%d-%H%M%S)"
+                log_warn "Unattended mode: backing up directory to $backup_dir and cloning a fresh copy."
+                mv "$app_dir" "$backup_dir"
+                git clone "$REPO_URL" "$app_dir"
+            else
+                if confirm "Replace existing directory $app_dir with a fresh clone? This will move the current contents to a backup folder." "y"; then
+                    local backup_dir="${app_dir}.backup-$(date +%Y%m%d-%H%M%S)"
+                    mv "$app_dir" "$backup_dir"
+                    log_step "Existing directory moved to $backup_dir"
+                    git clone "$REPO_URL" "$app_dir"
+                else
+                    die "Installation aborted because $app_dir already exists and is not a PicPeak git repository."
+                fi
+            fi
+        fi
     else
         if [[ -d "$app_dir" && -n "$(find "$app_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
             die "Target directory $app_dir already exists and is not empty. Remove it or specify --install-dir before retrying."
@@ -639,12 +664,15 @@ setup_native_installation() {
         apt)
             apt-get install -y build-essential python3
             ;;
-        dnf|yum)
-            if "$PACKAGE_MANAGER" --version 2>/dev/null | grep -Ei 'dnf( |-)5' >/dev/null; then
-                $PACKAGE_MANAGER install -y @development-tools
-            else
+        dnf)
+            if ! $PACKAGE_MANAGER install -y @development-tools; then
+                log_warn "dnf @development-tools group install failed, retrying with legacy groupinstall syntax..."
                 $PACKAGE_MANAGER groupinstall -y "Development Tools"
             fi
+            $PACKAGE_MANAGER install -y python3
+            ;;
+        yum)
+            $PACKAGE_MANAGER groupinstall -y "Development Tools"
             $PACKAGE_MANAGER install -y python3
             ;;
     esac
@@ -967,15 +995,17 @@ configure_email() {
 }
 
 print_success_message() {
-    local app_dir port
+    local app_dir port manual_reset_hint
     
     if [[ "$INSTALL_METHOD" == "docker" ]]; then
         app_dir="$DOCKER_APP_DIR"
         [[ -n "${SUDO_USER:-}" ]] && app_dir="/home/$SUDO_USER/picpeak"
         port="${CUSTOM_PORT:-$DEFAULT_PORT}"
+        manual_reset_hint="cd $(printf %q "$app_dir") && docker compose exec -T backend node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt"
     else
         app_dir="$NATIVE_APP_DIR"
         port="${CUSTOM_PORT:-$DEFAULT_PORT}"
+        manual_reset_hint="cd $(printf %q "${NATIVE_APP_DIR}/app/backend") && sudo -H -u $(printf %q "$NATIVE_APP_USER") node scripts/reset-admin-password.js --force --credentials-file data/ADMIN_CREDENTIALS.txt"
     fi
     
     print_header "🎉 Installation Complete!"
@@ -1020,13 +1050,7 @@ print_success_message() {
         fi
       else
         echo -e "Email:    ${CYAN}$ADMIN_EMAIL${NC}"
-        local reset_hint
-        if [[ "$INSTALL_METHOD" == "docker" ]]; then
-          reset_hint="docker compose exec backend node scripts/reset-admin-password.js"
-        else
-          reset_hint="cd $NATIVE_APP_DIR/app/backend && node scripts/reset-admin-password.js"
-        fi
-        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run $reset_hint)${NC}"
+        echo -e "Password: ${YELLOW}(credentials file not found - rerun setup with --force-admin-password-reset or run '${manual_reset_hint}')${NC}"
       fi
     echo
     echo -e "${YELLOW}⚠️  IMPORTANT: Change the admin password on first login!${NC}"

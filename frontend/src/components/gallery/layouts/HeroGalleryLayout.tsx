@@ -168,23 +168,26 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
         </div>
         
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <button
-            type="button"
-            onClick={handleScrollToGrid}
-            className="rounded-full border border-white/30 bg-white/10 p-3 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 hover:bg-white/20"
-            aria-label={t('gallery.scrollToGallery', 'Scroll to gallery')}
-          >
-            <ChevronDown className="w-8 h-8 drop-shadow-lg" />
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            // Scroll to the grid section
+            const gridSection = document.getElementById('gallery-grid-section');
+            if (gridSection) {
+              gridSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+              // Fallback: scroll down by hero section height
+              window.scrollBy({ top: window.innerHeight * 0.9, behavior: 'smooth' });
+            }
+          }}
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full p-2"
+          aria-label="Scroll to gallery"
+        >
+          <ChevronDown className="w-8 h-8 text-white drop-shadow-lg" />
+        </button>
       </div>
 
       {/* Grid Section */}
-      <div
-        ref={gridRef}
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
-      >
+      <div id="gallery-grid-section" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {remainingPhotos.map((photo) => {
           const actualIndex = photos.findIndex(p => p.id === photo.id);
           return (

@@ -7,10 +7,140 @@ const { db } = require('../database/db');
 const { formatBoolean } = require('./dbCompat');
 const logger = require('./logger');
 
-// Configuration constants
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
-const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes window for counting attempts
+const DEFAULT_SECURITY_CONFIG = Object.freeze({
+  maxAttempts: 5,
+  lockoutDurationMs: 30 * 60 * 1000, // 30 minutes
+  attemptWindowMs: 15 * 60 * 1000 // 15 minutes
+});
+
+const SECURITY_CONFIG_CACHE_MS = 60 * 1000; // 1 minute cache
+let cachedSecurityConfig = { ...DEFAULT_SECURITY_CONFIG };
+let cachedConfigFetchedAt = 0;
+
+function parseStoredValue(rawValue) {
+  if (rawValue === undefined || rawValue === null) {
+    return undefined;
+  }
+
+  if (typeof rawValue !== 'string') {
+    return rawValue;
+  }
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    logger.warn(`Unable to parse stored security setting value "${rawValue}", using raw string.`);
+    return rawValue;
+  }
+}
+
+function normalizePositiveInteger(name, value, fallback, options = {}) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    logger.warn(`Invalid numeric value for ${name}: ${value}. Falling back to default (${fallback}).`);
+    return fallback;
+  }
+
+  let adjustedValue = Math.floor(numericValue);
+
+  if (options.min !== undefined && adjustedValue < options.min) {
+    logger.warn(`Value for ${name} below minimum (${options.min}). Clamping to minimum.`);
+    adjustedValue = options.min;
+  }
+
+  if (options.max !== undefined && adjustedValue > options.max) {
+    logger.warn(`Value for ${name} exceeds maximum (${options.max}). Clamping to maximum.`);
+    adjustedValue = options.max;
+  }
+
+  if (adjustedValue <= 0) {
+    logger.warn(`Value for ${name} must be positive. Falling back to default (${fallback}).`);
+    return fallback;
+  }
+
+  return adjustedValue;
+}
+
+async function loadSecurityConfigFromSettings() {
+  const rows = await db('app_settings').whereIn('setting_key', [
+    'security_max_login_attempts',
+    'security_lockout_duration_minutes',
+    'security_attempt_window_minutes'
+  ]);
+
+  const config = { ...DEFAULT_SECURITY_CONFIG };
+
+  rows.forEach(row => {
+    const value = parseStoredValue(row.setting_value);
+
+    switch (row.setting_key) {
+      case 'security_max_login_attempts': {
+        config.maxAttempts = normalizePositiveInteger(
+          'security_max_login_attempts',
+          value,
+          DEFAULT_SECURITY_CONFIG.maxAttempts,
+          { min: 1, max: 50 }
+        );
+        break;
+      }
+      case 'security_lockout_duration_minutes': {
+        const minutes = normalizePositiveInteger(
+          'security_lockout_duration_minutes',
+          value,
+          DEFAULT_SECURITY_CONFIG.lockoutDurationMs / (60 * 1000),
+          { min: 1, max: 24 * 60 }
+        );
+        config.lockoutDurationMs = minutes * 60 * 1000;
+        break;
+      }
+      case 'security_attempt_window_minutes': {
+        const minutes = normalizePositiveInteger(
+          'security_attempt_window_minutes',
+          value,
+          DEFAULT_SECURITY_CONFIG.attemptWindowMs / (60 * 1000),
+          { min: 1, max: 24 * 60 }
+        );
+        config.attemptWindowMs = minutes * 60 * 1000;
+        break;
+      }
+      default:
+        break;
+    }
+  });
+
+  return config;
+}
+
+async function getSecurityConfig(options = {}) {
+  const now = Date.now();
+  const forceRefresh = options.forceRefresh === true;
+
+  if (!forceRefresh && cachedSecurityConfig && (now - cachedConfigFetchedAt) < SECURITY_CONFIG_CACHE_MS) {
+    return cachedSecurityConfig;
+  }
+
+  try {
+    const config = await loadSecurityConfigFromSettings();
+    cachedSecurityConfig = config;
+    cachedConfigFetchedAt = now;
+    return cachedSecurityConfig;
+  } catch (error) {
+    logger.error('Error loading security configuration:', error);
+    cachedSecurityConfig = { ...DEFAULT_SECURITY_CONFIG };
+    cachedConfigFetchedAt = now;
+    return cachedSecurityConfig;
+  }
+}
+
+function resetSecurityConfigCache() {
+  cachedSecurityConfig = { ...DEFAULT_SECURITY_CONFIG };
+  cachedConfigFetchedAt = 0;
+}
 
 /**
  * Track failed login attempt
@@ -59,6 +189,8 @@ async function trackSuccessfulLogin(identifier, ipAddress, userAgent) {
     if (!tableExists) {
       return;
     }
+
+    const { attemptWindowMs } = await getSecurityConfig();
     
     await db('login_attempts').insert({
       identifier,
@@ -69,7 +201,7 @@ async function trackSuccessfulLogin(identifier, ipAddress, userAgent) {
     });
 
     // Clear old failed attempts for this user
-    const cutoffTime = new Date(Date.now() - ATTEMPT_WINDOW);
+    const cutoffTime = new Date(Date.now() - attemptWindowMs);
     await db('login_attempts')
       .where('identifier', identifier)
       .where('success', formatBoolean(false))
@@ -83,30 +215,39 @@ async function trackSuccessfulLogin(identifier, ipAddress, userAgent) {
 /**
  * Check if account is locked due to too many failed attempts
  * @param {string} identifier - Username or email
+ * @param {string} [ipAddress] - Optional IP address scope
  * @returns {Promise<{isLocked: boolean, remainingTime?: number}>}
  */
-async function checkAccountLockout(identifier) {
+async function checkAccountLockout(identifier, ipAddress) {
   try {
     // Check if table exists first
     const tableExists = await db.schema.hasTable('login_attempts');
     if (!tableExists) {
       return { isLocked: false };
     }
+
+    const { attemptWindowMs, maxAttempts, lockoutDurationMs } = await getSecurityConfig();
     
-    const recentWindow = new Date(Date.now() - ATTEMPT_WINDOW);
+    const recentWindow = new Date(Date.now() - attemptWindowMs);
     
     // Get recent failed attempts
-    const failedAttempts = await db('login_attempts')
+    const failedAttemptsQuery = db('login_attempts')
       .where('identifier', identifier)
       .where('success', formatBoolean(false))
-      .where('attempt_time', '>=', recentWindow.toISOString())
-      .orderBy('attempt_time', 'desc')
-      .limit(MAX_LOGIN_ATTEMPTS);
+      .where('attempt_time', '>=', recentWindow.toISOString());
 
-    if (failedAttempts.length >= MAX_LOGIN_ATTEMPTS) {
+    if (ipAddress) {
+      failedAttemptsQuery.andWhere('ip_address', ipAddress);
+    }
+
+    const failedAttempts = await failedAttemptsQuery
+      .orderBy('attempt_time', 'desc')
+      .limit(maxAttempts);
+
+    if (failedAttempts.length >= maxAttempts) {
       // Check if still within lockout period
       const oldestAttempt = failedAttempts[failedAttempts.length - 1];
-      const lockoutEnd = new Date(oldestAttempt.attempt_time).getTime() + LOCKOUT_DURATION;
+      const lockoutEnd = new Date(oldestAttempt.attempt_time).getTime() + lockoutDurationMs;
       const now = Date.now();
 
       if (now < lockoutEnd) {
@@ -216,6 +357,6 @@ module.exports = {
   checkSuspiciousActivity,
   getGenericAuthError,
   initializeCleanupJob,
-  MAX_LOGIN_ATTEMPTS,
-  LOCKOUT_DURATION
+  getSecurityConfig,
+  resetSecurityConfigCache
 };

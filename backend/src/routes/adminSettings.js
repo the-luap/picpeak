@@ -18,7 +18,10 @@ const {
   getRawPublicSiteSettings,
 } = require('../services/publicSiteService');
 const { sanitizeCss } = require('../utils/cssSanitizer');
+const { clearShareLinkSettingsCache } = require('../services/shareLinkService');
+const { resetSecurityConfigCache } = require('../utils/authSecurity');
 const router = express.Router();
+const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -188,7 +191,8 @@ router.put('/branding', adminAuth, async (req, res) => {
       logo_position,
       logo_display_header,
       logo_display_hero,
-      logo_display_mode
+      logo_display_mode,
+      hide_powered_by
     } = req.body;
 
     const brandingSettings = {
@@ -208,7 +212,8 @@ router.put('/branding', adminAuth, async (req, res) => {
       logo_position,
       logo_display_header,
       logo_display_hero,
-      logo_display_mode
+      logo_display_mode,
+      hide_powered_by
     };
 
     // Handle favicon deletion if empty string or null is provided
@@ -472,8 +477,23 @@ router.put('/theme', adminAuth, async (req, res) => {
 router.put('/general', adminAuth, async (req, res) => {
   try {
     const settings = { ...req.body };
+    let uploadLimitTouched = false;
 
     const publicSiteKeysTouched = Object.keys(settings).some((key) => key.startsWith('general_public_site_'));
+
+    if (Object.prototype.hasOwnProperty.call(settings, 'general_max_files_per_upload')) {
+      uploadLimitTouched = true;
+      const rawValue = Number(settings.general_max_files_per_upload);
+      const normalizedValue = Number.isFinite(rawValue) ? Math.floor(rawValue) : NaN;
+
+      if (!Number.isInteger(normalizedValue) || normalizedValue < 1 || normalizedValue > MAX_ALLOWED_FILES_PER_UPLOAD) {
+        return res.status(400).json({
+          error: `general_max_files_per_upload must be an integer between 1 and ${MAX_ALLOWED_FILES_PER_UPLOAD}`
+        });
+      }
+
+      settings.general_max_files_per_upload = normalizedValue;
+    }
 
     if (publicSiteKeysTouched) {
       if (Object.prototype.hasOwnProperty.call(settings, 'general_public_site_custom_css')) {
@@ -529,6 +549,12 @@ router.put('/general', adminAuth, async (req, res) => {
     if (publicSiteKeysTouched) {
       clearPublicSiteCache();
     }
+    if (uploadLimitTouched) {
+      clearMaxFilesPerUploadCache();
+    }
+    if (Object.prototype.hasOwnProperty.call(settings, 'general_short_gallery_urls')) {
+      clearShareLinkSettingsCache();
+    }
 
     // Log activity
     await db('activity_logs').insert({
@@ -566,6 +592,8 @@ router.put('/security', adminAuth, async (req, res) => {
           updated_at: new Date()
         });
     }
+
+    resetSecurityConfigCache();
 
     // Log activity
     await db('activity_logs').insert({

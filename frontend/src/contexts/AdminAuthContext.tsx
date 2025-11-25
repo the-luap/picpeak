@@ -13,7 +13,7 @@ interface AdminAuthContextType {
   error: string | null;
   mustChangePassword: boolean;
   updatePasswordChanged: () => void;
-  updateProfile: (user: AdminUser) => void;
+  updateUserProfile: (updates: Partial<AdminUser>) => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -105,9 +105,15 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
     }
   };
 
-  const updateProfile = (updatedUser: AdminUser) => {
-    setUser(updatedUser);
-    sessionStorage.setItem('admin_user', JSON.stringify(updatedUser));
+  const updateUserProfile = (updates: Partial<AdminUser>) => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const nextUser = { ...prev, ...updates };
+      sessionStorage.setItem('admin_user', JSON.stringify(nextUser));
+      return nextUser;
+    });
   };
 
   return (
@@ -121,7 +127,7 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
         error,
         mustChangePassword,
         updatePasswordChanged,
-        updateProfile,
+        updateUserProfile,
       }}
     >
       {children}

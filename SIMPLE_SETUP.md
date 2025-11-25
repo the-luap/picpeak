@@ -8,9 +8,9 @@ This guide provides easy installation instructions for PicPeak on Linux servers 
 
 ```bash
 # Download and run the unified setup script
-curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/setup.sh -o setup.sh && \
-chmod +x setup.sh && \
-sudo ./setup.sh
+curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/picpeak-setup.sh -o picpeak-setup.sh && \
+chmod +x picpeak-setup.sh && \
+sudo ./picpeak-setup.sh
 ```
 
 The script will automatically detect your environment and recommend the best installation method.
@@ -21,7 +21,7 @@ The script will automatically detect your environment and recommend the best ins
 Best for: Most users, easy updates, isolated environment
 
 ```bash
-sudo ./setup.sh --docker
+sudo ./picpeak-setup.sh --docker
 ```
 
 **Pros:**
@@ -38,7 +38,7 @@ sudo ./setup.sh --docker
 Best for: Resource-constrained systems, Raspberry Pi, direct control
 
 ```bash
-sudo ./setup.sh --native
+sudo ./picpeak-setup.sh --native
 ```
 
 **Pros:**
@@ -73,7 +73,7 @@ sudo ./setup.sh --native
 
 ### Interactive Mode (Default)
 ```bash
-sudo ./setup.sh
+sudo ./picpeak-setup.sh
 ```
 
 The script will prompt you to choose:
@@ -87,7 +87,7 @@ The script will prompt you to choose:
 
 #### Docker with full configuration:
 ```bash
-sudo ./setup.sh --docker --unattended \
+sudo ./picpeak-setup.sh --docker --unattended \
   --domain photos.example.com \
   --email admin@example.com \
   --admin-password SecurePass123 \
@@ -100,7 +100,7 @@ sudo ./setup.sh --docker --unattended \
 
 #### Native with minimal configuration:
 ```bash
-sudo ./setup.sh --native --unattended \
+sudo ./picpeak-setup.sh --native --unattended \
   --email admin@example.com \
   --admin-password SecurePass123
 ```
@@ -293,7 +293,7 @@ sudo systemctl restart picpeak-backend picpeak-workers
 
 # Update PicPeak
 # (reruns migrations to pick up schema fixes for native installs)
-sudo ./setup.sh --update
+sudo ./picpeak-setup.sh --update
 ```
 
 ## ⚙️ Configuration
@@ -385,14 +385,14 @@ docker compose pull
 docker compose up -d
 
 # Native
-sudo ./setup.sh --update
+sudo ./picpeak-setup.sh --update
 ```
 
 ### Uninstall
 
 ```bash
 # Will prompt for confirmation and data removal options
-sudo ./setup.sh --uninstall
+sudo ./picpeak-setup.sh --uninstall
 ```
 
 ## 🐛 Troubleshooting
@@ -508,13 +508,13 @@ sudo systemctl restart picpeak-backend
 ### Home/Office Network
 ```bash
 # Simple local setup without domain
-sudo ./setup.sh --native --email admin@local.com
+sudo ./picpeak-setup.sh --native --email admin@local.com
 ```
 
 ### Public Website with HTTPS
 ```bash
 # Full production setup
-sudo ./setup.sh --docker \
+sudo ./picpeak-setup.sh --docker \
   --domain photos.company.com \
   --email admin@company.com \
   --enable-ssl
@@ -523,7 +523,7 @@ sudo ./setup.sh --docker \
 ### Raspberry Pi Setup
 ```bash
 # Optimized for ARM devices
-sudo ./setup.sh --native \
+sudo ./picpeak-setup.sh --native \
   --port 8080 \
   --email pi@local.com
 ```

@@ -2,16 +2,27 @@ import { api } from '../config/api';
 import type { Event } from '../types';
 import { normalizeRequirePassword } from '../utils/accessControl';
 
-const normalizeEvent = (event: Event): Event => ({
-  ...event,
-  require_password: normalizeRequirePassword((event as any)?.require_password, true),
-});
+const normalizeEvent = (event: Event): Event => {
+  const legacyHostName = (event as any)?.host_name;
+  const legacyHostEmail = (event as any)?.host_email;
+
+  const customerName = event.customer_name ?? legacyHostName ?? undefined;
+  const customerEmail = event.customer_email ?? legacyHostEmail ?? '';
+
+  return {
+    ...event,
+    customer_name: customerName,
+    customer_email: customerEmail,
+    require_password: normalizeRequirePassword((event as any)?.require_password, true),
+  };
+};
 
 interface CreateEventData {
   event_type: string;
   event_name: string;
   event_date: string;
-  host_email: string;
+  customer_name?: string;
+  customer_email: string;
   admin_email: string;
   require_password?: boolean;
   password?: string;
@@ -33,7 +44,8 @@ interface CreateEventData {
 interface UpdateEventData {
   event_name?: string;
   event_date?: string;
-  host_email?: string;
+  customer_name?: string;
+  customer_email?: string;
   admin_email?: string;
   require_password?: boolean;
   password?: string;

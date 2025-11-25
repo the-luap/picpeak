@@ -1,0 +1,584 @@
+openapi: 3.1.0
+info:
+  title: PicPeak Admin API
+  version: 1.1.11
+  summary: High-level administrative endpoints for creating events, uploading photos, and resending gallery access emails.
+  description: |
+    This document describes the core administrative endpoints that power PicPeak automations.
+    It focuses on the three workflows requested by integrators:
+
+    1. Creating events with customer access credentials.
+    2. Uploading photos in bulk to an event gallery.
+    3. Resending the customer-facing gallery email.
+
+    The specification follows the latest [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0) best practices
+    and is intended to be kept in sync with backend changes.
+  contact:
+    name: PicPeak Maintainers
+    url: https://github.com/the-luap/picpeak
+servers:
+  - url: https://api.picpeak.example.com/api
+    description: Example production deployment
+  - url: http://localhost:3001/api
+    description: Local development
+tags:
+  - name: Admin Events
+    description: Administrative endpoints for managing event galleries.
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: admin_token
+      description: >
+        Session cookie issued by the admin authentication flow. When present, the backend mirrors
+        it into the `Authorization` header automatically.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JSON Web Token created by the admin login endpoint. You can also pass the token explicitly
+        as `Authorization: Bearer <token>` instead of using the admin cookie.
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      description: Numeric identifier of the event.
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 341
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human readable error message.
+        details:
+          type: string
+          nullable: true
+          description: Additional context (when available).
+      required:
+        - error
+      example:
+        error: Invalid token
+    ValidationErrorItem:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+          description: Validation error type reported by express-validator.
+        msg:
+          type: string
+        path:
+          type: string
+          description: Dot-delimited path to the invalid field.
+        value:
+          description: Value that failed validation.
+        location:
+          type: string
+          description: Location of the invalid value (always `body` for these endpoints).
+      required:
+        - msg
+        - path
+        - location
+      example:
+        type: field
+        msg: Event date must be a valid ISO 8601 date
+        path: event_date
+        value: 2025/05/01
+        location: body
+    ValidationErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationErrorItem'
+      required:
+        - errors
+      example:
+        errors:
+          - type: field
+            msg: Customer email must be a valid address
+            path: customer_email
+            value: example@invalid
+            location: body
+    CreateEventRequest:
+      type: object
+      required:
+        - event_type
+        - event_name
+        - event_date
+        - customer_name
+        - customer_email
+        - admin_email
+      properties:
+        event_type:
+          type: string
+          description: Type of event. Controls default theme and copy in the UI.
+          enum: [wedding, birthday, corporate, other]
+        event_name:
+          type: string
+          minLength: 1
+          description: Display name for the gallery shown to end customers.
+        event_date:
+          type: string
+          format: date
+          description: Event date (YYYY-MM-DD). Used to calculate the default expiration.
+        customer_name:
+          type: string
+          minLength: 1
+          description: Name of the customer receiving gallery access.
+        customer_email:
+          type: string
+          format: email
+          description: Email address of the customer who will receive the gallery link.
+        admin_email:
+          type: string
+          format: email
+          description: Admin contact email included in notification messages.
+        require_password:
+          type: boolean
+          default: true
+          description: When true, the gallery requires `password`; when false a random placeholder is stored.
+        password:
+          type: string
+          minLength: 6
+          description: >
+            Gallery password issued to the customer. Required when `require_password` is `true`.
+            Left unset to auto-generate a placeholder when password protection is disabled.
+        expiration_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 30
+          description: Number of days after the event date before the gallery expires.
+        welcome_message:
+          type: string
+          description: Optional welcome message displayed in the gallery.
+        color_theme:
+          type: string
+          nullable: true
+          description: Optional theme identifier or CSS color settings.
+        allow_user_uploads:
+          type: boolean
+          default: false
+          description: Allow gallery guests to upload their own photos.
+        upload_category_id:
+          type: integer
+          nullable: true
+          description: ID of the default category for user uploads.
+        allow_downloads:
+          type: boolean
+          default: true
+          description: Allow guests to download photos.
+        disable_right_click:
+          type: boolean
+          default: false
+          description: Disable right-click in the gallery view.
+        watermark_downloads:
+          type: boolean
+          default: false
+          description: Enable watermarking on downloaded images.
+        watermark_text:
+          type: string
+          nullable: true
+          description: Custom watermark text when `watermark_downloads` is true.
+        feedback_enabled:
+          type: boolean
+          default: false
+          description: Enable the feedback module for this gallery.
+        allow_ratings:
+          type: boolean
+          default: true
+        allow_likes:
+          type: boolean
+          default: true
+        allow_comments:
+          type: boolean
+          default: true
+        allow_favorites:
+          type: boolean
+          default: true
+        require_name_email:
+          type: boolean
+          default: false
+          description: Require guests to provide name and email when leaving feedback.
+        moderate_comments:
+          type: boolean
+          default: true
+          description: Hold guest comments for moderation.
+        show_feedback_to_guests:
+          type: boolean
+          default: true
+          description: Display aggregated feedback metrics back to guests.
+      example:
+        event_type: wedding
+        event_name: Emily & Jordan Celebration
+        event_date: 2025-06-07
+        customer_name: Emily Carter
+        customer_email: emily@example.com
+        admin_email: studio@example.com
+        require_password: true
+        password: Shutter123
+        expiration_days: 45
+        welcome_message: >
+          We loved capturing your day! Use the password below to view and download your photos.
+        allow_user_uploads: false
+        allow_downloads: true
+        feedback_enabled: true
+        allow_comments: true
+        show_feedback_to_guests: true
+    EventSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Database identifier of the newly created event.
+        slug:
+          type: string
+          description: Unique slug used to build the gallery URL.
+        event_name:
+          type: string
+        event_type:
+          type: string
+          enum: [wedding, birthday, corporate, other]
+        customer_name:
+          type: string
+          nullable: true
+          description: Name of the customer associated with the event.
+        customer_email:
+          type: string
+          format: email
+          nullable: true
+          description: Email address of the customer associated with the event.
+        require_password:
+          type: boolean
+        share_link:
+          type: string
+          description: Absolute or relative URL guests can use to reach the gallery.
+        expires_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the gallery expires.
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the event was created.
+      required:
+        - id
+        - slug
+        - event_name
+        - event_type
+        - require_password
+        - share_link
+        - expires_at
+        - created_at
+      example:
+        id: 512
+        slug: wedding-emily-jordan-2025-06-07
+        event_name: Emily & Jordan Celebration
+        event_type: wedding
+        customer_name: Emily Carter
+        customer_email: emily@example.com
+        require_password: true
+        share_link: https://app.picpeak.io/gallery/wedding-emily-jordan-2025-06-07/2f3c8a4d90bb11ef9b2e0242ac120002
+        expires_at: 2025-07-22T00:00:00.000Z
+        created_at: 2025-05-01T14:32:45.000Z
+    UploadPhotosResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadedPhotoSummary'
+          description: Metadata for each photo that was persisted successfully.
+        totalFiles:
+          type: integer
+          minimum: 0
+          description: Total number of files included in the request (valid + invalid).
+        successCount:
+          type: integer
+          minimum: 0
+        failureCount:
+          type: integer
+          minimum: 0
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadFailure'
+          description: Present when some files failed validation or processing.
+      required:
+        - message
+        - photos
+        - totalFiles
+        - successCount
+        - failureCount
+      example:
+        message: Uploaded 18 of 20 photos. 2 failed.
+        photos:
+          - id: 9821
+            filename: DSC_2031.jpg
+            size: 4812096
+            category_id: 2
+          - id: 9822
+            filename: DSC_2032.jpg
+            size: 5216743
+            category_id: 2
+        totalFiles: 20
+        successCount: 18
+        failureCount: 2
+        errors:
+          - filename: DSC_2020.raw
+            error: Only JPEG, PNG and WebP images are allowed
+          - filename: portrait.png
+            error: File is empty
+    UploadedPhotoSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        size:
+          type: integer
+          description: File size in bytes.
+        category_id:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - filename
+        - size
+      example:
+        id: 9821
+        filename: DSC_2031.jpg
+        size: 4812096
+        category_id: 2
+    UploadFailure:
+      type: object
+      properties:
+        filename:
+          type: string
+        error:
+          type: string
+      required:
+        - filename
+        - error
+      example:
+        filename: DSC_2031.gif
+        error: Only JPEG, PNG and WebP images are allowed
+    ResendEmailRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          description: >
+            Optional plain-text password to include in the email. When omitted a security notice
+            placeholder is inserted because the stored hash cannot be reversed.
+      example:
+        password: Shutter123
+    ResendEmailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+      example:
+        success: true
+        message: Creation email has been queued for sending
+paths:
+  /admin/events:
+    post:
+      tags: [Admin Events]
+      operationId: createAdminEvent
+      summary: Create a new event
+      description: >
+        Creates a new event, provisions storage folders, stores the gallery password, and queues
+        the initial gallery email for the customer. Requires admin authentication.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+            examples:
+              weddingExample:
+                summary: Wedding with password protection
+                value:
+                  event_type: wedding
+                  event_name: Emily & Jordan Celebration
+                  event_date: 2025-06-07
+                  customer_name: Emily Carter
+                  customer_email: emily@example.com
+                  admin_email: studio@example.com
+                  require_password: true
+                  password: Shutter123
+                  expiration_days: 45
+                  welcome_message: >
+                    We loved capturing your day! Use the password below to view and download your photos.
+                  allow_user_uploads: false
+                  allow_downloads: true
+                  feedback_enabled: true
+                  allow_comments: true
+                  show_feedback_to_guests: true
+      responses:
+        '200':
+          description: Event created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSummary'
+        '400':
+          description: Validation failed. At least one field is invalid or missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: Authentication required or token invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error while creating the event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/events/{eventId}/upload:
+    post:
+      tags: [Admin Events]
+      operationId: uploadEventPhotos
+      summary: Upload photos to an event gallery
+      description: |
+        Uploads one or more photos to the specified event. Files are validated, moved into the
+        event storage directory, and thumbnails are generated asynchronously.
+
+        The maximum number of files per upload is controlled via the `general_max_files_per_upload`
+        setting (default 500, capped at 2000). Files exceeding 50 MB are rejected.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photos:
+                  type: array
+                  description: >
+                    One or more image files (JPEG, PNG, WebP). Each file must be <= 50 MB.
+                  items:
+                    type: string
+                    format: binary
+                category_id:
+                  oneOf:
+                    - type: integer
+                    - type: string
+                  description: >
+                    Optional category assignment. Accepts numeric IDs or the string values `collage`
+                    and `individual` for backward compatibility.
+              required:
+                - photos
+            encoding:
+              photos:
+                style: form
+                explode: false
+      responses:
+        '200':
+          description: Upload completed. Failed files (if any) are listed in the response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadPhotosResponse'
+        '400':
+          description: Request failed validation (invalid files, too many files, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required or token invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The referenced event does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error while processing uploads.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/events/{eventId}/resend-email:
+    post:
+      tags: [Admin Events]
+      operationId: resendEventEmail
+      summary: Resend the gallery access email to the customer
+      description: >
+        Queues the standard `gallery_created` email for the event's customer. Useful when resending
+        credentials to the customer or communicating an updated password. Requires admin authentication.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendEmailRequest'
+            example:
+              password: NewSecurePassword!
+      responses:
+        '200':
+          description: Email successfully queued for delivery.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendEmailResponse'
+        '401':
+          description: Authentication required or token invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error while queuing the email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

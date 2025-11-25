@@ -71,8 +71,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     setGuestId(storedGuestId);
   }, []);
   
-  // Fetch photos with filter support
-  const { data, isLoading, error, refetch } = useGalleryPhotos(slug, filterType, guestId);
+  // Fetch photos WITHOUT filter (always get all photos, filter on frontend)
+  // This ensures counts are always calculated from the full dataset
+  const { data, isLoading, error, refetch } = useGalleryPhotos(slug, 'all', guestId);
   
   // Set protection level when data is available
   useEffect(() => {
@@ -164,6 +165,13 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         footer_text: settingsData.branding_footer_text || '© 2024 Your Company. All rights reserved.',
         watermark_enabled: settingsData.branding_watermark_enabled || false,
         logo_url: settingsData.branding_logo_url || null,
+        logo_size: settingsData.branding_logo_size || 'medium',
+        logo_max_height: settingsData.branding_logo_max_height || 48,
+        logo_position: settingsData.branding_logo_position || 'left',
+        logo_display_header: settingsData.branding_logo_display_header !== false,
+        logo_display_hero: settingsData.branding_logo_display_hero !== false,
+        logo_display_mode: settingsData.branding_logo_display_mode || 'logo_and_text',
+        hide_powered_by: settingsData.branding_hide_powered_by === true,
       });
     }
   }, [settingsData]);

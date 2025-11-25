@@ -9,6 +9,7 @@ const { adminAuth } = require('../middleware/auth-enhanced-v2');
 const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
+const { buildShareLinkVariants } = require('../services/shareLinkService');
 
 const parseBooleanInput = (value, defaultValue = true) => {
   if (value === undefined || value === null) {
@@ -32,12 +33,66 @@ const parseBooleanInput = (value, defaultValue = true) => {
   return defaultValue;
 };
 
+const getCustomerNameFromPayload = (payload = {}) => {
+  if (typeof payload.customer_name === 'string') {
+    const trimmed = payload.customer_name.trim();
+    return trimmed || null;
+  }
+  return null;
+};
+
+const getCustomerEmailFromPayload = (payload = {}) => {
+  if (typeof payload.customer_email === 'string') {
+    const trimmed = payload.customer_email.trim();
+    return trimmed || null;
+  }
+  return null;
+};
+
+const mapEventForApi = (event) => {
+  if (!event || typeof event !== 'object') {
+    return event;
+  }
+
+  const {
+    host_name,
+    host_email,
+    customer_name,
+    customer_email,
+    ...rest
+  } = event;
+
+  return {
+    ...rest,
+    customer_name: customer_name ?? host_name ?? null,
+    customer_email: customer_email ?? host_email ?? null
+  };
+};
+
+let customerColumnCache = null;
+const hasCustomerContactColumns = async () => {
+  if (customerColumnCache === true) {
+    return true;
+  }
+
+  try {
+    const hasColumn = await db.schema.hasColumn('events', 'customer_email');
+    if (hasColumn) {
+      customerColumnCache = true;
+    }
+    return hasColumn;
+  } catch (error) {
+    return false;
+  }
+};
+
 // Create new event
 router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty(),
   body('event_date').isDate(),
-  body('host_email').isEmail(),
+  body('customer_name').notEmpty().trim(),
+  body('customer_email').isEmail().normalizeEmail(),
   body('admin_email').isEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
@@ -62,7 +117,6 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_email,
       admin_email,
       password,
       require_password: requirePasswordInput = true,
@@ -70,6 +124,15 @@ router.post('/', adminAuth, [
       color_theme,
       expiration_days = 30
     } = req.body;
+
+    const customerEmail = getCustomerEmailFromPayload(req.body);
+    const customerName = getCustomerNameFromPayload(req.body);
+
+    if (!customerName || !customerEmail) {
+      return res.status(400).json({ error: 'customer_name and customer_email are required' });
+    }
+
+    const customerColumnsAvailable = await hasCustomerContactColumns();
 
     const requirePassword = parseBooleanInput(requirePasswordInput, true);
 
@@ -98,12 +161,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link (just slug/token, not full URL)
+    // Generate share link variants (auto-detects short URL preference)
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const sharePath = `/gallery/${slug}/${shareToken}`;
-    const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
-    const fullShareLink = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
-    const shareLinkSlug = `${slug}/${shareToken}`;
+    const { sharePath, shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password (or placeholder when not required)
     const password_hash = requirePassword
@@ -126,12 +186,15 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_email,
+      ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
+      host_name: customerName,
+      host_email: customerEmail,
       admin_email,
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLinkSlug,
+      share_link: shareLinkToStore,
+      share_token: shareToken,
       expires_at,
       require_password: formatBoolean(requirePassword)
     }).returning('id');
@@ -141,11 +204,13 @@ router.post('/', adminAuth, [
     
     // Queue creation email
     const { queueEmail } = require('../services/emailProcessor');
-    await queueEmail(eventId, host_email, 'gallery_created', {
-      host_name: host_email.split('@')[0], // Extract name from email
+    await queueEmail(eventId, customerEmail, 'gallery_created', {
+      customer_name: customerName,
+      customer_email: customerEmail,
+      host_name: customerName,
       event_name,
       event_date: event_date,  // Pass raw date - will be formatted by email processor
-      gallery_link: fullShareLink,
+      gallery_link: shareUrl,
       gallery_password: requirePassword ? password : 'No password required',
       expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
       welcome_message: welcome_message || ''
@@ -154,9 +219,11 @@ router.post('/', adminAuth, [
     res.json({
       id: eventId,
       slug,
-      share_link: fullShareLink,
+      share_link: shareUrl,
       expires_at,
-      require_password: requirePassword
+      require_password: requirePassword,
+      customer_name: customerName,
+      customer_email: customerEmail
     });
   } catch (error) {
     console.error(error);
@@ -185,23 +252,65 @@ router.get('/', adminAuth, async (req, res) => {
       event.photo_count = photoCount.count;
     }
     
-    res.json(events);
+    res.json(events.map(mapEventForApi));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
 // Update event
-router.put('/:id', adminAuth, async (req, res) => {
+router.put('/:id', adminAuth, [
+  body('customer_name').optional().trim().notEmpty(),
+  body('customer_email').optional().isEmail().normalizeEmail(),
+  body('require_password').optional().isBoolean()
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { id } = req.params;
     const updates = { ...req.body };
+    const customerColumnsAvailable = await hasCustomerContactColumns();
     
     // Don't allow updating certain fields
     delete updates.id;
     delete updates.slug;
     delete updates.created_at;
     delete updates.password_confirmation;
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'host_name') || Object.prototype.hasOwnProperty.call(updates, 'host_email')) {
+      return res.status(400).json({ error: 'host_name and host_email are no longer supported. Use customer_name and customer_email instead.' });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_name')) {
+      const nextName = getCustomerNameFromPayload(updates);
+      if (nextName) {
+        if (customerColumnsAvailable) {
+          updates.customer_name = nextName;
+        } else {
+          delete updates.customer_name;
+        }
+        updates.host_name = nextName;
+      } else {
+        delete updates.customer_name;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_email')) {
+      const nextEmail = getCustomerEmailFromPayload(updates);
+      if (nextEmail) {
+        if (customerColumnsAvailable) {
+          updates.customer_email = nextEmail;
+        } else {
+          delete updates.customer_email;
+        }
+        updates.host_email = nextEmail;
+      } else {
+        delete updates.customer_email;
+      }
+    }
 
     const hasRequirePasswordUpdate = Object.prototype.hasOwnProperty.call(updates, 'require_password');
     let requirePasswordUpdate;

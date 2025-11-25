@@ -1,5 +1,5 @@
 import { api } from '../config/api';
-import type { GalleryInfo, GalleryData, GalleryStats } from '../types';
+import type { GalleryInfo, GalleryData, GalleryStats, ResolvedGalleryIdentifier } from '../types';
 import { normalizeRequirePassword } from '../utils/accessControl';
 
 export const galleryService = {
@@ -117,6 +117,11 @@ export const galleryService = {
   // Get gallery statistics
   async getGalleryStats(slug: string): Promise<GalleryStats> {
     const response = await api.get<GalleryStats>(`/gallery/${slug}/stats`);
+    return response.data;
+  },
+
+  async resolveIdentifier(identifier: string): Promise<ResolvedGalleryIdentifier> {
+    const response = await api.get<ResolvedGalleryIdentifier>(`/gallery/resolve/${identifier}`);
     return response.data;
   },
 };

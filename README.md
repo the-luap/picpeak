@@ -85,6 +85,8 @@ Note on Docker file permissions (PUID/PGID)
 
 - 📘 [**Deployment Guide**](DEPLOYMENT_GUIDE.md) - Detailed installation instructions
   - Includes the new [External Media Library](DEPLOYMENT_GUIDE.md#external-media-library) reference mode
+- 📚 [**Admin API (OpenAPI)**](docs/picpeak-admin-api.openapi.yaml) - Machine-readable documentation for event automation endpoints
+- 🛠️ [**Admin API Quickstart**](docs/admin-api-quickstart.md) - Step-by-step authentication and testing guide for the documented endpoints
 - 🤝 [**Contributing**](CONTRIBUTING.md) - How to contribute
 - 📜 [**License**](LICENSE) - MIT License
 - 🔒 [**Security**](SECURITY.md) - Security policies

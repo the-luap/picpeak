@@ -9,9 +9,40 @@ const { verifyGalleryAccess } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
+const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
+
+// Resolve gallery identifier (slug or token) to canonical data
+router.get('/resolve/:identifier', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const result = await resolveShareIdentifier(identifier);
+
+    if (!result) {
+      return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    const { event, matchType, shareToken } = result;
+    const linkVariants = await buildShareLinkVariants({ slug: event.slug, shareToken });
+    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
+    res.json({
+      slug: event.slug,
+      token: shareToken,
+      matchType,
+      share_link: event.share_link,
+      share_path: linkVariants.sharePath,
+      share_url: linkVariants.shareUrl,
+      short_enabled: linkVariants.shortEnabled,
+      requires_password: requiresPassword
+    });
+  } catch (error) {
+    logger.error('Error resolving gallery identifier:', error);
+    res.status(500).json({ error: 'Failed to resolve gallery link' });
+  }
+});
 
 // Verify share token
 router.get('/:slug/verify-token/:token', async (req, res) => {
@@ -20,15 +51,14 @@ router.get('/:slug/verify-token/:token', async (req, res) => {
     
     const event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
-      .select('id', 'share_link')
+      .select('id', 'share_link', 'share_token')
       .first();
     
     if (!event) {
       return res.status(404).json({ error: 'Gallery not found' });
     }
     
-    // Extract token from share link and verify
-    const expectedToken = event.share_link.split('/').pop();
+    const expectedToken = getEventShareToken(event);
     if (token !== expectedToken) {
       return res.status(404).json({ error: 'Invalid gallery link' });
     }
@@ -56,6 +86,7 @@ router.get('/:slug/info', async (req, res) => {
         'is_active',
         'is_archived',
         'share_link',
+        'share_token',
         'allow_downloads',
         'disable_right_click',
         'watermark_downloads',
@@ -76,12 +107,8 @@ router.get('/:slug/info', async (req, res) => {
     
     // If token provided, verify it matches the share link
     if (token) {
-      let expectedToken = event.share_link;
-      // Handle both formats: full URL or just token
-      if (event.share_link && event.share_link.includes('/')) {
-        expectedToken = event.share_link.split('/').pop();
-      }
-      if (token !== expectedToken) {
+      const expectedToken = getEventShareToken(event);
+      if (!expectedToken || token !== expectedToken) {
         return res.status(404).json({ error: 'Invalid gallery link' });
       }
     }
@@ -773,22 +800,35 @@ router.get('/:slug/stats', verifyGalleryAccess, async (req, res) => {
 router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
   try {
     const eventId = parseInt(req.params.eventId);
-    
+
     // Verify the event matches the token
     if (req.event.id !== eventId) {
       return res.status(403).json({ error: 'Access denied' });
     }
-    
+
     // Check if user uploads are allowed
     if (!req.event.allow_user_uploads) {
       return res.status(403).json({ error: 'User uploads are not allowed for this event' });
     }
-    
+
+    // Ensure temp upload directory exists
+    const fs = require('fs');
+    const tempUploadDir = '/tmp/uploads/';
+    if (!fs.existsSync(tempUploadDir)) {
+      try {
+        fs.mkdirSync(tempUploadDir, { recursive: true, mode: 0o755 });
+        logger.info('Created temp upload directory:', tempUploadDir);
+      } catch (mkdirErr) {
+        logger.error('Failed to create temp upload directory:', mkdirErr);
+        return res.status(500).json({ error: 'Server configuration error: unable to create upload directory' });
+      }
+    }
+
     // Import multer and photo processing
     const multer = require('multer');
-    const upload = multer({ 
-      dest: '/tmp/uploads/',
-      limits: { 
+    const upload = multer({
+      dest: tempUploadDir,
+      limits: {
         fileSize: 50 * 1024 * 1024, // 50MB
         files: 10 // Max 10 files at once
       },

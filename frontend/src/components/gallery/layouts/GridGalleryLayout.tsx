@@ -231,7 +231,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                     <Download className="w-5 h-5 text-neutral-800" />
                   </button>
                 )}
-                {showFeedbackActions && onQuickComment && (
+                {showFeedbackActions && feedbackOptions?.allowComments && onQuickComment && (
                   <button
                     className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                     onClick={(e) => {

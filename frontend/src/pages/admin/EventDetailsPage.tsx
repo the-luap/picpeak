@@ -122,7 +122,7 @@ export const EventDetailsPage: React.FC = () => {
     allow_user_uploads: boolean;
     upload_category_id: number | null;
     hero_photo_id: number | null;
-    host_name: string;
+    customer_name: string;
     source_mode: 'managed' | 'reference';
     external_path: string;
     require_password: boolean;
@@ -138,7 +138,7 @@ export const EventDetailsPage: React.FC = () => {
     allow_user_uploads: false,
     upload_category_id: null,
     hero_photo_id: null,
-    host_name: '',
+    customer_name: '',
     source_mode: 'managed',
     external_path: '',
     require_password: true,
@@ -304,7 +304,7 @@ export const EventDetailsPage: React.FC = () => {
       allow_user_uploads: event.allow_user_uploads || false,
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
-      host_name: event.host_name || '',
+      customer_name: event.customer_name || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
       require_password: normalizeRequirePassword(event.require_password),
@@ -411,8 +411,8 @@ export const EventDetailsPage: React.FC = () => {
     updateData.external_path = editForm.source_mode === 'reference'
       ? externalPathToSave
       : null;
-    if (editForm.host_name !== undefined && editForm.host_name !== null) {
-      updateData.host_name = editForm.host_name;
+    if (editForm.customer_name !== undefined && editForm.customer_name !== null) {
+      updateData.customer_name = editForm.customer_name;
     }
 
     if (editForm.new_password) {
@@ -687,8 +687,8 @@ export const EventDetailsPage: React.FC = () => {
                   </label>
                   <Input
                     type="text"
-                    value={editForm.host_name}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, host_name: e.target.value }))}
+                    value={editForm.customer_name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
                     placeholder={t('events.hostNamePlaceholder')}
                   />
                 </div>
@@ -903,14 +903,14 @@ export const EventDetailsPage: React.FC = () => {
                 <div>
                   <dt className="text-sm font-medium text-neutral-500">{t('events.hostName')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900">
-                    {event.host_name || <span className="text-neutral-400">{t('common.notSet')}</span>}
+                    {event.customer_name || <span className="text-neutral-400">{t('common.notSet')}</span>}
                   </dd>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <dt className="text-sm font-medium text-neutral-500">{t('events.hostEmail')}</dt>
-                    <dd className="mt-1 text-sm text-neutral-900">{event.host_email}</dd>
+                  <dd className="mt-1 text-sm text-neutral-900">{event.customer_email}</dd>
                   </div>
                   
                   <div>
@@ -1144,22 +1144,9 @@ export const EventDetailsPage: React.FC = () => {
                     }
                   }
                 }}
-                isPreviewMode={false}
+                isPreviewMode={true}
                 showGalleryLayouts={true}
-                onApply={async (theme, { presetName }) => {
-                  const resolvedPreset = presetName || 'custom';
-                  setCurrentTheme(theme);
-                  setCurrentPresetName(resolvedPreset);
-
-                  const themeValue = resolvedPreset !== 'custom'
-                    ? resolvedPreset
-                    : JSON.stringify(theme);
-
-                  setEditForm(prev => ({ ...prev, color_theme: themeValue }));
-
-                  await applyThemeMutation.mutateAsync({ theme, presetName: resolvedPreset });
-                }}
-                isApplying={applyThemeMutation.isPending}
+                hideActions={true}
               />
             </Card>
           )}

@@ -2,13 +2,14 @@
 // Only the relevant parts are shown - merge with existing adminEvents.js
 
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
+const { buildShareLinkVariants } = require('../services/shareLinkService');
 
 // Enhanced event creation with password validation
 router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
-  body('host_email').isEmail().normalizeEmail(),
+  body('customer_email').isEmail().normalizeEmail(),
   body('admin_email').isEmail().normalizeEmail(),
   body('password').notEmpty(), // Remove the weak isLength validation
   body('expiration_days').isInt({ min: 1, max: 365 }).optional(),
@@ -16,7 +17,7 @@ router.post('/', adminAuth, [
   body('color_theme').optional().trim(),
   body('allow_user_uploads').optional().isBoolean().toBoolean(),
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
-  body('host_name').notEmpty().trim()
+  body('customer_name').notEmpty().trim()
 ], async (req, res) => {
   try {
     console.log('Create event request body:', req.body);
@@ -30,8 +31,8 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
+      customer_name,
+      customer_email,
       admin_email,
       password,
       welcome_message = '',
@@ -65,9 +66,9 @@ router.post('/', adminAuth, [
       counter++;
     }
     
-    // Generate share link
+    // Generate share link based on configured style
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const shareLink = `${process.env.FRONTEND_URL}/gallery/${slug}/${shareToken}`;
+    const { shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password with configurable rounds
     const password_hash = await bcrypt.hash(password, getBcryptRounds());
@@ -88,13 +89,16 @@ router.post('/', adminAuth, [
       event_type,
       event_name,
       event_date,
-      host_name,
-      host_email,
+      customer_name,
+      customer_email,
+      host_name: customer_name,
+      host_email: customer_email,
       admin_email,
       password_hash,
       welcome_message,
       color_theme,
-      share_link: shareLink,
+      share_link: shareLinkToStore,
+      share_token: shareToken,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
       allow_user_uploads,
