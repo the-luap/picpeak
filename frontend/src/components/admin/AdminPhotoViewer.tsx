@@ -109,8 +109,11 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
       await photosService.updatePhotoCategory(eventId, currentPhoto.id, categoryId);
       toast.success('Category updated');
       setShowCategoryMenu(false);
-      // Trigger refresh to update the photo data
-      onPhotoDeleted(); // This will refresh the photos list
+      // Invalidate photos query to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['admin-event-photos', eventId.toString()] });
+      await queryClient.invalidateQueries({ queryKey: ['admin-event-photos', eventId] });
+      // Also trigger the parent's refresh callback
+      onPhotoDeleted();
     } catch (error) {
       toast.error('Failed to update category');
     }

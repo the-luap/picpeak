@@ -1122,8 +1122,9 @@ export const EventDetailsPage: React.FC = () => {
                     }
                   }
                 }}
-                isPreviewMode={false}
+                isPreviewMode={true}
                 showGalleryLayouts={true}
+                hideActions={true}
               />
             </Card>
           )}

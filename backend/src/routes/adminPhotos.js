@@ -484,24 +484,42 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     }
 
     // Prepare update data
-    const updateData = {};
+    const updateData = {
+      updated_at: new Date()
+    };
 
     // Handle type-based categories ('individual' or 'collage')
     // These are string values that map to the photo.type field
     if (category_id === 'individual' || category_id === 'collage') {
       updateData.type = category_id;
       updateData.category_id = null; // Clear legacy category_id
+    } else if (category_id === null || category_id === undefined) {
+      // Explicitly clear category
+      updateData.category_id = null;
     } else {
-      // Handle legacy numeric category IDs
-      updateData.category_id = category_id || null;
+      // Handle numeric category IDs from photo_categories table
+      const numericCategoryId = parseInt(category_id, 10);
+      if (!isNaN(numericCategoryId)) {
+        updateData.category_id = numericCategoryId;
+      } else {
+        updateData.category_id = null;
+      }
     }
 
     // Update photo
     await db('photos')
-      .where({ id: photoId })
+      .where({ id: photoId, event_id: eventId })
       .update(updateData);
 
-    res.json({ message: 'Photo updated successfully' });
+    // Fetch and return updated photo for confirmation
+    const updatedPhoto = await db('photos')
+      .where({ id: photoId })
+      .first();
+
+    res.json({
+      message: 'Photo updated successfully',
+      photo: updatedPhoto
+    });
   } catch (error) {
     console.error('Error updating photo:', error);
     res.status(500).json({ error: 'Failed to update photo' });
@@ -581,33 +599,44 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds, updates } = req.body;
-    
+
     if (!Array.isArray(photoIds) || photoIds.length === 0) {
       return res.status(400).json({ error: 'Invalid photo IDs' });
     }
-    
+
     // Verify all photos belong to the event
     const photoCount = await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .count('id as count')
       .first();
-    
-    if (photoCount.count !== photoIds.length) {
+
+    if (parseInt(photoCount.count) !== photoIds.length) {
       return res.status(400).json({ error: 'Some photos do not belong to this event' });
     }
-    
+
     // Prepare update data
-    const updateData = {};
+    const updateData = {
+      updated_at: new Date()
+    };
+
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')
       // These are string values that map to the photo.type field
       if (updates.category_id === 'individual' || updates.category_id === 'collage') {
         updateData.type = updates.category_id;
         updateData.category_id = null; // Clear legacy category_id
+      } else if (updates.category_id === null) {
+        // Explicitly clear category
+        updateData.category_id = null;
       } else {
-        // Handle legacy numeric category IDs
-        updateData.category_id = updates.category_id || null;
+        // Handle numeric category IDs from photo_categories table
+        const numericCategoryId = parseInt(updates.category_id, 10);
+        if (!isNaN(numericCategoryId)) {
+          updateData.category_id = numericCategoryId;
+        } else {
+          updateData.category_id = null;
+        }
       }
     }
 
