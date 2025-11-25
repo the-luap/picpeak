@@ -1072,7 +1072,9 @@
     "enterPassword": "Enter password",
     "fromEmail": "From Email",
     "fromName": "From Name",
-    "required": "required"
+    "required": "required",
+    "ignoreSslErrors": "Ignore SSL/TLS certificate errors",
+    "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications."
   },
   "cms": {
     "title": "CMS Pages",
