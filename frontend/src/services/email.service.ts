@@ -8,6 +8,7 @@ export interface EmailConfig {
   smtp_pass: string;
   from_email: string;
   from_name: string;
+  tls_reject_unauthorized: boolean;
 }
 
 export interface EmailTemplate {
