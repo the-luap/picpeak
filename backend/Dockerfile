@@ -27,6 +27,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+RUN apk upgrade --no-cache
+
 # Install dumb-init for proper signal handling and postgresql-client for database checks
 RUN apk add --no-cache dumb-init postgresql-client
 
