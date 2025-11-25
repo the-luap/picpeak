@@ -65,5 +65,9 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.45.1"
+  },
+  "overrides": {
+    "glob": "^11.1.0",
+    "js-yaml": "^4.1.1"
   }
 }

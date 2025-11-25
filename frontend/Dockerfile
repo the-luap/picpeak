@@ -30,6 +30,9 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+RUN apk upgrade --no-cache
+
 # Install runtime dependencies
 RUN apk add --no-cache curl
 
