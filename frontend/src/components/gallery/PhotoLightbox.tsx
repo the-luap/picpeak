@@ -7,6 +7,7 @@ import { AuthenticatedImage } from '../common';
 import { PhotoFeedback } from './PhotoFeedback';
 import { feedbackService } from '../../services/feedback.service';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
+import { VideoPlayer } from './VideoPlayer';
 
 interface PhotoLightboxProps {
   photos: Photo[];
@@ -448,49 +449,58 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </div>
       </div>
 
-      {/* Image container */}
+      {/* Image/Video container */}
       <div
         className="absolute top-0 left-0 bottom-0 flex items-center justify-center z-0"
-        onClick={handleImageClick}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onClick={currentPhoto.media_type === 'video' ? undefined : handleImageClick}
+        onMouseDown={currentPhoto.media_type === 'video' ? undefined : handleMouseDown}
+        onMouseMove={currentPhoto.media_type === 'video' ? undefined : handleMouseMove}
+        onMouseUp={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
+        onMouseLeave={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
+        onTouchStart={currentPhoto.media_type === 'video' ? undefined : handleTouchStart}
+        onTouchMove={currentPhoto.media_type === 'video' ? undefined : handleTouchMove}
+        onTouchEnd={currentPhoto.media_type === 'video' ? undefined : handleTouchEnd}
         style={{
-          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          cursor: currentPhoto.media_type === 'video' ? 'default' : (zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'),
           right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
         }}
       >
-        <AuthenticatedImage
-          src={currentPhoto.url}
-          alt={currentPhoto.filename}
-          fallbackSrc={currentPhoto.thumbnail_url || undefined}
-          className="max-w-full max-h-full object-contain select-none"
-          style={{
-            transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
-            transition: isDragging ? 'none' : 'transform 0.2s',
-          }}
-          draggable={false}
-          useWatermark={useEnhancedProtection}
-          watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
-          isGallery={true}
-          slug={slug}
-          photoId={currentPhoto.id}
-          requiresToken={currentPhoto.requires_token}
-          secureUrlTemplate={currentPhoto.secure_url_template}
-          protectFromDownload={!allowDownloads || useEnhancedProtection}
-          protectionLevel={protectionLevel}
-          useEnhancedProtection={useEnhancedProtection}
-          useCanvasRendering={protectionLevel === 'maximum'}
-          fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-          blockKeyboardShortcuts={useEnhancedProtection}
-          detectPrintScreen={useEnhancedProtection}
-          detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-          onProtectionViolation={(violationType) => {
-            console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
+        {currentPhoto.media_type === 'video' ? (
+          <VideoPlayer
+            src={currentPhoto.url}
+            poster={currentPhoto.thumbnail_url}
+            className="max-w-full max-h-full"
+            controls={true}
+            autoPlay={false}
+          />
+        ) : (
+          <AuthenticatedImage
+            src={currentPhoto.url}
+            alt={currentPhoto.filename}
+            fallbackSrc={currentPhoto.thumbnail_url || undefined}
+            className="max-w-full max-h-full object-contain select-none"
+            style={{
+              transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
+              transition: isDragging ? 'none' : 'transform 0.2s',
+            }}
+            draggable={false}
+            useWatermark={useEnhancedProtection}
+            watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
+            isGallery={true}
+            slug={slug}
+            photoId={currentPhoto.id}
+            requiresToken={currentPhoto.requires_token}
+            secureUrlTemplate={currentPhoto.secure_url_template}
+            protectFromDownload={!allowDownloads || useEnhancedProtection}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={useEnhancedProtection}
+            useCanvasRendering={protectionLevel === 'maximum'}
+            fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            blockKeyboardShortcuts={useEnhancedProtection}
+            detectPrintScreen={useEnhancedProtection}
+            detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            onProtectionViolation={(violationType) => {
+              console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
             
             // Track analytics
             if (typeof window !== 'undefined' && (window as any).umami) {
@@ -503,12 +513,13 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             }
             
             // For maximum protection, close lightbox on violation
-            if (protectionLevel === 'maximum' && 
+            if (protectionLevel === 'maximum' &&
                 ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
               onClose();
             }
           }}
         />
+        )}
       </div>
 
       {/* Touch/swipe indicators for mobile */}

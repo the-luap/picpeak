@@ -9,6 +9,8 @@ const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload } = require('../services/uploadSettings');
+const { processUploadedPhotos } = require('../services/photoProcessor');
+const chunkedUpload = require('../services/chunkedUploadService');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -48,7 +50,7 @@ const { validateFileType } = require('../utils/fileSecurityUtils');
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit per file
+    fileSize: 10 * 1024 * 1024 * 1024, // 10GB limit per file to support large videos
     files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
@@ -57,13 +59,16 @@ const upload = multer({
     headerPairs: 2000 // Maximum number of header key-value pairs
   },
   fileFilter: (req, file, cb) => {
-    // Accept images only with proper validation
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    
+    // Accept images and videos with proper validation
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/png', 'image/webp',
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+    ];
+
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG and WebP images are allowed'));
+      cb(new Error('Only JPEG, PNG, WebP images and MP4, WebM, MOV, AVI videos are allowed'));
     }
   },
   // Add abort on limit to stop processing when limits are exceeded
@@ -74,8 +79,11 @@ const { createFileUploadValidator } = require('../utils/fileSecurityUtils');
 
 // Create content validator middleware
 const validateUploadContent = createFileUploadValidator({
-  allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-  maxFileSize: 50 * 1024 * 1024,
+  allowedTypes: [
+    'image/jpeg', 'image/png', 'image/webp',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+  ],
+  maxFileSize: 10 * 1024 * 1024 * 1024, // 10GB to support large videos
   validateContent: true
 });
 
@@ -115,7 +123,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
       console.error('Multer error:', err);
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ error: 'File too large. Maximum size is 50MB per file.' });
+          return res.status(400).json({ error: 'File too large. Maximum size is 10GB per file.' });
         }
         if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
           return res.status(400).json({ error: `Too many files. Maximum ${maxFilesPerUpload} files per upload.` });
@@ -863,6 +871,144 @@ router.get('/:eventId/debug', adminAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching admin photo debug data:', error);
     res.status(500).json({ error: 'Failed to fetch photo debug data' });
+  }
+});
+
+// ============================================
+// CHUNKED UPLOAD ENDPOINTS
+// For large file uploads (videos up to 10GB)
+// ============================================
+
+// Initialize a chunked upload
+router.post('/:eventId/chunked-upload/init', adminAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { filename, fileSize, mimeType, totalChunks } = req.body;
+
+    // Validate event exists
+    const event = await db('events').where({ id: eventId }).first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Validate required fields
+    if (!filename || !fileSize || !mimeType) {
+      return res.status(400).json({ error: 'Missing required fields: filename, fileSize, mimeType' });
+    }
+
+    // Validate file size (max 10GB)
+    const maxSize = 10 * 1024 * 1024 * 1024;
+    if (fileSize > maxSize) {
+      return res.status(400).json({ error: `File too large. Maximum size is 10GB.` });
+    }
+
+    const result = await chunkedUpload.initializeUpload({
+      filename,
+      fileSize,
+      mimeType,
+      eventId: parseInt(eventId),
+      totalChunks
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error initializing chunked upload:', error);
+    res.status(500).json({ error: 'Failed to initialize upload' });
+  }
+});
+
+// Upload a chunk
+router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, async (req, res) => {
+  try {
+    const { uploadId, chunkIndex } = req.params;
+
+    // Get chunk data from request body
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
+    const chunkData = Buffer.concat(chunks);
+
+    const result = await chunkedUpload.uploadChunk(uploadId, parseInt(chunkIndex), chunkData);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error uploading chunk:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload chunk' });
+  }
+});
+
+// Complete chunked upload and process the file
+router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, async (req, res) => {
+  try {
+    const { eventId, uploadId } = req.params;
+    const { category_id } = req.body;
+
+    // Complete the chunked upload (merge chunks)
+    const mergedFile = await chunkedUpload.completeUpload(uploadId);
+
+    // Process the merged file as a regular upload
+    const fileObj = {
+      originalname: mergedFile.filename,
+      mimetype: mergedFile.mimeType,
+      size: mergedFile.size,
+      path: mergedFile.path
+    };
+
+    const uploadedPhotos = await processUploadedPhotos(
+      [fileObj],
+      parseInt(eventId),
+      'admin',
+      category_id || null
+    );
+
+    // Clean up temp directory
+    try {
+      await fs.rm(mergedFile.tempDir, { recursive: true, force: true });
+    } catch (cleanupErr) {
+      console.warn('Failed to clean up temp directory:', cleanupErr.message);
+    }
+
+    res.json({
+      success: true,
+      uploaded: uploadedPhotos.length,
+      photos: uploadedPhotos
+    });
+  } catch (error) {
+    console.error('Error completing chunked upload:', error);
+    res.status(500).json({ error: error.message || 'Failed to complete upload' });
+  }
+});
+
+// Get upload status
+router.get('/:eventId/chunked-upload/:uploadId/status', adminAuth, async (req, res) => {
+  try {
+    const { uploadId } = req.params;
+
+    const status = chunkedUpload.getUploadStatus(uploadId);
+
+    if (!status) {
+      return res.status(404).json({ error: 'Upload not found or expired' });
+    }
+
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting upload status:', error);
+    res.status(500).json({ error: 'Failed to get upload status' });
+  }
+});
+
+// Abort chunked upload
+router.delete('/:eventId/chunked-upload/:uploadId', adminAuth, async (req, res) => {
+  try {
+    const { uploadId } = req.params;
+
+    await chunkedUpload.abortUpload(uploadId);
+
+    res.json({ success: true, message: 'Upload aborted' });
+  } catch (error) {
+    console.error('Error aborting upload:', error);
+    res.status(500).json({ error: 'Failed to abort upload' });
   }
 });
 

@@ -135,6 +135,31 @@ Perfect for:
 - **Docker**: v20.10.0+
 - **Docker Compose**: v2.0.0+
 
+### Video Support Requirements
+When enabling video uploads, consider these additional resources:
+
+| Resource | Recommendation | Notes |
+|----------|----------------|-------|
+| **RAM** | 4GB+ recommended | FFmpeg processing requires more memory |
+| **Storage** | Plan for 10-100x more | Videos are significantly larger than images |
+| **CPU** | Additional cores help | Video thumbnail extraction is CPU-intensive |
+| **Bandwidth** | Higher throughput | Video streaming requires more bandwidth |
+
+**Technical Notes:**
+- FFmpeg is bundled via npm (`@ffmpeg-installer/ffmpeg`) - no system installation required
+- Maximum upload size: **10GB per video file**
+- Chunked upload support for files >100MB (resumable uploads)
+- Supported formats: MP4, WebM, MOV, AVI
+- Video thumbnails are automatically generated from the first few seconds
+
+**For Nginx/Reverse Proxy:**
+If using Nginx, increase the client max body size:
+```nginx
+client_max_body_size 10G;
+proxy_read_timeout 3600;
+proxy_send_timeout 3600;
+```
+
 ## 🤝 Contributing
 
 We love contributions! PicPeak is built by photographers, for photographers. Whether you're fixing bugs, adding features, or improving documentation, your help is welcome.
@@ -222,7 +247,7 @@ These features are currently in beta testing and may have limited functionality 
 | **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
 | **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
 | **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented |
-| **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | 🔄 Open |
+| **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | ✅ Implemented |
 | **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
 | **Filtering & Export Options** | Add filters to show only rated, liked, or marked photos and export filtered selections for Capture One or Lightroom workflows | Low | 🔄 Open |
 

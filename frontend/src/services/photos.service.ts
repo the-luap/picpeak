@@ -95,6 +95,106 @@ class PhotosService {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
+
+  // Chunked upload methods for large files (videos up to 10GB)
+  private CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+
+  async initChunkedUpload(
+    eventId: number,
+    filename: string,
+    fileSize: number,
+    mimeType: string
+  ): Promise<{ uploadId: string; chunkSize: number; expectedChunks: number }> {
+    const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
+    const response = await api.post(`/admin/photos/${eventId}/chunked-upload/init`, {
+      filename,
+      fileSize,
+      mimeType,
+      totalChunks
+    });
+    return response.data;
+  }
+
+  async uploadChunk(
+    eventId: number,
+    uploadId: string,
+    chunkIndex: number,
+    chunkData: Blob
+  ): Promise<{ progress: number; complete: boolean }> {
+    const response = await api.post(
+      `/admin/photos/${eventId}/chunked-upload/${uploadId}/chunk/${chunkIndex}`,
+      chunkData,
+      {
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        }
+      }
+    );
+    return response.data;
+  }
+
+  async completeChunkedUpload(
+    eventId: number,
+    uploadId: string,
+    categoryId?: number | null
+  ): Promise<{ success: boolean; uploaded: number; photos: AdminPhoto[] }> {
+    const response = await api.post(
+      `/admin/photos/${eventId}/chunked-upload/${uploadId}/complete`,
+      { category_id: categoryId }
+    );
+    return response.data;
+  }
+
+  async abortChunkedUpload(eventId: number, uploadId: string): Promise<void> {
+    await api.delete(`/admin/photos/${eventId}/chunked-upload/${uploadId}`);
+  }
+
+  async uploadLargeFile(
+    eventId: number,
+    file: File,
+    categoryId?: number | null,
+    onProgress?: (progress: number) => void
+  ): Promise<AdminPhoto[]> {
+    // Initialize upload
+    const { uploadId, expectedChunks } = await this.initChunkedUpload(
+      eventId,
+      file.name,
+      file.size,
+      file.type
+    );
+
+    try {
+      // Upload chunks
+      for (let i = 0; i < expectedChunks; i++) {
+        const start = i * this.CHUNK_SIZE;
+        const end = Math.min(start + this.CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        const result = await this.uploadChunk(eventId, uploadId, i, chunk);
+
+        if (onProgress) {
+          onProgress(result.progress);
+        }
+      }
+
+      // Complete upload
+      const result = await this.completeChunkedUpload(eventId, uploadId, categoryId);
+      return result.photos;
+    } catch (error) {
+      // Abort on error
+      try {
+        await this.abortChunkedUpload(eventId, uploadId);
+      } catch (abortError) {
+        console.error('Failed to abort upload:', abortError);
+      }
+      throw error;
+    }
+  }
+
+  // Check if file should use chunked upload (> 100MB)
+  shouldUseChunkedUpload(fileSize: number): boolean {
+    return fileSize > 100 * 1024 * 1024; // 100MB threshold
+  }
 }
 
 export const photosService = new PhotosService();

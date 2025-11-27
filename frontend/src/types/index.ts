@@ -61,6 +61,14 @@ export interface Photo {
   category_slug?: string;
   size: number;
   uploaded_at: string;
+  // Media type fields
+  media_type?: 'image' | 'video';
+  mime_type?: string;
+  duration?: number; // Duration in seconds for videos
+  video_codec?: string;
+  audio_codec?: string;
+  width?: number;
+  height?: number;
   // Feedback fields
   has_feedback?: boolean;
   average_rating?: number;
