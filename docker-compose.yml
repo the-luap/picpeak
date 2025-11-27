@@ -60,6 +60,7 @@ services:
     image: postgres:15-alpine
     container_name: picpeak-postgres
     restart: unless-stopped
+    userns_mode: "host"
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -83,6 +84,7 @@ services:
     image: redis:7-alpine
     container_name: picpeak-redis
     restart: unless-stopped
+    userns_mode: "host"
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-picpeak_redis_pass}
     volumes:
       - redis-data:/data

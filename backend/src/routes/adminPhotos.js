@@ -492,7 +492,9 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     }
 
     // Prepare update data
-    const updateData = {};
+    const updateData = {
+      updated_at: new Date()
+    };
 
     // Handle type-based categories ('individual' or 'collage')
     // These are string values that map to the photo.type field
@@ -517,7 +519,15 @@ router.patch('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
       .where({ id: photoId, event_id: eventId })
       .update(updateData);
 
-    res.json({ message: 'Photo updated successfully' });
+    // Fetch and return updated photo for confirmation
+    const updatedPhoto = await db('photos')
+      .where({ id: photoId })
+      .first();
+
+    res.json({
+      message: 'Photo updated successfully',
+      photo: updatedPhoto
+    });
   } catch (error) {
     console.error('Error updating photo:', error);
     res.status(500).json({ error: 'Failed to update photo' });
@@ -597,22 +607,22 @@ router.post('/:eventId/photos/bulk-update', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds, updates } = req.body;
-    
+
     if (!Array.isArray(photoIds) || photoIds.length === 0) {
       return res.status(400).json({ error: 'Invalid photo IDs' });
     }
-    
+
     // Verify all photos belong to the event
     const photoCount = await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .count('id as count')
       .first();
-    
+
     if (parseInt(photoCount.count) !== photoIds.length) {
       return res.status(400).json({ error: 'Some photos do not belong to this event' });
     }
-    
+
     // Prepare update data
     const updateData = {
       updated_at: new Date()

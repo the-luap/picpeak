@@ -9,7 +9,7 @@ let lastConfigHash = null;
 // Generate hash from config for change detection
 function generateConfigHash(config) {
   const crypto = require('crypto');
-  const configString = `${config.smtp_host}:${config.smtp_port}:${config.smtp_user}:${config.smtp_pass}:${config.smtp_secure}`;
+  const configString = `${config.smtp_host}:${config.smtp_port}:${config.smtp_user}:${config.smtp_pass}:${config.smtp_secure}:${config.tls_reject_unauthorized}`;
   return crypto.createHash('md5').update(configString).digest('hex');
 }
 
@@ -40,7 +40,11 @@ async function initializeTransporter(forceReinit = false) {
       auth: config.smtp_user ? {
         user: config.smtp_user,
         pass: config.smtp_pass
-      } : undefined
+      } : undefined,
+      tls: {
+        // Allow ignoring SSL certificate errors when tls_reject_unauthorized is false
+        rejectUnauthorized: config.tls_reject_unauthorized !== false
+      }
     });
 
     // Verify configuration

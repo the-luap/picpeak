@@ -35,7 +35,7 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
     "joi": "^17.9.1",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.0",
     "knex": "^2.4.2",
     "mime-types": "^3.0.1",
@@ -61,6 +61,9 @@
   "overrides": {
     "prebuild-install": {
       "tar-fs": "2.1.4"
-    }
+    },
+    "glob": "^11.1.0",
+    "body-parser": "^2.2.1",
+    "js-yaml": "^4.1.1"
   }
 }

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  Mail, 
-  Save, 
-  Send, 
+import {
+  Mail,
+  Save,
+  Send,
   Server,
   Lock,
   User,
@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
+  ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -107,7 +108,8 @@ export const EmailConfigPage: React.FC = () => {
     smtp_user: '',
     smtp_pass: '',
     from_email: '',
-    from_name: 'Photo Sharing'
+    from_name: 'Photo Sharing',
+    tls_reject_unauthorized: true
   });
 
   // Fetch SMTP config
@@ -342,7 +344,7 @@ export const EmailConfigPage: React.FC = () => {
                     placeholder="587"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     {t('email.security')}
@@ -357,6 +359,30 @@ export const EmailConfigPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {/* Ignore SSL Certificate Errors */}
+              <div className="mt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!smtpConfig.tls_reject_unauthorized}
+                    onChange={(e) => setSmtpConfig(prev => ({ ...prev, tls_reject_unauthorized: !e.target.checked }))}
+                    className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-neutral-700">
+                    {t('email.ignoreSslErrors')}
+                  </span>
+                </label>
+                {!smtpConfig.tls_reject_unauthorized && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800">
+                        {t('email.ignoreSslWarning')}
+                      </p>
+                    </div>
+                  </div>
+                )}</div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">

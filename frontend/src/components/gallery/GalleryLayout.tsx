@@ -29,6 +29,7 @@ interface GalleryLayoutProps {
     logo_display_header?: boolean;
     logo_display_hero?: boolean;
     logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
+    hide_powered_by?: boolean;
   };
   showLogout?: boolean;
   onLogout?: () => void;
@@ -438,7 +439,10 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             </p>
           )}
           <p className="text-xs sm:text-sm text-neutral-500">
-            {brandingSettings?.footer_text || '© 2024 Your Company. All rights reserved.'} | Powered by <span className="font-semibold">PicPeak</span>
+            {brandingSettings?.footer_text || '© 2024 Your Company. All rights reserved.'}
+            {!brandingSettings?.hide_powered_by && (
+              <> | Powered by <span className="font-semibold">PicPeak</span></>
+            )}
           </p>
           {brandingSettings?.company_name && brandingSettings?.company_tagline && (
             <p className="text-xs text-neutral-400 mt-2">

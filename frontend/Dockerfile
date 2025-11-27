@@ -12,6 +12,9 @@ LABEL org.opencontainers.image.source="https://github.com/the-luap/picpeak"
 LABEL org.opencontainers.image.description="PicPeak Frontend Application"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# Upgrade npm to fix glob CVE-2025-64756 vulnerability
+RUN npm install -g npm@latest
+
 # Set working directory
 WORKDIR /app
 
@@ -29,6 +32,9 @@ RUN npm run build
 
 # Production stage
 FROM nginx:alpine
+
+# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+RUN apk upgrade --no-cache
 
 # Install runtime dependencies
 RUN apk add --no-cache curl

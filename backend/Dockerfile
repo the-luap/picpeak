@@ -11,13 +11,16 @@ LABEL org.opencontainers.image.source="https://github.com/the-luap/picpeak"
 LABEL org.opencontainers.image.description="PicPeak Backend Service"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# Upgrade npm to fix glob CVE-2025-64756 vulnerability
+RUN npm install -g npm@latest
+
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (--omit=dev replaces deprecated --only=production)
+RUN npm ci --omit=dev
 
 # Copy application files
 COPY . .
@@ -26,6 +29,12 @@ COPY . .
 FROM node:20-alpine
 
 WORKDIR /app
+
+# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+RUN apk upgrade --no-cache
+
+# Upgrade npm to fix glob CVE-2025-64756 vulnerability
+RUN npm install -g npm@latest
 
 # Install dumb-init for proper signal handling and postgresql-client for database checks
 RUN apk add --no-cache dumb-init postgresql-client

@@ -23,6 +23,14 @@ export const BrandingPage: React.FC = () => {
     watermark_size: 15,
     watermark_logo_url: '',
     favicon_url: '',
+    logo_url: '',
+    logo_size: 'medium',
+    logo_max_height: 48,
+    logo_position: 'left',
+    logo_display_header: true,
+    logo_display_hero: true,
+    logo_display_mode: 'logo_and_text',
+    hide_powered_by: false,
   });
 
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(theme);
@@ -506,6 +514,27 @@ export const BrandingPage: React.FC = () => {
                 </label>
               </div>
             </div>
+          </div>
+
+          {/* White Label Settings */}
+          <div className="mt-6 pt-6 border-t border-neutral-200">
+            <h3 className="text-md font-semibold text-neutral-900 mb-4">{t('branding.whiteLabel', 'White Label')}</h3>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={brandingSettings.hide_powered_by === true}
+                onChange={(e) => handleBrandingChange('hide_powered_by', e.target.checked)}
+                className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-900">
+                  {t('branding.hidePoweredBy', 'Hide "Powered by PicPeak" branding')}
+                </span>
+                <p className="text-xs text-neutral-600">
+                  {t('branding.hidePoweredByHelp', 'Remove the PicPeak attribution from gallery footers for a fully white-labeled experience')}
+                </p>
+              </div>
+            </label>
           </div>
 
           <div className="mt-6 pt-6 border-t border-neutral-200">
