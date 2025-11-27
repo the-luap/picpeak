@@ -17,6 +17,13 @@ done
 
 >&2 echo "PostgreSQL is up - executing command"
 
+# Ensure storage directories exist with proper permissions (Issue #67 fix)
+# When host directories are bind-mounted, the container's built-in directories are overridden
+# This ensures the required directory structure exists before the application starts
+echo "Ensuring storage directories exist..."
+STORAGE_BASE="${STORAGE_PATH:-/app/storage}"
+mkdir -p "$STORAGE_BASE/events/active" "$STORAGE_BASE/events/archived" "$STORAGE_BASE/thumbnails" 2>/dev/null || true
+
 # Run migrations (use safe runner in production)
 echo "Running database migrations..."
 if [ "$NODE_ENV" = "production" ]; then
