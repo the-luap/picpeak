@@ -76,12 +76,15 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     // Accept images and common video formats with proper validation
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'];
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/png', 'image/webp',
+      'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+    ];
     
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG, WebP images or MP4/MOV/WEBM videos are allowed'));
+      cb(new Error('Only JPEG, PNG, WebP images and MP4, WebM, MOV, AVI videos are allowed'));
     }
   },
   // Add abort on limit to stop processing when limits are exceeded
@@ -90,8 +93,12 @@ const upload = multer({
 
 // Create content validator middleware
 const validateUploadContent = createFileUploadValidator({
-  allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'],
-  maxFileSize: 50 * 1024 * 1024,
+  allowedTypes: [
+    'image/jpeg', 'image/png', 'image/webp',
+    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
+  ],
+  // 10GB per file to accommodate large videos; overall limits enforced elsewhere
+  maxFileSize: 10 * 1024 * 1024 * 1024,
   validateContent: true
 });
 
