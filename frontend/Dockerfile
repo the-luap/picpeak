@@ -35,8 +35,8 @@ FROM nginx:1.27-alpine3.21
 
 # Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
 RUN apk upgrade --no-cache
-# Ensure libpng includes CVE fixes
-RUN apk add --no-cache 'libpng>=1.6.51-r0'
+# Ensure libpng includes CVE fixes (pull patched version from edge)
+RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main 'libpng>=1.6.51-r0'
 
 # Install runtime dependencies
 RUN apk add --no-cache curl
