@@ -27,11 +27,13 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage (use Alpine with patched libpng)
+FROM nginx:1.27-alpine3.21
 
 # Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
 RUN apk upgrade --no-cache
+# Ensure libpng includes CVE fixes
+RUN apk add --no-cache 'libpng>=1.6.51-r0'
 
 # Install runtime dependencies
 RUN apk add --no-cache curl
