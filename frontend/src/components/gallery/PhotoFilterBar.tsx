@@ -32,6 +32,9 @@ interface PhotoFilterBarProps {
   feedbackEnabled?: boolean;
   currentFilter?: FilterType;
   onFilterChange?: (filter: FilterType) => void;
+  mediaFilter?: 'all' | 'photo' | 'video';
+  onMediaFilterChange?: (filter: 'all' | 'photo' | 'video') => void;
+  showMediaFilter?: boolean;
 }
 
 export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
@@ -47,6 +50,9 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
   feedbackEnabled = false,
   currentFilter = 'all',
   onFilterChange,
+  mediaFilter = 'all',
+  onMediaFilterChange,
+  showMediaFilter = false
 }) => {
   const { t } = useTranslation();
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -148,7 +154,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   leftIcon={<Grid className="w-3 h-3 md:w-4 md:h-4" />}
                   className="text-xs md:text-sm whitespace-nowrap flex-shrink-0"
                 >
-                  {t('gallery.allPhotos')} ({photos.length})
+                  {showMediaFilter ? t('gallery.allMedia', 'All media') : t('gallery.allPhotos')} ({photos.length})
                 </Button>
                 {categories.map((category) => {
                   const categoryPhotoCount = photos.filter(p => p.category_id === category.id).length;
@@ -226,8 +232,42 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
             )}
 
             <p className="text-xs md:text-sm text-neutral-600 flex-shrink-0 ml-auto">
-              {photoCount} {photoCount === 1 ? t('common.photo') : t('common.photos')}
+              {photoCount} {t('common.media', 'media')}
             </p>
+          </div>
+        )}
+
+        {showMediaFilter && onMediaFilterChange && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs md:text-sm text-neutral-600 whitespace-nowrap">
+              {t('gallery.mediaType', 'Media')}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={mediaFilter === 'all' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onMediaFilterChange('all')}
+                className="text-xs md:text-sm"
+              >
+                {t('gallery.allMedia', 'All')}
+              </Button>
+              <Button
+                variant={mediaFilter === 'photo' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onMediaFilterChange('photo')}
+                className="text-xs md:text-sm"
+              >
+                {t('gallery.photosOnly', 'Photos')}
+              </Button>
+              <Button
+                variant={mediaFilter === 'video' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => onMediaFilterChange('video')}
+                className="text-xs md:text-sm"
+              >
+                {t('gallery.videosOnly', 'Videos')}
+              </Button>
+            </div>
           </div>
         )}
         

@@ -237,4 +237,54 @@ async function ensureThumbnail(photo) {
   return null;
 }
 
-module.exports = { generateThumbnail, isThumbnailValid, ensureThumbnail };
+async function generateVideoPlaceholder(originalFilename, options = {}) {
+  const parsed = path.parse(originalFilename || '');
+  const baseName = parsed.name || 'video';
+  const thumbnailDir = getThumbnailPath();
+  const thumbnailFilename = `thumb_${baseName}.jpg`;
+  const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
+
+  const settings = await getThumbnailSettings();
+  const width = settings.width || DEFAULT_THUMBNAIL_WIDTH;
+  const height = settings.height || DEFAULT_THUMBNAIL_HEIGHT;
+
+  if (options.regenerate) {
+    try {
+      await fs.unlink(thumbnailPath);
+    } catch (_) {
+      // ignore if missing
+    }
+  }
+
+  try {
+    await fs.mkdir(thumbnailDir, { recursive: true });
+    const svg = `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#1e293b" stop-opacity="0.9"/>
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" rx="18" fill="url(#grad)"/>
+        <circle cx="${width / 2}" cy="${height / 2}" r="${Math.min(width, height) / 6}" fill="rgba(255,255,255,0.85)"/>
+        <polygon points="${width / 2 - 10},${height / 2 - 14} ${width / 2 - 10},${height / 2 + 14} ${width / 2 + 16},${height / 2}" fill="#0f172a"/>
+        <text x="50%" y="${height - 18}" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.9)" text-anchor="middle">
+          VIDEO
+        </text>
+      </svg>
+    `;
+
+    await sharp(Buffer.from(svg))
+      .resize(width, height, { fit: 'cover' })
+      .jpeg({ quality: settings.quality || DEFAULT_THUMBNAIL_QUALITY })
+      .toFile(thumbnailPath);
+
+    return path.relative(getStoragePath(), thumbnailPath);
+  } catch (error) {
+    logger.error('Failed to generate video placeholder thumbnail:', error.message);
+    return null;
+  }
+}
+
+module.exports = { generateThumbnail, isThumbnailValid, ensureThumbnail, generateVideoPlaceholder };

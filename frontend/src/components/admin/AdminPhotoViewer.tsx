@@ -9,6 +9,7 @@ import { photosService } from '../../services/photos.service';
 import { feedbackService, type PhotoFeedback, type FeedbackSummary } from '../../services/feedback.service';
 import { Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
+import { AdminAuthenticatedVideo } from './AdminAuthenticatedVideo';
 
 type AdminFeedbackResponse = {
   feedback: PhotoFeedback[];
@@ -39,6 +40,11 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
   const queryClient = useQueryClient();
   
   const currentPhoto = photos[currentIndex];
+  const isVideo = currentPhoto
+    ? (currentPhoto.media_type === 'video' ||
+      (currentPhoto.mime_type && String(currentPhoto.mime_type).startsWith('video/')) ||
+      currentPhoto.type === 'video')
+    : false;
   const averageRating = currentPhoto?.average_rating ?? 0;
   const likeCount = currentPhoto?.like_count ?? 0;
   const favoriteCount = currentPhoto?.favorite_count ?? 0;
@@ -191,19 +197,35 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
       <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto p-4 w-full h-full">
         {/* Image */}
         <div className="flex-1 flex items-center justify-center min-h-0">
-          <AdminAuthenticatedImage
-            src={currentPhoto.url}
-            alt={currentPhoto.filename}
-            className="max-w-full max-h-full object-contain"
-            fallback={
-              <div className="flex items-center justify-center text-neutral-400">
-                <div className="text-center">
-                  <Eye className="w-12 h-12 mx-auto mb-2" />
-                  <p className="text-sm">Failed to load image</p>
+          {isVideo ? (
+            <AdminAuthenticatedVideo
+              src={currentPhoto.url}
+              className="max-w-full max-h-full bg-black"
+              poster={currentPhoto.thumbnail_url || undefined}
+              fallback={
+                <div className="flex items-center justify-center text-neutral-400">
+                  <div className="text-center">
+                    <Eye className="w-12 h-12 mx-auto mb-2" />
+                    <p className="text-sm">Failed to load media</p>
+                  </div>
                 </div>
-              </div>
-            }
-          />
+              }
+            />
+          ) : (
+            <AdminAuthenticatedImage
+              src={currentPhoto.url}
+              alt={currentPhoto.filename}
+              className="max-w-full max-h-full object-contain"
+              fallback={
+                <div className="flex items-center justify-center text-neutral-400">
+                  <div className="text-center">
+                    <Eye className="w-12 h-12 mx-auto mb-2" />
+                    <p className="text-sm">Failed to load image</p>
+                  </div>
+                </div>
+              }
+            />
+          )}
         </div>
 
         {/* Sidebar */}

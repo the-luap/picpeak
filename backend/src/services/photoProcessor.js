@@ -1,8 +1,10 @@
 const path = require('path');
 const fs = require('fs').promises;
 const { db } = require('../database/db');
-const { generateThumbnail } = require('./imageProcessor');
+const { generateThumbnail, generateVideoPlaceholder } = require('./imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
+const { isVideoMimeType } = require('../utils/fileSecurityUtils');
+const mime = require('mime-types');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -70,12 +72,15 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
     const trx = await db.transaction();
     
     try {
+      const resolvedMime = file?.mimetype || mime.lookup(file?.originalname || '') || 'application/octet-stream';
+      const isVideo = isVideoMimeType(resolvedMime, file?.originalname);
+      
       // Count existing photos to generate sequence number
       let counter = 1;
-      let photoType = 'individual'; // default type
+      let photoType = isVideo ? 'video' : 'individual'; // default type
       
       // If categoryId is provided and matches photo types, use it as type
-      if (categoryId === 'collage') {
+      if (!isVideo && categoryId === 'collage') {
         photoType = 'collage';
       }
       
@@ -90,7 +95,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       
       // Generate new filename
       const extension = path.extname(file.originalname);
-      const categoryName = photoType === 'collage' ? 'collages' : 'individual';
+      const categoryName = photoType === 'collage' ? 'collages' : (isVideo ? 'videos' : 'individual');
       const newFilename = generatePhotoFilename(
         event.event_name,
         categoryName,
@@ -150,8 +155,13 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         }
       }
       
-      // Generate thumbnail
-      const thumbnailPath = await generateThumbnail(newPath);
+      // Generate thumbnail or placeholder
+      let thumbnailPath = null;
+      if (isVideo) {
+        thumbnailPath = await generateVideoPlaceholder(newFilename);
+      } else {
+        thumbnailPath = await generateThumbnail(newPath);
+      }
       
       // Calculate relative paths
       const storagePath = getStoragePath();
@@ -173,20 +183,22 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
             type: photoType,
             size_bytes: file.size,
             uploaded_by: uploadedBy,
-            source_origin: 'managed'
+            source_origin: 'managed',
+            mime_type: resolvedMime
           })
           .returning('id');
       } else {
         insertResult = await trx('photos').insert({
           event_id: eventId,
           filename: newFilename,
-          path: relativePath,
-          thumbnail_path: relativeThumbPath,
-          type: photoType,
-          size_bytes: file.size,
-          uploaded_by: uploadedBy,
-          source_origin: 'managed'
-        });
+            path: relativePath,
+            thumbnail_path: relativeThumbPath,
+            type: photoType,
+            size_bytes: file.size,
+            uploaded_by: uploadedBy,
+            source_origin: 'managed',
+            mime_type: resolvedMime
+          });
       }
 
       const insertedId = Array.isArray(insertResult)
@@ -206,7 +218,8 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         id: photoId,
         filename: newFilename,
         size: file.size,
-        type: photoType
+        type: photoType,
+        media_type: isVideo ? 'video' : 'photo'
       });
 
       console.log(`Successfully processed file ${file.originalname} (ID: ${photoId})`);

@@ -16,6 +16,7 @@ export { SkipLink } from './SkipLink';
 export { DynamicFavicon } from './DynamicFavicon';
 export { LanguageSelector } from './LanguageSelector';
 export { AuthenticatedImage } from './AuthenticatedImage';
+export { AuthenticatedVideo } from './AuthenticatedVideo';
 export { ProtectedImage } from './ProtectedImage';
 export { ProtectionWarning } from './ProtectionWarning';
 export { ReCaptcha } from './ReCaptcha';

@@ -78,6 +78,21 @@ const ALLOWED_IMAGE_TYPES = {
     extensions: ['.svg'],
     // SVG files are XML-based text files, so we skip magic number validation
     magicNumbers: null
+  },
+  // Video types are included here to keep validation centralized
+  'video/mp4': {
+    extensions: ['.mp4'],
+    magicNumbers: null
+  },
+  'video/quicktime': {
+    extensions: ['.mov', '.qt'],
+    magicNumbers: null
+  },
+  'video/webm': {
+    extensions: ['.webm'],
+    magicNumbers: [
+      { offset: 0, bytes: [0x1A, 0x45, 0xDF, 0xA3] } // WebM/Matroska
+    ]
   }
 };
 
@@ -164,6 +179,26 @@ function getSafeFilename(originalFilename) {
   return `upload_${timestamp}_${randomString}${ext}`;
 }
 
+function isVideoMimeType(mimeType, filename) {
+  const lowerMime = (mimeType || '').toLowerCase();
+  if (lowerMime.startsWith('video/')) {
+    return true;
+  }
+
+  const ext = filename ? path.extname(filename).toLowerCase() : '';
+  const videoExts = ['.mp4', '.mov', '.webm', '.m4v', '.qt'];
+
+  if (videoExts.includes(ext)) {
+    return true;
+  }
+
+  if (lowerMime === 'application/mp4' || lowerMime === 'application/x-m4v' || lowerMime === 'application/octet-stream') {
+    return videoExts.includes(ext) || true;
+  }
+
+  return false;
+}
+
 /**
  * Create a file upload validator middleware
  * @param {Object} options - Validation options
@@ -229,5 +264,6 @@ module.exports = {
   validateFileContent,
   getSafeFilename,
   createFileUploadValidator,
-  ALLOWED_IMAGE_TYPES
+  ALLOWED_IMAGE_TYPES,
+  isVideoMimeType
 };

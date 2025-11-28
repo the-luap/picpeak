@@ -55,8 +55,10 @@ export interface Photo {
   secure_url_template?: string;
   download_url_template?: string;
   requires_token?: boolean;
-  type: 'collage' | 'individual';
-  category_id?: number;
+  type: 'collage' | 'individual' | 'video';
+  media_type?: 'photo' | 'video';
+  mime_type?: string;
+  category_id?: number | string | null;
   category_name?: string;
   category_slug?: string;
   size: number;
@@ -71,7 +73,7 @@ export interface Photo {
 }
 
 export interface PhotoCategory {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   is_global: boolean;

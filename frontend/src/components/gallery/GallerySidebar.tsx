@@ -9,8 +9,8 @@ interface GallerySidebarProps {
   isOpen: boolean;
   onClose: () => void;
   categories: PhotoCategory[];
-  selectedCategoryId: number | null;
-  onCategoryChange: (categoryId: number | null) => void;
+  selectedCategoryId: number | string | null;
+  onCategoryChange: (categoryId: number | string | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   sortBy: 'date' | 'name' | 'size' | 'rating';
@@ -22,7 +22,7 @@ interface GallerySidebarProps {
   onDownloadSelected: () => void;
   isDownloading: boolean;
   allowDownloads?: boolean;
-  photoCounts?: Record<number, number>;
+  photoCounts?: Record<number | string, number>;
   totalPhotos: number;
   isMobile: boolean;
   galleryLayout?: string;
@@ -34,6 +34,9 @@ interface GallerySidebarProps {
   likeCount?: number;
   favoriteCount?: number;
   ratedCount?: number;
+  mediaFilter?: 'all' | 'photo' | 'video';
+  onMediaFilterChange?: (filter: 'all' | 'photo' | 'video') => void;
+  showMediaFilter?: boolean;
 }
 
 export const GallerySidebar: React.FC<GallerySidebarProps> = ({
@@ -64,7 +67,10 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
   onFilterChange,
   likeCount = 0,
   favoriteCount = 0,
-  ratedCount = 0
+  ratedCount = 0,
+  mediaFilter = 'all',
+  onMediaFilterChange,
+  showMediaFilter = false
 }) => {
   const { t } = useTranslation();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -284,6 +290,47 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {showMediaFilter && onMediaFilterChange && (
+            <div className="p-4 border-b border-neutral-200">
+              <h3 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                {t('gallery.mediaType', 'Media')}
+              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant={mediaFilter === 'all' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    onMediaFilterChange('all');
+                    if (isMobile) onClose();
+                  }}
+                >
+                  {t('gallery.allMedia', 'All')}
+                </Button>
+                <Button
+                  variant={mediaFilter === 'photo' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    onMediaFilterChange('photo');
+                    if (isMobile) onClose();
+                  }}
+                >
+                  {t('gallery.photosOnly', 'Photos')}
+                </Button>
+                <Button
+                  variant={mediaFilter === 'video' ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    onMediaFilterChange('video');
+                    if (isMobile) onClose();
+                  }}
+                >
+                  {t('gallery.videosOnly', 'Videos')}
+                </Button>
               </div>
             </div>
           )}

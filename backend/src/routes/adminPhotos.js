@@ -4,12 +4,14 @@ const path = require('path');
 const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
-const { generateThumbnail, ensureThumbnail } = require('../services/imageProcessor');
+const { generateThumbnail, ensureThumbnail, generateVideoPlaceholder } = require('../services/imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const router = express.Router();
+const { isVideoMimeType, validateFileType, createFileUploadValidator } = require('../utils/fileSecurityUtils');
+const mime = require('mime-types');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -61,8 +63,6 @@ const storage = multer.diskStorage({
   }
 });
 
-const { validateFileType } = require('../utils/fileSecurityUtils');
-
 const upload = multer({
   storage: storage,
   limits: {
@@ -75,24 +75,22 @@ const upload = multer({
     headerPairs: 2000 // Maximum number of header key-value pairs
   },
   fileFilter: (req, file, cb) => {
-    // Accept images only with proper validation
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    // Accept images and common video formats with proper validation
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'];
     
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG and WebP images are allowed'));
+      cb(new Error('Only JPEG, PNG, WebP images or MP4/MOV/WEBM videos are allowed'));
     }
   },
   // Add abort on limit to stop processing when limits are exceeded
   abortOnLimit: true
 });
 
-const { createFileUploadValidator } = require('../utils/fileSecurityUtils');
-
 // Create content validator middleware
 const validateUploadContent = createFileUploadValidator({
-  allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+  allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'],
   maxFileSize: 50 * 1024 * 1024,
   validateContent: true
 });
@@ -186,25 +184,13 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     
     // Parse category_id to number if provided
     const numericCategoryId = parseCategoryId(category_id);
-    
-    // Determine photo type from category_id parameter (for backwards compatibility)
-    let photoType = 'individual'; // default
-    let categoryName = 'individual';
-    
-    if (numericCategoryId === 1 || category_id === 'collage') {
-      photoType = 'collage';
-      categoryName = 'collages';
-    } else if (numericCategoryId === 2 || category_id === 'individual') {
-      photoType = 'individual';
-      categoryName = 'individual';
-    }
-    
-    // For backwards compatibility, accept string values
-    if (category_id === 'collage') {
-      photoType = 'collage';
-      categoryName = 'collages';
-    }
-    
+
+    const resolveCategoryName = (type) => {
+      if (type === 'collage') return 'collages';
+      if (type === 'video') return 'videos';
+      return 'individual';
+    };
+
     // Create final destination directory
     const finalDestPath = path.join(getStoragePath(), 'events/active', event.slug);
     await fs.mkdir(finalDestPath, { recursive: true });
@@ -222,20 +208,49 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
       const trx = await db.transaction();
       
       try {
-        // Get initial counter for this batch based on photo type
-        const existingCount = await trx('photos')
-          .where({ event_id: eventId, type: photoType })
-          .count('id as count')
-          .first();
-        let batchCounter = (parseInt(existingCount.count) || 0) + 1;
+        const preparedBatch = batch.map((file) => {
+          const resolvedMime = file?.mimetype || mime.lookup(file?.originalname || '') || 'application/octet-stream';
+          const video = isVideoMimeType(resolvedMime, file?.originalname);
+          let inferredType = video ? 'video' : 'individual';
+
+          if (!video) {
+            if (numericCategoryId === 1 || category_id === 'collage') {
+              inferredType = 'collage';
+            } else if (numericCategoryId === 2 || category_id === 'individual') {
+              inferredType = 'individual';
+            }
+          }
+
+          return {
+            file,
+            resolvedMime,
+            isVideo: video,
+            photoType: inferredType
+          };
+        });
+
+        const typesInBatch = Array.from(new Set(preparedBatch.map((item) => item.photoType)));
+        const typeCounters = {};
+
+        if (typesInBatch.length > 0) {
+          const existingCounts = await trx('photos')
+            .where({ event_id: eventId })
+            .whereIn('type', typesInBatch)
+            .select('type')
+            .count('id as count')
+            .groupBy('type');
+
+          existingCounts.forEach((row) => {
+            typeCounters[row.type] = parseInt(row.count) || 0;
+          });
+        }
         
         const batchPhotos = [];
         const fileRenameOperations = []; // Store rename operations to do after commit
         
         // First pass: prepare data and move files from temp to final location
-        for (let fileIndex = 0; fileIndex < batch.length; fileIndex++) {
-          const file = batch[fileIndex];
-          const counter = batchCounter + fileIndex;
+        for (let fileIndex = 0; fileIndex < preparedBatch.length; fileIndex++) {
+          const { file, resolvedMime, isVideo, photoType } = preparedBatch[fileIndex];
           const tempPath = file.path; // Original temp path
           
           try {
@@ -244,12 +259,15 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
             if (tempStats.size === 0) {
               throw new Error('File is empty - upload may have been interrupted');
             }
+
+            typeCounters[photoType] = (typeCounters[photoType] || 0) + 1;
+            const counter = typeCounters[photoType];
             
             // Generate new filename
             const extension = path.extname(file.originalname);
             const newFilename = generatePhotoFilename(
               event.event_name,
-              categoryName,
+              resolveCategoryName(photoType),
               counter,
               extension
             );
@@ -268,7 +286,8 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               type: photoType,
               size_bytes: tempStats.size, // Use actual file size from stat
               category_id: numericCategoryId,
-              source_origin: 'managed'
+              source_origin: 'managed',
+              mime_type: resolvedMime
             };
             
             batchPhotos.push(photoData);
@@ -278,7 +297,8 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               tempPath: tempPath,
               finalPath: finalPath,
               filename: newFilename,
-              photoData: photoData
+              photoData: photoData,
+              isVideo
             });
           } catch (error) {
             console.error(`Error preparing file ${file.originalname}:`, error);
@@ -288,7 +308,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
         
         // Insert all photos in this batch
         if (batchPhotos.length > 0) {
-          console.log(`Inserting batch of ${batchPhotos.length} photos with type: ${photoType}`);
+          console.log(`Inserting batch of ${batchPhotos.length} files with types: ${typesInBatch.join(', ')}`);
           
           const insertedIds = await trx('photos').insert(batchPhotos).returning('id');
           
@@ -313,27 +333,31 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
               }
               
               // Generate thumbnail with final path
-              let thumbnailPath = null;
-              try {
-                thumbnailPath = await generateThumbnail(operation.finalPath);
-                
-                // Update the database with thumbnail path
-                if (thumbnailPath && insertedIds[idx]) {
-                  const photoId = insertedIds[idx]?.id || insertedIds[idx];
-                  await db('photos')
-                    .where({ id: photoId })
-                    .update({ thumbnail_path: thumbnailPath });
-                }
-              } catch (thumbError) {
-                console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
-              }
+      let thumbnailPath = null;
+      try {
+        thumbnailPath = operation.isVideo
+          ? await generateVideoPlaceholder(operation.filename)
+          : await generateThumbnail(operation.finalPath);
+        
+        // Update the database with thumbnail path
+        if (thumbnailPath && insertedIds[idx]) {
+          const photoId = insertedIds[idx]?.id || insertedIds[idx];
+          await db('photos')
+            .where({ id: photoId })
+            .update({ thumbnail_path: thumbnailPath });
+        }
+      } catch (thumbError) {
+        console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
+      }
               
               // Add to successful uploads
               uploadedPhotos.push({
                 id: insertedIds[idx]?.id || insertedIds[idx],
                 filename: operation.filename,
                 size: operation.photoData.size_bytes,
-                category_id: operation.photoData.category_id
+                category_id: operation.photoData.category_id,
+                type: operation.photoData.type,
+                mime_type: operation.photoData.mime_type
               });
             } catch (moveError) {
               console.error(`Failed to move file ${operation.tempPath} to ${operation.finalPath}:`, moveError);
@@ -400,7 +424,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     // Prepare response
     const totalAttempted = req.files.length + (req.invalidFiles ? req.invalidFiles.length : 0);
     const response = {
-      message: `Successfully uploaded ${uploadedPhotos.length} photos`,
+      message: `Successfully uploaded ${uploadedPhotos.length} files`,
       photos: uploadedPhotos,
       totalFiles: totalAttempted,
       successCount: uploadedPhotos.length,
@@ -410,7 +434,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
     // Include error details if any files failed
     if (totalInvalidFiles.length > 0) {
       response.errors = totalInvalidFiles;
-      response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} photos. ${totalInvalidFiles.length} failed.`;
+      response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} files. ${totalInvalidFiles.length} failed.`;
     }
     
     res.json(response);
@@ -427,7 +451,7 @@ router.post('/:eventId/upload', adminAuth, uploadTimeout(600000), async (req, re
       }
     }
     
-    res.status(500).json({ error: 'Failed to upload photos' });
+    res.status(500).json({ error: 'Failed to upload files' });
   }
 });
 
@@ -457,7 +481,7 @@ router.delete('/:eventId/photos/:photoId', adminAuth, async (req, res) => {
     
     // Delete thumbnail if exists
     if (photo.thumbnail_path) {
-      const thumbPath = path.join(storagePath, 'events/active', photo.thumbnail_path);
+      const thumbPath = path.join(storagePath, photo.thumbnail_path);
       try {
         // Check if file exists before attempting to delete
         await fs.access(thumbPath);
@@ -710,7 +734,7 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, async (req, res) => 
 router.get('/:eventId/photos', adminAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
+    const { category_id, type, media_type, search, sort = 'date', order = 'desc' } = req.query;
     
     let query = db('photos')
       .leftJoin('photo_categories as pc', 'pc.id', 'photos.category_id')
@@ -737,6 +761,20 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     // Keep type filter for backwards compatibility
     if (type) {
       query = query.where({ 'photos.type': type });
+    }
+
+    if (media_type === 'video') {
+      query = query.where((qb) => {
+        qb.where('photos.type', 'video')
+          .orWhere('photos.mime_type', 'like', 'video/%');
+      });
+    } else if (media_type === 'photo') {
+      query = query.where((qb) => {
+        qb.whereNot('photos.type', 'video')
+          .andWhere(function(inner) {
+            inner.whereNull('photos.mime_type').orWhere('photos.mime_type', 'not like', 'video/%');
+          });
+      });
     }
     
     // Search by filename
@@ -775,28 +813,37 @@ router.get('/:eventId/photos', adminAuth, async (req, res) => {
     });
     
     res.json({
-      photos: photos.map(photo => ({
-        id: photo.id,
-        filename: photo.filename,
-        // Use the correct admin photos router base for serving images
-        url: `/admin/photos/${eventId}/photo/${photo.id}`,
-        // Always expose a thumbnail URL; backend will generate on demand if missing
-        thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
-        type: photo.type,
-        category_id: photo.category_id !== null && photo.category_id !== undefined
-          ? Number(photo.category_id)
-          : null,
-        category_name: photo.category_display_name || (photo.type === 'individual' ? 'Individual Photos' : 'Collages'),
-        category_slug: photo.category_display_slug || photo.type,
-        size: photo.size_bytes,
-        uploaded_at: photo.uploaded_at,
-        // Feedback data
-        has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
-        average_rating: photo.average_rating || 0,
-        comment_count: commentMap[photo.id] || 0,
-        like_count: photo.like_count || 0,
-        favorite_count: photo.favorite_count || 0
-      }))
+      photos: photos.map(photo => {
+        const mediaType = (photo.mime_type && photo.mime_type.startsWith('video/')) || photo.type === 'video' ? 'video' : 'photo';
+        const categoryName = photo.category_display_name 
+          || (photo.type === 'individual' ? 'Individual Photos' : photo.type === 'video' ? 'Videos' : 'Collages');
+        const normalizedCategoryId = photo.category_id !== null && photo.category_id !== undefined
+          ? (Number.isNaN(Number(photo.category_id)) ? photo.category_id : Number(photo.category_id))
+          : null;
+
+        return ({
+          id: photo.id,
+          filename: photo.filename,
+          // Use the correct admin photos router base for serving images
+          url: `/admin/photos/${eventId}/photo/${photo.id}`,
+          // Always expose a thumbnail URL; backend will generate on demand if missing
+          thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
+          type: photo.type,
+          category_id: normalizedCategoryId,
+          mime_type: photo.mime_type,
+          media_type: mediaType,
+          category_name: categoryName,
+          category_slug: photo.category_display_slug || photo.type,
+          size: photo.size_bytes,
+          uploaded_at: photo.uploaded_at,
+          // Feedback data
+          has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
+          average_rating: photo.average_rating || 0,
+          comment_count: commentMap[photo.id] || 0,
+          like_count: photo.like_count || 0,
+          favorite_count: photo.favorite_count || 0
+        });
+      })
     });
   } catch (error) {
     console.error('Error fetching photos:', error);
@@ -828,8 +875,10 @@ router.get('/:eventId/photo/:photoId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Photo file not found' });
     }
     
+    const mimeType = photo.mime_type || `image/${path.extname(photo.filename).slice(1)}`;
+
     // Set appropriate headers
-    res.setHeader('Content-Type', `image/${path.extname(photo.filename).slice(1)}`);
+    res.setHeader('Content-Type', mimeType);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     
@@ -855,8 +904,30 @@ router.get('/:eventId/thumbnail/:photoId', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
     
+    const isVideo = (photo.type === 'video') || isVideoMimeType(photo.mime_type, photo.filename);
     // Ensure thumbnail exists and is valid, regenerate if needed
-    const thumbnailPath = await ensureThumbnail(photo);
+    let thumbnailPath = photo.thumbnail_path;
+    const thumbMissing = !thumbnailPath || !(await (async () => {
+      try {
+        const fs = require('fs').promises;
+        await fs.access(path.join(getStoragePath(), thumbnailPath));
+        return true;
+      } catch {
+        return false;
+      }
+    })());
+
+    if (isVideo) {
+      if (!thumbnailPath || thumbMissing) {
+        const regenerated = await generateVideoPlaceholder(photo.filename, { regenerate: true });
+        if (regenerated) {
+          thumbnailPath = regenerated;
+          await db('photos').where({ id: photo.id }).update({ thumbnail_path: regenerated });
+        }
+      }
+    } else {
+      thumbnailPath = await ensureThumbnail(photo);
+    }
     
     if (!thumbnailPath) {
       console.error(`Failed to generate thumbnail for photo ${photoId}`);

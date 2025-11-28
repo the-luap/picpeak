@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -207,6 +207,26 @@ export const EventDetailsPage: React.FC = () => {
     queryFn: () => photosService.getEventPhotos(parseInt(id!), photoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
   });
+
+  const mediaTypes = useMemo(() => {
+    const types = new Set<'photo' | 'video'>();
+    photos.forEach((p: any) => {
+      const mediaType = (p.media_type as 'photo' | 'video' | undefined)
+        || ((p.mime_type && String(p.mime_type).startsWith('video/')) || p.type === 'video' ? 'video' : 'photo');
+      if (mediaType === 'video' || mediaType === 'photo') {
+        types.add(mediaType);
+      }
+    });
+    return types;
+  }, [photos]);
+
+  const showMediaFilter = mediaTypes.has('photo') && mediaTypes.has('video');
+
+  useEffect(() => {
+    if (!showMediaFilter && photoFilters.media_type) {
+      setPhotoFilters(prev => ({ ...prev, media_type: undefined }));
+    }
+  }, [showMediaFilter, photoFilters.media_type]);
 
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
@@ -1237,6 +1257,12 @@ export const EventDetailsPage: React.FC = () => {
             onCategoryChange={(categoryId) => setPhotoFilters(prev => ({ ...prev, category_id: categoryId }))}
             onSearchChange={(search) => setPhotoFilters(prev => ({ ...prev, search }))}
             onSortChange={(sort, order) => setPhotoFilters(prev => ({ ...prev, sort, order }))}
+            mediaType={photoFilters.media_type || 'all'}
+            onMediaTypeChange={(mediaType) => setPhotoFilters(prev => ({
+              ...prev,
+              media_type: mediaType === 'all' ? undefined : mediaType
+            }))}
+            showMediaFilter={showMediaFilter}
           />
 
           {/* Actions Bar */}

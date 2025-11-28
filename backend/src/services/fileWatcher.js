@@ -3,8 +3,10 @@ const path = require('path');
 const fs = require('fs').promises;
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
-const { generateThumbnail } = require('./imageProcessor');
+const { generateThumbnail, generateVideoPlaceholder } = require('./imageProcessor');
 const logger = require('../utils/logger');
+const { isVideoMimeType } = require('../utils/fileSecurityUtils');
+const mime = require('mime-types');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 const WATCH_PATH = () => path.join(getStoragePath(), 'events/active');
@@ -47,9 +49,11 @@ async function processNewPhoto(filePath) {
   const eventSlug = pathParts[0];
   const photoType = pathParts[1] === 'collages' ? 'collage' : 'individual';
   
-  // Check if this is an image file
+  // Check if this is an image or video file
   const ext = path.extname(filePath).toLowerCase();
-  if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return;
+  const detectedMime = mime.lookup(filePath) || '';
+  const isVideo = isVideoMimeType(detectedMime, filePath) || ['.mp4', '.mov', '.webm'].includes(ext);
+  if (!isVideo && !['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return;
   
   // Skip temporary upload files
   const filename = path.basename(filePath);
@@ -65,11 +69,17 @@ async function processNewPhoto(filePath) {
   // Get file stats
   const stats = await fs.stat(filePath);
   
-  // Generate thumbnail
-  const thumbnailPath = await generateThumbnail(filePath);
+  // Generate thumbnail or placeholder
+  let thumbnailPath = null;
+  if (isVideo) {
+    thumbnailPath = await generateVideoPlaceholder(filename);
+  } else {
+    thumbnailPath = await generateThumbnail(filePath);
+  }
   
   // Calculate relative thumbnail path
   const relativeThumbPath = thumbnailPath; // thumbnailPath is already relative to storage root
+  const mimeType = detectedMime || (isVideo ? 'video/mp4' : 'image/jpeg');
   
   // Check if photo already exists
   const existingPhoto = await db('photos')
@@ -83,8 +93,9 @@ async function processNewPhoto(filePath) {
       filename: path.basename(filePath),
       path: relativePath,
       thumbnail_path: relativeThumbPath,
-      type: photoType,
-      size_bytes: stats.size
+      type: isVideo ? 'video' : photoType,
+      size_bytes: stats.size,
+      mime_type: mimeType
     });
     
     logger.info(`Added new photo: ${relativePath}`);

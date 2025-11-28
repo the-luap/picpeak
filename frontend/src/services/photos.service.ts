@@ -7,11 +7,13 @@ export interface AdminPhoto {
   url: string;
   thumbnail_url: string | null;
   type: string;
-  category_id: number | null;
+  category_id: number | string | null;
   category_name: string | null;
   category_slug: string | null;
   size: number;
   uploaded_at: string;
+  media_type?: 'photo' | 'video';
+  mime_type?: string | null;
   view_count?: number;
   download_count?: number;
   // Feedback fields
@@ -23,8 +25,9 @@ export interface AdminPhoto {
 }
 
 export interface PhotoFilters {
-  category_id?: number | null;
+  category_id?: number | string | null;
   type?: string;
+  media_type?: 'photo' | 'video';
   search?: string;
   sort?: 'date' | 'name' | 'size' | 'rating';
   order?: 'asc' | 'desc';
@@ -39,6 +42,7 @@ class PhotosService {
         params.append('category_id', filters.category_id?.toString() || '');
       }
       if (filters.type) params.append('type', filters.type);
+      if (filters.media_type) params.append('media_type', filters.media_type);
       if (filters.search) params.append('search', filters.search);
       if (filters.sort) params.append('sort', filters.sort);
       if (filters.order) params.append('order', filters.order);

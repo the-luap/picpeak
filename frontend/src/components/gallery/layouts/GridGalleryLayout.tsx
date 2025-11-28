@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -154,6 +154,10 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
     isSelected || isSelectionMode || overlayVisible
       ? 'opacity-100 md:opacity-100'
       : 'opacity-0 md:opacity-0';
+
+  const isVideo = (photo.media_type === 'video') ||
+    (photo.mime_type && photo.mime_type.startsWith('video/')) ||
+    photo.type === 'video';
 
   const handlePhotoClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isTouchDevice && !overlayVisible && !isSelectionMode) {
@@ -315,6 +319,15 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                   <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
                 </span>
               )}
+            </div>
+          )}
+
+          {isVideo && (
+            <div className="absolute bottom-2 right-2">
+              <span className="px-2 py-1 bg-black/60 text-white text-xs rounded flex items-center gap-1">
+                <Video className="w-3 h-3" />
+                {t('common.video', 'Video')}
+              </span>
             </div>
           )}
 

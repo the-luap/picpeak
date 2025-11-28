@@ -3,7 +3,7 @@ import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star } from 'lucide-react';
 import type { Photo } from '../../types';
 import { useDownloadPhoto } from '../../hooks/useGallery';
-import { AuthenticatedImage } from '../common';
+import { AuthenticatedImage, AuthenticatedVideo } from '../common';
 import { PhotoFeedback } from './PhotoFeedback';
 import { feedbackService } from '../../services/feedback.service';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
@@ -64,6 +64,11 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
+  const isVideo = currentPhoto
+    ? (currentPhoto.media_type === 'video' ||
+      (currentPhoto.mime_type && currentPhoto.mime_type.startsWith('video/')) ||
+      currentPhoto.type === 'video')
+    : false;
   
   // DevTools protection for the lightbox when enhanced protection is enabled
   useDevToolsProtection({
@@ -361,27 +366,31 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleZoomOut}
-              disabled={zoom <= 1}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Zoom out"
-            >
-              <ZoomOut className="w-5 h-5 text-white" />
-            </button>
-            <span className="text-white text-sm w-12 text-center">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              onClick={handleZoomIn}
-              disabled={zoom >= 3}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Zoom in"
-            >
-              <ZoomIn className="w-5 h-5 text-white" />
-            </button>
-            
-            <div className="w-px h-6 bg-white/20 mx-2" />
+            {!isVideo && (
+              <>
+                <button
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 1}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut className="w-5 h-5 text-white" />
+                </button>
+                <span className="text-white text-sm w-12 text-center">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 3}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn className="w-5 h-5 text-white" />
+                </button>
+                
+                <div className="w-px h-6 bg-white/20 mx-2" />
+              </>
+            )}
             
             {allowDownloads && (
               <button
@@ -451,64 +460,74 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
       {/* Image container */}
       <div
         className="absolute top-0 left-0 bottom-0 flex items-center justify-center z-0"
-        onClick={handleImageClick}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onClick={isVideo ? undefined : handleImageClick}
+        onMouseDown={isVideo ? undefined : handleMouseDown}
+        onMouseMove={isVideo ? undefined : handleMouseMove}
+        onMouseUp={isVideo ? undefined : handleMouseUp}
+        onMouseLeave={isVideo ? undefined : handleMouseUp}
+        onTouchStart={isVideo ? undefined : handleTouchStart}
+        onTouchMove={isVideo ? undefined : handleTouchMove}
+        onTouchEnd={isVideo ? undefined : handleTouchEnd}
         style={{
-          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          cursor: isVideo ? 'default' : zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
           right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
         }}
       >
-        <AuthenticatedImage
-          src={currentPhoto.url}
-          alt={currentPhoto.filename}
-          fallbackSrc={currentPhoto.thumbnail_url || undefined}
-          className="max-w-full max-h-full object-contain select-none"
-          style={{
-            transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
-            transition: isDragging ? 'none' : 'transform 0.2s',
-          }}
-          draggable={false}
-          useWatermark={useEnhancedProtection}
-          watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
-          isGallery={true}
-          slug={slug}
-          photoId={currentPhoto.id}
-          requiresToken={currentPhoto.requires_token}
-          secureUrlTemplate={currentPhoto.secure_url_template}
-          protectFromDownload={!allowDownloads || useEnhancedProtection}
-          protectionLevel={protectionLevel}
-          useEnhancedProtection={useEnhancedProtection}
-          useCanvasRendering={protectionLevel === 'maximum'}
-          fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-          blockKeyboardShortcuts={useEnhancedProtection}
-          detectPrintScreen={useEnhancedProtection}
-          detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-          onProtectionViolation={(violationType) => {
-            console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
-            
-            // Track analytics
-            if (typeof window !== 'undefined' && (window as any).umami) {
-              (window as any).umami.track('lightbox_protection_violation', {
-                photoId: currentPhoto.id,
-                violationType,
-                protectionLevel,
-                zoom
-              });
-            }
-            
-            // For maximum protection, close lightbox on violation
-            if (protectionLevel === 'maximum' && 
-                ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
-              onClose();
-            }
-          }}
-        />
+        {isVideo ? (
+          <AuthenticatedVideo
+            src={currentPhoto.url}
+            fallbackSrc={currentPhoto.thumbnail_url || undefined}
+            className="max-w-full max-h-full object-contain bg-black"
+            slug={slug}
+            poster={currentPhoto.thumbnail_url || undefined}
+          />
+        ) : (
+          <AuthenticatedImage
+            src={currentPhoto.url}
+            alt={currentPhoto.filename}
+            fallbackSrc={currentPhoto.thumbnail_url || undefined}
+            className="max-w-full max-h-full object-contain select-none"
+            style={{
+              transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
+              transition: isDragging ? 'none' : 'transform 0.2s',
+            }}
+            draggable={false}
+            useWatermark={useEnhancedProtection}
+            watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
+            isGallery={true}
+            slug={slug}
+            photoId={currentPhoto.id}
+            requiresToken={currentPhoto.requires_token}
+            secureUrlTemplate={currentPhoto.secure_url_template}
+            protectFromDownload={!allowDownloads || useEnhancedProtection}
+            protectionLevel={protectionLevel}
+            useEnhancedProtection={useEnhancedProtection}
+            useCanvasRendering={protectionLevel === 'maximum'}
+            fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            blockKeyboardShortcuts={useEnhancedProtection}
+            detectPrintScreen={useEnhancedProtection}
+            detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+            onProtectionViolation={(violationType) => {
+              console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
+              
+              // Track analytics
+              if (typeof window !== 'undefined' && (window as any).umami) {
+                (window as any).umami.track('lightbox_protection_violation', {
+                  photoId: currentPhoto.id,
+                  violationType,
+                  protectionLevel,
+                  zoom
+                });
+              }
+              
+              // For maximum protection, close lightbox on violation
+              if (protectionLevel === 'maximum' && 
+                  ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
+                onClose();
+              }
+            }}
+          />
+        )}
       </div>
 
       {/* Touch/swipe indicators for mobile */}

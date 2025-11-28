@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image, Loader2 } from 'lucide-react';
+import { Upload, X, Image, Loader2, Video } from 'lucide-react';
 import { Button } from '../common';
 import { clsx } from 'clsx';
 import { api } from '../../config/api';
@@ -51,12 +51,18 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const imageFiles = files.filter(file => 
-      ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
-    );
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'video/webm'];
+    const allowedFiles = files.filter(file => allowedTypes.includes(file.type));
+    const rejectedFiles = files.filter(file => !allowedTypes.includes(file.type));
+
+    if (rejectedFiles.length > 0) {
+      toast.error(
+        t('upload.unsupportedFiles', 'Some files were skipped because the format is not supported (use JPEG/PNG/WebP/MP4/MOV/WEBM).')
+      );
+    }
     
     // Check total file count with existing files
-    const totalFiles = selectedFiles.length + imageFiles.length;
+    const totalFiles = selectedFiles.length + allowedFiles.length;
     if (totalFiles > maxFilesPerUpload) {
       const allowedNewFiles = maxFilesPerUpload - selectedFiles.length;
       if (allowedNewFiles <= 0) {
@@ -70,11 +76,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         t('upload.someFilesSkipped', { allowed: allowedNewFiles, limit: maxFilesPerUpload }) ||
         `Only ${allowedNewFiles} more files can be added (limit ${maxFilesPerUpload})`
       );
-      setSelectedFiles(prev => [...prev, ...imageFiles.slice(0, allowedNewFiles)]);
+      setSelectedFiles(prev => [...prev, ...allowedFiles.slice(0, allowedNewFiles)]);
       return;
     }
     
-    setSelectedFiles(prev => [...prev, ...imageFiles]);
+    setSelectedFiles(prev => [...prev, ...allowedFiles]);
   };
 
   const removeFile = (index: number) => {
@@ -186,7 +192,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       {/* Category Selection */}
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-2">
-          {t('upload.photoCategory')}
+          {t('upload.mediaCategory', 'Media category')}
         </label>
         <select
           value={selectedCategoryId || ''}
@@ -216,7 +222,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           {t('upload.clickToUpload')}
         </p>
         <p className="text-sm text-neutral-500">
-          {t('upload.fileRequirements', { limit: maxFilesPerUpload })}
+          {t('upload.fileRequirementsMedia', { limit: maxFilesPerUpload }) || t('upload.fileRequirements', { limit: maxFilesPerUpload })}
         </p>
         <p
           className={clsx(
@@ -236,7 +242,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -255,7 +261,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
                 className="flex items-center justify-between p-2 bg-neutral-50 rounded-lg"
               >
                 <div className="flex items-center gap-3">
-                  <Image className="w-5 h-5 text-neutral-400" />
+                  {file.type.startsWith('video/') ? (
+                    <Video className="w-5 h-5 text-neutral-400" />
+                  ) : (
+                    <Image className="w-5 h-5 text-neutral-400" />
+                  )}
                   <div>
                     <p className="text-sm font-medium text-neutral-700 truncate max-w-xs">
                       {file.name}
@@ -288,7 +298,9 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           disabled={selectedFiles.length === 0 || isUploading}
           leftIcon={isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
         >
-          {isUploading ? t('upload.uploading') : t('common.upload') + ` ${selectedFiles.length} ${t(selectedFiles.length === 1 ? 'common.photo' : 'common.photos')}`}
+          {isUploading
+            ? t('upload.uploading')
+            : t('upload.uploadAction', { count: selectedFiles.length }) || `Upload ${selectedFiles.length} files`}
         </Button>
       </div>
 

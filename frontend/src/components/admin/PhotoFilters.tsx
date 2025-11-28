@@ -1,16 +1,20 @@
 import React from 'react';
 import { Search, Filter, SortAsc, SortDesc } from 'lucide-react';
 import { Input } from '../common';
+import { useTranslation } from 'react-i18next';
 
 interface PhotoFiltersProps {
-  categories: Array<{ id: number; name: string; slug: string }>;
-  selectedCategory: number | null | undefined;
+  categories: Array<{ id: number | string; name: string; slug: string }>;
+  selectedCategory: number | string | null | undefined;
   searchTerm: string;
   sortBy: 'date' | 'name' | 'size' | 'rating';
   sortOrder: 'asc' | 'desc';
-  onCategoryChange: (categoryId: number | null | undefined) => void;
+  onCategoryChange: (categoryId: number | string | null | undefined) => void;
   onSearchChange: (search: string) => void;
   onSortChange: (sort: 'date' | 'name' | 'size' | 'rating', order: 'asc' | 'desc') => void;
+  mediaType?: 'all' | 'photo' | 'video';
+  onMediaTypeChange?: (mediaType: 'all' | 'photo' | 'video') => void;
+  showMediaFilter?: boolean;
 }
 
 export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
@@ -21,8 +25,12 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
   sortOrder,
   onCategoryChange,
   onSearchChange,
-  onSortChange
+  onSortChange,
+  mediaType = 'all',
+  onMediaTypeChange,
+  showMediaFilter = false
 }) => {
+  const { t } = useTranslation();
   const handleSortToggle = () => {
     onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc');
   };
@@ -34,7 +42,7 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
         <div className="flex-1">
           <Input
             type="text"
-            placeholder="Search by filename..."
+            placeholder={t('gallery.searchByFilename', 'Search by filename...')}
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             leftIcon={<Search className="w-5 h-5 text-neutral-400" />}
@@ -46,11 +54,16 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
           <Filter className="w-5 h-5 text-neutral-400" />
           <select
             value={selectedCategory === null ? '' : selectedCategory || ''}
-            onChange={(e) => onCategoryChange(e.target.value === '' ? null : Number(e.target.value) || undefined)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === '') return onCategoryChange(null);
+              const numeric = Number(raw);
+              onCategoryChange(Number.isNaN(numeric) ? raw : numeric);
+            }}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="">All Categories</option>
-            <option value="0">Uncategorized</option>
+            <option value="">{t('gallery.allCategories', 'All Categories')}</option>
+            <option value="0">{t('gallery.uncategorized', 'Uncategorized')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -59,6 +72,21 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
           </select>
         </div>
 
+        {showMediaFilter && onMediaTypeChange && (
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-neutral-400" />
+            <select
+              value={mediaType}
+              onChange={(e) => onMediaTypeChange(e.target.value as 'all' | 'photo' | 'video')}
+              className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="all">{t('gallery.allMedia', 'All media')}</option>
+              <option value="photo">{t('gallery.photosOnly', 'Photos only')}</option>
+              <option value="video">{t('gallery.videosOnly', 'Videos only')}</option>
+            </select>
+          </div>
+        )}
+
         {/* Sort Options */}
         <div className="flex items-center gap-2">
           <select
@@ -66,16 +94,16 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
             onChange={(e) => onSortChange(e.target.value as 'date' | 'name' | 'size' | 'rating', sortOrder)}
             className="px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="date">Sort by Date</option>
-            <option value="name">Sort by Name</option>
-            <option value="size">Sort by Size</option>
-            <option value="rating">Sort by Rating</option>
+            <option value="date">{t('gallery.sortByDate', 'Sort by Date')}</option>
+            <option value="name">{t('gallery.sortByName', 'Sort by Name')}</option>
+            <option value="size">{t('gallery.sortBySize', 'Sort by Size')}</option>
+            <option value="rating">{t('gallery.sortByRating', 'Sort by Rating')}</option>
           </select>
           
           <button
             onClick={handleSortToggle}
             className="p-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
-            aria-label={sortOrder === 'asc' ? 'Sort descending' : 'Sort ascending'}
+            aria-label={sortOrder === 'asc' ? t('gallery.sortDescending', 'Sort descending') : t('gallery.sortAscending', 'Sort ascending')}
           >
             {sortOrder === 'asc' ? (
               <SortAsc className="w-5 h-5 text-neutral-600" />

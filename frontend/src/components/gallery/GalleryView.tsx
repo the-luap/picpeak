@@ -44,7 +44,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { t } = useTranslation();
   const { logout } = useGalleryAuth();
   const { setTheme, theme } = useTheme();
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
@@ -57,8 +57,22 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { watermarkEnabled } = useWatermarkSettings();
   const [protectionLevel, setProtectionLevel] = useState<'basic' | 'standard' | 'enhanced' | 'maximum'>('standard');
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'photo' | 'video'>('all');
   const [guestId, setGuestId] = useState<string>('');
   const [staticHeroPhoto, setStaticHeroPhoto] = useState<Photo | null>(null);
+
+  const resolveMediaType = (photo: Photo) => {
+    if (photo.media_type === 'video' || photo.media_type === 'photo') {
+      return photo.media_type;
+    }
+    if (photo.mime_type && photo.mime_type.startsWith('video/')) {
+      return 'video';
+    }
+    if ((photo as any).type === 'video') {
+      return 'video';
+    }
+    return 'photo';
+  };
   
   // Generate a unique guest ID for this session
   useEffect(() => {
@@ -176,6 +190,25 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
   }, [settingsData]);
 
+  const availableMediaTypes = useMemo(() => {
+    const types = new Set<'photo' | 'video'>();
+    (data?.photos || []).forEach((photo) => {
+      const mediaType = resolveMediaType(photo);
+      if (mediaType === 'photo' || mediaType === 'video') {
+        types.add(mediaType);
+      }
+    });
+    return types;
+  }, [data?.photos]);
+
+  const showMediaFilter = availableMediaTypes.has('photo') && availableMediaTypes.has('video');
+
+  useEffect(() => {
+    if (!showMediaFilter && mediaFilter !== 'all') {
+      setMediaFilter('all');
+    }
+  }, [showMediaFilter, mediaFilter]);
+
   // Determine a stable hero photo from the initial (unfiltered) load
   useEffect(() => {
     if (!staticHeroPhoto && data?.photos && filterType === 'all') {
@@ -185,7 +218,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         hero = data.photos.find(p => p.id === heroId) || null;
       }
       if (!hero && data.photos.length > 0) {
-        hero = data.photos[0];
+        const firstPhoto = data.photos.find(p => resolveMediaType(p) === 'photo');
+        hero = firstPhoto || data.photos[0];
       }
       if (hero) {
         setStaticHeroPhoto(hero);
@@ -259,6 +293,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     if (!data?.photos) return [];
     
     let photos = [...data.photos];
+
+    if (mediaFilter === 'photo') {
+      photos = photos.filter(photo => resolveMediaType(photo) !== 'video');
+    } else if (mediaFilter === 'video') {
+      photos = photos.filter(photo => resolveMediaType(photo) === 'video');
+    }
     
     // Apply category filter
     if (selectedCategoryId) {
@@ -323,7 +363,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return photos;
-  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType]);
+  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType, mediaFilter]);
 
   const likeCount = useMemo(
     () => data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0,
@@ -388,14 +428,20 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   // Calculate photo counts per category
   const photoCounts = useMemo(() => {
     if (!data?.photos) return {};
-    const counts: Record<number, number> = {};
-    data.photos.forEach(photo => {
+    const counts: Record<number | string, number> = {};
+    data.photos
+      .filter(photo => {
+        if (mediaFilter === 'photo') return resolveMediaType(photo) !== 'video';
+        if (mediaFilter === 'video') return resolveMediaType(photo) === 'video';
+        return true;
+      })
+      .forEach(photo => {
       if (photo.category_id) {
         counts[photo.category_id] = (counts[photo.category_id] || 0) + 1;
       }
     });
     return counts;
-  }, [data?.photos]);
+  }, [data?.photos, mediaFilter]);
 
   // Track search usage with debouncing
   useEffect(() => {
@@ -497,6 +543,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           feedbackEnabled={feedbackEnabled}
           filterType={filterType}
           onFilterChange={setFilterType}
+          mediaFilter={mediaFilter}
+          onMediaFilterChange={setMediaFilter}
+          showMediaFilter={showMediaFilter}
           likeCount={likeCount}
           favoriteCount={favoriteCount}
           ratedCount={ratedCount}
@@ -582,16 +631,19 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
               onCategoryChange={setSelectedCategoryId}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              photoCount={filteredPhotos.length}
-              // Feedback filter props
-              feedbackEnabled={feedbackEnabled}
-              currentFilter={filterType}
-              onFilterChange={setFilterType}
-            />
-          </div>
-        ) : null}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            photoCount={filteredPhotos.length}
+            // Feedback filter props
+            feedbackEnabled={feedbackEnabled}
+            currentFilter={filterType}
+            onFilterChange={setFilterType}
+            mediaFilter={mediaFilter}
+            onMediaFilterChange={setMediaFilter}
+            showMediaFilter={showMediaFilter}
+          />
+        </div>
+      ) : null}
 
         {/* Photo Grid */}
         <div className={showSidebar ? "mt-6" : "mt-6"}>
