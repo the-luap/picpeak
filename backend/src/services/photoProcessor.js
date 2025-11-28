@@ -6,6 +6,7 @@ const { processUploadedVideo } = require('./videoProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { isVideoMimeType } = require('../utils/fileSecurityUtils');
 const mime = require('mime-types');
+const { processUploadedVideo, isVideoMimeType } = require('./videoProcessor');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -156,31 +157,34 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         }
       }
       
-      // Generate thumbnail and metadata
-      let thumbnailPath = null;
+      // Determine if this is a video or image
+      const isVideo = isVideoMimeType(file.mimetype);
+      const mediaType = isVideo ? 'video' : 'image';
+
+      // Generate thumbnail and extract metadata
+      let thumbnailPath;
       let videoMetadata = null;
+
       if (isVideo) {
+        // Process video: extract metadata and generate thumbnail
         const thumbnailDir = path.join(getStoragePath(), 'thumbnails');
         await fs.mkdir(thumbnailDir, { recursive: true });
         const videoThumbnailPath = path.join(thumbnailDir, `thumb_${newFilename.replace(/\.[^.]+$/, '.jpg')}`);
-        try {
-          const result = await processUploadedVideo(newPath, videoThumbnailPath);
-          videoMetadata = result?.metadata || null;
-          thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
-        } catch (videoErr) {
-          console.error('Failed to process uploaded video, falling back to placeholder:', videoErr.message);
-          thumbnailPath = await generateVideoPlaceholder(newFilename);
-        }
+
+        const result = await processUploadedVideo(newPath, videoThumbnailPath);
+        videoMetadata = result.metadata;
+        thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
       } else {
+        // Process image: generate thumbnail
         thumbnailPath = await generateThumbnail(newPath);
       }
-      
+
       // Calculate relative paths
       const storagePath = getStoragePath();
       const relativePath = path.relative(path.join(storagePath, 'events/active'), newPath);
       const relativeThumbPath = thumbnailPath; // thumbnailPath is already relative to storage root
-      
-      // Add to database with uploaded_by field
+
+      // Add to database with uploaded_by field and media metadata
       let insertResult;
       const clientName = trx?.client?.config?.client;
       const supportsReturning = ['pg', 'postgres', 'postgresql'].includes(clientName);
@@ -194,9 +198,18 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         size_bytes: file.size,
         uploaded_by: uploadedBy,
         source_origin: 'managed',
-        mime_type: resolvedMime,
-        media_type: isVideo ? 'video' : 'photo'
+        media_type: mediaType,
+        mime_type: file.mimetype
       };
+
+      // Add video-specific metadata if applicable
+      if (isVideo && videoMetadata) {
+        photoData.duration = videoMetadata.duration;
+        photoData.video_codec = videoMetadata.videoCodec;
+        photoData.audio_codec = videoMetadata.audioCodec;
+        photoData.width = videoMetadata.width;
+        photoData.height = videoMetadata.height;
+      }
 
       if (supportsReturning) {
         insertResult = await trx('photos')

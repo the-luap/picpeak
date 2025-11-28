@@ -632,8 +632,8 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
 
 
 // View single photo (with watermark if enabled)
-router.get('/:slug/photo/:photoId', 
-  verifyGalleryAccess, 
+router.get('/:slug/photo/:photoId',
+  verifyGalleryAccess,
   async (req, res) => {
     try {
       const { photoId } = req.params;
@@ -645,30 +645,32 @@ router.get('/:slug/photo/:photoId',
       const photo = await db('photos')
         .where({ id: numericPhotoId, event_id: req.event.id })
         .first();
-      
-      
+
+
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      const isVideo = (photo.mime_type && photo.mime_type.startsWith('video/')) || photo.type === 'video';
+      // Check if this is a video
+      const isVideo = photo.media_type === 'video' || (photo.mime_type && photo.mime_type.startsWith('video/'));
+
       // Check protection level - basic and standard protection allow direct JWT access
       const protectionLevel = req.event.protection_level || 'standard';
-      
-      if (!isVideo && (protectionLevel === 'enhanced' || protectionLevel === 'maximum')) {
+
+      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
         // For enhanced/maximum protection, redirect to secure endpoint
-        return res.status(302).json({ 
+        return res.status(302).json({
           error: 'Secure access required',
           secureEndpoint: `/api/secure-images/${req.params.slug}/generate-token`,
           photoId: photoId
         });
       }
-      
+
       // Resolve the absolute file path for this photo, supporting both managed and external reference modes
       const { resolvePhotoFilePath } = require('../services/photoResolver');
       const filePath = resolvePhotoFilePath(req.event, photo);
-      
-      
+
+
       // Log access - temporarily disabled for debugging
       // await secureImageService.logImageAccess(
       //   photoId,
@@ -676,20 +678,61 @@ router.get('/:slug/photo/:photoId',
       //   req.clientInfo,
       //   'view_basic'
       // );
-      
+
+      // Handle video streaming with range requests
+      if (isVideo) {
+        const fs = require('fs');
+        const stat = fs.statSync(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+
+        if (range) {
+          // Parse range header
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+          const chunksize = (end - start) + 1;
+          const file = fs.createReadStream(filePath, { start, end });
+
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunksize,
+            'Content-Type': photo.mime_type || 'video/mp4',
+            'Cache-Control': 'private, max-age=1800',
+            'X-Protection-Level': 'basic'
+          });
+
+          file.pipe(res);
+        } else {
+          // No range request, send entire file
+          res.writeHead(200, {
+            'Content-Length': fileSize,
+            'Content-Type': photo.mime_type || 'video/mp4',
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'private, max-age=1800',
+            'X-Protection-Level': 'basic'
+          });
+
+          fs.createReadStream(filePath).pipe(res);
+        }
+        return;
+      }
+
+      // Handle images (existing logic)
       // Get watermark settings
       const watermarkSettings = await watermarkService.getWatermarkSettings();
-      
-      if (watermarkSettings && watermarkSettings.enabled && !isVideo) {
+
+      if (watermarkSettings && watermarkSettings.enabled) {
         // Apply watermark and send
         const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-        
+
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
           'Cache-Control': 'private, max-age=1800', // Cache for 30 minutes
           'X-Protection-Level': 'basic'
         });
-        
+
         res.send(watermarkedBuffer);
       } else {
         // Send original file with basic protection headers

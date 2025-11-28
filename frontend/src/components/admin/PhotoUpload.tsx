@@ -242,7 +242,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo"
           onChange={handleFileSelect}
           className="hidden"
         />

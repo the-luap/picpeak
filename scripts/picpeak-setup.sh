@@ -823,8 +823,8 @@ EOF
 
 create_systemd_services() {
     log_step "Creating systemd services..."
-    
-    # Backend service
+
+    # Backend service (includes workers - fileWatcher, expirationChecker are started by server.js)
     cat > /etc/systemd/system/picpeak-backend.service <<EOF
 [Unit]
 Description=PicPeak Backend Service
@@ -844,27 +844,10 @@ StandardError=append:$NATIVE_APP_DIR/logs/backend-error.log
 [Install]
 WantedBy=multi-user.target
 EOF
-    
-    # Workers service
-    cat > /etc/systemd/system/picpeak-workers.service <<EOF
-[Unit]
-Description=PicPeak Background Workers
-After=network.target picpeak-backend.service
 
-[Service]
-Type=simple
-User=$NATIVE_APP_USER
-    WorkingDirectory=$NATIVE_APP_DIR/app/backend
-Environment="NODE_ENV=production"
-ExecStart=/usr/bin/node src/services/workerManager.js
-Restart=always
-RestartSec=10
-StandardOutput=append:$NATIVE_APP_DIR/logs/workers.log
-StandardError=append:$NATIVE_APP_DIR/logs/workers-error.log
-
-[Install]
-WantedBy=multi-user.target
-EOF
+    # Note: Workers (fileWatcher, expirationChecker, emailProcessor) are now started
+    # automatically by server.js, so a separate workers service is no longer needed.
+    # Legacy picpeak-workers.service will be cleaned up during installation.
 }
 
 setup_caddy() {

@@ -7,6 +7,7 @@ import { AuthenticatedImage, AuthenticatedVideo } from '../common';
 import { PhotoFeedback } from './PhotoFeedback';
 import { feedbackService } from '../../services/feedback.service';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
+import { VideoPlayer } from './VideoPlayer';
 
 interface PhotoLightboxProps {
   photos: Photo[];
@@ -457,29 +458,29 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </div>
       </div>
 
-      {/* Image container */}
+      {/* Image/Video container */}
       <div
         className="absolute top-0 left-0 bottom-0 flex items-center justify-center z-0"
-        onClick={isVideo ? undefined : handleImageClick}
-        onMouseDown={isVideo ? undefined : handleMouseDown}
-        onMouseMove={isVideo ? undefined : handleMouseMove}
-        onMouseUp={isVideo ? undefined : handleMouseUp}
-        onMouseLeave={isVideo ? undefined : handleMouseUp}
-        onTouchStart={isVideo ? undefined : handleTouchStart}
-        onTouchMove={isVideo ? undefined : handleTouchMove}
-        onTouchEnd={isVideo ? undefined : handleTouchEnd}
+        onClick={currentPhoto.media_type === 'video' ? undefined : handleImageClick}
+        onMouseDown={currentPhoto.media_type === 'video' ? undefined : handleMouseDown}
+        onMouseMove={currentPhoto.media_type === 'video' ? undefined : handleMouseMove}
+        onMouseUp={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
+        onMouseLeave={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
+        onTouchStart={currentPhoto.media_type === 'video' ? undefined : handleTouchStart}
+        onTouchMove={currentPhoto.media_type === 'video' ? undefined : handleTouchMove}
+        onTouchEnd={currentPhoto.media_type === 'video' ? undefined : handleTouchEnd}
         style={{
-          cursor: isVideo ? 'default' : zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          cursor: currentPhoto.media_type === 'video' ? 'default' : (zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'),
           right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
         }}
       >
-        {isVideo ? (
-          <AuthenticatedVideo
+        {currentPhoto.media_type === 'video' ? (
+          <VideoPlayer
             src={currentPhoto.url}
-            fallbackSrc={currentPhoto.thumbnail_url || undefined}
-            className="max-w-full max-h-full object-contain bg-black"
-            slug={slug}
-            poster={currentPhoto.thumbnail_url || undefined}
+            poster={currentPhoto.thumbnail_url}
+            className="max-w-full max-h-full"
+            controls={true}
+            autoPlay={false}
           />
         ) : (
           <AuthenticatedImage
@@ -509,24 +510,24 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
             onProtectionViolation={(violationType) => {
               console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
-              
-              // Track analytics
-              if (typeof window !== 'undefined' && (window as any).umami) {
-                (window as any).umami.track('lightbox_protection_violation', {
-                  photoId: currentPhoto.id,
-                  violationType,
-                  protectionLevel,
-                  zoom
-                });
-              }
-              
-              // For maximum protection, close lightbox on violation
-              if (protectionLevel === 'maximum' && 
-                  ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
-                onClose();
-              }
-            }}
-          />
+            
+            // Track analytics
+            if (typeof window !== 'undefined' && (window as any).umami) {
+              (window as any).umami.track('lightbox_protection_violation', {
+                photoId: currentPhoto.id,
+                violationType,
+                protectionLevel,
+                zoom
+              });
+            }
+            
+            // For maximum protection, close lightbox on violation
+            if (protectionLevel === 'maximum' &&
+                ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
+              onClose();
+            }
+          }}
+        />
         )}
       </div>
 
