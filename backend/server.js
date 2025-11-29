@@ -323,8 +323,6 @@ async function initializeRateLimiters() {
 }
 
 // Note: Rate limiters will be initialized after database connection
-
-<<<<<<< HEAD
 app.use(express.json({ limit: '10gb' }));
 app.use(express.urlencoded({ extended: true, limit: '10gb' }));
 
