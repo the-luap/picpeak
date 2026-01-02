@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // Get all global categories

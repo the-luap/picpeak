@@ -2,7 +2,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -15,6 +15,7 @@ const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
+const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
 
 // Helper to get event field requirements from settings
 const getEventFieldRequirements = async () => {
@@ -58,43 +59,9 @@ const getEventFieldRequirements = async () => {
   }
 };
 
-const parseBooleanInput = (value, defaultValue = true) => {
-  if (value === undefined || value === null) {
-    return defaultValue;
-  }
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return value !== 0;
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (['false', '0', 'no', 'off'].includes(normalized)) {
-      return false;
-    }
-    if (['true', '1', 'yes', 'on'].includes(normalized)) {
-      return true;
-    }
-  }
-  return defaultValue;
-};
-
-const getCustomerNameFromPayload = (payload = {}) => {
-  if (typeof payload.customer_name === 'string') {
-    const trimmed = payload.customer_name.trim();
-    return trimmed || null;
-  }
-  return null;
-};
-
-const getCustomerEmailFromPayload = (payload = {}) => {
-  if (typeof payload.customer_email === 'string') {
-    const trimmed = payload.customer_email.trim();
-    return trimmed || null;
-  }
-  return null;
-};
+// Use parseStringInput from shared parsers for customer data extraction
+const getCustomerNameFromPayload = (payload = {}) => parseStringInput(payload.customer_name);
+const getCustomerEmailFromPayload = (payload = {}) => parseStringInput(payload.customer_email);
 
 const mapEventForApi = (event) => {
   if (!event || typeof event !== 'object') {

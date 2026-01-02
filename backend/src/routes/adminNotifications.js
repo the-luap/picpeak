@@ -1,6 +1,6 @@
 const express = require('express');
 const { db, logActivity } = require('../database/db');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // Get notifications (unread activity logs)

@@ -26,38 +26,10 @@ import { adminService } from '../../services/admin.service';
 import { authService } from '../../services/auth.service';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '../../contexts';
+import { toBoolean, toNumber } from '../../utils/parsers';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 const MAX_FILES_PER_UPLOAD_LIMIT = 2000;
-
-const toBoolean = (value: unknown, defaultValue = false): boolean => {
-  if (value === undefined || value === null) {
-    return defaultValue;
-  }
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    if (Number.isNaN(value)) return defaultValue;
-    return value !== 0;
-  }
-  if (typeof value === 'string') {
-    const normalized = value.toLowerCase().trim();
-    if (normalized === 'true' || normalized === '1') return true;
-    if (normalized === 'false' || normalized === '0') return false;
-    if (normalized === '') return defaultValue;
-    return Boolean(normalized);
-  }
-  return defaultValue;
-};
-
-const toNumber = (value: unknown, defaultValue: number): number => {
-  if (value === undefined || value === null || value === '') {
-    return defaultValue;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : defaultValue;
-};
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'events' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation' | 'styling'>('general');

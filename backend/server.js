@@ -34,7 +34,7 @@ const {
 } = require('./src/utils/tokenUtils');
 
 // Import routes
-const authRoutes = require('./src/routes/auth-enhanced');
+const authRoutes = require('./src/routes/auth');
 const eventRoutes = require('./src/routes/events');
 const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');

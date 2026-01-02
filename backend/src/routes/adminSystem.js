@@ -1,6 +1,6 @@
 const express = require('express');
 const { db, withRetry } = require('../database/db');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');

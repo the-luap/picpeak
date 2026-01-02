@@ -2,7 +2,7 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // Get email configuration

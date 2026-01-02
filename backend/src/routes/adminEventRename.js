@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const eventRenameService = require('../services/eventRenameService');
 const router = express.Router();
 
