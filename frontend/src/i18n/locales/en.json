@@ -44,7 +44,8 @@
     "up": "Up",
     "select": "Select",
     "selected": "Selected",
-    "chunk": "Chunk"
+    "chunk": "Chunk",
+    "optional": "optional"
   },
   "upload": {
     "photoCategory": "Photo Category",

@@ -44,7 +44,8 @@
     "up": "Nach oben",
     "select": "Auswählen",
     "selected": "Ausgewählt",
-    "chunk": "Teil"
+    "chunk": "Teil",
+    "optional": "optional"
   },
   "upload": {
     "photoCategory": "Fotokategorie",

@@ -128,6 +128,17 @@ export const CreateEventPageEnhanced: React.FC = () => {
     queryFn: () => settingsService.getAllSettings()
   });
 
+  // Fetch public settings for field requirements
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => settingsService.getPublicSettings()
+  });
+
+  // Get field requirements (default to true if not set)
+  const requireCustomerName = publicSettings?.event_require_customer_name !== false;
+  const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
+  const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
+
   // Update default expiration days when settings are loaded
   useEffect(() => {
     if (settings?.general_default_expiration_days) {
@@ -184,19 +195,30 @@ export const CreateEventPageEnhanced: React.FC = () => {
       newErrors.event_date = t('validation.eventDateRequired');
     }
 
-    if (!formData.customer_name) {
+    // Conditional validation based on settings
+    if (requireCustomerName && !formData.customer_name) {
       newErrors.customer_name = t('validation.hostNameRequired');
     }
 
-    if (!formData.customer_email) {
-      newErrors.customer_email = t('validation.hostEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+    if (requireCustomerEmail) {
+      if (!formData.customer_email) {
+        newErrors.customer_email = t('validation.hostEmailRequired');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+        newErrors.customer_email = t('validation.invalidEmailFormat');
+      }
+    } else if (formData.customer_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+      // Still validate format if value is provided, even if optional
       newErrors.customer_email = t('validation.invalidEmailFormat');
     }
 
-    if (!formData.admin_email) {
-      newErrors.admin_email = t('validation.adminEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+    if (requireAdminEmail) {
+      if (!formData.admin_email) {
+        newErrors.admin_email = t('validation.adminEmailRequired');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+        newErrors.admin_email = t('validation.invalidEmailFormat');
+      }
+    } else if (formData.admin_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+      // Still validate format if value is provided, even if optional
       newErrors.admin_email = t('validation.invalidEmailFormat');
     }
 
@@ -470,7 +492,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label={t('events.hostName')}
+                  label={requireCustomerName ? t('events.hostName') : `${t('events.hostName')} (${t('common.optional')})`}
                   placeholder={t('events.hostNamePlaceholder')}
                   value={formData.customer_name}
                   onChange={handleInputChange('customer_name')}
@@ -480,7 +502,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
 
                 <Input
                   type="email"
-                  label={t('events.hostEmail')}
+                  label={requireCustomerEmail ? t('events.hostEmail') : `${t('events.hostEmail')} (${t('common.optional')})`}
                   placeholder={t('events.hostEmailPlaceholder')}
                   value={formData.customer_email}
                   onChange={handleInputChange('customer_email')}
@@ -491,7 +513,7 @@ export const CreateEventPageEnhanced: React.FC = () => {
 
               <Input
                 type="email"
-                label={t('events.adminEmail')}
+                label={requireAdminEmail ? t('events.adminEmail') : `${t('events.adminEmail')} (${t('common.optional')})`}
                 placeholder={t('events.adminEmailPlaceholder')}
                 value={formData.admin_email}
                 onChange={handleInputChange('admin_email')}

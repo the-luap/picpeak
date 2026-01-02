@@ -13,13 +13,15 @@ interface AdminPhotoGridProps {
   eventId: number;
   onPhotoClick: (photo: AdminPhoto, index: number) => void;
   onPhotosDeleted: () => void;
+  onSelectionChange?: (selectedIds: number[]) => void;
 }
 
 export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
   photos,
   eventId,
   onPhotoClick,
-  onPhotosDeleted
+  onPhotosDeleted,
+  onSelectionChange
 }) => {
   const { t } = useTranslation();
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
@@ -42,14 +44,18 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       newSelected.add(photoId);
     }
     setSelectedPhotos(newSelected);
+    onSelectionChange?.(Array.from(newSelected));
   };
 
   const handleSelectAll = () => {
+    let newSelected: Set<number>;
     if (selectedPhotos.size === photos.length) {
-      setSelectedPhotos(new Set());
+      newSelected = new Set();
     } else {
-      setSelectedPhotos(new Set(photos.map(p => p.id)));
+      newSelected = new Set(photos.map(p => p.id));
     }
+    setSelectedPhotos(newSelected);
+    onSelectionChange?.(Array.from(newSelected));
   };
 
   const handleDeleteSingle = async (photo: AdminPhoto, e: React.MouseEvent) => {
@@ -91,6 +97,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
       toast.success(`${count} photo${count > 1 ? 's' : ''} deleted successfully`);
       setSelectedPhotos(new Set());
       setIsSelectionMode(false);
+      onSelectionChange?.([]);
       onPhotosDeleted();
     } catch {
       toast.error('Failed to delete photos');
@@ -114,6 +121,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
     setIsSelectionMode(!isSelectionMode);
     if (isSelectionMode) {
       setSelectedPhotos(new Set());
+      onSelectionChange?.([]);
     }
   };
 

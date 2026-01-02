@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { 
+import {
   ArrowLeft,
   ExternalLink,
   Calendar,
@@ -20,20 +20,21 @@ import {
   MessageSquare,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Type
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
-import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams } from '../../services/photos.service';
+import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters, type FilterSummary } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
@@ -167,6 +168,7 @@ export const EventDetailsPage: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<{ photo: AdminPhoto; index: number } | null>(null);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   
@@ -177,6 +179,16 @@ export const EventDetailsPage: React.FC = () => {
     sort: 'date',
     order: 'desc' as 'asc' | 'desc'
   });
+
+  // Feedback filters state for export
+  const [feedbackFilters, setFeedbackFilters] = useState<FeedbackFilters>({
+    minRating: null,
+    hasLikes: false,
+    hasFavorites: false,
+    hasComments: false,
+    logic: 'AND'
+  });
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<number[]>([]);
 
   // Fetch event details
   const { data: event, isLoading: eventLoading } = useQuery({
@@ -206,6 +218,13 @@ export const EventDetailsPage: React.FC = () => {
     queryKey: ['admin-event-photos', id, photoFilters],
     queryFn: () => photosService.getEventPhotos(parseInt(id!), photoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
+  });
+
+  // Fetch filter summary for feedback filters
+  const { data: filterSummary } = useQuery({
+    queryKey: ['admin-event-filter-summary', id],
+    queryFn: () => photosService.getFilterSummary(parseInt(id!)),
+    enabled: !!id && activeTab === 'photos',
   });
 
   const mediaTypes = useMemo(() => {
@@ -570,6 +589,14 @@ export const EventDetailsPage: React.FC = () => {
                       onClick={handleStartEdit}
                     >
                       {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Type className="w-4 h-4" />}
+                      onClick={() => setShowRenameDialog(true)}
+                    >
+                      {t('events.rename.button', 'Rename')}
                     </Button>
                     {feedbackSettings?.feedback_enabled && (
                       <Button
@@ -1265,18 +1292,26 @@ export const EventDetailsPage: React.FC = () => {
             showMediaFilter={showMediaFilter}
           />
 
+          {/* Feedback Filter Panel for Export */}
+          <PhotoFilterPanel
+            filters={feedbackFilters}
+            onChange={setFeedbackFilters}
+            summary={filterSummary || null}
+            isLoading={photosLoading}
+          />
+
           {/* Actions Bar */}
-          <div className="mb-4 flex justify-between items-center">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Upload className="w-4 h-4" />}
-              onClick={() => setShowPhotoUpload(true)}
-            >
-              {t('events.uploadPhotos')}
-            </Button>
-            {event.source_mode === 'reference' && (
-              <div className="ml-3">
+          <div className="mb-4 flex flex-wrap justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Upload className="w-4 h-4" />}
+                onClick={() => setShowPhotoUpload(true)}
+              >
+                {t('events.uploadPhotos')}
+              </Button>
+              {event.source_mode === 'reference' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1284,8 +1319,13 @@ export const EventDetailsPage: React.FC = () => {
                 >
                   {t('events.importExternal', 'Import from External Folder')}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
+            <PhotoExportMenu
+              eventId={parseInt(id!)}
+              selectedPhotoIds={selectedPhotoIds}
+              filters={feedbackFilters}
+            />
           </div>
 
           {/* Photo Grid */}
@@ -1302,6 +1342,7 @@ export const EventDetailsPage: React.FC = () => {
                 refetchPhotos();
                 queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
               }}
+              onSelectionChange={setSelectedPhotoIds}
             />
           )}
 
@@ -1411,6 +1452,25 @@ export const EventDetailsPage: React.FC = () => {
           </Card>
         </div>
       )}
+
+      {/* Event Rename Dialog */}
+      <EventRenameDialog
+        isOpen={showRenameDialog}
+        eventName={event.event_name}
+        eventId={event.id}
+        customerEmail={event.customer_email}
+        onClose={() => setShowRenameDialog(false)}
+        onRename={async (newName, resendEmail) => {
+          const result = await eventsService.renameEvent(event.id, newName, resendEmail);
+          if (result.success) {
+            queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+            queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+            toast.success(t('events.rename.success', 'Event renamed successfully!'));
+          }
+          return result;
+        }}
+        onValidate={(newName) => eventsService.validateRename(event.id, newName)}
+      />
 
     </div>
   );

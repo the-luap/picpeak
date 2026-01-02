@@ -150,6 +150,16 @@ export const CreateEventPage: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch public settings for field requirements
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => settingsService.getPublicSettings()
+  });
+
+  // Get field requirements (default to true if not set)
+  const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
+  const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
+
   const createMutation = useMutation({
     mutationFn: eventsService.createEvent,
     onSuccess: (data) => {
@@ -198,15 +208,26 @@ export const CreateEventPage: React.FC = () => {
       newErrors.event_name = t('validation.eventNameRequired');
     }
 
-    if (!formData.customer_email) {
-      newErrors.customer_email = t('validation.hostEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+    // Conditional validation based on settings
+    if (requireCustomerEmail) {
+      if (!formData.customer_email) {
+        newErrors.customer_email = t('validation.hostEmailRequired');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+        newErrors.customer_email = t('validation.invalidEmailFormat');
+      }
+    } else if (formData.customer_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customer_email)) {
+      // Still validate format if value is provided, even if optional
       newErrors.customer_email = t('validation.invalidEmailFormat');
     }
 
-    if (!formData.admin_email) {
-      newErrors.admin_email = t('validation.adminEmailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+    if (requireAdminEmail) {
+      if (!formData.admin_email) {
+        newErrors.admin_email = t('validation.adminEmailRequired');
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+        newErrors.admin_email = t('validation.invalidEmailFormat');
+      }
+    } else if (formData.admin_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+      // Still validate format if value is provided, even if optional
       newErrors.admin_email = t('validation.invalidEmailFormat');
     }
 
@@ -392,7 +413,7 @@ export const CreateEventPage: React.FC = () => {
             {/* Customer Email */}
             <div>
               <label htmlFor="customer_email" className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('events.hostEmail')}
+                {requireCustomerEmail ? t('events.hostEmail') : `${t('events.hostEmail')} (${t('common.optional')})`}
               </label>
               <Input
                 id="customer_email"
@@ -411,7 +432,7 @@ export const CreateEventPage: React.FC = () => {
             {/* Admin Email */}
             <div>
               <label htmlFor="admin_email" className="block text-sm font-medium text-neutral-700 mb-1">
-                {t('events.adminNotificationEmail')}
+                {requireAdminEmail ? t('events.adminNotificationEmail') : `${t('events.adminNotificationEmail')} (${t('common.optional')})`}
               </label>
               <Input
                 id="admin_email"

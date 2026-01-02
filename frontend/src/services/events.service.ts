@@ -160,4 +160,34 @@ export const eventsService = {
     const response = await api.post(`/admin/events/${eventId}/resend-email`);
     return response.data;
   },
+
+  // Validate rename
+  async validateRename(eventId: number, newEventName: string): Promise<{
+    valid: boolean;
+    newSlug?: string;
+    error?: string;
+  }> {
+    const response = await api.post(`/admin/events/${eventId}/validate-rename`, { newEventName });
+    return response.data;
+  },
+
+  // Rename event
+  async renameEvent(eventId: number, newEventName: string, resendEmail: boolean = false): Promise<{
+    success: boolean;
+    message?: string;
+    data?: {
+      eventId: number;
+      oldName: string;
+      newName: string;
+      oldSlug: string;
+      newSlug: string;
+      newShareLink: string;
+      emailSent: boolean;
+      filesRenamed: number;
+    };
+    error?: string;
+  }> {
+    const response = await api.post(`/admin/events/${eventId}/rename`, { newEventName, resendEmail });
+    return response.data;
+  },
 };

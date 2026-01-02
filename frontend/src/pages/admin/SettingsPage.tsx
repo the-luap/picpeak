@@ -19,9 +19,11 @@ import { toast } from 'react-toastify';
 import { Button, Card, Input, Loading } from '../../components/common';
 import { CategoryManager } from '../../components/admin/CategoryManager';
 import { WordFilterManager } from '../../components/admin/WordFilterManager';
+import { CssTemplateEditor } from '../../components/admin/CssTemplateEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService } from '../../services/settings.service';
 import { adminService } from '../../services/admin.service';
+import { authService } from '../../services/auth.service';
 import { useTranslation } from 'react-i18next';
 import { useAdminAuth } from '../../contexts';
 
@@ -58,7 +60,7 @@ const toNumber = (value: unknown, defaultValue: number): number => {
 };
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'general' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'events' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation' | 'styling'>('general');
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
   const { updateUserProfile } = useAdminAuth();
@@ -141,6 +143,13 @@ export const SettingsPage: React.FC = () => {
     umami_share_url: ''
   });
 
+  // Event creation settings state
+  const [eventSettings, setEventSettings] = useState({
+    event_require_customer_name: true,
+    event_require_customer_email: true,
+    event_require_admin_email: true
+  });
+
   const [softLimitGb, setSoftLimitGb] = useState<number | ''>('');
   const [softLimitDirty, setSoftLimitDirty] = useState(false);
   const [capacityOverrideGb, setCapacityOverrideGb] = useState<number | ''>('');
@@ -202,6 +211,13 @@ export const SettingsPage: React.FC = () => {
         umami_url: settings.analytics_umami_url || '',
         umami_website_id: settings.analytics_umami_website_id || '',
         umami_share_url: settings.analytics_umami_share_url || ''
+      });
+
+      // Extract event creation settings
+      setEventSettings({
+        event_require_customer_name: toBoolean(settings.event_require_customer_name, true),
+        event_require_customer_email: toBoolean(settings.event_require_customer_email, true),
+        event_require_admin_email: toBoolean(settings.event_require_admin_email, true)
       });
     }
   }, [settings, i18n]);
@@ -329,6 +345,25 @@ export const SettingsPage: React.FC = () => {
     onSuccess: () => {
       toast.success(t('toast.settingsSaved'));
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const saveEventSettingsMutation = useMutation({
+    mutationFn: async () => {
+      // Convert to the format expected by the API
+      const settingsData: Record<string, any> = {};
+      Object.entries(eventSettings).forEach(([key, value]) => {
+        settingsData[key] = value;
+      });
+      return settingsService.updateSettings(settingsData);
+    },
+    onSuccess: () => {
+      toast.success(t('toast.settingsSaved'));
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['public-settings'] });
     },
     onError: () => {
       toast.error(t('toast.saveError'));
@@ -551,6 +586,16 @@ export const SettingsPage: React.FC = () => {
             {t('settings.general.title')}
           </button>
           <button
+            onClick={() => setActiveTab('events')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'events'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            {t('settings.events.title', 'Event Creation')}
+          </button>
+          <button
             onClick={() => setActiveTab('status')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'status'
@@ -599,6 +644,16 @@ export const SettingsPage: React.FC = () => {
             }`}
           >
             {t('settings.moderation.title', 'Moderation')}
+          </button>
+          <button
+            onClick={() => setActiveTab('styling')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'styling'
+                ? 'border-primary-600 text-primary-600'
+                : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            }`}
+          >
+            {t('settings.styling.title', 'Custom CSS')}
           </button>
         </nav>
       </div>
@@ -875,6 +930,114 @@ export const SettingsPage: React.FC = () => {
               >
                 {t('settings.general.saveGeneralSettings')}
               </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Event Creation Settings Tab */}
+      {activeTab === 'events' && (
+        <div className="space-y-6">
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+              {t('settings.events.requiredFields', 'Required Fields')}
+            </h2>
+            <p className="text-sm text-neutral-600 mb-4">
+              {t('settings.events.requiredFieldsDescription', 'Configure which contact fields are required when creating new events.')}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={eventSettings.event_require_customer_name}
+                    onChange={(e) => setEventSettings(prev => ({ ...prev, event_require_customer_name: e.target.checked }))}
+                    className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-700">
+                      {t('settings.events.requireCustomerName', 'Require customer name')}
+                    </span>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.events.requireCustomerNameHelp', 'Customer name must be provided for new events')}
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={eventSettings.event_require_customer_email}
+                    onChange={(e) => setEventSettings(prev => ({ ...prev, event_require_customer_email: e.target.checked }))}
+                    className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-700">
+                      {t('settings.events.requireCustomerEmail', 'Require customer email')}
+                    </span>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.events.requireCustomerEmailHelp', 'Customer email must be provided for new events')}
+                    </p>
+                    {!eventSettings.event_require_customer_email && (
+                      <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {t('settings.events.customerEmailWarning', 'Required for sending gallery invitations')}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              <div>
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={eventSettings.event_require_admin_email}
+                    onChange={(e) => setEventSettings(prev => ({ ...prev, event_require_admin_email: e.target.checked }))}
+                    className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-700">
+                      {t('settings.events.requireAdminEmail', 'Require admin email')}
+                    </span>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('settings.events.requireAdminEmailHelp', 'Admin email must be provided for new events')}
+                    </p>
+                    {!eventSettings.event_require_admin_email && (
+                      <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {t('settings.events.adminEmailWarning', 'Required for receiving event notifications')}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                variant="primary"
+                onClick={() => saveEventSettingsMutation.mutate()}
+                isLoading={saveEventSettingsMutation.isPending}
+                leftIcon={<Save className="w-5 h-5" />}
+              >
+                {t('settings.events.saveSettings', 'Save Event Settings')}
+              </Button>
+            </div>
+          </Card>
+
+          <Card padding="md">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">{t('settings.events.noteTitle', 'Note')}</p>
+                <p>
+                  {t('settings.events.noteText', 'These settings only affect new event creation. Existing events are not affected. Default behavior requires all fields.')}
+                </p>
+              </div>
             </div>
           </Card>
         </div>
@@ -1662,6 +1825,13 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'moderation' && (
         <div className="space-y-6">
           <WordFilterManager />
+        </div>
+      )}
+
+      {/* Custom CSS Templates Tab */}
+      {activeTab === 'styling' && (
+        <div className="space-y-6">
+          <CssTemplateEditor />
         </div>
       )}
     </div>

@@ -16,6 +16,48 @@ const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwor
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
 
+// Helper to get event field requirements from settings
+const getEventFieldRequirements = async () => {
+  try {
+    const settings = await db('app_settings')
+      .whereIn('setting_key', [
+        'event_require_customer_name',
+        'event_require_customer_email',
+        'event_require_admin_email'
+      ])
+      .select('setting_key', 'setting_value');
+
+    const requirements = {
+      require_customer_name: true,
+      require_customer_email: true,
+      require_admin_email: true
+    };
+
+    settings.forEach(s => {
+      let value = s.setting_value;
+      if (typeof value === 'string') {
+        try {
+          value = JSON.parse(value);
+        } catch (e) {
+          value = value === 'true';
+        }
+      }
+      if (s.setting_key === 'event_require_customer_name') requirements.require_customer_name = value;
+      if (s.setting_key === 'event_require_customer_email') requirements.require_customer_email = value;
+      if (s.setting_key === 'event_require_admin_email') requirements.require_admin_email = value;
+    });
+
+    return requirements;
+  } catch (error) {
+    logger.error('Failed to get event field requirements', { error: error.message });
+    return {
+      require_customer_name: true,
+      require_customer_email: true,
+      require_admin_email: true
+    };
+  }
+};
+
 const parseBooleanInput = (value, defaultValue = true) => {
   if (value === undefined || value === null) {
     return defaultValue;
@@ -97,9 +139,9 @@ router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
-  body('customer_name').notEmpty().trim(),
-  body('customer_email').isEmail().normalizeEmail(),
-  body('admin_email').isEmail().normalizeEmail(),
+  body('customer_name').optional().trim(),
+  body('customer_email').optional().isEmail().normalizeEmail(),
+  body('admin_email').optional().isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
     const input = req.body.require_password;
@@ -141,7 +183,10 @@ router.post('/', adminAuth, [
       console.error('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
-    
+
+    // Get field requirements from settings
+    const fieldRequirements = await getEventFieldRequirements();
+
     const {
       event_type,
       event_name,
@@ -174,8 +219,20 @@ router.post('/', adminAuth, [
 
     const customerColumnsAvailable = await hasCustomerContactColumns();
 
-    if (!customerName || !customerEmail) {
-      return res.status(400).json({ error: 'customer_name and customer_email are required' });
+    // Conditional validation based on settings
+    const validationErrors = [];
+    if (fieldRequirements.require_customer_name && !customerName) {
+      validationErrors.push({ path: 'customer_name', msg: 'Customer name is required' });
+    }
+    if (fieldRequirements.require_customer_email && !customerEmail) {
+      validationErrors.push({ path: 'customer_email', msg: 'Customer email is required' });
+    }
+    if (fieldRequirements.require_admin_email && !admin_email) {
+      validationErrors.push({ path: 'admin_email', msg: 'Admin email is required' });
+    }
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ errors: validationErrors });
     }
 
     const requirePassword = parseBooleanInput(requirePasswordInput, true);

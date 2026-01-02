@@ -199,6 +199,134 @@ class PhotosService {
   shouldUseChunkedUpload(fileSize: number): boolean {
     return fileSize > 100 * 1024 * 1024; // 100MB threshold
   }
+
+  // ============================================
+  // Photo Filtering & Export Methods
+  // ============================================
+
+  async getFilteredPhotos(
+    eventId: number,
+    filters: FeedbackFilters
+  ): Promise<FilteredPhotosResponse> {
+    const params = new URLSearchParams();
+
+    if (filters.minRating !== undefined && filters.minRating !== null) {
+      params.append('min_rating', filters.minRating.toString());
+    }
+    if (filters.hasLikes) params.append('has_likes', 'true');
+    if (filters.hasFavorites) params.append('has_favorites', 'true');
+    if (filters.hasComments) params.append('has_comments', 'true');
+    if (filters.categoryId) params.append('category_id', filters.categoryId.toString());
+    if (filters.logic) params.append('logic', filters.logic);
+    if (filters.sort) params.append('sort', filters.sort);
+    if (filters.order) params.append('order', filters.order);
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+
+    const queryString = params.toString();
+    const url = `/admin/photo-export/${eventId}/filtered${queryString ? `?${queryString}` : ''}`;
+
+    const response = await api.get(url);
+    return response.data.data;
+  }
+
+  async getFilterSummary(eventId: number): Promise<FilterSummary> {
+    const response = await api.get(`/admin/photo-export/${eventId}/filter-summary`);
+    return response.data.data;
+  }
+
+  async exportPhotos(
+    eventId: number,
+    options: ExportOptions
+  ): Promise<void> {
+    const response = await api.post(
+      `/admin/photo-export/${eventId}/export`,
+      options,
+      { responseType: 'blob' }
+    );
+
+    // Get filename from Content-Disposition header
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `export_${Date.now()}`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Download the file
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  async getExportFormats(): Promise<ExportFormat[]> {
+    const response = await api.get('/admin/photo-export/export-formats');
+    return response.data.data;
+  }
+}
+
+// Types for filtering and export
+export interface FeedbackFilters {
+  minRating?: number | null;
+  maxRating?: number | null;
+  hasLikes?: boolean;
+  minLikes?: number;
+  hasFavorites?: boolean;
+  minFavorites?: number;
+  hasComments?: boolean;
+  categoryId?: number;
+  logic?: 'AND' | 'OR';
+  sort?: 'rating' | 'likes' | 'favorites' | 'date' | 'filename';
+  order?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface FilterSummary {
+  total: number;
+  withRatings: number;
+  withLikes: number;
+  withFavorites: number;
+  withComments: number;
+}
+
+export interface FilteredPhotosResponse {
+  photos: AdminPhoto[];
+  pagination: {
+    total: number;
+    filtered: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+  summary: FilterSummary;
+}
+
+export interface ExportOptions {
+  photo_ids?: number[];
+  filter?: FeedbackFilters;
+  format: 'txt' | 'csv' | 'xmp' | 'json';
+  options?: {
+    filename_format?: 'original' | 'picpeak';
+    separator?: 'newline' | 'comma' | 'semicolon';
+    include_rating?: boolean;
+    include_label?: boolean;
+    include_description?: boolean;
+    include_keywords?: boolean;
+  };
+}
+
+export interface ExportFormat {
+  value: string;
+  label: string;
+  description: string;
 }
 
 export const photosService = new PhotosService();

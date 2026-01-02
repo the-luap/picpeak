@@ -14,13 +14,39 @@ const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = r
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
 
+// Check for slug redirect (for renamed events)
+async function checkSlugRedirect(slug) {
+  try {
+    const hasTable = await db.schema.hasTable('slug_redirects');
+    if (!hasTable) return null;
+
+    const redirect = await db('slug_redirects')
+      .where({ old_slug: slug })
+      .first();
+
+    return redirect ? redirect.new_slug : null;
+  } catch (error) {
+    logger.warn('Error checking slug redirect:', { slug, error: error.message });
+    return null;
+  }
+}
+
 // Resolve gallery identifier (slug or token) to canonical data
 router.get('/resolve/:identifier', async (req, res) => {
   try {
     const { identifier } = req.params;
-    const result = await resolveShareIdentifier(identifier);
+    let result = await resolveShareIdentifier(identifier);
 
+    // If not found, check for redirect
     if (!result) {
+      const newSlug = await checkSlugRedirect(identifier);
+      if (newSlug) {
+        return res.status(301).json({
+          redirect: true,
+          newSlug,
+          message: 'Gallery has been renamed'
+        });
+      }
       return res.status(404).json({ error: 'Gallery not found' });
     }
 
@@ -75,8 +101,8 @@ router.get('/:slug/info', async (req, res) => {
   try {
     const { slug } = req.params;
     const { token } = req.query;
-    
-    const event = await db('events')
+
+    let event = await db('events')
       .where({ slug })
       .select(
         'event_name',
@@ -95,8 +121,17 @@ router.get('/:slug/info', async (req, res) => {
         'color_theme'
       )
       .first();
-    
+
     if (!event) {
+      // Check for redirect
+      const newSlug = await checkSlugRedirect(slug);
+      if (newSlug) {
+        return res.status(301).json({
+          redirect: true,
+          newSlug,
+          message: 'Gallery has been renamed'
+        });
+      }
       return res.status(404).json({ error: 'Gallery not found' });
     }
     
@@ -917,6 +952,45 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
   } catch (error) {
     console.error('Upload route error:', error);
     res.status(500).json({ error: 'Failed to upload photos' });
+  }
+});
+
+/**
+ * GET /:slug/css-template
+ * Get custom CSS template for gallery (public endpoint)
+ */
+router.get('/:slug/css-template', async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Find the event by slug
+    const event = await db('events')
+      .where({ slug })
+      .select('css_template_id')
+      .first();
+
+    if (!event || !event.css_template_id) {
+      // No custom CSS - return 204 No Content
+      return res.status(204).send();
+    }
+
+    // Get the template if it's enabled
+    const template = await db('css_templates')
+      .where({ id: event.css_template_id, is_enabled: true })
+      .select('css_content')
+      .first();
+
+    if (!template || !template.css_content) {
+      return res.status(204).send();
+    }
+
+    // Return CSS with caching headers
+    res.setHeader('Content-Type', 'text/css');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour cache
+    res.send(template.css_content);
+  } catch (error) {
+    console.error('Get CSS template error:', error);
+    res.status(500).send('/* Error loading template */');
   }
 });
 
