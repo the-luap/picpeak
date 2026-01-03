@@ -100,14 +100,21 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       setProtectionLevel(data.event.protection_level);
     }
   }, [data?.event?.protection_level]);
-  
-  // DevTools protection for enhanced and maximum levels
+
+  // Get individual protection settings from event
+  const disableRightClick = data?.event?.disable_right_click === true;
+  const enableDevtoolsProtection = data?.event?.enable_devtools_protection === true;
+  const useCanvasRendering = data?.event?.use_canvas_rendering === true;
+
+  // DevTools protection - enabled by individual setting OR legacy protection level
+  const devToolsEnabled = enableDevtoolsProtection || protectionLevel === 'enhanced' || protectionLevel === 'maximum';
+
   useDevToolsProtection({
-    enabled: protectionLevel === 'enhanced' || protectionLevel === 'maximum',
+    enabled: devToolsEnabled,
     detectionSensitivity: protectionLevel === 'maximum' ? 'high' : 'medium',
     onDevToolsDetected: () => {
       console.warn('DevTools detected in gallery view');
-      
+
       // Track analytics
       if (typeof window !== 'undefined' && (window as any).umami) {
         (window as any).umami.track('gallery_devtools_detected', {
@@ -116,7 +123,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           eventId: data?.event?.id
         });
       }
-      
+
       // For maximum protection, redirect away from gallery
       if (protectionLevel === 'maximum') {
         setTimeout(() => {
@@ -127,6 +134,21 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     redirectOnDetection: protectionLevel === 'maximum',
     redirectUrl: '/'
   });
+
+  // Right-click blocking - separate from DevTools protection
+  useEffect(() => {
+    if (!disableRightClick) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [disableRightClick]);
   
   // Data updates are handled by React Query
   const downloadAllMutation = useDownloadAllPhotos();
@@ -679,6 +701,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             allowDownloads={allowDownloads}
             protectionLevel={protectionLevel}
             useEnhancedProtection={protectionLevel !== 'basic'}
+            disableRightClick={disableRightClick}
+            enableDevtoolsProtection={enableDevtoolsProtection}
+            useCanvasRendering={useCanvasRendering}
           />
         </div>
 

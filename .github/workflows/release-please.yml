@@ -1,0 +1,71 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
+    steps:
+      - name: Run Release Please
+        uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Output Release Info
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "## Release Created! " >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.release.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Docker images will be built and tagged with this version." >> $GITHUB_STEP_SUMMARY
+
+  # Sync version to package.json files after release
+  sync-versions:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update package.json versions
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          echo "Updating package.json files to version $VERSION"
+
+          # Update backend package.json
+          cd backend
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          cd ..
+
+          # Update frontend package.json
+          cd frontend
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          cd ..
+
+      - name: Commit version updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/package.json frontend/package.json
+          git diff --staged --quiet || git commit -m "chore: sync package.json versions to ${{ needs.release-please.outputs.version }}"
+          git push

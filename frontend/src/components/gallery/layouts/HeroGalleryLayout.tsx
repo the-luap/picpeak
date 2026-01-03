@@ -35,6 +35,9 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   expiresAt,
   heroPhotoOverride,
   allowDownloads = true,
+  protectionLevel = 'standard',
+  useEnhancedProtection = false,
+  useCanvasRendering = false,
   feedbackEnabled = false,
   feedbackOptions
 }) => {
@@ -113,7 +116,12 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
           alt={heroPhoto.filename}
           className="w-full h-full object-cover"
           isGallery={true}
-          protectFromDownload={!allowDownloads}
+          slug={slug}
+          photoId={heroPhoto.id}
+          protectFromDownload={!allowDownloads || useEnhancedProtection}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
         />
         
         {/* Overlay */}
@@ -202,7 +210,12 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                 className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
                 isGallery={true}
-                protectFromDownload={!allowDownloads}
+                slug={slug}
+                photoId={photo.id}
+                protectFromDownload={!allowDownloads || useEnhancedProtection}
+                protectionLevel={protectionLevel}
+                useEnhancedProtection={useEnhancedProtection}
+                useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
               />
 
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">

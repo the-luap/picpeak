@@ -21,7 +21,11 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Type
+  Type,
+  Shield,
+  Monitor,
+  Droplets,
+  MousePointer
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -147,6 +151,13 @@ export const EventDetailsPage: React.FC = () => {
     require_password: boolean;
     new_password: string;
     confirm_new_password: string;
+    // Download protection settings
+    protection_level: 'basic' | 'standard' | 'enhanced' | 'maximum';
+    disable_right_click: boolean;
+    allow_downloads: boolean;
+    watermark_downloads: boolean;
+    enable_devtools_protection: boolean;
+    use_canvas_rendering: boolean;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -163,6 +174,13 @@ export const EventDetailsPage: React.FC = () => {
     require_password: true,
     new_password: '',
     confirm_new_password: '',
+    // Download protection settings
+    protection_level: 'standard',
+    disable_right_click: true,
+    allow_downloads: true,
+    watermark_downloads: false,
+    enable_devtools_protection: true,
+    use_canvas_rendering: false,
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -367,6 +385,13 @@ export const EventDetailsPage: React.FC = () => {
       require_password: normalizeRequirePassword(event.require_password),
       new_password: '',
       confirm_new_password: '',
+      // Load protection settings from event
+      protection_level: event.protection_level || 'standard',
+      disable_right_click: event.disable_right_click ?? true,
+      allow_downloads: event.allow_downloads ?? true,
+      watermark_downloads: event.watermark_downloads ?? false,
+      enable_devtools_protection: event.enable_devtools_protection ?? true,
+      use_canvas_rendering: event.use_canvas_rendering ?? false,
     });
 
     setShowNewPassword(false);
@@ -449,6 +474,13 @@ export const EventDetailsPage: React.FC = () => {
       expires_at: editForm.expires_at,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
+      // Download protection settings
+      protection_level: editForm.protection_level,
+      disable_right_click: editForm.disable_right_click,
+      allow_downloads: editForm.allow_downloads,
+      watermark_downloads: editForm.watermark_downloads,
+      enable_devtools_protection: editForm.enable_devtools_protection,
+      use_canvas_rendering: editForm.use_canvas_rendering,
     };
     
     // Only include fields that have defined values
@@ -940,11 +972,80 @@ export const EventDetailsPage: React.FC = () => {
                 
                 {/* Feedback Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings', 'Feedback Settings')}</h3>
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings.title', 'Guest Feedback Settings')}</h3>
                   <FeedbackSettings
                     settings={feedbackSettings}
                     onChange={setFeedbackSettings}
                   />
+                </div>
+
+                {/* Download Protection Settings */}
+                <div className="mt-4 pt-4 border-t border-neutral-200">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary-600" />
+                    {t('events.downloadProtection', 'Download Protection')}
+                  </h3>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.allow_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, allow_downloads: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.allowDownloads', 'Allow photo downloads')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.disable_right_click}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, disable_right_click: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.disableRightClick', 'Block right-click menu')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.watermark_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, watermark_downloads: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.enable_devtools_protection}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, enable_devtools_protection: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.use_canvas_rendering}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, use_canvas_rendering: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
+                    </label>
+
+                    <p className="text-xs text-neutral-500 mt-2">
+                      {t('events.protectionInfo', 'Protection features help prevent unauthorized downloads but cannot block all methods.')}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1035,6 +1136,50 @@ export const EventDetailsPage: React.FC = () => {
                         {t('common.no')}
                       </span>
                     )}
+                  </dd>
+                </div>
+
+                {/* Download Protection Display */}
+                <div className="pt-3 mt-3 border-t border-neutral-200">
+                  <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    {t('events.downloadProtection', 'Download Protection')}
+                  </dt>
+                  <dd className="mt-2 text-sm text-neutral-900">
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${
+                        event.protection_level === 'maximum' ? 'bg-red-100 text-red-700' :
+                        event.protection_level === 'enhanced' ? 'bg-orange-100 text-orange-700' :
+                        event.protection_level === 'standard' ? 'bg-blue-100 text-blue-700' :
+                        'bg-neutral-100 text-neutral-700'
+                      }`}>
+                        {event.protection_level || 'standard'}
+                      </span>
+                      {event.disable_right_click && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <MousePointer className="w-3 h-3 mr-1" />
+                          {t('events.rightClickBlocked', 'Right-click blocked')}
+                        </span>
+                      )}
+                      {event.enable_devtools_protection && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <Monitor className="w-3 h-3 mr-1" />
+                          {t('events.devtoolsDetection', 'DevTools detection')}
+                        </span>
+                      )}
+                      {!event.allow_downloads && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded">
+                          <Download className="w-3 h-3 mr-1" />
+                          {t('events.downloadsDisabled', 'Downloads disabled')}
+                        </span>
+                      )}
+                      {event.watermark_downloads && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <Droplets className="w-3 h-3 mr-1" />
+                          {t('events.watermarked', 'Watermarked')}
+                        </span>
+                      )}
+                    </div>
                   </dd>
                 </div>
               </dl>

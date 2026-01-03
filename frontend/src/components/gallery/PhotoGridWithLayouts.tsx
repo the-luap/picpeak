@@ -41,6 +41,9 @@ interface PhotoGridWithLayoutsProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
+  disableRightClick?: boolean;
+  enableDevtoolsProtection?: boolean;
   feedbackOptions?: {
     allowLikes?: boolean;
     allowFavorites?: boolean;
@@ -51,9 +54,9 @@ interface PhotoGridWithLayoutsProps {
   onFeedbackChange?: () => void;
 }
 
-export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({ 
-  photos, 
-  slug, 
+export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
+  photos,
+  slug,
   categoryId,
   heroPhotoOverride,
   isSelectionMode: parentSelectionMode,
@@ -64,6 +67,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  useCanvasRendering = false,
+  disableRightClick = false,
+  enableDevtoolsProtection = false,
   onSelectionChange,
   onToggleSelectionMode: parentToggleSelectionMode,
   showSelectionControls = true,
@@ -185,6 +191,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     allowDownloads,
     protectionLevel,
     useEnhancedProtection,
+    useCanvasRendering,
     isSelectionMode,
     onPhotoSelect: handlePhotoSelect,
     eventName,
@@ -290,6 +297,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           allowDownloads={allowDownloads}
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering}
+          disableRightClick={disableRightClick}
+          enableDevtoolsProtection={enableDevtoolsProtection}
           initialShowFeedback={openFeedbackInitially}
           onFeedbackChange={onFeedbackChange}
         />

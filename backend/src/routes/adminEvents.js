@@ -533,7 +533,7 @@ router.put('/:id', adminAuth, [
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
-  body('customer_name').optional().trim().notEmpty(),
+  body('customer_name').optional({ nullable: true, checkFalsy: true }).trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
   body('upload_category_id').optional().custom((value) => {
     // Accept null, undefined, or integer values
@@ -554,6 +554,13 @@ router.put('/:id', adminAuth, [
   body('source_mode').optional().isIn(['managed', 'reference']),
   body('external_path').optional({ nullable: true }).isString().trim(),
   body('require_password').optional().isBoolean(),
+  // Download protection settings
+  body('protection_level').optional().isIn(['basic', 'standard', 'enhanced', 'maximum']),
+  body('enable_devtools_protection').optional().isBoolean(),
+  body('use_canvas_rendering').optional().isBoolean(),
+  body('overlay_protection').optional().isBoolean(),
+  body('image_quality').optional().isInt({ min: 1, max: 100 }),
+  body('fragmentation_level').optional().isInt({ min: 1, max: 10 }),
   body('password').optional().isString().custom((value, { req }) => {
     if (value === undefined || value === null || value === '') {
       return true;

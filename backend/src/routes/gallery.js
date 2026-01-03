@@ -110,7 +110,9 @@ router.get('/:slug/info', async (req, res) => {
         'watermark_downloads',
         'watermark_text',
         'require_password',
-        'color_theme'
+        'color_theme',
+        'enable_devtools_protection',
+        'use_canvas_rendering'
       )
       .first();
 
@@ -154,7 +156,9 @@ router.get('/:slug/info', async (req, res) => {
       allow_downloads: !(event.allow_downloads === false || event.allow_downloads === 0 || event.allow_downloads === '0'),
       disable_right_click: event.disable_right_click === true || event.disable_right_click === 1 || event.disable_right_click === '1',
       watermark_downloads: event.watermark_downloads === true || event.watermark_downloads === 1 || event.watermark_downloads === '1',
-      watermark_text: event.watermark_text
+      watermark_text: event.watermark_text,
+      enable_devtools_protection: event.enable_devtools_protection === true || event.enable_devtools_protection === 1 || event.enable_devtools_protection === '1',
+      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -315,6 +319,8 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         disable_right_click: req.event.disable_right_click === true,
         watermark_downloads: req.event.watermark_downloads === true,
         watermark_text: req.event.watermark_text,
+        enable_devtools_protection: req.event.enable_devtools_protection === true,
+        use_canvas_rendering: req.event.use_canvas_rendering === true,
         ...protectionSettings
       },
       categories: categories,
@@ -397,19 +403,27 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       return res.status(404).json({ error: 'Photo file not found' });
     }
     
-    // Get watermark settings
+    // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
-    if (watermarkSettings && watermarkSettings.enabled) {
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+
+    if (shouldApplyWatermark) {
       // Apply watermark and send
-      const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-      
+      // Use event watermark text if available, otherwise fall back to global settings
+      const effectiveSettings = {
+        ...watermarkSettings,
+        enabled: true,
+        text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+      };
+      const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
+
       res.set({
         'Content-Type': photo.mime_type || 'image/jpeg',
         'Content-Disposition': `attachment; filename="${photo.filename}"`,
         'Content-Length': watermarkedBuffer.length
       });
-      
+
       res.send(watermarkedBuffer);
     } else {
       // Send original file
@@ -468,9 +482,16 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     
     archive.pipe(res);
     
-    // Get watermark settings
+    // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+    const effectiveSettings = shouldApplyWatermark ? {
+      ...watermarkSettings,
+      enabled: true,
+      text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+    } : null;
+
     // Add photos to archive
     for (const photo of photos) {
       let filePath;
@@ -485,7 +506,7 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
         });
         continue;
       }
-      
+
       // Determine the file name in the archive
       let archiveName;
       if (hasMultipleTypes) {
@@ -496,10 +517,10 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
         // No folders, just the filename
         archiveName = photo.filename;
       }
-      
-      if (watermarkSettings && watermarkSettings.enabled) {
+
+      if (shouldApplyWatermark && effectiveSettings) {
         try {
-          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
           archive.append(watermarkedBuffer, { name: archiveName });
         } catch (watermarkError) {
           logger.warn('Failed to watermark photo for bulk download, skipping original to avoid leak', {
@@ -586,15 +607,23 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
     });
     archive.pipe(res);
 
-    // Check watermark settings similar to download-all
+    // Check watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+    const effectiveSettings = shouldApplyWatermark ? {
+      ...watermarkSettings,
+      enabled: true,
+      text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+    } : null;
+
     for (const photo of photos) {
       try {
         const filePath = resolvePhotoFilePath(req.event, photo);
         const name = photo.filename || `photo-${photo.id}.jpg`;
-        if (watermarkSettings && watermarkSettings.enabled) {
+        if (shouldApplyWatermark && effectiveSettings) {
           try {
-            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
             archive.append(watermarkedBuffer, { name });
           } catch (watermarkError) {
             logger.warn('Failed to watermark selected photo, skipping original to avoid leak', {

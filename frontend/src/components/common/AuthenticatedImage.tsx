@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildResourceUrl } from '../../utils/url';
 import {
   getActiveGallerySlug,
@@ -67,7 +67,6 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
     overlayProtection,
     fragmentGrid,
     scrambleFragments,
-    useCanvasRendering,
     blockKeyboardShortcuts,
     detectPrintScreen,
     detectDevTools,
@@ -79,6 +78,30 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
   const [imageSrc, setImageSrc] = useState<string>('');
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [canvasFailed, setCanvasFailed] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  // Draw image to canvas when canvas rendering is enabled
+  const drawToCanvas = useCallback(() => {
+    if (!useCanvasRendering || !canvasRef.current || !imageRef.current) return;
+
+    const canvas = canvasRef.current;
+    const img = imageRef.current;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx || !img.complete || img.naturalWidth === 0) return;
+
+    // Set canvas dimensions to match image
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+
+    // Draw the image
+    ctx.drawImage(img, 0, 0);
+
+    setCanvasReady(true);
+  }, [useCanvasRendering]);
 
   useEffect(() => {
     let aborted = false;
@@ -93,6 +116,8 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
 
     setIsLoading(true);
     setError(false);
+    setCanvasFailed(false);
+    setCanvasReady(false);
 
     const resolveSlug = (candidateSrc?: string): string | null => {
       if (slug) {
@@ -181,6 +206,37 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, fallbackSrc, slug]);
 
+  // Effect to draw to canvas when image is loaded and canvas rendering is enabled
+  useEffect(() => {
+    if (!useCanvasRendering || !imageSrc) return;
+
+    // Create a hidden image to load and then draw to canvas
+    const img = new Image();
+    // Only set crossOrigin for non-blob URLs (blob URLs are same-origin)
+    // Setting crossOrigin on blob URLs can cause silent failures
+    if (!imageSrc.startsWith('blob:')) {
+      img.crossOrigin = 'anonymous';
+    }
+
+    img.onload = () => {
+      imageRef.current = img;
+      drawToCanvas();
+    };
+
+    img.onerror = (e) => {
+      // Fall back to regular img if canvas loading fails
+      console.warn('Canvas image load failed, falling back to img tag:', e);
+      setCanvasFailed(true);
+    };
+
+    img.src = imageSrc;
+
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [imageSrc, useCanvasRendering, drawToCanvas]);
+
   if (isLoading) {
     return (
       <div className={props.className} style={{ backgroundColor: '#f3f4f6', ...props.style }}>
@@ -195,6 +251,35 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
 
   if (!imageSrc) {
     return null;
+  }
+
+  // Canvas rendering mode - only if enabled and not failed
+  if (useCanvasRendering && !canvasFailed) {
+    return (
+      <canvas
+        ref={canvasRef}
+        className={props.className}
+        style={{
+          ...props.style,
+          // Hide canvas until it's ready to prevent flash
+          opacity: canvasReady ? 1 : 0,
+          transition: 'opacity 0.2s ease-in-out',
+        }}
+        // Prevent context menu on canvas
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onProtectionViolation?.('canvas_context_menu');
+          return false;
+        }}
+        // Prevent drag
+        onDragStart={(e) => {
+          e.preventDefault();
+          return false;
+        }}
+        aria-label={alt}
+        role="img"
+      />
+    );
   }
 
   return <img src={imageSrc} alt={alt} {...props} />;

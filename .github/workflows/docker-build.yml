@@ -1,13 +1,19 @@
 name: Build and Push Docker Images
 
+# This workflow is triggered by:
+# - Push to main/develop branches (builds 'latest' or branch-tagged images)
+# - Version tags from Release Please (e.g., v1.2.0 -> builds versioned images)
+# - GitHub Releases (created by Release Please)
+# - Manual workflow dispatch
+
 on:
   push:
     branches: [ main, develop ]
-    tags: [ 'v*.*.*' ]
+    tags: [ 'v*.*.*' ]  # Triggered by Release Please tags
   pull_request:
     branches: [ main ]
   release:
-    types: [ published ]
+    types: [ published ]  # Triggered when Release Please creates a release
   workflow_dispatch:
     inputs:
       push:

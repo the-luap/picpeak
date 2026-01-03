@@ -7,13 +7,14 @@ import {
   EventsTab,
   StatusTab,
   SecurityTab,
+  ImageSecurityTab,
   CategoriesTab,
   AnalyticsTab,
   ModerationTab,
   StylingTab,
 } from '../../features/settings';
 
-type TabType = 'general' | 'events' | 'status' | 'security' | 'categories' | 'analytics' | 'moderation' | 'styling';
+type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'categories' | 'analytics' | 'moderation' | 'styling';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -68,6 +69,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'events', label: t('settings.events.title', 'Event Creation') },
     { key: 'status', label: t('settings.systemStatus.title') },
     { key: 'security', label: t('settings.security.title') },
+    { key: 'imageSecurity', label: t('settings.imageSecurity.title', 'Image Protection') },
     { key: 'categories', label: t('settings.categories.title') },
     { key: 'analytics', label: t('settings.analytics.title') },
     { key: 'moderation', label: t('settings.moderation.title', 'Moderation') },
@@ -150,6 +152,8 @@ export const SettingsPage: React.FC = () => {
           saveSecurityMutation={saveSecurityMutation}
         />
       )}
+
+      {activeTab === 'imageSecurity' && <ImageSecurityTab />}
 
       {activeTab === 'categories' && <CategoriesTab />}
 

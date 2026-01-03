@@ -8,6 +8,7 @@ export { GeneralTab } from './tabs/GeneralTab';
 export { EventsTab } from './tabs/EventsTab';
 export { StatusTab } from './tabs/StatusTab';
 export { SecurityTab } from './tabs/SecurityTab';
+export { ImageSecurityTab } from './tabs/ImageSecurityTab';
 export { CategoriesTab } from './tabs/CategoriesTab';
 export { AnalyticsTab } from './tabs/AnalyticsTab';
 export { ModerationTab } from './tabs/ModerationTab';

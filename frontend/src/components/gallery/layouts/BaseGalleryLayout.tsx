@@ -20,6 +20,7 @@ export interface BaseGalleryLayoutProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
   feedbackEnabled?: boolean;
   feedbackOptions?: {
     allowLikes?: boolean;

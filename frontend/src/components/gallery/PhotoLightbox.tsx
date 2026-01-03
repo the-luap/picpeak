@@ -18,8 +18,11 @@ interface PhotoLightboxProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
   initialShowFeedback?: boolean;
   onFeedbackChange?: () => void;
+  disableRightClick?: boolean;
+  enableDevtoolsProtection?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -31,8 +34,11 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  useCanvasRendering = false,
   initialShowFeedback = false,
   onFeedbackChange,
+  disableRightClick = false,
+  enableDevtoolsProtection = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -66,13 +72,15 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
   
-  // DevTools protection for the lightbox when enhanced protection is enabled
+  // DevTools protection - enabled by individual setting OR legacy protection level
+  const devToolsEnabled = enableDevtoolsProtection || (useEnhancedProtection && (protectionLevel === 'enhanced' || protectionLevel === 'maximum'));
+
   useDevToolsProtection({
-    enabled: useEnhancedProtection && (protectionLevel === 'enhanced' || protectionLevel === 'maximum'),
+    enabled: devToolsEnabled,
     detectionSensitivity: protectionLevel === 'maximum' ? 'high' : 'medium',
     onDevToolsDetected: () => {
       console.warn('DevTools detected in photo lightbox');
-      
+
       // Track analytics
       if (typeof window !== 'undefined' && (window as any).umami) {
         (window as any).umami.track('lightbox_devtools_detected', {
@@ -82,7 +90,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           gallery: slug
         });
       }
-      
+
       // Close lightbox immediately for maximum protection
       if (protectionLevel === 'maximum') {
         onClose();
@@ -90,6 +98,21 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     },
     redirectOnDetection: false, // Don't redirect, just close lightbox
   });
+
+  // Right-click blocking in lightbox
+  useEffect(() => {
+    if (!disableRightClick) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [disableRightClick]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -494,7 +517,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             protectFromDownload={!allowDownloads || useEnhancedProtection}
             protectionLevel={protectionLevel}
             useEnhancedProtection={useEnhancedProtection}
-            useCanvasRendering={protectionLevel === 'maximum'}
+            useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
             fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
             blockKeyboardShortcuts={useEnhancedProtection}
             detectPrintScreen={useEnhancedProtection}
