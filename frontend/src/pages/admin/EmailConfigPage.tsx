@@ -227,10 +227,11 @@ export const EmailConfigPage: React.FC = () => {
     if (!selectedTemplateKey || !editedTemplate) return;
 
     // Generate sample data based on the template
+    // Note: These are clearly marked placeholder values for template preview only
     const sampleData: Record<string, string> = {
       event_name: 'John & Jane Wedding',
       event_date: 'December 25, 2024',
-      password: 'wedding2024',
+      password: '••••••••', // Masked placeholder for preview
       gallery_link: 'https://photos.example.com/gallery/john-jane-wedding',
       expiration_date: 'January 25, 2025',
       welcome_message: 'Thank you for celebrating our special day with us!',
