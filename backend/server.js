@@ -25,6 +25,7 @@ const { startBackupService } = require('./src/services/backupService');
 const { startScheduledBackups } = require('./src/services/databaseBackup');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
+const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
 const { getPublicSitePayload } = require('./src/services/publicSiteService');
 const cookieParser = require('cookie-parser');
@@ -471,20 +472,11 @@ try {
   logger.warn('Failed to enable frontend static serving', { error: e.message });
 }
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('EXPRESS ERROR HANDLER:', err);
-  console.error('Error stack:', err.stack);
-  console.error('Request URL:', req.url);
-  console.error('Request method:', req.method);
-  logger.error('Express error handler:', {
-    message: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method
-  });
-  res.status(500).json({ error: 'Something went wrong!', details: err.message });
-});
+// 404 handler for undefined API routes
+app.use('/api', notFoundHandler);
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Initialize services
 async function startServer() {

@@ -76,7 +76,14 @@ class CssTemplatesService {
   async getGalleryCss(slug: string): Promise<string | null> {
     try {
       const response = await api.get(`/gallery/${slug}/css-template`, {
-        responseType: 'text'
+        responseType: 'text',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        params: {
+          _t: Date.now() // Cache-busting parameter
+        }
       });
       if (response.status === 204) {
         return null;

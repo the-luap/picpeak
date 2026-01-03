@@ -20,8 +20,10 @@ import { eventsService } from '../../services/events.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
+import { cssTemplatesService } from '../../services/cssTemplates.service';
 import { useTranslation } from 'react-i18next';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
+import { Code } from 'lucide-react';
 
 interface FormData {
   event_type: string;
@@ -39,6 +41,7 @@ interface FormData {
   expires_in_days: number;
   allow_user_uploads: boolean;
   upload_category_id: number | null;
+  css_template_id: number | null;
   feedback_settings: {
     feedback_enabled: boolean;
     allow_ratings: boolean;
@@ -98,6 +101,7 @@ export const CreateEventPage: React.FC = () => {
     expires_in_days: 30,
     allow_user_uploads: false,
     upload_category_id: null,
+    css_template_id: null,
     feedback_settings: {
       feedback_enabled: false,
       allow_ratings: true,
@@ -120,6 +124,12 @@ export const CreateEventPage: React.FC = () => {
   const { data: categories } = useQuery({
     queryKey: ['categories', 'global'],
     queryFn: () => categoriesService.getGlobalCategories()
+  });
+
+  // Fetch enabled CSS templates
+  const { data: cssTemplates } = useQuery({
+    queryKey: ['css-templates', 'enabled'],
+    queryFn: () => cssTemplatesService.getEnabledTemplates()
   });
 
   // Fetch default settings
@@ -268,6 +278,7 @@ export const CreateEventPage: React.FC = () => {
       expiration_days: formData.expires_in_days,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
+      css_template_id: formData.css_template_id,
       feedback_enabled: feedbackSettings.feedback_enabled,
       allow_ratings: feedbackSettings.allow_ratings,
       allow_likes: feedbackSettings.allow_likes,
@@ -475,6 +486,55 @@ export const CreateEventPage: React.FC = () => {
                       className="shadow-lg" 
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Custom CSS Template Selection */}
+            {cssTemplates && cssTemplates.length > 0 && (
+              <div className="pt-6 border-t border-neutral-200">
+                <h3 className="text-md font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                  <Code className="w-4 h-4" />
+                  {t('events.customCssTemplate', 'Custom CSS Template')}
+                </h3>
+                <p className="text-sm text-neutral-600 mb-4">
+                  {t('events.customCssTemplateDesc', 'Apply a custom CSS template to style the gallery with unique visual effects.')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* No template option */}
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, css_template_id: null })}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      formData.css_template_id === null
+                        ? 'border-primary-600 bg-primary-50'
+                        : 'border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{t('events.noTemplate', 'No Template')}</div>
+                    <div className="text-xs text-neutral-500 mt-1">
+                      {t('events.useThemeOnly', 'Use theme preset only')}
+                    </div>
+                  </button>
+
+                  {/* Available templates */}
+                  {cssTemplates.map(template => (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, css_template_id: template.id })}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        formData.css_template_id === template.id
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-neutral-200 hover:border-neutral-300'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{template.name}</div>
+                      <div className="text-xs text-neutral-500 mt-1">
+                        {t('events.customTemplate', 'Custom Template')} {template.slot_number}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

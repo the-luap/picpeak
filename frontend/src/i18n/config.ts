@@ -26,6 +26,9 @@ i18n
     interpolation: {
       escapeValue: false,
     },
+
+    // Use v3 format for pluralization (_plural suffix instead of _one/_other)
+    compatibilityJSON: 'v3',
     
     detection: {
       order: ['localStorage', 'cookie', 'navigator', 'htmlTag'],

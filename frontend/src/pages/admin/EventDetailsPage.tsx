@@ -950,9 +950,9 @@ export const EventDetailsPage: React.FC = () => {
             ) : (
               <dl className="space-y-4">
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">Source Mode</dt>
+                  <dt className="text-sm font-medium text-neutral-500">{t('events.sourceMode', 'Source Mode')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900">
-                    {event.source_mode === 'reference' ? 'Reference (external folder)' : 'Managed (upload)'}
+                    {event.source_mode === 'reference' ? t('events.sourceModeReference', 'Reference external folder') : t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}
                     {event.source_mode === 'reference' && event.external_path ? (
                       <span className="text-neutral-500 ml-2">/external-media/{event.external_path}</span>
                     ) : null}

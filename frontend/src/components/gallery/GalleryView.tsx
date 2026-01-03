@@ -21,6 +21,7 @@ import { api } from '../../config/api';
 import { Upload, Menu } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
+import { useGalleryCustomCss } from '../../hooks/useGalleryCustomCss';
 import type { Photo } from '../../types';
 
 interface GalleryViewProps {
@@ -55,6 +56,10 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [feedbackEnabled, setFeedbackEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { watermarkEnabled } = useWatermarkSettings();
+
+  // Load and inject custom CSS for this gallery
+  useGalleryCustomCss(slug);
+
   const [protectionLevel, setProtectionLevel] = useState<'basic' | 'standard' | 'enhanced' | 'maximum'>('standard');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'photo' | 'video'>('all');
@@ -564,6 +569,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           <Button
             variant="ghost"
             size="sm"
+            className="gallery-btn"
             leftIcon={<Menu className="w-4 h-4" />}
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={t('gallery.toggleMenu')}

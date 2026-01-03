@@ -118,12 +118,12 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const heroLogoSize = getLogoDimensions('hero');
   
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="gallery-page min-h-screen bg-neutral-50">
       {/* Dynamic Favicon */}
       <DynamicFavicon />
 
       {/* Header structure */}
-      <header className={`bg-white border-b border-neutral-200 sticky top-0 z-40 ${isNonGridLayout || theme.galleryLayout === 'hero' ? 'shadow-sm' : ''}`}>
+      <header className={`gallery-header bg-white border-b border-neutral-200 sticky top-0 z-40 ${isNonGridLayout || theme.galleryLayout === 'hero' ? 'shadow-sm' : ''}`}>
         {/* For non-grid layouts (excluding hero) - keep the current structure */}
         {isNonGridLayout && (
           <div className="bg-neutral-50 border-b border-neutral-200">
@@ -145,12 +145,13 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                       leftIcon={<Download className="w-4 h-4" />}
                       onClick={onDownloadAll}
                       isLoading={isDownloading}
+                      className="gallery-btn gallery-btn-download"
                     >
                       <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                       <span className="sm:hidden">{t('common.download')}</span>
                     </Button>
                   )}
-                  
+
                   {/* Logout button */}
                   {showLogout && onLogout && (
                     <Button
@@ -158,7 +159,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                       size="sm"
                       leftIcon={<LogOut className="w-4 h-4" />}
                       onClick={onLogout}
-                      className="sm:min-w-0"
+                      className="gallery-btn gallery-btn-logout sm:min-w-0"
                     >
                       <span className="hidden sm:inline">{t('common.logout')}</span>
                     </Button>
@@ -184,14 +185,14 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                 
                 {/* Logo - Show custom logo or fallback to PicPeak logo */}
                 {shouldShowLogo('header') && (
-                  <div className={`flex-shrink-0 flex items-center gap-2 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
-                    <img 
-                      src={brandingSettings?.logo_url ? 
-                        buildResourceUrl(brandingSettings.logo_url) : 
+                  <div className={`gallery-logo-wrapper flex-shrink-0 flex items-center gap-2 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
+                    <img
+                      src={brandingSettings?.logo_url ?
+                        buildResourceUrl(brandingSettings.logo_url) :
                         '/picpeak-logo-transparent.png'
-                      } 
+                      }
                       alt={brandingSettings?.company_name || 'PicPeak'}
-                      className={`${headerLogoSize.className} w-auto object-contain`}
+                      className={`gallery-logo ${headerLogoSize.className} w-auto object-contain`}
                       style={headerLogoSize.style}
                     />
                     {shouldShowCompanyName() && brandingSettings?.company_name && (
@@ -253,13 +254,13 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     leftIcon={<Download className="w-4 h-4" />}
                     onClick={onDownloadAll}
                     isLoading={isDownloading}
-                    className="hidden sm:flex"
+                    className="gallery-btn gallery-btn-download hidden sm:flex"
                   >
                     <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                     <span className="sm:hidden">{t('common.download')}</span>
                   </Button>
                 )}
-                
+
                 {/* Logout button */}
                 {showLogout && onLogout && (
                   <Button
@@ -267,7 +268,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     size="sm"
                     leftIcon={<LogOut className="w-4 h-4" />}
                     onClick={onLogout}
-                    className="sm:min-w-0"
+                    className="gallery-btn gallery-btn-logout sm:min-w-0"
                   >
                     <span className="hidden sm:inline">{t('common.logout')}</span>
                   </Button>
@@ -304,7 +305,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                 {menuButton}
                 {headerExtra}
               </div>
-              
+
               {/* Right side - Action buttons */}
               <div className="flex items-center gap-3 flex-shrink-0">
                 {/* Download all button */}
@@ -315,12 +316,13 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     leftIcon={<Download className="w-4 h-4" />}
                     onClick={onDownloadAll}
                     isLoading={isDownloading}
+                    className="gallery-btn gallery-btn-download"
                   >
                     <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                     <span className="sm:hidden">{t('common.download')}</span>
                   </Button>
                 )}
-                
+
                 {/* Logout button */}
                 {showLogout && onLogout && (
                   <Button
@@ -328,7 +330,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     size="sm"
                     leftIcon={<LogOut className="w-4 h-4" />}
                     onClick={onLogout}
-                    className="sm:min-w-0"
+                    className="gallery-btn gallery-btn-logout sm:min-w-0"
                   >
                     <span className="hidden sm:inline">{t('common.logout')}</span>
                   </Button>
@@ -341,8 +343,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
 
       {/* Hero Header for non-grid layouts (excluding hero layout which has its own) */}
       {isNonGridLayout && (
-        <div 
-          className="relative text-white overflow-hidden"
+        <div
+          className="gallery-hero relative text-white overflow-hidden"
           style={{
             backgroundColor: theme.accentColor || '#22c55e',
             backgroundImage: theme.backgroundPattern !== 'none' 
@@ -425,7 +427,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <main className="container">{children}</main>
 
       {/* Footer */}
-      <footer className="mt-8 sm:mt-12 py-6 sm:py-8 border-t border-neutral-200">
+      <footer className="gallery-footer mt-8 sm:mt-12 py-6 sm:py-8 border-t border-neutral-200">
         <div className="container text-center px-4">
           {brandingSettings?.support_email && (
             <p className="text-xs sm:text-sm text-neutral-600 mb-2">

@@ -10,6 +10,8 @@ const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
+const { handleAsync } = require('../utils/routeHelpers');
+const { NotFoundError } = require('../utils/errors');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
@@ -32,69 +34,59 @@ async function checkSlugRedirect(slug) {
 }
 
 // Resolve gallery identifier (slug or token) to canonical data
-router.get('/resolve/:identifier', async (req, res) => {
-  try {
-    const { identifier } = req.params;
-    let result = await resolveShareIdentifier(identifier);
+router.get('/resolve/:identifier', handleAsync(async (req, res) => {
+  const { identifier } = req.params;
+  let result = await resolveShareIdentifier(identifier);
 
-    // If not found, check for redirect
-    if (!result) {
-      const newSlug = await checkSlugRedirect(identifier);
-      if (newSlug) {
-        return res.status(301).json({
-          redirect: true,
-          newSlug,
-          message: 'Gallery has been renamed'
-        });
-      }
-      return res.status(404).json({ error: 'Gallery not found' });
+  // If not found, check for redirect
+  if (!result) {
+    const newSlug = await checkSlugRedirect(identifier);
+    if (newSlug) {
+      return res.status(301).json({
+        redirect: true,
+        newSlug,
+        message: 'Gallery has been renamed'
+      });
     }
-
-    const { event, matchType, shareToken } = result;
-    const linkVariants = await buildShareLinkVariants({ slug: event.slug, shareToken });
-    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
-
-    res.json({
-      slug: event.slug,
-      token: shareToken,
-      matchType,
-      share_link: event.share_link,
-      share_path: linkVariants.sharePath,
-      share_url: linkVariants.shareUrl,
-      short_enabled: linkVariants.shortEnabled,
-      requires_password: requiresPassword
-    });
-  } catch (error) {
-    logger.error('Error resolving gallery identifier:', error);
-    res.status(500).json({ error: 'Failed to resolve gallery link' });
+    throw new NotFoundError('Gallery');
   }
-});
+
+  const { event, matchType, shareToken } = result;
+  const linkVariants = await buildShareLinkVariants({ slug: event.slug, shareToken });
+  const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
+  res.json({
+    slug: event.slug,
+    token: shareToken,
+    matchType,
+    share_link: event.share_link,
+    share_path: linkVariants.sharePath,
+    share_url: linkVariants.shareUrl,
+    short_enabled: linkVariants.shortEnabled,
+    requires_password: requiresPassword
+  });
+}));
 
 // Verify share token
-router.get('/:slug/verify-token/:token', async (req, res) => {
-  try {
-    const { slug, token } = req.params;
-    
-    const event = await db('events')
-      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
-      .select('id', 'share_link', 'share_token')
-      .first();
-    
-    if (!event) {
-      return res.status(404).json({ error: 'Gallery not found' });
-    }
-    
-    const expectedToken = getEventShareToken(event);
-    if (token !== expectedToken) {
-      return res.status(404).json({ error: 'Invalid gallery link' });
-    }
-    
-    res.json({ valid: true });
-  } catch (error) {
-    console.error('Error verifying token:', error);
-    res.status(500).json({ error: 'Failed to verify token' });
+router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
+  const { slug, token } = req.params;
+
+  const event = await db('events')
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    .select('id', 'share_link', 'share_token')
+    .first();
+
+  if (!event) {
+    throw new NotFoundError('Gallery');
   }
-});
+
+  const expectedToken = getEventShareToken(event);
+  if (token !== expectedToken) {
+    throw new NotFoundError('Gallery', 'Invalid gallery link');
+  }
+
+  res.json({ valid: true });
+}));
 
 // Get gallery info (with optional token verification)
 router.get('/:slug/info', async (req, res) => {

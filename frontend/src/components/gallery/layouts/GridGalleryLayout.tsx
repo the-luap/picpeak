@@ -176,7 +176,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   return (
     <div
       ref={ref}
-      className={`relative group cursor-pointer aspect-square ${animationClass}`}
+      className={`photo-card relative group cursor-pointer aspect-square ${animationClass}`}
       onClick={handlePhotoClick}
       style={{
         opacity: !inView && animationType === 'fade' ? 0 : 1
@@ -375,10 +375,10 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
   
-  const gridClass = `grid ${spacingClass} 
-    grid-cols-${columns.mobile} 
-    sm:grid-cols-${columns.tablet} 
-    lg:grid-cols-${columns.desktop} 
+  const gridClass = `photo-grid grid ${spacingClass}
+    grid-cols-${columns.mobile}
+    sm:grid-cols-${columns.tablet}
+    lg:grid-cols-${columns.desktop}
     xl:grid-cols-${columns.desktop + 1}`;
 
   return (

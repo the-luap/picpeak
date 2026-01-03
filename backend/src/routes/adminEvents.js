@@ -141,7 +141,8 @@ router.post('/', adminAuth, [
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
-  body('watermark_text').optional().trim()
+  body('watermark_text').optional().trim(),
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -178,7 +179,9 @@ router.post('/', adminAuth, [
       allow_favorites = true,
       require_name_email = false,
       moderate_comments = true,
-      show_feedback_to_guests = true
+      show_feedback_to_guests = true,
+      // CSS Template
+      css_template_id = null
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -299,7 +302,8 @@ router.post('/', adminAuth, [
       disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
-      require_password: formatBoolean(requirePassword)
+      require_password: formatBoolean(requirePassword),
+      css_template_id: css_template_id || null
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)

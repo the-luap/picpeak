@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info } from 'lucide-react';
 import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType } from '../../types/theme.types';
 // import { settingsService } from '../../services/settings.service';
@@ -44,6 +44,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
   const [selectedPreset, setSelectedPreset] = useState(presetName);
   const [customCss, setCustomCss] = useState(value.customCss || '');
+  const [showCssInstructions, setShowCssInstructions] = useState(false);
   // const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -494,7 +495,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Row 1: Font Size & Border Radius */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 {t('branding.fontSize')}
@@ -525,7 +527,10 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 <option value="lg">{t('branding.borderRadiusOptions.large')}</option>
               </select>
             </div>
+          </div>
 
+          {/* Row 2: Shadow Style & Background Pattern */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">
                 {t('branding.shadowStyle')}
@@ -563,7 +568,93 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Custom CSS */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4">{t('branding.customCSS')}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+          <Code className="w-5 h-5" />
+          {t('branding.customCSS')}
+        </h3>
+
+        {/* Collapsible Instructions Panel */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowCssInstructions(!showCssInstructions)}
+            className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            <Info className="w-4 h-4" />
+            {t('branding.cssInstructions.title', 'How to use Custom CSS')}
+            <ChevronDown className={`w-4 h-4 transition-transform ${showCssInstructions ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showCssInstructions && (
+            <div className="mt-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200 text-sm space-y-4">
+              {/* Available CSS Variables */}
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-2">
+                  {t('branding.cssInstructions.variables', 'Theme CSS Variables')}
+                </h4>
+                <p className="text-neutral-600 mb-2">
+                  {t('branding.cssInstructions.variablesDesc', 'Use these CSS variables to match your theme presets:')}
+                </p>
+                <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`--primary-color: ${localTheme.primaryColor || '#5C8762'};
+--accent-color: ${localTheme.accentColor || '#22c55e'};
+--background-color: ${localTheme.backgroundColor || '#fafafa'};
+--text-color: ${localTheme.textColor || '#171717'};
+--font-family: ${localTheme.fontFamily || 'Inter, sans-serif'};
+--heading-font: ${localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'};`}
+                </code>
+              </div>
+
+              {/* Custom Gallery Layouts */}
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-2">
+                  {t('branding.cssInstructions.layouts', 'Custom Gallery Layouts')}
+                </h4>
+                <p className="text-neutral-600 mb-2">
+                  {t('branding.cssInstructions.layoutsDesc', 'Target gallery elements with these selectors:')}
+                </p>
+                <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`.gallery-container { /* Main gallery wrapper */ }
+.gallery-grid { /* Photo grid container */ }
+.gallery-item { /* Individual photo card */ }
+.gallery-header { /* Header section */ }
+.gallery-hero { /* Hero image area */ }
+.photo-overlay { /* Photo hover overlay */ }
+.photo-actions { /* Like/favorite buttons */ }`}
+                </code>
+              </div>
+
+              {/* Glassmorphism Example */}
+              <div>
+                <h4 className="font-semibold text-neutral-900 mb-2">
+                  {t('branding.cssInstructions.glassEffect', 'Glassmorphism Effect')}
+                </h4>
+                <p className="text-neutral-600 mb-2">
+                  {t('branding.cssInstructions.glassEffectDesc', 'Create modern glass effects:')}
+                </p>
+                <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`.glass-panel {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+}`}
+                </code>
+              </div>
+
+              {/* Tips */}
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-blue-800 text-xs">
+                  <strong>{t('branding.cssInstructions.tip', 'Tip')}:</strong>{' '}
+                  {t('branding.cssInstructions.tipText', 'Use CSS Templates from Settings > CSS Templates for pre-built designs like Apple Liquid Glass.')}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <textarea
           value={customCss}
           onChange={(e) => {
@@ -575,7 +666,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             }
           }}
           placeholder="/* Add custom CSS here */"
-          className="w-full h-32 px-3 py-2 font-mono text-sm border border-neutral-300 rounded-lg"
+          className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 rounded-lg bg-neutral-50"
         />
         <p className="mt-2 text-sm text-neutral-600">
           {t('branding.customCSSHelp')}

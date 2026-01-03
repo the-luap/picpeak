@@ -54,7 +54,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
 
   return (
     <div
-      className="relative group cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+      className="photo-card relative group cursor-pointer transition-all duration-300 hover:scale-[1.02]"
       onClick={onClick}
       style={{
         ...style,
@@ -243,9 +243,9 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   });
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="flex gap-4"
+      className="photo-grid flex gap-4"
       style={{ gap: `${gutter}px` }}
     >
       {photoColumns.map((column, columnIndex) => (

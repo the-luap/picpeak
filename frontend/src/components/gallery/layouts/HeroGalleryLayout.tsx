@@ -187,13 +187,13 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
       </div>
 
       {/* Grid Section */}
-      <div id="gallery-grid-section" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div id="gallery-grid-section" className="photo-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {remainingPhotos.map((photo) => {
           const actualIndex = photos.findIndex(p => p.id === photo.id);
           return (
             <div
               key={photo.id}
-              className="relative group cursor-pointer overflow-hidden rounded-lg"
+              className="photo-card relative group cursor-pointer overflow-hidden rounded-lg"
               onClick={() => onPhotoClick(actualIndex)}
             >
               <AuthenticatedImage

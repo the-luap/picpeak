@@ -70,9 +70,9 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
 
   return (
-    <div className="relative">
+    <div className="photo-grid relative">
       {/* Main Carousel */}
-      <div className="relative h-[50vh] sm:h-[60vh] lg:h-[70vh] bg-black rounded-lg overflow-hidden">
+      <div className="photo-card relative h-[50vh] sm:h-[60vh] lg:h-[70vh] bg-black rounded-lg overflow-hidden">
         <AuthenticatedImage
           src={currentPhoto.url}
           alt={currentPhoto.filename}

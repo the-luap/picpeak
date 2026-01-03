@@ -29,11 +29,11 @@ const config: VitestUserConfig = {
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:7101',
         changeOrigin: true,
       },
       '/photos': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:7101',
         changeOrigin: true,
       },
     },
