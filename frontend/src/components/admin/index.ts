@@ -31,3 +31,7 @@ export { RestoreWizard } from './RestoreWizard';
 export { FeedbackSettings } from './FeedbackSettings';
 export { FeedbackModerationPanel } from './FeedbackModerationPanel';
 export { WordFilterManager } from './WordFilterManager';
+export { EventRenameDialog } from './EventRenameDialog';
+export { PhotoFilterPanel } from './PhotoFilterPanel';
+export { PhotoExportMenu } from './PhotoExportMenu';
+export { CssTemplateEditor } from './CssTemplateEditor';

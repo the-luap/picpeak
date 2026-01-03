@@ -25,6 +25,7 @@ const { startBackupService } = require('./src/services/backupService');
 const { startScheduledBackups } = require('./src/services/databaseBackup');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
+const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
 const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
 const { getPublicSitePayload } = require('./src/services/publicSiteService');
 const cookieParser = require('cookie-parser');
@@ -34,7 +35,7 @@ const {
 } = require('./src/utils/tokenUtils');
 
 // Import routes
-const authRoutes = require('./src/routes/auth-enhanced');
+const authRoutes = require('./src/routes/auth');
 const eventRoutes = require('./src/routes/events');
 const galleryRoutes = require('./src/routes/gallery');
 const adminRoutes = require('./src/routes/admin');
@@ -432,6 +433,9 @@ app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
 app.use('/api/admin/image-security', require('./src/routes/adminImageSecurity'));
 app.use('/api/admin/thumbnails', require('./src/routes/adminThumbnails'));
 app.use('/api/admin/photos', require('./src/routes/adminPhotos'));
+app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
+app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
+app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
@@ -468,20 +472,11 @@ try {
   logger.warn('Failed to enable frontend static serving', { error: e.message });
 }
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('EXPRESS ERROR HANDLER:', err);
-  console.error('Error stack:', err.stack);
-  console.error('Request URL:', req.url);
-  console.error('Request method:', req.method);
-  logger.error('Express error handler:', {
-    message: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method
-  });
-  res.status(500).json({ error: 'Something went wrong!', details: err.message });
-});
+// 404 handler for undefined API routes
+app.use('/api', notFoundHandler);
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Initialize services
 async function startServer() {

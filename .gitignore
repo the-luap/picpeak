@@ -77,6 +77,13 @@ certbot/
 AGENTS.md
 CLAUDE.md
 
+# Working/planning documents (not for release)
+BUGS_AND_FEATURES.md
+frontend/TEST_PLAN.md
+docs/REFACTORING_PLAN.md
+docs/test-*.md
+docs/feature-*.md
+
 # Local artifacts from browser tooling
 .playwright-mcp/
 

@@ -1,7 +1,7 @@
 export { AdminLoginPage } from './AdminLoginPage';
 export { AdminDashboard } from './AdminDashboard';
 export { EventsListPage } from './EventsListPage';
-export { CreateEventPageEnhanced } from './CreateEventPageEnhanced';
+export { CreateEventPage } from './CreateEventPage';
 export { EventDetailsPage } from './EventDetailsPage';
 export { EmailConfigPage } from './EmailConfigPage';
 export { ArchivesPage } from './ArchivesPage';

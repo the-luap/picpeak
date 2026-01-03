@@ -14,7 +14,7 @@ import {
   AdminLoginPage, 
   AdminDashboard, 
   EventsListPage,
-  CreateEventPageEnhanced as CreateEventPage,
+  CreateEventPage,
   EventDetailsPage,
   EventFeedbackPage,
   EmailConfigPage,
@@ -22,9 +22,9 @@ import {
   AnalyticsPage,
   BrandingPage,
   SettingsPage,
-  BackupManagement
+  BackupManagement,
+  CMSPage
 } from './pages/admin';
-import { CMSPageEnhanced } from './pages/admin/CMSPageEnhanced';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
 import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
@@ -127,7 +127,7 @@ function App() {
                       <Route path="branding" element={<BrandingPage />} />
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="backup" element={<BackupManagement />} />
-                      <Route path="cms" element={<CMSPageEnhanced />} />
+                      <Route path="cms" element={<CMSPage />} />
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>
                   </Route>

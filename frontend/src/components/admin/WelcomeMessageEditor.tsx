@@ -1,5 +1,6 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface WelcomeMessageEditorProps {
   value: string;
@@ -18,9 +19,16 @@ export const WelcomeMessageEditor: React.FC<WelcomeMessageEditorProps> = ({
     onChange(e.target.value);
   };
 
-  // Convert newlines to <br> tags for preview
+  // Convert newlines to <br> tags for preview with XSS sanitization
   const getPreviewHtml = () => {
-    return value
+    // First sanitize the input to remove any malicious content
+    const sanitized = DOMPurify.sanitize(value, {
+      ALLOWED_TAGS: [], // Strip all HTML tags, only allow text
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true
+    });
+    // Then convert newlines to <br> tags
+    return sanitized
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)

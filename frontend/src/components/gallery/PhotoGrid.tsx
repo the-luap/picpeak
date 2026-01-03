@@ -19,16 +19,22 @@ interface PhotoGridProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
+  disableRightClick?: boolean;
+  enableDevtoolsProtection?: boolean;
 }
 
-export const PhotoGrid: React.FC<PhotoGridProps> = ({ 
-  photos, 
-  slug, 
-  categoryId, 
-  feedbackEnabled = false, 
+export const PhotoGrid: React.FC<PhotoGridProps> = ({
+  photos,
+  slug,
+  categoryId,
+  feedbackEnabled = false,
   allowDownloads = true,
   protectionLevel = 'standard',
-  useEnhancedProtection = false
+  useEnhancedProtection = false,
+  useCanvasRendering = false,
+  disableRightClick = false,
+  enableDevtoolsProtection = false
 }) => {
   const { t } = useTranslation();
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
@@ -190,6 +196,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
             allowDownloads={allowDownloads}
             protectionLevel={protectionLevel}
             useEnhancedProtection={useEnhancedProtection}
+            useCanvasRendering={useCanvasRendering}
             slug={slug}
             feedbackEnabled={feedbackEnabled}
           />
@@ -207,6 +214,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
           allowDownloads={allowDownloads}
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
+          disableRightClick={disableRightClick}
+          enableDevtoolsProtection={enableDevtoolsProtection}
         />
       )}
     </>
@@ -222,6 +231,7 @@ interface PhotoThumbnailProps {
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
   slug: string; // Add slug as required prop
   feedbackEnabled?: boolean;
 }
@@ -235,6 +245,7 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  useCanvasRendering = false,
   slug,
   feedbackEnabled = false
 }) => {
@@ -264,7 +275,7 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
             protectFromDownload={!allowDownloads || useEnhancedProtection}
             protectionLevel={protectionLevel}
             useEnhancedProtection={useEnhancedProtection}
-            useCanvasRendering={protectionLevel === 'maximum'}
+            useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
             fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
             blockKeyboardShortcuts={useEnhancedProtection}
             detectPrintScreen={useEnhancedProtection}

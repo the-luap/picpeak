@@ -31,13 +31,15 @@ router.get('/settings', adminAuth, async (req, res) => {
 
     const config = {};
     settings.forEach(setting => {
-      config[setting.setting_key] = JSON.parse(setting.setting_value);
+      // PostgreSQL JSON columns are already parsed by the driver
+      // Just use the value directly - no need to JSON.parse
+      config[setting.setting_key] = setting.setting_value;
     });
 
     res.json(config);
   } catch (error) {
-    logger.error('Error getting image security settings', { error: error.message });
-    res.status(500).json({ error: 'Failed to get security settings' });
+    logger.error('Error getting image security settings', { error: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Failed to get security settings', details: error.message });
   }
 });
 

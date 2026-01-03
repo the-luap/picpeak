@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { FileText, Globe, Sparkles, ShieldCheck } from 'lucide-react';
+import { FileText, Globe, Clock, Sparkles, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { debounce } from 'lodash';
 import DOMPurify from 'dompurify';
 
 import { Button, Card, Input, Loading } from '../../components/common';
@@ -17,6 +18,9 @@ export const CMSPage: React.FC = () => {
   const [selectedPage, setSelectedPage] = useState<string>('impressum');
   const [editingLang, setEditingLang] = useState<'en' | 'de'>('en');
   const [editForm, setEditForm] = useState<Partial<CMSPageType>>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [publicSiteEnabled, setPublicSiteEnabled] = useState(false);
   const [publicSiteHtml, setPublicSiteHtml] = useState('');
   const [publicSiteCss, setPublicSiteCss] = useState('');
@@ -39,62 +43,24 @@ export const CMSPage: React.FC = () => {
     queryFn: () => settingsService.getPublicSiteDefaults(),
   });
 
-  React.useEffect(() => {
-    if (publicSiteDefaults) {
-      setPublicSiteBaseCss(publicSiteDefaults.baseCss || '');
-      setPublicSiteBranding(publicSiteDefaults.branding);
-    }
-  }, [publicSiteDefaults]);
-
-  React.useEffect(() => {
-    if (!adminSettings) {
-      return;
-    }
-
-    setPublicSiteEnabled(Boolean(adminSettings.general_public_site_enabled));
-    setPublicSiteHtml((adminSettings.general_public_site_html as string) || '');
-    setPublicSiteCss((adminSettings.general_public_site_custom_css as string) || '');
-  }, [adminSettings]);
-
   // Update page mutation
   const updateMutation = useMutation({
     mutationFn: ({ slug, data }: { slug: string; data: Partial<CMSPageType> }) =>
       cmsService.updatePage(slug, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cms-pages'] });
-      toast.success(t('cms.pageUpdated'));
+      setHasUnsavedChanges(false);
+      setLastSaved(new Date());
+      setIsAutoSaving(false);
+      if (!isAutoSaving) {
+        toast.success(t('cms.pageUpdated'));
+      }
     },
     onError: () => {
+      setIsAutoSaving(false);
       toast.error(t('toast.saveError'));
     },
   });
-
-  // Load page data when selection changes
-  React.useEffect(() => {
-    if (pages) {
-      const page = pages.find(p => p.slug === selectedPage);
-      if (page) {
-        setEditForm(page);
-      }
-    }
-  }, [pages, selectedPage]);
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      slug: selectedPage,
-      data: editForm,
-    });
-  };
-
-  const handleContentChange = (content: string) => {
-    const field = editingLang === 'de' ? 'content_de' : 'content_en';
-    setEditForm(prev => ({ ...prev, [field]: content }));
-  };
-
-  const handleTitleChange = (title: string) => {
-    const field = editingLang === 'de' ? 'title_de' : 'title_en';
-    setEditForm(prev => ({ ...prev, [field]: title }));
-  };
 
   const publicSiteSaveMutation = useMutation({
     mutationFn: async () => {
@@ -140,19 +106,95 @@ export const CMSPage: React.FC = () => {
     },
     onError: () => {
       toast.error(t('settings.publicSite.resetError'));
-    }
+    },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loading size="lg" text={t('cms.loadingPages')} />
-      </div>
-    );
-  }
+  // Auto-save functionality
+  const autoSave = useCallback(
+    debounce(() => {
+      if (hasUnsavedChanges && !updateMutation.isPending) {
+        setIsAutoSaving(true);
+        updateMutation.mutate({
+          slug: selectedPage,
+          data: editForm,
+        });
+      }
+    }, 3000),
+    [hasUnsavedChanges, editForm, selectedPage]
+  );
+
+  useEffect(() => {
+    if (publicSiteDefaults) {
+      setPublicSiteBaseCss(publicSiteDefaults.baseCss || '');
+      setPublicSiteBranding(publicSiteDefaults.branding);
+    }
+  }, [publicSiteDefaults]);
+
+  useEffect(() => {
+    if (!adminSettings) {
+      return;
+    }
+
+    setPublicSiteEnabled(Boolean(adminSettings.general_public_site_enabled));
+    setPublicSiteHtml((adminSettings.general_public_site_html as string) || '');
+    setPublicSiteCss((adminSettings.general_public_site_custom_css as string) || '');
+  }, [adminSettings]);
+
+  // Trigger auto-save when content changes
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      autoSave();
+    }
+    return () => {
+      autoSave.cancel();
+    };
+  }, [hasUnsavedChanges, autoSave]);
+
+  // Load page data when selection changes
+  React.useEffect(() => {
+    if (pages) {
+      const page = pages.find(p => p.slug === selectedPage);
+      if (page) {
+        setEditForm(page);
+        setHasUnsavedChanges(false);
+      }
+    }
+  }, [pages, selectedPage]);
+
+  const handleSave = () => {
+    autoSave.cancel(); // Cancel any pending auto-save
+    updateMutation.mutate({
+      slug: selectedPage,
+      data: editForm,
+    });
+  };
+
+  const handleContentChange = (content: string) => {
+    const field = editingLang === 'de' ? 'content_de' : 'content_en';
+    setEditForm(prev => ({ ...prev, [field]: content }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleTitleChange = (title: string) => {
+    const field = editingLang === 'de' ? 'title_de' : 'title_en';
+    setEditForm(prev => ({ ...prev, [field]: title }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const currentPage = pages?.find(p => p.slug === selectedPage);
-
   const publicSiteSanitizedHtml = useMemo(() => DOMPurify.sanitize(publicSiteHtml || '', {
     ALLOWED_TAGS: [
       'a', 'article', 'aside', 'blockquote', 'br', 'button', 'caption', 'div', 'em',
@@ -204,15 +246,9 @@ export const CMSPage: React.FC = () => {
       company_name: branding.companyName || '',
       company_tagline: branding.companyTagline || '',
       support_email: branding.supportEmail || '',
-      brand_logo_url: branding.logoUrl || '/picpeak-logo-transparent.png',
-      brand_primary_hex: branding.colors.primary,
-      brand_accent_hex: branding.colors.accent,
-      brand_background_hex: branding.colors.background,
-      brand_text_hex: branding.colors.text,
     };
 
-    return html.replace(/\{\{\s*(company_name|company_tagline|support_email|brand_logo_url|brand_primary_hex|brand_accent_hex|brand_background_hex|brand_text_hex)\s*\}\}/gi,
-      (_, key: string) => tokens[key] || '');
+    return html.replace(/\{\{\s*(company_name|company_tagline|support_email)\s*\}\}/gi, (_, key: string) => tokens[key] || '');
   };
 
   const publicSitePreview = useMemo(() => {
@@ -277,6 +313,14 @@ export const CMSPage: React.FC = () => {
   }, [publicSiteBranding, publicSiteDefaults, publicSiteSanitizedHtml, publicSiteBaseCss, publicSiteSanitizedCss]);
 
   const publicSiteLoading = isLoadingAdminSettings || isLoadingPublicDefaults;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loading size="lg" text={t('cms.loadingPages')} />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -423,18 +467,28 @@ export const CMSPage: React.FC = () => {
               {pages?.map((page) => (
                 <button
                   key={page.slug}
-                  onClick={() => setSelectedPage(page.slug)}
+                  onClick={() => {
+                    if (hasUnsavedChanges) {
+                      if (confirm('You have unsaved changes. Do you want to save them?')) {
+                        handleSave();
+                      }
+                    }
+                    setSelectedPage(page.slug);
+                  }}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
                     selectedPage === page.slug
                       ? 'bg-primary-100 text-primary-700 border border-primary-300'
                       : 'bg-white border border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >
-                  <FileText className="w-5 h-5" />
-                  <div>
-                    <p className="font-medium">{t(`legal.${page.slug}`)}</p>
+                  <FileText className="w-5 h-5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{t(`legal.${page.slug}`)}</p>
                     <p className="text-sm text-neutral-500">/{page.slug}</p>
                   </div>
+                  {selectedPage === page.slug && hasUnsavedChanges && (
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0" />
+                  )}
                 </button>
               ))}
             </div>
@@ -463,6 +517,32 @@ export const CMSPage: React.FC = () => {
               </a>
             </div>
           </Card>
+
+          {/* Auto-save status */}
+          {(hasUnsavedChanges || lastSaved) && (
+            <Card padding="md" className="mt-4">
+              <div className="text-sm">
+                {isAutoSaving && (
+                  <div className="flex items-center gap-2 text-neutral-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    Auto-saving...
+                  </div>
+                )}
+                {!isAutoSaving && hasUnsavedChanges && (
+                  <div className="flex items-center gap-2 text-yellow-600">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                    Unsaved changes
+                  </div>
+                )}
+                {!hasUnsavedChanges && lastSaved && (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Clock className="w-4 h-4" />
+                    Saved {new Date(lastSaved).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Editor */}
@@ -483,7 +563,7 @@ export const CMSPage: React.FC = () => {
                       : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  🇬🇧 English
+                  English
                 </button>
                 <button
                   onClick={() => setEditingLang('de')}
@@ -493,7 +573,7 @@ export const CMSPage: React.FC = () => {
                       : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  🇩🇪 Deutsch
+                  Deutsch
                 </button>
               </div>
             </div>

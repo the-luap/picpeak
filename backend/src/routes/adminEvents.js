@@ -2,7 +2,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -15,44 +15,53 @@ const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
+const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
 
-const parseBooleanInput = (value, defaultValue = true) => {
-  if (value === undefined || value === null) {
-    return defaultValue;
+// Helper to get event field requirements from settings
+const getEventFieldRequirements = async () => {
+  try {
+    const settings = await db('app_settings')
+      .whereIn('setting_key', [
+        'event_require_customer_name',
+        'event_require_customer_email',
+        'event_require_admin_email'
+      ])
+      .select('setting_key', 'setting_value');
+
+    const requirements = {
+      require_customer_name: true,
+      require_customer_email: true,
+      require_admin_email: true
+    };
+
+    settings.forEach(s => {
+      let value = s.setting_value;
+      if (typeof value === 'string') {
+        try {
+          value = JSON.parse(value);
+        } catch (e) {
+          value = value === 'true';
+        }
+      }
+      if (s.setting_key === 'event_require_customer_name') requirements.require_customer_name = value;
+      if (s.setting_key === 'event_require_customer_email') requirements.require_customer_email = value;
+      if (s.setting_key === 'event_require_admin_email') requirements.require_admin_email = value;
+    });
+
+    return requirements;
+  } catch (error) {
+    logger.error('Failed to get event field requirements', { error: error.message });
+    return {
+      require_customer_name: true,
+      require_customer_email: true,
+      require_admin_email: true
+    };
   }
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'number') {
-    return value !== 0;
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (['false', '0', 'no', 'off'].includes(normalized)) {
-      return false;
-    }
-    if (['true', '1', 'yes', 'on'].includes(normalized)) {
-      return true;
-    }
-  }
-  return defaultValue;
 };
 
-const getCustomerNameFromPayload = (payload = {}) => {
-  if (typeof payload.customer_name === 'string') {
-    const trimmed = payload.customer_name.trim();
-    return trimmed || null;
-  }
-  return null;
-};
-
-const getCustomerEmailFromPayload = (payload = {}) => {
-  if (typeof payload.customer_email === 'string') {
-    const trimmed = payload.customer_email.trim();
-    return trimmed || null;
-  }
-  return null;
-};
+// Use parseStringInput from shared parsers for customer data extraction
+const getCustomerNameFromPayload = (payload = {}) => parseStringInput(payload.customer_name);
+const getCustomerEmailFromPayload = (payload = {}) => parseStringInput(payload.customer_email);
 
 const mapEventForApi = (event) => {
   if (!event || typeof event !== 'object') {
@@ -97,9 +106,9 @@ router.post('/', adminAuth, [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
-  body('customer_name').notEmpty().trim(),
-  body('customer_email').isEmail().normalizeEmail(),
-  body('admin_email').isEmail().normalizeEmail(),
+  body('customer_name').optional().trim(),
+  body('customer_email').optional().isEmail().normalizeEmail(),
+  body('admin_email').optional().isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
     const input = req.body.require_password;
@@ -132,7 +141,8 @@ router.post('/', adminAuth, [
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
-  body('watermark_text').optional().trim()
+  body('watermark_text').optional().trim(),
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -141,7 +151,10 @@ router.post('/', adminAuth, [
       console.error('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
-    
+
+    // Get field requirements from settings
+    const fieldRequirements = await getEventFieldRequirements();
+
     const {
       event_type,
       event_name,
@@ -166,7 +179,9 @@ router.post('/', adminAuth, [
       allow_favorites = true,
       require_name_email = false,
       moderate_comments = true,
-      show_feedback_to_guests = true
+      show_feedback_to_guests = true,
+      // CSS Template
+      css_template_id = null
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -174,8 +189,20 @@ router.post('/', adminAuth, [
 
     const customerColumnsAvailable = await hasCustomerContactColumns();
 
-    if (!customerName || !customerEmail) {
-      return res.status(400).json({ error: 'customer_name and customer_email are required' });
+    // Conditional validation based on settings
+    const validationErrors = [];
+    if (fieldRequirements.require_customer_name && !customerName) {
+      validationErrors.push({ path: 'customer_name', msg: 'Customer name is required' });
+    }
+    if (fieldRequirements.require_customer_email && !customerEmail) {
+      validationErrors.push({ path: 'customer_email', msg: 'Customer email is required' });
+    }
+    if (fieldRequirements.require_admin_email && !admin_email) {
+      validationErrors.push({ path: 'admin_email', msg: 'Admin email is required' });
+    }
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ errors: validationErrors });
     }
 
     const requirePassword = parseBooleanInput(requirePasswordInput, true);
@@ -275,7 +302,8 @@ router.post('/', adminAuth, [
       disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
-      require_password: formatBoolean(requirePassword)
+      require_password: formatBoolean(requirePassword),
+      css_template_id: css_template_id || null
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -505,7 +533,7 @@ router.put('/:id', adminAuth, [
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
-  body('customer_name').optional().trim().notEmpty(),
+  body('customer_name').optional({ nullable: true, checkFalsy: true }).trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
   body('upload_category_id').optional().custom((value) => {
     // Accept null, undefined, or integer values
@@ -526,6 +554,13 @@ router.put('/:id', adminAuth, [
   body('source_mode').optional().isIn(['managed', 'reference']),
   body('external_path').optional({ nullable: true }).isString().trim(),
   body('require_password').optional().isBoolean(),
+  // Download protection settings
+  body('protection_level').optional().isIn(['basic', 'standard', 'enhanced', 'maximum']),
+  body('enable_devtools_protection').optional().isBoolean(),
+  body('use_canvas_rendering').optional().isBoolean(),
+  body('overlay_protection').optional().isBoolean(),
+  body('image_quality').optional().isInt({ min: 1, max: 100 }),
+  body('fragmentation_level').optional().isInt({ min: 1, max: 10 }),
   body('password').optional().isString().custom((value, { req }) => {
     if (value === undefined || value === null || value === '') {
       return true;

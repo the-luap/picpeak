@@ -1,6 +1,6 @@
 const express = require('express');
 const { db } = require('../database/db');
-const { adminAuth } = require('../middleware/auth-enhanced-v2');
+const { adminAuth } = require('../middleware/auth');
 const { sanitizeDays, addDateRangeCondition } = require('../utils/sqlSecurity');
 const { formatBoolean } = require('../utils/dbCompat');
 const router = express.Router();

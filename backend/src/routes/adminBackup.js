@@ -230,25 +230,89 @@ router.post('/test-connection', adminAuth, async (req, res) => {
         break;
         
       case 'rsync':
-        // Test rsync connection
-        const { exec } = require('child_process');
-        const { promisify } = require('util');
-        const execAsync = promisify(exec);
-        
-        const sshCommand = config.ssh_key 
-          ? `ssh -i ${config.ssh_key} -o StrictHostKeyChecking=no -o ConnectTimeout=10`
-          : 'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10';
-        
-        const testCommand = config.user
-          ? `${sshCommand} ${config.user}@${config.host} "echo 'Connection successful'"`
-          : `${sshCommand} ${config.host} "echo 'Connection successful'"`;
-        
+        // Test rsync connection using spawn with argument arrays to prevent command injection
+        const { spawn } = require('child_process');
+
+        // Validate and sanitize inputs to prevent command injection
+        const sanitizeInput = (input) => {
+          if (!input || typeof input !== 'string') return null;
+          // Remove any shell metacharacters and limit length
+          return input.replace(/[;&|`$(){}[\]<>\\!#*?"'\n\r]/g, '').substring(0, 255);
+        };
+
+        const host = sanitizeInput(config.host);
+        const user = sanitizeInput(config.user);
+        const sshKeyPath = sanitizeInput(config.ssh_key);
+
+        if (!host) {
+          res.json({ success: false, message: 'Invalid host specified' });
+          break;
+        }
+
+        // Validate host format (hostname or IP only)
+        const hostRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+        const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+        if (!hostRegex.test(host) && !ipRegex.test(host)) {
+          res.json({ success: false, message: 'Invalid host format' });
+          break;
+        }
+
+        // Validate username format if provided
+        if (user && !/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(user)) {
+          res.json({ success: false, message: 'Invalid username format' });
+          break;
+        }
+
+        // Build SSH arguments as array (safe from injection)
+        const sshArgs = [];
+        if (sshKeyPath) {
+          // Validate SSH key path exists and is a file
+          const fsSync = require('fs');
+          if (!fsSync.existsSync(sshKeyPath) || !fsSync.statSync(sshKeyPath).isFile()) {
+            res.json({ success: false, message: 'SSH key file not found' });
+            break;
+          }
+          sshArgs.push('-i', sshKeyPath);
+        }
+        sshArgs.push('-o', 'StrictHostKeyChecking=no');
+        sshArgs.push('-o', 'ConnectTimeout=10');
+        sshArgs.push('-o', 'BatchMode=yes');
+
+        // Add target (user@host or just host)
+        const target = user ? `${user}@${host}` : host;
+        sshArgs.push(target);
+        sshArgs.push('echo', 'Connection successful');
+
         try {
-          const { stdout } = await execAsync(testCommand);
+          const result = await new Promise((resolve, reject) => {
+            const sshProcess = spawn('ssh', sshArgs, {
+              timeout: 15000,
+              stdio: ['ignore', 'pipe', 'pipe']
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            sshProcess.stdout.on('data', (data) => { stdout += data; });
+            sshProcess.stderr.on('data', (data) => { stderr += data; });
+
+            sshProcess.on('close', (code) => {
+              if (code === 0) {
+                resolve({ success: true, stdout });
+              } else {
+                reject(new Error(stderr || `SSH exited with code ${code}`));
+              }
+            });
+
+            sshProcess.on('error', (err) => {
+              reject(err);
+            });
+          });
+
           res.json({ success: true, message: 'Rsync connection successful' });
         } catch (error) {
           logger.warn('Rsync connection test failed', {
-            destination: config.host || config.destination,
+            destination: host,
             error: error.message
           });
           res.json({ success: false, message: 'Rsync connection failed. Check server logs for details.' });

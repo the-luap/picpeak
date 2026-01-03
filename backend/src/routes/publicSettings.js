@@ -5,13 +5,14 @@ const router = express.Router();
 // Get public settings (branding and theme)
 router.get('/', async (req, res) => {
   try {
-    // Fetch branding, theme, general, and security settings
+    // Fetch branding, theme, general, security, analytics, and event settings
     // Note: We include analytics in the query but it might not exist yet
     const settings = await withRetry(async () => {
       return await db('app_settings')
         .where(function() {
-          this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics'])
-            .orWhere('setting_key', 'like', 'analytics_%');
+          this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics', 'boolean'])
+            .orWhere('setting_key', 'like', 'analytics_%')
+            .orWhere('setting_key', 'like', 'event_require_%');
         })
         .select('setting_key', 'setting_value');
     });
@@ -19,10 +20,19 @@ router.get('/', async (req, res) => {
     // Convert to object format
     const settingsObject = {};
     settings.forEach(setting => {
+      // Handle null/undefined values
+      if (setting.setting_value === null || setting.setting_value === undefined) {
+        settingsObject[setting.setting_key] = null;
+        return;
+      }
+      // If value is already a primitive (boolean, number), use it directly
+      if (typeof setting.setting_value === 'boolean' || typeof setting.setting_value === 'number') {
+        settingsObject[setting.setting_key] = setting.setting_value;
+        return;
+      }
+      // Try to parse string values as JSON
       try {
-        settingsObject[setting.setting_key] = setting.setting_value 
-          ? JSON.parse(setting.setting_value) 
-          : null;
+        settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
       } catch (e) {
         // If parsing fails, use the raw value
         settingsObject[setting.setting_key] = setting.setting_value;
@@ -59,7 +69,11 @@ router.get('/', async (req, res) => {
       umami_enabled: settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true',
       umami_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_url || null) : null,
       umami_website_id: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_website_id || null) : null,
-      umami_share_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_share_url || null) : null
+      umami_share_url: (settingsObject.analytics_umami_enabled === true || settingsObject.analytics_umami_enabled === 'true') ? (settingsObject.analytics_umami_share_url || null) : null,
+      // Event field requirements
+      event_require_customer_name: settingsObject.event_require_customer_name !== false,
+      event_require_customer_email: settingsObject.event_require_customer_email !== false,
+      event_require_admin_email: settingsObject.event_require_admin_email !== false
     };
 
     res.json(publicSettings);

@@ -34,6 +34,13 @@ export interface Event {
   unique_visitors?: number;
   source_mode?: 'managed' | 'reference' | string;
   external_path?: string | null;
+  // Download protection fields
+  allow_downloads?: boolean;
+  protection_level?: 'basic' | 'standard' | 'enhanced' | 'maximum';
+  disable_right_click?: boolean;
+  watermark_downloads?: boolean;
+  enable_devtools_protection?: boolean;
+  use_canvas_rendering?: boolean;
 }
 
 export interface GalleryInfo {
@@ -56,15 +63,13 @@ export interface Photo {
   download_url_template?: string;
   requires_token?: boolean;
   type: 'collage' | 'individual' | 'video';
-  media_type?: 'photo' | 'video';
-  mime_type?: string;
   category_id?: number | string | null;
   category_name?: string;
   category_slug?: string;
   size: number;
   uploaded_at: string;
   // Media type fields
-  media_type?: 'image' | 'video';
+  media_type?: 'photo' | 'video' | 'image';
   mime_type?: string;
   duration?: number; // Duration in seconds for videos
   video_codec?: string;
@@ -107,6 +112,7 @@ export interface GalleryData {
     protection_level?: 'basic' | 'standard' | 'enhanced' | 'maximum';
     image_quality?: number;
     use_canvas_rendering?: boolean;
+    enable_devtools_protection?: boolean;
     fragmentation_level?: number;
     overlay_protection?: boolean;
   };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { 
+import {
   ArrowLeft,
   ExternalLink,
   Calendar,
@@ -20,20 +20,43 @@ import {
   MessageSquare,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Type,
+  Shield,
+  Monitor,
+  Droplets,
+  MousePointer
 } from 'lucide-react';
-import { parseISO, differenceInDays } from 'date-fns';
+import { parseISO, differenceInDays, isValid } from 'date-fns';
+
+// Helper to safely parse dates that might be strings, Date objects, or timestamps
+const safeParseDate = (dateValue: unknown): Date => {
+  if (!dateValue) {
+    return new Date();
+  }
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+  if (typeof dateValue === 'number') {
+    return new Date(dateValue);
+  }
+  if (typeof dateValue === 'string') {
+    const parsed = parseISO(dateValue);
+    return isValid(parsed) ? parsed : new Date(dateValue);
+  }
+  return new Date();
+};
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
-import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams } from '../../services/photos.service';
+import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters, type FilterSummary } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
@@ -128,6 +151,13 @@ export const EventDetailsPage: React.FC = () => {
     require_password: boolean;
     new_password: string;
     confirm_new_password: string;
+    // Download protection settings
+    protection_level: 'basic' | 'standard' | 'enhanced' | 'maximum';
+    disable_right_click: boolean;
+    allow_downloads: boolean;
+    watermark_downloads: boolean;
+    enable_devtools_protection: boolean;
+    use_canvas_rendering: boolean;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -144,6 +174,13 @@ export const EventDetailsPage: React.FC = () => {
     require_password: true,
     new_password: '',
     confirm_new_password: '',
+    // Download protection settings
+    protection_level: 'standard',
+    disable_right_click: true,
+    allow_downloads: true,
+    watermark_downloads: false,
+    enable_devtools_protection: true,
+    use_canvas_rendering: false,
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -167,6 +204,7 @@ export const EventDetailsPage: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<{ photo: AdminPhoto; index: number } | null>(null);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   
@@ -177,6 +215,16 @@ export const EventDetailsPage: React.FC = () => {
     sort: 'date',
     order: 'desc' as 'asc' | 'desc'
   });
+
+  // Feedback filters state for export
+  const [feedbackFilters, setFeedbackFilters] = useState<FeedbackFilters>({
+    minRating: null,
+    hasLikes: false,
+    hasFavorites: false,
+    hasComments: false,
+    logic: 'AND'
+  });
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<number[]>([]);
 
   // Fetch event details
   const { data: event, isLoading: eventLoading } = useQuery({
@@ -206,6 +254,13 @@ export const EventDetailsPage: React.FC = () => {
     queryKey: ['admin-event-photos', id, photoFilters],
     queryFn: () => photosService.getEventPhotos(parseInt(id!), photoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
+  });
+
+  // Fetch filter summary for feedback filters
+  const { data: filterSummary } = useQuery({
+    queryKey: ['admin-event-filter-summary', id],
+    queryFn: () => photosService.getFilterSummary(parseInt(id!)),
+    enabled: !!id && activeTab === 'photos',
   });
 
   const mediaTypes = useMemo(() => {
@@ -312,7 +367,7 @@ export const EventDetailsPage: React.FC = () => {
     );
   }
 
-  const daysUntilExpiration = differenceInDays(parseISO(event.expires_at), new Date());
+  const daysUntilExpiration = differenceInDays(safeParseDate(event.expires_at), new Date());
   const isExpired = daysUntilExpiration <= 0;
   const isExpiring = daysUntilExpiration > 0 && daysUntilExpiration <= 7;
 
@@ -320,7 +375,7 @@ export const EventDetailsPage: React.FC = () => {
     setEditForm({
       welcome_message: event.welcome_message || '',
       color_theme: event.color_theme || '',
-      expires_at: format(parseISO(event.expires_at), 'yyyy-MM-dd'),
+      expires_at: format(safeParseDate(event.expires_at), 'yyyy-MM-dd'),
       allow_user_uploads: event.allow_user_uploads || false,
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
@@ -330,6 +385,13 @@ export const EventDetailsPage: React.FC = () => {
       require_password: normalizeRequirePassword(event.require_password),
       new_password: '',
       confirm_new_password: '',
+      // Load protection settings from event
+      protection_level: event.protection_level || 'standard',
+      disable_right_click: event.disable_right_click ?? true,
+      allow_downloads: event.allow_downloads ?? true,
+      watermark_downloads: event.watermark_downloads ?? false,
+      enable_devtools_protection: event.enable_devtools_protection ?? true,
+      use_canvas_rendering: event.use_canvas_rendering ?? false,
     });
 
     setShowNewPassword(false);
@@ -412,6 +474,13 @@ export const EventDetailsPage: React.FC = () => {
       expires_at: editForm.expires_at,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
+      // Download protection settings
+      protection_level: editForm.protection_level,
+      disable_right_click: editForm.disable_right_click,
+      allow_downloads: editForm.allow_downloads,
+      watermark_downloads: editForm.watermark_downloads,
+      enable_devtools_protection: editForm.enable_devtools_protection,
+      use_canvas_rendering: editForm.use_canvas_rendering,
     };
     
     // Only include fields that have defined values
@@ -517,7 +586,7 @@ export const EventDetailsPage: React.FC = () => {
             <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
               <span className="flex items-center">
                 <Calendar className="w-4 h-4 mr-1" />
-                {format(parseISO(event.event_date), 'PPP')}
+                {format(safeParseDate(event.event_date), 'PPP')}
               </span>
               <span className="capitalize">{event.event_type}</span>
               <span
@@ -570,6 +639,14 @@ export const EventDetailsPage: React.FC = () => {
                       onClick={handleStartEdit}
                     >
                       {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Type className="w-4 h-4" />}
+                      onClick={() => setShowRenameDialog(true)}
+                    >
+                      {t('events.rename.button', 'Rename')}
                     </Button>
                     {feedbackSettings?.feedback_enabled && (
                       <Button
@@ -895,19 +972,88 @@ export const EventDetailsPage: React.FC = () => {
                 
                 {/* Feedback Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings', 'Feedback Settings')}</h3>
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings.title', 'Guest Feedback Settings')}</h3>
                   <FeedbackSettings
                     settings={feedbackSettings}
                     onChange={setFeedbackSettings}
                   />
                 </div>
+
+                {/* Download Protection Settings */}
+                <div className="mt-4 pt-4 border-t border-neutral-200">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary-600" />
+                    {t('events.downloadProtection', 'Download Protection')}
+                  </h3>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.allow_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, allow_downloads: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.allowDownloads', 'Allow photo downloads')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.disable_right_click}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, disable_right_click: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.disableRightClick', 'Block right-click menu')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.watermark_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, watermark_downloads: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.enable_devtools_protection}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, enable_devtools_protection: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.use_canvas_rendering}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, use_canvas_rendering: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
+                    </label>
+
+                    <p className="text-xs text-neutral-500 mt-2">
+                      {t('events.protectionInfo', 'Protection features help prevent unauthorized downloads but cannot block all methods.')}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <dl className="space-y-4">
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">Source Mode</dt>
+                  <dt className="text-sm font-medium text-neutral-500">{t('events.sourceMode', 'Source Mode')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900">
-                    {event.source_mode === 'reference' ? 'Reference (external folder)' : 'Managed (upload)'}
+                    {event.source_mode === 'reference' ? t('events.sourceModeReference', 'Reference external folder') : t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}
                     {event.source_mode === 'reference' && event.external_path ? (
                       <span className="text-neutral-500 ml-2">/external-media/{event.external_path}</span>
                     ) : null}
@@ -943,14 +1089,14 @@ export const EventDetailsPage: React.FC = () => {
                   <div>
                     <dt className="text-sm font-medium text-neutral-500">{t('events.created')}</dt>
                     <dd className="mt-1 text-sm text-neutral-900">
-                      {format(parseISO(event.created_at), 'PP')}
+                      {format(safeParseDate(event.created_at), 'PP')}
                     </dd>
                   </div>
                   
                   <div>
                     <dt className="text-sm font-medium text-neutral-500">{t('events.expires')}</dt>
                     <dd className="mt-1 text-sm text-neutral-900">
-                      {format(parseISO(event.expires_at), 'PP')}
+                      {format(safeParseDate(event.expires_at), 'PP')}
                       {!event.is_archived && daysUntilExpiration > 0 && (
                         <span className="text-neutral-500 ml-1">
                           {t('events.daysLeft', { count: daysUntilExpiration })}
@@ -990,6 +1136,50 @@ export const EventDetailsPage: React.FC = () => {
                         {t('common.no')}
                       </span>
                     )}
+                  </dd>
+                </div>
+
+                {/* Download Protection Display */}
+                <div className="pt-3 mt-3 border-t border-neutral-200">
+                  <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    {t('events.downloadProtection', 'Download Protection')}
+                  </dt>
+                  <dd className="mt-2 text-sm text-neutral-900">
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${
+                        event.protection_level === 'maximum' ? 'bg-red-100 text-red-700' :
+                        event.protection_level === 'enhanced' ? 'bg-orange-100 text-orange-700' :
+                        event.protection_level === 'standard' ? 'bg-blue-100 text-blue-700' :
+                        'bg-neutral-100 text-neutral-700'
+                      }`}>
+                        {event.protection_level || 'standard'}
+                      </span>
+                      {event.disable_right_click && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <MousePointer className="w-3 h-3 mr-1" />
+                          {t('events.rightClickBlocked', 'Right-click blocked')}
+                        </span>
+                      )}
+                      {event.enable_devtools_protection && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <Monitor className="w-3 h-3 mr-1" />
+                          {t('events.devtoolsDetection', 'DevTools detection')}
+                        </span>
+                      )}
+                      {!event.allow_downloads && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded">
+                          <Download className="w-3 h-3 mr-1" />
+                          {t('events.downloadsDisabled', 'Downloads disabled')}
+                        </span>
+                      )}
+                      {event.watermark_downloads && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <Droplets className="w-3 h-3 mr-1" />
+                          {t('events.watermarked', 'Watermarked')}
+                        </span>
+                      )}
+                    </div>
                   </dd>
                 </div>
               </dl>
@@ -1201,7 +1391,7 @@ export const EventDetailsPage: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-neutral-500">{t('events.archivedOn')}</p>
                   <p className="text-sm text-neutral-900">
-                    {event.archived_at && format(parseISO(event.archived_at), 'PPp')}
+                    {event.archived_at && format(safeParseDate(event.archived_at), 'PPp')}
                   </p>
                 </div>
                 
@@ -1265,18 +1455,26 @@ export const EventDetailsPage: React.FC = () => {
             showMediaFilter={showMediaFilter}
           />
 
+          {/* Feedback Filter Panel for Export */}
+          <PhotoFilterPanel
+            filters={feedbackFilters}
+            onChange={setFeedbackFilters}
+            summary={filterSummary || null}
+            isLoading={photosLoading}
+          />
+
           {/* Actions Bar */}
-          <div className="mb-4 flex justify-between items-center">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Upload className="w-4 h-4" />}
-              onClick={() => setShowPhotoUpload(true)}
-            >
-              {t('events.uploadPhotos')}
-            </Button>
-            {event.source_mode === 'reference' && (
-              <div className="ml-3">
+          <div className="mb-4 flex flex-wrap justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Upload className="w-4 h-4" />}
+                onClick={() => setShowPhotoUpload(true)}
+              >
+                {t('events.uploadPhotos')}
+              </Button>
+              {event.source_mode === 'reference' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1284,8 +1482,13 @@ export const EventDetailsPage: React.FC = () => {
                 >
                   {t('events.importExternal', 'Import from External Folder')}
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
+            <PhotoExportMenu
+              eventId={parseInt(id!)}
+              selectedPhotoIds={selectedPhotoIds}
+              filters={feedbackFilters}
+            />
           </div>
 
           {/* Photo Grid */}
@@ -1302,6 +1505,7 @@ export const EventDetailsPage: React.FC = () => {
                 refetchPhotos();
                 queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
               }}
+              onSelectionChange={setSelectedPhotoIds}
             />
           )}
 
@@ -1411,6 +1615,25 @@ export const EventDetailsPage: React.FC = () => {
           </Card>
         </div>
       )}
+
+      {/* Event Rename Dialog */}
+      <EventRenameDialog
+        isOpen={showRenameDialog}
+        eventName={event.event_name}
+        eventId={event.id}
+        customerEmail={event.customer_email}
+        onClose={() => setShowRenameDialog(false)}
+        onRename={async (newName, resendEmail) => {
+          const result = await eventsService.renameEvent(event.id, newName, resendEmail);
+          if (result.success) {
+            queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+            queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+            toast.success(t('events.rename.success', 'Event renamed successfully!'));
+          }
+          return result;
+        }}
+        onValidate={(newName) => eventsService.validateRename(event.id, newName)}
+      />
 
     </div>
   );

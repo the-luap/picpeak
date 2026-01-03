@@ -44,7 +44,8 @@
     "up": "Up",
     "select": "Select",
     "selected": "Selected",
-    "chunk": "Chunk"
+    "chunk": "Chunk",
+    "optional": "optional"
   },
   "upload": {
     "photoCategory": "Photo Category",
@@ -370,6 +371,12 @@
     "downloadPermissions": "Download Permissions",
     "downloadsEnabled": "Downloads Enabled",
     "downloadsDisabled": "Downloads Disabled",
+    "downloadProtection": "Download Protection",
+    "disableRightClick": "Block right-click menu",
+    "watermarkDownloads": "Add watermark to downloads",
+    "enableDevtoolsProtection": "Detect developer tools",
+    "useCanvasRendering": "Canvas rendering (advanced protection)",
+    "protectionInfo": "Protection features help prevent unauthorized downloads but cannot block all methods.",
     "heroPhoto": "Hero Photo",
     "heroPhotoHelp": "Select a featured photo for the hero gallery layout",
     "selectHeroPhoto": "Select Hero Photo",
@@ -460,7 +467,22 @@
     "customizeTheme": "Customize Theme",
     "noThemeSet": "No theme configured",
     "customizingTheme": "Customizing gallery theme",
-    "customizingThemeFor": "Customizing theme for {{event}}"
+    "customizingThemeFor": "Customizing theme for {{event}}",
+    "customCssTemplate": "Custom CSS Template",
+    "customCssTemplateDesc": "Apply a custom CSS template to style the gallery with unique visual effects.",
+    "noTemplate": "No Template",
+    "useThemeOnly": "Use theme preset only",
+    "customTemplate": "Custom Template",
+    "rename": {
+      "button": "Rename",
+      "title": "Rename Event",
+      "validating": "Validating new name...",
+      "renamingFiles": "Renaming files...",
+      "complete": "Complete!",
+      "failed": "Rename failed",
+      "filesRenamed": "{{count}} files updated",
+      "confirm": "Rename Event"
+    }
   },
   "settings": {
     "title": "System Settings",
@@ -826,6 +848,17 @@
       "waves": "Waves"
     },
     "customCSSHelp": "Advanced: Add custom CSS to further customize the appearance",
+    "cssInstructions": {
+      "title": "How to use Custom CSS",
+      "variables": "Theme CSS Variables",
+      "variablesDesc": "Use these CSS variables to match your theme presets:",
+      "layouts": "Custom Gallery Layouts",
+      "layoutsDesc": "Target gallery elements with these selectors:",
+      "glassEffect": "Glassmorphism Effect",
+      "glassEffectDesc": "Create modern glass effects:",
+      "tip": "Tip",
+      "tipText": "Use CSS Templates from Settings > CSS Templates for pre-built designs like Apple Liquid Glass."
+    },
     "resetToDefault": "Reset to Default",
     "applyTheme": "Apply Theme",
     "customTheme": "Custom Theme",
@@ -966,6 +999,7 @@
       "photos_bulk_deleted": "{{count}} photos deleted from {{eventName}}",
       "settings_updated": "Settings updated",
       "event_updated": "Event updated: {{eventName}}",
+      "event_renamed": "Event renamed: {{eventName}}",
       "event_deleted": "Event deleted: {{eventName}}",
       "password_changed": "Password changed",
       "email_resent": "Creation email resent for: {{eventName}}",
@@ -1630,7 +1664,35 @@
     "photoFeedback": "Photo Feedback",
     "hasFeedback": "Has feedback",
     "hasComments": "Has comments",
-    "hasRating": "Has rating"
+    "hasRating": "Has rating",
+    "settings": {
+      "title": "Guest Feedback Settings",
+      "enableFeedback": "Enable feedback",
+      "feedbackTypes": "Feedback Types",
+      "ratings": "Star Ratings",
+      "ratingsDesc": "Allow guests to rate photos (1-5 stars)",
+      "likes": "Likes",
+      "likesDesc": "Simple like/unlike functionality",
+      "comments": "Comments",
+      "commentsDesc": "Text comments on photos",
+      "favorites": "Favorites",
+      "favoritesDesc": "Mark photos as favorites"
+    }
+  },
+  "filter": {
+    "feedbackFilters": "Feedback Filters",
+    "clear": "Clear",
+    "rating": "Rating",
+    "allPhotos": "All Photos",
+    "anyRating": "Any Rating",
+    "oneStarPlus": "1+ Stars",
+    "twoStarsPlus": "2+ Stars",
+    "threeStarsPlus": "3+ Stars",
+    "fourStarsPlus": "4+ Stars",
+    "fiveStarsOnly": "5 Stars Only",
+    "hasLikes": "Has likes",
+    "hasFavorites": "Has favorites",
+    "hasComments": "Has comments"
   },
   "adminLogin": {
     "title": "Admin Login",

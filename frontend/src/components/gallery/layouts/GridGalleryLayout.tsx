@@ -20,6 +20,7 @@ interface GridPhotoProps {
   slug?: string;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  useCanvasRendering?: boolean;
   feedbackEnabled?: boolean;
   feedbackOptions?: {
     allowLikes?: boolean;
@@ -48,6 +49,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   slug,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  useCanvasRendering = false,
   feedbackEnabled = false,
   feedbackOptions,
   savedIdentity,
@@ -176,7 +178,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   return (
     <div
       ref={ref}
-      className={`relative group cursor-pointer aspect-square ${animationClass}`}
+      className={`photo-card relative group cursor-pointer aspect-square ${animationClass}`}
       onClick={handlePhotoClick}
       style={{
         opacity: !inView && animationType === 'fade' ? 0 : 1
@@ -197,7 +199,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             protectFromDownload={!allowDownloads || useEnhancedProtection}
             protectionLevel={protectionLevel}
             useEnhancedProtection={useEnhancedProtection}
-            useCanvasRendering={protectionLevel === 'maximum'}
+            useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
             fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
             blockKeyboardShortcuts={useEnhancedProtection}
             detectPrintScreen={useEnhancedProtection}
@@ -359,6 +361,7 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
+  useCanvasRendering = false,
   feedbackEnabled = false,
   feedbackOptions
 }) => {
@@ -375,10 +378,10 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
   
-  const gridClass = `grid ${spacingClass} 
-    grid-cols-${columns.mobile} 
-    sm:grid-cols-${columns.tablet} 
-    lg:grid-cols-${columns.desktop} 
+  const gridClass = `photo-grid grid ${spacingClass}
+    grid-cols-${columns.mobile}
+    sm:grid-cols-${columns.tablet}
+    lg:grid-cols-${columns.desktop}
     xl:grid-cols-${columns.desktop + 1}`;
 
   return (
@@ -397,6 +400,7 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           slug={slug}
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering}
           feedbackEnabled={feedbackEnabled}
           feedbackOptions={feedbackOptions}
           savedIdentity={savedIdentity}

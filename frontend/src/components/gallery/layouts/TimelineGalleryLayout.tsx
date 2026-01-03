@@ -94,13 +94,13 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
             )}
             
             {/* Photos grid for this date */}
-            <div className="lg:ml-24 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="photo-grid lg:ml-24 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {group.photos.map((photo) => {
                 const actualIndex = photos.findIndex(p => p.id === photo.id);
                 return (
                   <div
                     key={photo.id}
-                    className="relative group cursor-pointer aspect-square"
+                    className="photo-card relative group cursor-pointer aspect-square"
                     onClick={() => onPhotoClick(actualIndex)}
                   >
                     <AuthenticatedImage

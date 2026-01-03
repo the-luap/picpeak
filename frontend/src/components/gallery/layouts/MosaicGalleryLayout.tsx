@@ -49,7 +49,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   return (
     <>
     <div
-      className={`relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 ${className}`}
+      className={`photo-card relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 ${className}`}
       onClick={(e) => {
         e.stopPropagation();
         onClick(e);
@@ -417,7 +417,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   };
   
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="photo-grid w-full max-w-7xl mx-auto">
       {renderMosaicLayout()}
     </div>
   );

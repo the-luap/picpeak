@@ -10,73 +10,91 @@ const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
+const { handleAsync } = require('../utils/routeHelpers');
+const { NotFoundError } = require('../utils/errors');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
 
-// Resolve gallery identifier (slug or token) to canonical data
-router.get('/resolve/:identifier', async (req, res) => {
+// Check for slug redirect (for renamed events)
+async function checkSlugRedirect(slug) {
   try {
-    const { identifier } = req.params;
-    const result = await resolveShareIdentifier(identifier);
+    const hasTable = await db.schema.hasTable('slug_redirects');
+    if (!hasTable) return null;
 
-    if (!result) {
-      return res.status(404).json({ error: 'Gallery not found' });
-    }
+    const redirect = await db('slug_redirects')
+      .where({ old_slug: slug })
+      .first();
 
-    const { event, matchType, shareToken } = result;
-    const linkVariants = await buildShareLinkVariants({ slug: event.slug, shareToken });
-    const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
-
-    res.json({
-      slug: event.slug,
-      token: shareToken,
-      matchType,
-      share_link: event.share_link,
-      share_path: linkVariants.sharePath,
-      share_url: linkVariants.shareUrl,
-      short_enabled: linkVariants.shortEnabled,
-      requires_password: requiresPassword
-    });
+    return redirect ? redirect.new_slug : null;
   } catch (error) {
-    logger.error('Error resolving gallery identifier:', error);
-    res.status(500).json({ error: 'Failed to resolve gallery link' });
+    logger.warn('Error checking slug redirect:', { slug, error: error.message });
+    return null;
   }
-});
+}
+
+// Resolve gallery identifier (slug or token) to canonical data
+router.get('/resolve/:identifier', handleAsync(async (req, res) => {
+  const { identifier } = req.params;
+  let result = await resolveShareIdentifier(identifier);
+
+  // If not found, check for redirect
+  if (!result) {
+    const newSlug = await checkSlugRedirect(identifier);
+    if (newSlug) {
+      return res.status(301).json({
+        redirect: true,
+        newSlug,
+        message: 'Gallery has been renamed'
+      });
+    }
+    throw new NotFoundError('Gallery');
+  }
+
+  const { event, matchType, shareToken } = result;
+  const linkVariants = await buildShareLinkVariants({ slug: event.slug, shareToken });
+  const requiresPassword = !(event.require_password === false || event.require_password === 0 || event.require_password === '0');
+
+  res.json({
+    slug: event.slug,
+    token: shareToken,
+    matchType,
+    share_link: event.share_link,
+    share_path: linkVariants.sharePath,
+    share_url: linkVariants.shareUrl,
+    short_enabled: linkVariants.shortEnabled,
+    requires_password: requiresPassword
+  });
+}));
 
 // Verify share token
-router.get('/:slug/verify-token/:token', async (req, res) => {
-  try {
-    const { slug, token } = req.params;
-    
-    const event = await db('events')
-      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
-      .select('id', 'share_link', 'share_token')
-      .first();
-    
-    if (!event) {
-      return res.status(404).json({ error: 'Gallery not found' });
-    }
-    
-    const expectedToken = getEventShareToken(event);
-    if (token !== expectedToken) {
-      return res.status(404).json({ error: 'Invalid gallery link' });
-    }
-    
-    res.json({ valid: true });
-  } catch (error) {
-    console.error('Error verifying token:', error);
-    res.status(500).json({ error: 'Failed to verify token' });
+router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
+  const { slug, token } = req.params;
+
+  const event = await db('events')
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    .select('id', 'share_link', 'share_token')
+    .first();
+
+  if (!event) {
+    throw new NotFoundError('Gallery');
   }
-});
+
+  const expectedToken = getEventShareToken(event);
+  if (token !== expectedToken) {
+    throw new NotFoundError('Gallery', 'Invalid gallery link');
+  }
+
+  res.json({ valid: true });
+}));
 
 // Get gallery info (with optional token verification)
 router.get('/:slug/info', async (req, res) => {
   try {
     const { slug } = req.params;
     const { token } = req.query;
-    
-    const event = await db('events')
+
+    let event = await db('events')
       .where({ slug })
       .select(
         'event_name',
@@ -92,11 +110,22 @@ router.get('/:slug/info', async (req, res) => {
         'watermark_downloads',
         'watermark_text',
         'require_password',
-        'color_theme'
+        'color_theme',
+        'enable_devtools_protection',
+        'use_canvas_rendering'
       )
       .first();
-    
+
     if (!event) {
+      // Check for redirect
+      const newSlug = await checkSlugRedirect(slug);
+      if (newSlug) {
+        return res.status(301).json({
+          redirect: true,
+          newSlug,
+          message: 'Gallery has been renamed'
+        });
+      }
       return res.status(404).json({ error: 'Gallery not found' });
     }
     
@@ -127,7 +156,9 @@ router.get('/:slug/info', async (req, res) => {
       allow_downloads: !(event.allow_downloads === false || event.allow_downloads === 0 || event.allow_downloads === '0'),
       disable_right_click: event.disable_right_click === true || event.disable_right_click === 1 || event.disable_right_click === '1',
       watermark_downloads: event.watermark_downloads === true || event.watermark_downloads === 1 || event.watermark_downloads === '1',
-      watermark_text: event.watermark_text
+      watermark_text: event.watermark_text,
+      enable_devtools_protection: event.enable_devtools_protection === true || event.enable_devtools_protection === 1 || event.enable_devtools_protection === '1',
+      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -288,6 +319,8 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         disable_right_click: req.event.disable_right_click === true,
         watermark_downloads: req.event.watermark_downloads === true,
         watermark_text: req.event.watermark_text,
+        enable_devtools_protection: req.event.enable_devtools_protection === true,
+        use_canvas_rendering: req.event.use_canvas_rendering === true,
         ...protectionSettings
       },
       categories: categories,
@@ -370,19 +403,27 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
       return res.status(404).json({ error: 'Photo file not found' });
     }
     
-    // Get watermark settings
+    // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
-    if (watermarkSettings && watermarkSettings.enabled) {
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+
+    if (shouldApplyWatermark) {
       // Apply watermark and send
-      const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-      
+      // Use event watermark text if available, otherwise fall back to global settings
+      const effectiveSettings = {
+        ...watermarkSettings,
+        enabled: true,
+        text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+      };
+      const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
+
       res.set({
         'Content-Type': photo.mime_type || 'image/jpeg',
         'Content-Disposition': `attachment; filename="${photo.filename}"`,
         'Content-Length': watermarkedBuffer.length
       });
-      
+
       res.send(watermarkedBuffer);
     } else {
       // Send original file
@@ -441,9 +482,16 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     
     archive.pipe(res);
     
-    // Get watermark settings
+    // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+    const effectiveSettings = shouldApplyWatermark ? {
+      ...watermarkSettings,
+      enabled: true,
+      text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+    } : null;
+
     // Add photos to archive
     for (const photo of photos) {
       let filePath;
@@ -458,7 +506,7 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
         });
         continue;
       }
-      
+
       // Determine the file name in the archive
       let archiveName;
       if (hasMultipleTypes) {
@@ -469,10 +517,10 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
         // No folders, just the filename
         archiveName = photo.filename;
       }
-      
-      if (watermarkSettings && watermarkSettings.enabled) {
+
+      if (shouldApplyWatermark && effectiveSettings) {
         try {
-          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
           archive.append(watermarkedBuffer, { name: archiveName });
         } catch (watermarkError) {
           logger.warn('Failed to watermark photo for bulk download, skipping original to avoid leak', {
@@ -559,15 +607,23 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
     });
     archive.pipe(res);
 
-    // Check watermark settings similar to download-all
+    // Check watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
+    const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+    const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
+    const effectiveSettings = shouldApplyWatermark ? {
+      ...watermarkSettings,
+      enabled: true,
+      text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
+    } : null;
+
     for (const photo of photos) {
       try {
         const filePath = resolvePhotoFilePath(req.event, photo);
         const name = photo.filename || `photo-${photo.id}.jpg`;
-        if (watermarkSettings && watermarkSettings.enabled) {
+        if (shouldApplyWatermark && effectiveSettings) {
           try {
-            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
             archive.append(watermarkedBuffer, { name });
           } catch (watermarkError) {
             logger.warn('Failed to watermark selected photo, skipping original to avoid leak', {
@@ -917,6 +973,45 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
   } catch (error) {
     console.error('Upload route error:', error);
     res.status(500).json({ error: 'Failed to upload photos' });
+  }
+});
+
+/**
+ * GET /:slug/css-template
+ * Get custom CSS template for gallery (public endpoint)
+ */
+router.get('/:slug/css-template', async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Find the event by slug
+    const event = await db('events')
+      .where({ slug })
+      .select('css_template_id')
+      .first();
+
+    if (!event || !event.css_template_id) {
+      // No custom CSS - return 204 No Content
+      return res.status(204).send();
+    }
+
+    // Get the template if it's enabled
+    const template = await db('css_templates')
+      .where({ id: event.css_template_id, is_enabled: true })
+      .select('css_content')
+      .first();
+
+    if (!template || !template.css_content) {
+      return res.status(204).send();
+    }
+
+    // Return CSS with caching headers
+    res.setHeader('Content-Type', 'text/css');
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour cache
+    res.send(template.css_content);
+  } catch (error) {
+    console.error('Get CSS template error:', error);
+    res.status(500).send('/* Error loading template */');
   }
 });
 

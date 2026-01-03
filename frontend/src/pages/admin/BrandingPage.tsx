@@ -383,18 +383,23 @@ export const BrandingPage: React.FC = () => {
                       </button>
                     </div>
                   )}
-                  <label className="cursor-pointer">
+                  <div>
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/svg+xml"
                       onChange={handleLogoUpload}
                       className="hidden"
+                      id="logo-upload"
                     />
-                    <span className="btn-secondary inline-flex items-center">
-                      <Upload className="w-4 h-4 mr-2" />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                      leftIcon={<Upload className="w-4 h-4" />}
+                    >
                       {brandingSettings.logo_url ? t('branding.changeLogo', 'Change Logo') : t('branding.uploadLogo', 'Upload Logo')}
-                    </span>
-                  </label>
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-xs text-neutral-600 mt-1">
                   {t('branding.logoHelp', 'PNG, JPG or SVG format, recommended width: 200px')}

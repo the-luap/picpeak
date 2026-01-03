@@ -235,7 +235,6 @@ These features are currently in beta testing and may have limited functionality 
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Download Protection** | Advanced image protection system with canvas rendering, invisible watermarking, and right-click prevention to protect your photos from unauthorized downloads | 🧪 Beta |
 | **Simple Deployment Script** | One-click deployment script for quick server setup with automated configuration and dependency installation | 🧪 Beta |
 
 ### 📋 Future Enhancements
@@ -244,12 +243,13 @@ These features are currently in beta testing and may have limited functionality 
 |---------|-------------|----------|---------|
 | **Backup & Restore** | Comprehensive backup system with S3/MinIO support, automated scheduling, and safe restore functionality | High | ✅ Implemented |
 | **External Media Library (Reference Mode)** | Use an external folder library as a read‑only source with import and on‑demand thumbnail generation | High | ✅ Implemented |
-| **Gallery Templates** | Additional gallery layouts and themes (masonry, slideshow, story-style) for different event types | Medium | 🔄 Open |
+| **Download Protection** | Advanced image protection system with canvas rendering, invisible watermarking, right-click prevention, and DevTools detection to protect photos from unauthorized downloads | High | ✅ Implemented |
+| **Gallery Templates** | Multiple gallery layouts (grid, masonry, carousel, timeline, hero, mosaic) with custom CSS styling support. Includes starter templates like Apple Liquid Glass for complete visual customization | Medium | ✅ Implemented |
 | **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
 | **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented |
 | **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | ✅ Implemented |
 | **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
-| **Filtering & Export Options** | Add filters to show only rated, liked, or marked photos and export filtered selections for Capture One or Lightroom workflows | Low | 🔄 Open |
+| **Filtering & Export Options** | Filter photos by likes, ratings, comments, or favorites. Search by filename. Sort by date, name, size, or rating. Export filtered selections as ZIP or generate Capture One/Lightroom-compatible file lists for professional workflows | Medium | ✅ Implemented |
 
 **Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
 

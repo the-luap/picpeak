@@ -24,7 +24,7 @@ jest.mock('../../database/db', () => {
   return { db: dbMock };
 });
 
-jest.mock('../../middleware/auth-enhanced-v2', () => ({
+jest.mock('../../middleware/auth', () => ({
   adminAuth: (_req, _res, next) => next(),
 }));
 
