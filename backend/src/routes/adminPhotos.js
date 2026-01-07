@@ -177,21 +177,23 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
     
     // Parse category_id to number if provided
     const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
-    
-    // Determine photo type from category_id parameter (for backwards compatibility)
+
+    // Determine photo type and category name
     let photoType = 'individual'; // default
     let categoryName = 'individual';
-    
-    if (parsedCategoryId === 1 || category_id === 'collage') {
-      photoType = 'collage';
-      categoryName = 'collages';
-    } else if (parsedCategoryId === 2 || category_id === 'individual') {
-      photoType = 'individual';
-      categoryName = 'individual';
-    }
-    
-    // For backwards compatibility, accept string values
-    if (category_id === 'collage') {
+
+    // Look up the actual category from database if provided
+    if (parsedCategoryId && !isNaN(parsedCategoryId)) {
+      const category = await db('photo_categories').where({ id: parsedCategoryId }).first();
+      if (category) {
+        categoryName = category.slug || category.name.toLowerCase().replace(/\s+/g, '_');
+        // Use category slug for type determination
+        if (category.slug === 'collage' || category.slug === 'collages') {
+          photoType = 'collage';
+        }
+      }
+    } else if (category_id === 'collage') {
+      // For backwards compatibility, accept string values
       photoType = 'collage';
       categoryName = 'collages';
     }
@@ -257,6 +259,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
+              category_id: parsedCategoryId, // Save the selected category
               size_bytes: tempStats.size // Use actual file size from stat
             };
             

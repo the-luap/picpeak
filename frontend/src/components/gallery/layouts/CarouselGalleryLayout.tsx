@@ -164,7 +164,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                     });
                   } catch (_) {}
                 }}
-                className={`hover:bg-white/20 ${likedIds.has(currentPhoto.id) ? 'text-red-400' : 'text-white'}`}
+                className={`bg-black/30 hover:bg-black/50 rounded-full border border-white/40 ${likedIds.has(currentPhoto.id) ? 'text-red-400' : 'text-white'}`}
                 title="Like photo"
                 aria-pressed={likedIds.has(currentPhoto.id)}
               >
@@ -176,7 +176,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => { onOpenPhotoWithFeedback?.(currentIndex); }}
-                className="text-white hover:bg-white/20"
+                className="text-white bg-black/30 hover:bg-black/50 rounded-full border border-white/40"
                 title="Comment"
                 aria-label="Comment on photo"
               >
