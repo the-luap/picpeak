@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode } from 'lucide-react';
 import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType } from '../../types/theme.types';
+import type { EnabledTemplate } from '../../services/cssTemplates.service';
 // import { settingsService } from '../../services/settings.service';
 // import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,10 @@ interface ThemeCustomizerEnhancedProps {
   hideActions?: boolean;
   onApply?: (theme: ThemeConfig, metadata: { presetName: string }) => Promise<void> | void;
   isApplying?: boolean;
+  // CSS Template props
+  cssTemplates?: EnabledTemplate[];
+  cssTemplateId?: number | null;
+  onCssTemplateChange?: (templateId: number | null) => void;
 }
 
 const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
@@ -38,7 +43,10 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   showGalleryLayouts = true,
   hideActions = false,
   onApply,
-  isApplying = false
+  isApplying = false,
+  cssTemplates,
+  cssTemplateId,
+  onCssTemplateChange
 }) => {
   const { t } = useTranslation();
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
@@ -566,11 +574,67 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         </div>
       </Card>
 
-      {/* Custom CSS */}
+      {/* CSS Template Selector - only show if templates are provided */}
+      {cssTemplates && cssTemplates.length > 0 && onCssTemplateChange && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <FileCode className="w-5 h-5" />
+            {t('branding.cssTemplate', 'CSS Template')}
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            {t('branding.cssTemplateDescription', 'Select a pre-built CSS template to apply application-wide styling to this gallery. Templates can be managed in Settings > CSS Templates.')}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* No template option */}
+            <button
+              onClick={() => onCssTemplateChange(null)}
+              className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                !cssTemplateId
+                  ? 'border-primary-600 bg-primary-50'
+                  : 'border-neutral-200 hover:border-neutral-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm">{t('branding.noTemplate', 'No Template')}</span>
+                {!cssTemplateId && (
+                  <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                )}
+              </div>
+              <span className="text-xs text-neutral-600 mt-1 block">
+                {t('branding.noTemplateDescription', 'Use only theme settings without a CSS template')}
+              </span>
+            </button>
+            {/* Template options */}
+            {cssTemplates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => onCssTemplateChange(template.id)}
+                className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                  cssTemplateId === template.id
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-sm">{template.name}</span>
+                  {cssTemplateId === template.id && (
+                    <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  )}
+                </div>
+                <span className="text-xs text-neutral-600 mt-1 block">
+                  {t('branding.templateSlot', 'Slot {{slot}}', { slot: template.slot_number })}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Event-specific Custom CSS */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
           <Code className="w-5 h-5" />
-          {t('branding.customCSS')}
+          {t('branding.eventCustomCSS', 'Event-specific Custom CSS')}
         </h3>
 
         {/* Collapsible Instructions Panel */}

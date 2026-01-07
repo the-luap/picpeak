@@ -581,7 +581,8 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       throw new Error('Password must be at least 6 characters long');
     }
     return true;
-  })
+  }),
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

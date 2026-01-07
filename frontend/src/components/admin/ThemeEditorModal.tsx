@@ -4,13 +4,15 @@ import { Button } from '../common';
 import { ThemeCustomizerEnhanced } from './ThemeCustomizerEnhanced';
 import { GalleryPreview } from './GalleryPreview';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType } from '../../types/theme.types';
+import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { useTranslation } from 'react-i18next';
 
 interface ThemeEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (theme: ThemeConfig, presetName: string) => void;
+  onSave: (theme: ThemeConfig, presetName: string, cssTemplateId: number | null) => void;
   currentTheme: ThemeConfig | string;
+  currentCssTemplateId?: number | null;
   eventName: string;
 }
 
@@ -28,12 +30,29 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
   onClose,
   onSave,
   currentTheme,
+  currentCssTemplateId,
   eventName
 }) => {
   const { t } = useTranslation();
   const [theme, setTheme] = useState<ThemeConfig>(GALLERY_THEME_PRESETS.default.config);
   const [presetName, setPresetName] = useState<string>('default');
   const [previewLayout, setPreviewLayout] = useState<GalleryLayoutType | undefined>(undefined);
+  const [cssTemplates, setCssTemplates] = useState<EnabledTemplate[]>([]);
+  const [cssTemplateId, setCssTemplateId] = useState<number | null>(currentCssTemplateId ?? null);
+
+  // Fetch CSS templates when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      cssTemplatesService.getEnabledTemplates()
+        .then(setCssTemplates)
+        .catch(err => console.error('Failed to load CSS templates:', err));
+    }
+  }, [isOpen]);
+
+  // Update cssTemplateId when prop changes
+  useEffect(() => {
+    setCssTemplateId(currentCssTemplateId ?? null);
+  }, [currentCssTemplateId]);
 
   useEffect(() => {
     if (currentTheme) {
@@ -82,7 +101,7 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
   };
 
   const handleSave = () => {
-    onSave(theme, presetName);
+    onSave(theme, presetName, cssTemplateId);
     onClose();
   };
 
@@ -128,6 +147,9 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
                 isPreviewMode={true}
                 showGalleryLayouts={true}
                 hideActions={true}
+                cssTemplates={cssTemplates}
+                cssTemplateId={cssTemplateId}
+                onCssTemplateChange={setCssTemplateId}
               />
             </div>
             
