@@ -5,6 +5,21 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/the-luap/picpeak/compare/v2.0.0...v2.1.0) (2026-01-07)
+
+
+### Features
+
+* add multi-administrator support with RBAC and fix backup/restore for S3 ([892e47d](https://github.com/the-luap/picpeak/commit/892e47d017064d7922536f8e138bbb290a45cdc9))
+* **events:** add CSS template selector to event edit page ([6a6c2cd](https://github.com/the-luap/picpeak/commit/6a6c2cd34db26a53b5fb96415650e8136a74e47f))
+* Multi-administrator RBAC, CSS templates & security hardening ([#78](https://github.com/the-luap/picpeak/issues/78)) ([16b3ab0](https://github.com/the-luap/picpeak/commit/16b3ab039ae95f5641dc15a4811eb2b503f1791c))
+
+
+### Bug Fixes
+
+* **photos:** category changes now persist and display correctly ([#77](https://github.com/the-luap/picpeak/issues/77)) ([d9da98c](https://github.com/the-luap/picpeak/commit/d9da98c355011c247c526b28e6f07b329a632b55))
+* **photos:** resolve upload category selection and improve feedback buttons ([#77](https://github.com/the-luap/picpeak/issues/77)) ([856d533](https://github.com/the-luap/picpeak/commit/856d53343c6805706e1498892a29b120938f8547))
+
 ## [2.0.0](https://github.com/the-luap/picpeak/compare/v1.1.15...v2.0.0) (2026-01-03)
 
 
