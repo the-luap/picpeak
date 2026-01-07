@@ -153,6 +153,9 @@ async function processTemplate(template, variables, language = 'en') {
   if (processedVariables.archive_date) {
     processedVariables.archive_date = await formatDate(processedVariables.archive_date, language);
   }
+  if (processedVariables.expires_at) {
+    processedVariables.expires_at = await formatDate(processedVariables.expires_at, language);
+  }
   
   // Format welcome message for HTML display (preserve line breaks)
   if (processedVariables.welcome_message) {

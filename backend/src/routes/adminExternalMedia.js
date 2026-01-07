@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { list, resolveExternalPath, getExternalMediaRoot } = require('../services/externalMediaService');
 const { db, logActivity } = require('../database/db');
 const logger = require('../utils/logger');
@@ -9,7 +10,7 @@ const logger = require('../utils/logger');
 const router = express.Router();
 
 // GET /api/admin/external-media/list?path=relative/dir
-router.get('/list', adminAuth, async (req, res) => {
+router.get('/list', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const relPath = (req.query.path || '').replace(/^\/+/, '');
     const result = await list(relPath);
@@ -45,7 +46,7 @@ async function walkDir(dir, baseDir) {
 
 // POST /api/admin/events/:id/import-external
 // Body: { external_path: string, recursive?: boolean, map?: { individual?: string, collages?: string } }
-router.post('/events/:id/import-external', adminAuth, async (req, res) => {
+router.post('/events/:id/import-external', adminAuth, requirePermission('photos.upload'), async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
     const { external_path, recursive = true, map = { individual: 'individual', collages: 'collages' } } = req.body || {};

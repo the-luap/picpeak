@@ -1,6 +1,7 @@
 const express = require('express');
 const { db, withRetry } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
@@ -9,7 +10,7 @@ const logger = require('../utils/logger');
 const router = express.Router();
 
 // Get system version
-router.get('/version', adminAuth, async (req, res) => {
+router.get('/version', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     // Read backend version from package.json
     let backendVersion = '1.0.0';
@@ -35,7 +36,7 @@ router.get('/version', adminAuth, async (req, res) => {
 });
 
 // Get comprehensive system status
-router.get('/status', adminAuth, async (req, res) => {
+router.get('/status', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     // Database size - check if PostgreSQL or SQLite
     let dbSize = 0;
@@ -170,7 +171,7 @@ router.get('/status', adminAuth, async (req, res) => {
 });
 
 // Get database statistics
-router.get('/database', adminAuth, async (req, res) => {
+router.get('/database', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     // Get table info
     const tables = [

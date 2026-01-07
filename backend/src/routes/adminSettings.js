@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { clearMaintenanceCache } = require('../middleware/maintenance');
 const { clearSettingsCache } = require('../services/rateLimitService');
 const {
@@ -92,7 +93,7 @@ const faviconUpload = multer({
 });
 
 // Get all settings
-router.get('/', adminAuth, async (req, res) => {
+router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const settings = await db('app_settings').select('*');
     
@@ -120,7 +121,7 @@ router.get('/', adminAuth, async (req, res) => {
 });
 
 // Get settings by type
-router.get('/:type', adminAuth, async (req, res) => {
+router.get('/:type', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { type } = req.params;
     const settings = await db('app_settings')
@@ -151,7 +152,7 @@ router.get('/:type', adminAuth, async (req, res) => {
 });
 
 // Get password complexity settings for frontend
-router.get('/password/complexity', adminAuth, async (req, res) => {
+router.get('/password/complexity', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { getPasswordComplexitySettings, getPasswordConfigForComplexity } = require('../utils/passwordValidation');
     
@@ -172,7 +173,7 @@ router.get('/password/complexity', adminAuth, async (req, res) => {
 });
 
 // Update branding settings
-router.put('/branding', adminAuth, async (req, res) => {
+router.put('/branding', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const {
       company_name,
@@ -313,7 +314,7 @@ router.put('/branding', adminAuth, async (req, res) => {
 });
 
 // Upload logo
-router.post('/logo', adminAuth, upload.single('logo'), async (req, res) => {
+router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.single('logo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No logo file uploaded' });
@@ -375,7 +376,7 @@ router.post('/logo', adminAuth, upload.single('logo'), async (req, res) => {
 });
 
 // Upload watermark logo
-router.post('/branding/watermark-logo', adminAuth, upload.single('watermarkLogo'), async (req, res) => {
+router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.edit'), upload.single('watermarkLogo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -437,7 +438,7 @@ router.post('/branding/watermark-logo', adminAuth, upload.single('watermarkLogo'
 });
 
 // Update theme settings
-router.put('/theme', adminAuth, async (req, res) => {
+router.put('/theme', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const themeSettings = req.body;
 
@@ -474,7 +475,7 @@ router.put('/theme', adminAuth, async (req, res) => {
 });
 
 // Update general settings
-router.put('/general', adminAuth, async (req, res) => {
+router.put('/general', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const settings = { ...req.body };
     let uploadLimitTouched = false;
@@ -573,7 +574,7 @@ router.put('/general', adminAuth, async (req, res) => {
 });
 
 // Update security settings
-router.put('/security', adminAuth, async (req, res) => {
+router.put('/security', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const settings = req.body;
 
@@ -612,7 +613,7 @@ router.put('/security', adminAuth, async (req, res) => {
 });
 
 // Update analytics settings
-router.put('/analytics', adminAuth, async (req, res) => {
+router.put('/analytics', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const settings = req.body;
 
@@ -649,7 +650,7 @@ router.put('/analytics', adminAuth, async (req, res) => {
 });
 
 // Get storage info
-router.get('/storage/info', adminAuth, async (req, res) => {
+router.get('/storage/info', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     // Get total storage used
     const totalStorage = await db('photos')
@@ -877,7 +878,7 @@ router.get('/storage/info', adminAuth, async (req, res) => {
 });
 
 // Upload favicon endpoint
-router.post('/favicon', adminAuth, faviconUpload.single('favicon'), async (req, res) => {
+router.post('/favicon', adminAuth, requirePermission('settings.edit'), faviconUpload.single('favicon'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No favicon file provided' });
@@ -915,7 +916,7 @@ router.post('/favicon', adminAuth, faviconUpload.single('favicon'), async (req, 
 });
 
 // Update rate limit settings
-router.put('/security/rate-limit', adminAuth, [
+router.put('/security/rate-limit', adminAuth, requirePermission('settings.edit'), [
   body('rate_limit_enabled').isBoolean().withMessage('Enabled must be a boolean'),
   body('rate_limit_window_minutes').isInt({ min: 1, max: 60 }).withMessage('Window must be between 1 and 60 minutes'),
   body('rate_limit_max_requests').isInt({ min: 10, max: 10000 }).withMessage('Max requests must be between 10 and 10000'),
@@ -979,7 +980,7 @@ router.put('/security/rate-limit', adminAuth, [
 });
 
 // Get default public site template
-router.get('/public-site/default', adminAuth, async (req, res) => {
+router.get('/public-site/default', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const defaults = await getDefaultPublicSitePayload();
 
@@ -1000,7 +1001,7 @@ router.get('/public-site/default', adminAuth, async (req, res) => {
 });
 
 // Reset public site template to defaults
-router.post('/public-site/reset', adminAuth, async (req, res) => {
+router.post('/public-site/reset', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const entries = [
       {

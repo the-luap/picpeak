@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const feedbackService = require('../services/feedbackService');
 const feedbackModeration = require('../services/feedbackModeration');
 const { db, logActivity } = require('../database/db');
@@ -13,8 +14,9 @@ const {
 } = require('../utils/feedbackValidation');
 
 // Get event feedback settings
-router.get('/events/:eventId/feedback-settings', 
+router.get('/events/:eventId/feedback-settings',
   adminAuth,
+  requirePermission('events.view'),
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -39,6 +41,7 @@ router.get('/events/:eventId/feedback-settings',
 // Update event feedback settings
 router.put('/events/:eventId/feedback-settings',
   adminAuth,
+  requirePermission('events.edit'),
   validateEventId,
   validateFeedbackSettings,
   checkValidation,
@@ -75,6 +78,7 @@ router.put('/events/:eventId/feedback-settings',
 // Get feedback for an event (with filters)
 router.get('/events/:eventId/feedback',
   adminAuth,
+  requirePermission('events.view'),
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -159,6 +163,7 @@ router.get('/events/:eventId/feedback',
 // Moderate feedback (approve/hide/reject)
 router.put('/feedback/:feedbackId/:action',
   adminAuth,
+  requirePermission('events.edit'),
   async (req, res) => {
     try {
       const { feedbackId, action } = req.params;
@@ -180,6 +185,7 @@ router.put('/feedback/:feedbackId/:action',
 // Delete feedback
 router.delete('/feedback/:feedbackId',
   adminAuth,
+  requirePermission('events.delete'),
   async (req, res) => {
     try {
       const { feedbackId } = req.params;
@@ -197,6 +203,7 @@ router.delete('/feedback/:feedbackId',
 // Get feedback analytics for an event
 router.get('/events/:eventId/feedback-analytics',
   adminAuth,
+  requirePermission('events.view'),
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -296,6 +303,7 @@ router.get('/events/:eventId/feedback-analytics',
 // Export feedback data
 router.get('/events/:eventId/feedback/export',
   adminAuth,
+  requirePermission('events.view'),
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -324,6 +332,7 @@ router.get('/events/:eventId/feedback/export',
 // Get pending moderation items (across all events)
 router.get('/feedback/pending-moderation',
   adminAuth,
+  requirePermission('events.view'),
   async (req, res) => {
     try {
       const pending = await feedbackService.getPendingModeration();
@@ -338,6 +347,7 @@ router.get('/feedback/pending-moderation',
 // Word filter management
 router.get('/word-filters',
   adminAuth,
+  requirePermission('settings.view'),
   async (req, res) => {
     try {
       const filters = await feedbackModeration.getAllWordFilters();
@@ -351,6 +361,7 @@ router.get('/word-filters',
 
 router.post('/word-filters',
   adminAuth,
+  requirePermission('settings.edit'),
   validateWordFilter,
   checkValidation,
   async (req, res) => {
@@ -378,6 +389,7 @@ router.post('/word-filters',
 
 router.put('/word-filters/:id',
   adminAuth,
+  requirePermission('settings.edit'),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -395,6 +407,7 @@ router.put('/word-filters/:id',
 
 router.delete('/word-filters/:id',
   adminAuth,
+  requirePermission('settings.edit'),
   async (req, res) => {
     try {
       const { id } = req.params;

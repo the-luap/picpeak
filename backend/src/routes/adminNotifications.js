@@ -1,10 +1,11 @@
 const express = require('express');
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const router = express.Router();
 
 // Get notifications (unread activity logs)
-router.get('/', adminAuth, async (req, res) => {
+router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { limit = 20, includeRead = false } = req.query;
 
@@ -64,7 +65,7 @@ router.get('/', adminAuth, async (req, res) => {
 });
 
 // Mark notification as read
-router.put('/:id/read', adminAuth, async (req, res) => {
+router.put('/:id/read', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -82,7 +83,7 @@ router.put('/:id/read', adminAuth, async (req, res) => {
 });
 
 // Mark all notifications as read
-router.put('/read-all', adminAuth, async (req, res) => {
+router.put('/read-all', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     await db('activity_logs')
       .whereNull('read_at')
@@ -98,7 +99,7 @@ router.put('/read-all', adminAuth, async (req, res) => {
 });
 
 // Delete old notifications (older than 30 days and read)
-router.delete('/clear-old', adminAuth, async (req, res) => {
+router.delete('/clear-old', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     // Use database-agnostic date calculation
     const thirtyDaysAgo = new Date();

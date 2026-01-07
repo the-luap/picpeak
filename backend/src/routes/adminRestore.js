@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { restoreService } = require('../services/restoreService');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { body, query, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 const { db } = require('../database/db');
@@ -17,9 +18,35 @@ const fs = require('fs').promises;
 router.use(adminAuth);
 
 /**
+ * Transform frontend S3 config to backend format
+ * Frontend sends: s3Endpoint, s3Bucket, s3AccessKey, s3SecretKey, s3Region
+ * Backend expects: endpoint, bucket, accessKeyId, secretAccessKey, region
+ */
+function transformS3Config(body) {
+  if (body.s3Config) {
+    // Already in correct format
+    return body.s3Config;
+  }
+
+  // Check if frontend sent flat S3 config fields
+  if (body.s3Endpoint || body.s3Bucket || body.s3AccessKey || body.s3SecretKey) {
+    return {
+      endpoint: body.s3Endpoint,
+      bucket: body.s3Bucket,
+      accessKeyId: body.s3AccessKey,
+      secretAccessKey: body.s3SecretKey,
+      region: body.s3Region || 'us-east-1',
+      forcePathStyle: body.s3ForcePathStyle !== false
+    };
+  }
+
+  return null;
+}
+
+/**
  * Get restore service status and history
  */
-router.get('/status', async (req, res) => {
+router.get('/status', requirePermission('backup.view'), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const history = await restoreService.getRestoreHistory(limit);
@@ -47,7 +74,7 @@ router.get('/status', async (req, res) => {
 /**
  * Validate restore request
  */
-router.post('/validate', [
+router.post('/validate', requirePermission('backup.restore'), [
   body('source').notEmpty().withMessage('Backup source is required'),
   body('manifestPath').notEmpty().withMessage('Manifest path is required'),
   body('restoreType').isIn(['full', 'database', 'files', 'selective']).withMessage('Invalid restore type'),
@@ -63,18 +90,38 @@ router.post('/validate', [
   }
 
   try {
+    // Transform S3 config from frontend format
+    const s3Config = transformS3Config(req.body);
+
     // Perform dry run validation
     const result = await restoreService.restore({
-      ...req.body,
+      source: req.body.source,
+      manifestPath: req.body.manifestPath,
+      restoreType: req.body.restoreType,
+      selectedItems: req.body.selectedItems,
+      s3Config,
       dryRun: true,
       force: false
     });
-    
+
+    // Transform spaceCheck to match frontend expected format
+    const spaceCheck = result.spaceCheck ? {
+      sufficient: result.spaceCheck.hasEnoughSpace,
+      required: result.spaceCheck.requiredBytes,
+      available: result.spaceCheck.availableBytes,
+      requiredFormatted: result.spaceCheck.requiredFormatted,
+      availableFormatted: result.spaceCheck.availableFormatted,
+      // Keep original fields for backwards compatibility
+      hasEnoughSpace: result.spaceCheck.hasEnoughSpace,
+      requiredBytes: result.spaceCheck.requiredBytes,
+      availableBytes: result.spaceCheck.availableBytes
+    } : null;
+
     res.json({
       success: true,
       data: {
         validation: result.validation,
-        spaceCheck: result.spaceCheck,
+        spaceCheck,
         logs: result.logs
       }
     });
@@ -82,7 +129,7 @@ router.post('/validate', [
     logger.error('Restore validation failed:', error);
     res.status(400).json({
       success: false,
-      error: 'Restore validation failed',
+      error: error.message || 'Restore validation failed',
       logs: restoreService.restoreLog
     });
   }
@@ -91,7 +138,7 @@ router.post('/validate', [
 /**
  * Start restore operation
  */
-router.post('/start', [
+router.post('/start', requirePermission('backup.restore'), [
   body('source').notEmpty().withMessage('Backup source is required'),
   body('manifestPath').notEmpty().withMessage('Manifest path is required'),
   body('restoreType').isIn(['full', 'database', 'files', 'selective']).withMessage('Invalid restore type'),
@@ -135,19 +182,28 @@ router.post('/start', [
 
     // Log restore attempt
     logger.warn('Restore operation started', {
-      user: req.user.email,
+      user: req.admin.email,
       ip: req.ip,
       restoreType: req.body.restoreType,
       source: req.body.source
     });
 
+    // Transform S3 config from frontend format
+    const s3Config = transformS3Config(req.body);
+
     // Start restore in background
     restoreService.restore({
-      ...req.body,
+      source: req.body.source,
+      manifestPath: req.body.manifestPath,
+      restoreType: req.body.restoreType,
+      selectedItems: req.body.selectedItems,
+      skipPreBackup: req.body.skipPreBackup,
+      force: req.body.force,
+      s3Config,
       dryRun: false,
       operator: {
         type: 'manual',
-        userId: req.user.id,
+        userId: req.admin.id,
         ip: req.ip
       }
     }).catch(error => {
@@ -160,9 +216,10 @@ router.post('/start', [
     });
   } catch (error) {
     logger.error('Failed to start restore:', error);
+    logger.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Failed to start restore operation'
+      error: error.message || 'Failed to start restore operation'
     });
   }
 });
@@ -170,7 +227,7 @@ router.post('/start', [
 /**
  * Get current restore progress
  */
-router.get('/progress', async (req, res) => {
+router.get('/progress', requirePermission('backup.view'), async (req, res) => {
   try {
     const progress = restoreService.getProgress();
     const logs = restoreService.restoreLog.slice(-50); // Last 50 log entries
@@ -195,7 +252,7 @@ router.get('/progress', async (req, res) => {
 /**
  * Get restore run details
  */
-router.get('/run/:id', async (req, res) => {
+router.get('/run/:id', requirePermission('backup.view'), async (req, res) => {
   try {
     const run = await db('restore_runs')
       .where('id', req.params.id)
@@ -250,7 +307,7 @@ router.get('/run/:id', async (req, res) => {
 /**
  * Get restore run report
  */
-router.get('/run/:id/report', async (req, res) => {
+router.get('/run/:id/report', requirePermission('backup.view'), async (req, res) => {
   try {
     const run = await db('restore_runs')
       .where('id', req.params.id)
@@ -289,7 +346,7 @@ router.get('/run/:id/report', async (req, res) => {
 /**
  * List available backups for restore
  */
-router.get('/available-backups', async (req, res) => {
+router.get('/available-backups', requirePermission('backup.view'), async (req, res) => {
   try {
     const backups = [];
     
@@ -350,9 +407,84 @@ router.get('/available-backups', async (req, res) => {
 });
 
 /**
+ * List backups for restore (POST version for frontend compatibility)
+ * Accepts source type in request body
+ */
+router.post('/list-backups', requirePermission('backup.view'), async (req, res) => {
+  try {
+    const { source } = req.body; // 'local', 's3', or undefined for all
+    const backups = [];
+
+    // Get backup configuration
+    const backupConfig = await getBackupConfig();
+
+    // Get database backups from backup_runs table
+    const backupRuns = await db('backup_runs')
+      .where('status', 'completed')
+      .whereNotNull('manifest_path')
+      .orderBy('completed_at', 'desc')
+      .limit(20);
+
+    for (const run of backupRuns) {
+      const isS3 = run.manifest_path.startsWith('s3://');
+      const backupType = isS3 ? 's3' : 'local';
+
+      // Filter by source if specified
+      if (source && source !== backupType) {
+        continue;
+      }
+
+      backups.push({
+        id: run.id,
+        type: backupType,
+        name: `Backup from ${new Date(run.completed_at).toLocaleString()}`,
+        path: run.manifest_path,
+        manifest_path: run.manifest_path,
+        manifestId: run.manifest_id,
+        manifestPath: run.manifest_path,
+        size: parseInt(run.total_size_bytes) || 0,
+        total_size: parseInt(run.total_size_bytes) || 0,
+        total_size_bytes: parseInt(run.total_size_bytes) || 0,
+        filesCount: run.files_backed_up || 0,
+        files_backed_up: run.files_backed_up || 0,
+        duration: run.duration_seconds,
+        duration_seconds: run.duration_seconds,
+        // Frontend expects snake_case date fields
+        created_at: run.completed_at,
+        completed_at: run.completed_at,
+        started_at: run.started_at,
+        // camelCase aliases
+        completedAt: run.completed_at,
+        startedAt: run.started_at,
+        // Backup metadata
+        status: run.status,
+        backup_type: run.backup_type,
+        backupType: run.backup_type,
+        backup_mode: run.backup_mode,
+        backupMode: run.backup_mode,
+        app_version: run.app_version,
+        appVersion: run.app_version
+      });
+    }
+
+    res.json({
+      success: true,
+      data: backups,
+      source: source || 'all'
+    });
+  } catch (error) {
+    logger.error('Failed to list backups for restore:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to list backups for restore'
+    });
+  }
+});
+
+/**
  * Get restore settings
  */
-router.get('/settings', async (req, res) => {
+router.get('/settings', requirePermission('backup.view'), async (req, res) => {
   try {
     const settings = await getRestoreSettings();
     res.json({
@@ -371,7 +503,7 @@ router.get('/settings', async (req, res) => {
 /**
  * Update restore settings
  */
-router.put('/settings', [
+router.put('/settings', requirePermission('backup.restore'), [
   body('restore_allow_force').optional().isBoolean(),
   body('restore_require_pre_backup').optional().isBoolean(),
   body('restore_max_file_size_mb').optional().isInt({ min: 1 }),

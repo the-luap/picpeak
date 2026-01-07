@@ -3,6 +3,7 @@ const { body, query, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -102,7 +103,7 @@ const hasCustomerContactColumns = async () => {
 };
 
 // Create new event
-router.post('/', adminAuth, [
+router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
@@ -296,6 +297,7 @@ router.post('/', adminAuth, [
       share_token: shareToken,
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
+      created_by: req.admin.id,
       allow_user_uploads,
       upload_category_id,
       allow_downloads: formatBoolean(allow_downloads !== undefined ? allow_downloads : true),
@@ -375,7 +377,7 @@ router.post('/', adminAuth, [
 });
 
 // Get all events with pagination and filters
-router.get('/', adminAuth, async (req, res) => {
+router.get('/', adminAuth, requirePermission('events.view'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -387,7 +389,12 @@ router.get('/', adminAuth, async (req, res) => {
 
     // Build query
     let query = db('events');
-    
+
+    // Editor role can only see their own events
+    if (req.admin.roleName === 'editor') {
+      query = query.where('created_by', req.admin.id);
+    }
+
     // Apply search filter
     if (search) {
       const escapedSearch = escapeLikePattern(search);
@@ -465,13 +472,18 @@ router.get('/', adminAuth, async (req, res) => {
 });
 
 // Get single event details
-router.get('/:id', adminAuth, async (req, res) => {
+router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const event = await db('events')
-      .where('id', id)
-      .first();
+
+    let query = db('events').where('id', id);
+
+    // Editor role can only see their own events
+    if (req.admin.roleName === 'editor') {
+      query = query.where('created_by', req.admin.id);
+    }
+
+    const event = await query.first();
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -525,7 +537,7 @@ router.get('/:id', adminAuth, async (req, res) => {
 });
 
 // Update event
-router.put('/:id', adminAuth, [
+router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
@@ -659,7 +671,12 @@ router.put('/:id', adminAuth, [
     });
 
     // Check if event exists
-    const event = await db('events').where('id', id).first();
+    let eventQuery = db('events').where('id', id);
+    // Editor role can only edit their own events
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -696,7 +713,7 @@ router.put('/:id', adminAuth, [
 });
 
 // Delete event
-router.delete('/:id', adminAuth, async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -777,11 +794,16 @@ router.delete('/:id', adminAuth, async (req, res) => {
 });
 
 // Toggle event status
-router.post('/:id/toggle-status', adminAuth, async (req, res) => {
+router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const event = await db('events').where('id', id).first();
+    let eventQuery = db('events').where('id', id);
+    // Editor role can only edit their own events
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -812,12 +834,17 @@ router.post('/:id/toggle-status', adminAuth, async (req, res) => {
 });
 
 // Reset event password
-router.post('/:id/reset-password', adminAuth, async (req, res) => {
+router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), async (req, res) => {
   try {
     const { id } = req.params;
     const { sendEmail = true } = req.body;
 
-    const event = await db('events').where('id', id).first();
+    let eventQuery = db('events').where('id', id);
+    // Editor role can only edit their own events
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -874,15 +901,18 @@ router.post('/:id/reset-password', adminAuth, async (req, res) => {
 });
 
 // Resend creation email
-router.post('/:id/resend-email', adminAuth, async (req, res) => {
+router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Get event details
-    const event = await db('events')
-      .where('id', id)
-      .first();
-    
+    let eventQuery = db('events').where('id', id);
+    // Editor role can only edit their own events
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
+
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -954,7 +984,7 @@ router.post('/:id/resend-email', adminAuth, async (req, res) => {
 });
 
 // Archive event
-router.post('/:id/archive', adminAuth, async (req, res) => {
+router.post('/:id/archive', adminAuth, requirePermission('events.archive'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -985,7 +1015,7 @@ router.post('/:id/archive', adminAuth, async (req, res) => {
 });
 
 // Bulk archive events
-router.post('/bulk-archive', adminAuth, [
+router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   body('eventIds').isArray().withMessage('eventIds must be an array'),
   body('eventIds.*').isInt().withMessage('Each eventId must be an integer')
 ], async (req, res) => {

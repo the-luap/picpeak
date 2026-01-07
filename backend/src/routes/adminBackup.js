@@ -1,6 +1,7 @@
 const express = require('express');
 const { db } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { triggerManualBackup, getBackupStatus, cleanupOldBackupRuns, getBackupManifest, validateBackupManifest } = require('../services/backupService');
 const logger = require('../utils/logger');
 const fs = require('fs').promises;
@@ -12,7 +13,7 @@ const S3StorageAdapter = require('../services/storage/s3Storage');
 const router = express.Router();
 
 // Get backup configuration
-router.get('/config', adminAuth, async (req, res) => {
+router.get('/config', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const settings = await db('app_settings')
       .where('setting_type', 'backup')
@@ -35,7 +36,7 @@ router.get('/config', adminAuth, async (req, res) => {
 });
 
 // Update backup configuration
-router.put('/config', adminAuth, async (req, res) => {
+router.put('/config', adminAuth, requirePermission('backup.create'), async (req, res) => {
   try {
     const updates = req.body;
     
@@ -97,7 +98,7 @@ router.put('/config', adminAuth, async (req, res) => {
 });
 
 // Get backup status and history
-router.get('/status', adminAuth, async (req, res) => {
+router.get('/status', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const status = await getBackupStatus(limit);
@@ -110,7 +111,7 @@ router.get('/status', adminAuth, async (req, res) => {
 });
 
 // Trigger manual backup
-router.post('/run', adminAuth, async (req, res) => {
+router.post('/run', adminAuth, requirePermission('backup.create'), async (req, res) => {
   try {
     // Check if backup is already running
     const status = await getBackupStatus();
@@ -131,7 +132,7 @@ router.post('/run', adminAuth, async (req, res) => {
 });
 
 // Get backup run details
-router.get('/runs/:id', adminAuth, async (req, res) => {
+router.get('/runs/:id', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -160,7 +161,7 @@ router.get('/runs/:id', adminAuth, async (req, res) => {
 });
 
 // Get file states (for debugging/monitoring)
-router.get('/files', adminAuth, async (req, res) => {
+router.get('/files', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { page = 1, limit = 50, search = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -195,7 +196,7 @@ router.get('/files', adminAuth, async (req, res) => {
 });
 
 // Clean up old backup runs
-router.delete('/cleanup', adminAuth, async (req, res) => {
+router.delete('/cleanup', adminAuth, requirePermission('backup.delete'), async (req, res) => {
   try {
     const { days = 30 } = req.body;
     
@@ -209,7 +210,7 @@ router.delete('/cleanup', adminAuth, async (req, res) => {
 });
 
 // Test backup destination connectivity
-router.post('/test-connection', adminAuth, async (req, res) => {
+router.post('/test-connection', adminAuth, requirePermission('backup.create'), async (req, res) => {
   try {
     const { destination_type, ...config } = req.body;
     
@@ -334,7 +335,7 @@ router.post('/test-connection', adminAuth, async (req, res) => {
 });
 
 // Get backup manifest for a specific backup run
-router.get('/manifest/:backupRunId', adminAuth, async (req, res) => {
+router.get('/manifest/:backupRunId', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { backupRunId } = req.params;
     const result = await getBackupManifest(backupRunId);
@@ -351,7 +352,7 @@ router.get('/manifest/:backupRunId', adminAuth, async (req, res) => {
 });
 
 // Validate a backup manifest
-router.post('/manifest/validate', adminAuth, async (req, res) => {
+router.post('/manifest/validate', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { manifestPath } = req.body;
     
@@ -373,7 +374,7 @@ router.post('/manifest/validate', adminAuth, async (req, res) => {
 });
 
 // Download backup manifest
-router.get('/manifest/:backupRunId/download', adminAuth, async (req, res) => {
+router.get('/manifest/:backupRunId/download', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { backupRunId } = req.params;
     const { format = 'json' } = req.query;
@@ -404,7 +405,7 @@ router.get('/manifest/:backupRunId/download', adminAuth, async (req, res) => {
 });
 
 // Get manifest for specific backup
-router.get('/manifests/:backupId', adminAuth, async (req, res) => {
+router.get('/manifests/:backupId', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { backupId } = req.params;
     const result = await getBackupManifest(backupId);
@@ -421,7 +422,7 @@ router.get('/manifests/:backupId', adminAuth, async (req, res) => {
 });
 
 // Download manifest file
-router.get('/manifests/:backupId/download', adminAuth, async (req, res) => {
+router.get('/manifests/:backupId/download', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { backupId } = req.params;
     const { format = 'json' } = req.query;
@@ -452,7 +453,7 @@ router.get('/manifests/:backupId/download', adminAuth, async (req, res) => {
 });
 
 // Validate a manifest
-router.post('/manifests/validate', adminAuth, async (req, res) => {
+router.post('/manifests/validate', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { manifestPath, manifestData } = req.body;
     
@@ -481,7 +482,7 @@ router.post('/manifests/validate', adminAuth, async (req, res) => {
 });
 
 // List S3 buckets
-router.get('/s3/buckets', adminAuth, async (req, res) => {
+router.get('/s3/buckets', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const config = await getBackupConfig();
     
@@ -513,7 +514,7 @@ router.get('/s3/buckets', adminAuth, async (req, res) => {
 });
 
 // List files in S3 backup location
-router.get('/s3/files', adminAuth, async (req, res) => {
+router.get('/s3/files', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { prefix = '', maxKeys = 100, continuationToken } = req.query;
     const config = await getBackupConfig();
@@ -550,7 +551,7 @@ router.get('/s3/files', adminAuth, async (req, res) => {
 });
 
 // Clean up old S3 backups
-router.delete('/s3/cleanup', adminAuth, async (req, res) => {
+router.delete('/s3/cleanup', adminAuth, requirePermission('backup.delete'), async (req, res) => {
   try {
     const { retentionDays = 30, dryRun = false } = req.body;
     const config = await getBackupConfig();
@@ -612,7 +613,7 @@ router.delete('/s3/cleanup', adminAuth, async (req, res) => {
 });
 
 // Test S3 upload functionality
-router.post('/s3/test-upload', adminAuth, async (req, res) => {
+router.post('/s3/test-upload', adminAuth, requirePermission('backup.create'), async (req, res) => {
   try {
     const config = await getBackupConfig();
     
@@ -664,7 +665,7 @@ router.post('/s3/test-upload', adminAuth, async (req, res) => {
 });
 
 // Download entire backup
-router.get('/download/:backupId', adminAuth, async (req, res) => {
+router.get('/download/:backupId', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { backupId } = req.params;
     
@@ -752,7 +753,7 @@ router.get('/download/:backupId', adminAuth, async (req, res) => {
 });
 
 // Get current file checksums
-router.get('/checksums', adminAuth, async (req, res) => {
+router.get('/checksums', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { path: targetPath = '', recursive = true } = req.query;
     const checksums = {};
@@ -821,7 +822,7 @@ router.get('/checksums', adminAuth, async (req, res) => {
 });
 
 // Estimate backup size before running
-router.post('/estimate', adminAuth, async (req, res) => {
+router.post('/estimate', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { includeArchived = true } = req.body;
     

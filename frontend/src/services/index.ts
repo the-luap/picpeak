@@ -9,3 +9,4 @@ export { settingsService } from './settings.service';
 export { cmsService } from './cms.service';
 export { notificationsService } from './notifications.service';
 export { feedbackService } from './feedback.service';
+export { userManagementService } from './userManagement.service';

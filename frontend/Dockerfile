@@ -30,8 +30,8 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage (use Alpine 3.22+ with patched libpng/c-ares)
-FROM nginx:1.27-alpine3.22
+# Production stage (use Alpine with patched libpng/c-ares)
+FROM nginx:1.27-alpine
 
 # Upgrade all packages to fix security vulnerabilities
 # This ensures libpng >= 1.6.51 (fixes CVE-2025-64720, CVE-2025-65018, CVE-2025-64505, CVE-2025-64506)

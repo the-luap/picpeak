@@ -11,3 +11,4 @@ export { SettingsPage } from './SettingsPage';
 export { CMSPage } from './CMSPage';
 export { BackupManagement } from './BackupManagement';
 export { EventFeedbackPage } from './EventFeedbackPage';
+export { UserManagementPage } from './UserManagementPage';

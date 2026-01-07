@@ -10,9 +10,9 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { GalleryPage } from './pages/GalleryPage';
 import { PreviewPage } from './pages/gallery/PreviewPage';
 import { LegalPage } from './pages/public/LegalPage';
-import { 
-  AdminLoginPage, 
-  AdminDashboard, 
+import {
+  AdminLoginPage,
+  AdminDashboard,
   EventsListPage,
   CreateEventPage,
   EventDetailsPage,
@@ -23,8 +23,10 @@ import {
   BrandingPage,
   SettingsPage,
   BackupManagement,
-  CMSPage
+  CMSPage,
+  UserManagementPage
 } from './pages/admin';
+import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
 import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
@@ -128,9 +130,13 @@ function App() {
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="backup" element={<BackupManagement />} />
                       <Route path="cms" element={<CMSPage />} />
+                      <Route path="users" element={<UserManagementPage />} />
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>
                   </Route>
+
+                  {/* Public invitation acceptance page */}
+                  <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
                   {/* Public legal pages */}
                   <Route path="/impressum" element={<LegalPage />} />

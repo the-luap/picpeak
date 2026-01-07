@@ -81,8 +81,13 @@ CLAUDE.md
 BUGS_AND_FEATURES.md
 frontend/TEST_PLAN.md
 docs/REFACTORING_PLAN.md
+docs/MULTIPLE_ADMINISTRATORS_PLAN.md
+docs/*_PLAN.md
 docs/test-*.md
 docs/feature-*.md
+
+# Local backup directory (from testing)
+backup/
 
 # Local artifacts from browser tooling
 .playwright-mcp/

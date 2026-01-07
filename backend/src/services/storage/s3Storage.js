@@ -76,12 +76,22 @@ class S3StorageAdapter extends stream.EventEmitter {
     
     // Add custom endpoint if provided (for S3-compatible services)
     if (this.config.endpoint) {
-      s3Config.endpoint = this.config.endpoint;
-      // For MinIO and other S3-compatible services
-      if (!this.config.endpoint.startsWith('https://') && this.config.sslEnabled) {
-        s3Config.endpoint = `https://${this.config.endpoint}`;
-      } else if (!this.config.endpoint.startsWith('http://') && !this.config.sslEnabled) {
-        s3Config.endpoint = `http://${this.config.endpoint}`;
+      let endpoint = this.config.endpoint;
+
+      // Only add protocol if endpoint doesn't already have one
+      const hasProtocol = endpoint.startsWith('http://') || endpoint.startsWith('https://');
+      if (!hasProtocol) {
+        // Add protocol based on sslEnabled setting
+        endpoint = this.config.sslEnabled ? `https://${endpoint}` : `http://${endpoint}`;
+      }
+
+      s3Config.endpoint = endpoint;
+
+      // For S3-compatible services with custom endpoints, force path style
+      // This is required for MinIO and when using IP addresses
+      if (!s3Config.forcePathStyle) {
+        s3Config.forcePathStyle = true;
+        logger.info('Automatically enabling forcePathStyle for custom S3 endpoint');
       }
     }
     

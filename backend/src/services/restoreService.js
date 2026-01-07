@@ -75,14 +75,15 @@ class RestoreService {
       this.log('info', 'Starting restore operation', { options: this.sanitizeOptions(options) });
 
       // Create restore run record
-      const [runId] = await db('restore_runs').insert({
+      const result = await db('restore_runs').insert({
         started_at: startTime,
         status: 'running',
         restore_type: options.restoreType,
         source: options.source,
         manifest_path: options.manifestPath,
         is_dry_run: options.dryRun || false
-      });
+      }).returning('id');
+      const runId = Array.isArray(result) ? (result[0]?.id || result[0]) : result;
 
       restoreRun = { id: runId };
 
@@ -105,7 +106,8 @@ class RestoreService {
 
       if (validation.warnings.length > 0) {
         this.log('warn', 'Pre-restore validation warnings', { warnings: validation.warnings });
-        if (!options.force) {
+        // Only block actual restores (not dry runs/validations) on warnings
+        if (!options.force && !options.dryRun) {
           throw new Error(`Restore blocked due to warnings (use force to override): ${validation.warnings.join(', ')}`);
         }
       }
@@ -400,29 +402,55 @@ class RestoreService {
    * Check available disk space
    */
   async checkDiskSpace(manifest, options) {
-    const { statvfs } = require('fs');
-    const statvfsAsync = promisify(statvfs);
-
     try {
       const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-      const stats = await statvfsAsync(storagePath);
-      
-      const blockSize = stats.bsize || stats.f_bsize || 4096;
-      const availableBytes = stats.bavail * blockSize;
-      
+
       // Calculate required space (with 20% buffer)
       let requiredBytes = 0;
       if (options.restoreType === 'full' || options.restoreType === 'files') {
-        requiredBytes = manifest.files.total_size * 1.2;
+        requiredBytes = (manifest.files?.total_size || 0) * 1.2;
       }
       if (options.restoreType === 'full' || options.restoreType === 'database') {
-        requiredBytes += (manifest.database.size || 0) * 1.2;
+        requiredBytes += (manifest.database?.size || 0) * 1.2;
+      }
+
+      // Try to get disk space using df command (works on Linux and macOS)
+      let availableBytes = 0;
+      let diskCheckSucceeded = false;
+      try {
+        const { exec } = require('child_process');
+        const execAsync = promisify(exec);
+        // Use root path as fallback if storage path doesn't exist yet
+        const checkPath = await fs.access(storagePath).then(() => storagePath).catch(() => '/');
+        const { stdout } = await execAsync(`df -k "${checkPath}" | tail -1 | awk '{print $4}'`);
+        const parsed = parseInt(stdout.trim());
+        if (!isNaN(parsed) && parsed > 0) {
+          availableBytes = parsed * 1024; // Convert from KB to bytes
+          diskCheckSucceeded = true;
+        }
+      } catch (dfError) {
+        this.log('warn', 'Could not determine available disk space', { error: dfError.message });
+      }
+
+      // If disk check failed, return optimistic result
+      if (!diskCheckSucceeded) {
+        return {
+          hasEnoughSpace: true,
+          availableBytes: null, // null indicates unknown
+          requiredBytes,
+          availableFormatted: 'Unknown',
+          requiredFormatted: this.formatBytes(requiredBytes)
+        };
       }
 
       // Add space for pre-restore backup
       if (!options.skipPreBackup) {
-        const currentUsage = await this.calculateCurrentStorageUsage();
-        requiredBytes += currentUsage * 1.1; // 10% buffer for backup
+        try {
+          const currentUsage = await this.calculateCurrentStorageUsage();
+          requiredBytes += currentUsage * 1.1; // 10% buffer for backup
+        } catch (e) {
+          // Ignore errors calculating current usage
+        }
       }
 
       return {
@@ -434,11 +462,11 @@ class RestoreService {
       };
 
     } catch (error) {
-      // Fallback for systems without statvfs
+      // Fallback for any errors
       this.log('warn', 'Could not check disk space', { error: error.message });
       return {
         hasEnoughSpace: true, // Assume we have space if we can't check
-        availableBytes: 0,
+        availableBytes: null,
         requiredBytes: 0,
         availableFormatted: 'Unknown',
         requiredFormatted: 'Unknown'

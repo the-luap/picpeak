@@ -57,32 +57,59 @@ async function adminAuth(req, res, next) {
       });
     }
     
-    // Check if admin still exists and is active
-    const admin = await db('admin_users')
-      .where({ id: decoded.id, is_active: formatBoolean(true) })
-      .first();
-    
+    // Check if admin still exists and is active, including role info
+    // Use try/catch to handle case where roles table doesn't exist yet (upgrade scenario)
+    let admin;
+    try {
+      admin = await db('admin_users')
+        .leftJoin('roles', 'roles.id', 'admin_users.role_id')
+        .where({ 'admin_users.id': decoded.id, 'admin_users.is_active': formatBoolean(true) })
+        .select(
+          'admin_users.id',
+          'admin_users.username',
+          'admin_users.email',
+          'admin_users.password_changed_at',
+          'roles.id as role_id',
+          'roles.name as role_name'
+        )
+        .first();
+    } catch (joinError) {
+      // Fallback: roles table may not exist yet during upgrade
+      // Query without role join - user will have no role info but can still authenticate
+      logger.debug('Roles table not available, falling back to basic auth', { error: joinError.message });
+      admin = await db('admin_users')
+        .where({ id: decoded.id, is_active: formatBoolean(true) })
+        .select('id', 'username', 'email', 'password_changed_at')
+        .first();
+      if (admin) {
+        admin.role_id = null;
+        admin.role_name = 'super_admin'; // Assume super_admin for existing users during upgrade
+      }
+    }
+
     if (!admin) {
       return res.status(401).json({ error: 'Invalid token' });
     }
-    
+
     // Check if password was changed after token was issued
     if (admin.password_changed_at) {
       const passwordChangedTime = new Date(admin.password_changed_at).getTime() / 1000;
       if (decoded.iat < passwordChangedTime) {
         logger.warn('Token used after password change', { userId: decoded.id });
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'Token invalid due to password change',
           code: 'PASSWORD_CHANGED'
         });
       }
     }
-    
-    // Add user info to request
+
+    // Add user info to request (enhanced with role)
     req.admin = {
       id: admin.id,
       username: admin.username,
-      email: admin.email
+      email: admin.email,
+      roleId: admin.role_id,
+      roleName: admin.role_name
     };
     req.token = token; // Store token for potential revocation
     

@@ -70,52 +70,65 @@ router.post('/admin/login', [
       logger.warn('Suspicious login pattern detected', { username, ipAddress });
     }
     
+    // Fetch admin with role information
     const admin = await db('admin_users')
-      .where({ username })
-      .orWhere({ email: username })
+      .leftJoin('roles', 'roles.id', 'admin_users.role_id')
+      .where('admin_users.username', username)
+      .orWhere('admin_users.email', username)
+      .select(
+        'admin_users.*',
+        'roles.name as role_name',
+        'roles.display_name as role_display_name'
+      )
       .first();
-    
+
     // Use generic error to prevent user enumeration
     if (!admin || !await bcrypt.compare(password, admin.password_hash)) {
       await trackFailedAttempt(username, ipAddress, userAgent);
       return res.status(401).json({ error: getGenericAuthError() });
     }
-    
+
     if (!admin.is_active) {
       await trackFailedAttempt(username, ipAddress, userAgent);
       return res.status(401).json({ error: getGenericAuthError() });
     }
-    
+
     // Successful login
     await trackSuccessfulLogin(username, ipAddress, userAgent);
-    
+
     // Update last login and login metadata
-    await db('admin_users').where('id', admin.id).update({ 
+    await db('admin_users').where('id', admin.id).update({
       last_login: new Date(),
       last_login_ip: ipAddress
     });
-    
-    // Generate token with additional claims
-    const token = jwt.sign({ 
+
+    // Generate token with additional claims including role
+    const token = jwt.sign({
       id: admin.id,
       username: admin.username,
       type: 'admin',
+      role: admin.role_name, // Add role to JWT
       ip: ipAddress,
       loginTime: Date.now()
-    }, process.env.JWT_SECRET, { 
+    }, process.env.JWT_SECRET, {
       expiresIn: '24h',
       issuer: 'picpeak-auth'
     });
 
     setAdminAuthCookie(res, token);
-    
+
+    // Include role in response
     res.json({
       token,
       user: {
         id: admin.id,
         username: admin.username,
         email: admin.email,
-        mustChangePassword: admin.must_change_password || false
+        mustChangePassword: admin.must_change_password || false,
+        role: admin.role_name ? {
+          name: admin.role_name,
+          displayName: admin.role_display_name
+        } : null
       }
     });
   } catch (error) {

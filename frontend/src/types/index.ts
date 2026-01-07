@@ -144,6 +144,18 @@ export interface AdminUser {
   username: string;
   email: string;
   mustChangePassword?: boolean;
+  role?: {
+    name: string;
+    displayName: string;
+  };
+  roleId?: number;
+  roleName?: string;
+  roleDisplayName?: string;
+  isActive?: boolean;
+  lastLogin?: string | null;
+  lastLoginIp?: string | null;
+  createdAt?: string;
+  createdByUsername?: string;
 }
 
 export interface LoginResponse {
@@ -176,6 +188,33 @@ export interface ApiError {
     path: string;
     location: string;
   }>;
+}
+
+// Role and Permission types
+export interface AdminRole {
+  id: number;
+  name: string;
+  displayName: string;
+  description?: string;
+  isSystem?: boolean;
+  priority?: number;
+}
+
+export interface AdminPermissions {
+  role: {
+    name: string;
+    displayName: string;
+  } | null;
+  permissions: string[];
+}
+
+export interface AdminInvitation {
+  id: number;
+  email: string;
+  roleName: string;
+  invitedBy: string;
+  expiresAt: string;
+  createdAt: string;
 }
 
 // Export protection types

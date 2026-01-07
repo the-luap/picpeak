@@ -3,10 +3,11 @@ const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const router = express.Router();
 
 // Get email configuration
-router.get('/config', adminAuth, async (req, res) => {
+router.get('/config', adminAuth, requirePermission('email.view'), async (req, res) => {
   try {
     const config = await db('email_configs').first();
     
@@ -37,6 +38,7 @@ router.get('/config', adminAuth, async (req, res) => {
 // Update email configuration
 router.post('/config', [
   adminAuth,
+  requirePermission('email.edit'),
   body('smtp_host').notEmpty().withMessage('SMTP host is required'),
   body('smtp_port').isInt({ min: 1, max: 65535 }).withMessage('Invalid port number'),
   body('from_email').isEmail().withMessage('Invalid from email address')
@@ -100,7 +102,7 @@ router.post('/config', [
 });
 
 // Test email configuration
-router.post('/test', adminAuth, async (req, res) => {
+router.post('/test', adminAuth, requirePermission('email.send'), async (req, res) => {
   try {
     const { test_email } = req.body;
     
@@ -236,7 +238,7 @@ router.post('/test', adminAuth, async (req, res) => {
 });
 
 // Get email templates
-router.get('/templates', adminAuth, async (req, res) => {
+router.get('/templates', adminAuth, requirePermission('email.view'), async (req, res) => {
   try {
     const templates = await db('email_templates')
       .select('*')
@@ -290,7 +292,7 @@ router.get('/templates', adminAuth, async (req, res) => {
 });
 
 // Get single template
-router.get('/templates/:key', adminAuth, async (req, res) => {
+router.get('/templates/:key', adminAuth, requirePermission('email.view'), async (req, res) => {
   try {
     const template = await db('email_templates')
       .where('template_key', req.params.key)
@@ -346,6 +348,7 @@ router.get('/templates/:key', adminAuth, async (req, res) => {
 // Update email template
 router.put('/templates/:key', [
   adminAuth,
+  requirePermission('email.edit'),
   body('subject_en').optional().notEmpty().withMessage('English subject cannot be empty'),
   body('subject_de').optional().notEmpty().withMessage('German subject cannot be empty'),
   body('body_html_en').optional().notEmpty().withMessage('English HTML body cannot be empty'),
@@ -424,7 +427,7 @@ router.put('/templates/:key', [
 });
 
 // Preview email template
-router.post('/templates/:key/preview', adminAuth, async (req, res) => {
+router.post('/templates/:key/preview', adminAuth, requirePermission('email.view'), async (req, res) => {
   try {
     const template = await db('email_templates')
       .where('template_key', req.params.key)

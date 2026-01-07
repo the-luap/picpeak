@@ -3,9 +3,10 @@
 
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
+const { requirePermission } = require('../middleware/permissions');
 
 // Enhanced event creation with password validation
-router.post('/', adminAuth, [
+router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
