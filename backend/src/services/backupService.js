@@ -710,7 +710,7 @@ async function saveManifestToS3(manifest, manifestFileName, config, result) {
   return manifestPath;
 }
 
-async function runBackupInternal() {
+async function runBackupInternal(isManual = false) {
   if (isRunning) {
     logger.warn('Backup already running, skipping');
     return;
@@ -722,16 +722,25 @@ async function runBackupInternal() {
 
   try {
     const config = await resolveConfigWithFallback();
-    if (!config || !normalizeBoolean(config.backup_enabled)) {
-      logger.info('Backup is disabled, skipping');
+
+    // For scheduled backups, check if backup is enabled
+    // Manual backups should always be allowed (just need valid destination config)
+    if (!isManual && (!config || !normalizeBoolean(config.backup_enabled))) {
+      logger.info('Scheduled backup is disabled, skipping');
       return;
+    }
+
+    // For manual backups, just ensure we have a destination configured
+    if (!config || !config.backup_destination_type) {
+      logger.warn('Backup destination not configured');
+      throw new Error('Backup destination not configured. Please configure backup settings first.');
     }
 
     const schemaVersion = await getCurrentSchemaVersion();
     const insertResult = await db('backup_runs').insert({
       started_at: startTime,
       status: 'running',
-      backup_type: 'scheduled',
+      backup_type: isManual ? 'manual' : 'scheduled',
       app_version: packageJson.version,
       node_version: process.version,
       db_schema_version: schemaVersion
@@ -928,7 +937,7 @@ function stopBackupService() {
 
 async function triggerManualBackup() {
   logger.info('Starting manual backup');
-  await service.runBackup();
+  await service.runBackup(true); // Pass flag to indicate manual backup
 }
 
 async function getBackupStatus(limit = 10) {
