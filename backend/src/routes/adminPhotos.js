@@ -518,7 +518,15 @@ router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.e
       .where({ id: photoId, event_id: eventId })
       .update(updateData);
 
-    res.json({ message: 'Photo updated successfully' });
+    // Fetch and return the updated photo
+    const updatedPhoto = await db('photos')
+      .where({ id: photoId, event_id: eventId })
+      .first();
+
+    res.json({
+      message: 'Photo updated successfully',
+      photo: updatedPhoto
+    });
   } catch (error) {
     console.error('Error updating photo:', error);
     res.status(500).json({ error: 'Failed to update photo' });
@@ -691,7 +699,8 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
     
     let query = db('photos')
       .where({ 'photos.event_id': eventId })
-      .select('photos.*');
+      .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
+      .select('photos.*', 'photo_categories.name as pc_name', 'photo_categories.slug as pc_slug');
     
     // Filter by type (individual/collage) - category_id maps to type
     if (category_id !== undefined) {
@@ -748,9 +757,9 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
         // Always expose a thumbnail URL; backend will generate on demand if missing
         thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
         type: photo.type,
-        category_id: photo.type,
-        category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
-        category_slug: photo.type,
+        category_id: photo.category_id || photo.type,
+        category_name: photo.pc_name || (photo.type === 'individual' ? 'Individual Photos' : 'Collages'),
+        category_slug: photo.pc_slug || photo.type,
         size: photo.size_bytes,
         uploaded_at: photo.uploaded_at,
         // Feedback data
