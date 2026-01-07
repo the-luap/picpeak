@@ -500,13 +500,18 @@ export const RestoreWizard = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.required')}:</span>
-                  <span className="font-medium">{formatBytes(validationResult.spaceCheck.required)}</span>
+                  <span className="font-medium">
+                    {validationResult.spaceCheck.requiredFormatted || formatBytes(validationResult.spaceCheck.required || 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.available')}:</span>
-                  <span className="font-medium">{formatBytes(validationResult.spaceCheck.available)}</span>
+                  <span className="font-medium">
+                    {validationResult.spaceCheck.availableFormatted ||
+                     (validationResult.spaceCheck.available != null ? formatBytes(validationResult.spaceCheck.available) : t('common.unknown', 'Unknown'))}
+                  </span>
                 </div>
-                {!validationResult.spaceCheck.sufficient && (
+                {validationResult.spaceCheck.sufficient === false && (
                   <p className="text-red-600 text-xs mt-2">
                     <AlertCircle className="inline h-3 w-3 mr-1" />
                     {t('backup.restore.confirmation.spaceCheck.insufficient')}

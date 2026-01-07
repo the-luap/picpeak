@@ -728,15 +728,15 @@ async function runBackupInternal() {
     }
 
     const schemaVersion = await getCurrentSchemaVersion();
-    const [insertedId] = await db('backup_runs').insert({
+    const insertResult = await db('backup_runs').insert({
       started_at: startTime,
       status: 'running',
       backup_type: 'scheduled',
       app_version: packageJson.version,
       node_version: process.version,
       db_schema_version: schemaVersion
-    });
-    runId = insertedId;
+    }).returning('id');
+    runId = insertResult[0]?.id || insertResult[0];
 
     const files = await service.getFilesToBackup(config.backup_include_archived);
     logger.info(`Found ${files.length} files to check for backup`);
@@ -820,11 +820,17 @@ async function runBackupInternal() {
         manifest_id: manifestPath ? path.basename(manifestPath, path.extname(manifestPath)) : null,
         manifest_info: manifestSummary ? JSON.stringify({ summary: manifestSummary }) : null,
         statistics: JSON.stringify({
+          // Use snake_case for frontend compatibility
+          files_processed: result.backedUpCount,
+          total_size: result.backedUpSize,
+          total_files_checked: files.length,
+          average_file_size: result.backedUpCount ? Math.round(result.backedUpSize / result.backedUpCount) : 0,
+          destination: destinationType,
+          // Keep camelCase for backward compatibility
           totalFilesChecked: files.length,
           filesBackedUp: result.backedUpCount,
           totalSize: result.backedUpSize,
-          averageFileSize: result.backedUpCount ? Math.round(result.backedUpSize / result.backedUpCount) : 0,
-          destination: destinationType
+          averageFileSize: result.backedUpCount ? Math.round(result.backedUpSize / result.backedUpCount) : 0
         })
       });
 
@@ -927,22 +933,54 @@ async function triggerManualBackup() {
 
 async function getBackupStatus(limit = 10) {
   try {
-    const runs = await db('backup_runs')
+    const rawRuns = await db('backup_runs')
       .orderBy('started_at', 'desc')
       .limit(limit);
+
+    // Transform runs to add frontend-compatible field aliases
+    const runs = rawRuns.map(run => {
+      // Parse and transform statistics to snake_case for frontend compatibility
+      let statistics = run.statistics;
+      if (statistics) {
+        // Handle both string (SQLite) and object (PostgreSQL JSONB) types
+        let stats = statistics;
+        if (typeof statistics === 'string') {
+          try {
+            stats = JSON.parse(statistics);
+          } catch (e) {
+            stats = {};
+          }
+        }
+        // Add snake_case aliases for frontend
+        statistics = {
+          ...stats,
+          files_processed: stats.filesBackedUp || stats.files_processed || 0,
+          total_size: stats.totalSize || stats.total_size || 0,
+          total_files_checked: stats.totalFilesChecked || stats.total_files_checked || 0,
+          average_file_size: stats.averageFileSize || stats.average_file_size || 0
+        };
+      }
+
+      return {
+        ...run,
+        created_at: run.started_at, // Alias for frontend compatibility
+        statistics
+      };
+    });
 
     const lastRun = runs[0];
     let manifestValid = false;
 
     if (lastRun && lastRun.manifest_path) {
       try {
-        const manifest = await backupManifest.loadManifest(lastRun.manifest_path);
-        if (backupManifest.validateManifest) {
-          backupManifest.validateManifest(manifest);
+        // Use validateBackupManifest which handles both local and S3 paths
+        const result = await validateBackupManifest(lastRun.manifest_path);
+        manifestValid = result.valid;
+        if (!result.valid) {
+          logger.warn('Manifest validation failed:', result.error);
         }
-        manifestValid = true;
       } catch (error) {
-        logger.warn('Manifest validation failed:', error);
+        logger.warn('Manifest validation failed:', error.message);
       }
     }
 
@@ -951,6 +989,7 @@ async function getBackupStatus(limit = 10) {
       isHealthy: Boolean(lastRun && lastRun.status === 'completed'),
       lastRun: lastRun ? { ...lastRun, manifestValid } : null,
       recentRuns: runs,
+      recentBackups: runs, // Alias for frontend compatibility
       nextScheduledRun: getNextScheduledRun()
     };
   } catch (error) {

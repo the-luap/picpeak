@@ -456,7 +456,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 onClick={() => {
                   setShowFeedback(!showFeedback);
                 }}
-                className="relative p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                className="relative p-2 bg-black/40 hover:bg-black/60 rounded-full border border-white/40 transition-colors"
                 aria-label="Toggle feedback"
                 title={`Photo feedback${(currentPhoto.comment_count ?? 0) > 0 ? ` (${currentPhoto.comment_count ?? 0} comments)` : ''}`}
               >

@@ -1,4 +1,78 @@
 {
+  "userManagement": {
+    "title": "User Management",
+    "subtitle": "Manage admin users and invitations",
+    "loading": "Loading users...",
+    "loadError": "Failed to load users. Please try again.",
+    "inviteUser": "Invite User",
+    "createInvitation": "Create Invitation",
+    "email": "Email Address",
+    "emailPlaceholder": "user@example.com",
+    "role": "Role",
+    "selectRole": "Select a role",
+    "sendInvitation": "Send Invitation",
+    "editUser": "Edit User",
+    "editingUser": "Editing user",
+    "saveChanges": "Save Changes",
+    "deactivateUser": "Deactivate User",
+    "cancelInvitation": "Cancel Invitation",
+    "invitationSent": "Invitation sent successfully",
+    "invitationError": "Failed to send invitation",
+    "invitationCancelled": "Invitation cancelled",
+    "cancelInvitationError": "Failed to cancel invitation",
+    "userUpdated": "User updated successfully",
+    "updateUserError": "Failed to update user",
+    "userDeactivated": "User deactivated successfully",
+    "deactivateUserError": "Failed to deactivate user",
+    "noRole": "No Role",
+    "neverLoggedIn": "Never logged in",
+    "expired": "Expired",
+    "deactivate": "Deactivate",
+    "cancel": "Cancel",
+    "tabs": {
+      "users": "Users",
+      "invitations": "Invitations"
+    },
+    "stats": {
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "pendingInvitations": "Pending Invitations",
+      "inactiveUsers": "Inactive Users"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "actions": "Actions",
+      "invitedBy": "Invited By",
+      "expires": "Expires"
+    },
+    "validation": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "roleRequired": "Role is required"
+    },
+    "searchUsersPlaceholder": "Search users...",
+    "searchInvitationsPlaceholder": "Search invitations...",
+    "noUsers": "No users found",
+    "noUsersFound": "No users match your search",
+    "noInvitations": "No pending invitations",
+    "noInvitationsFound": "No invitations match your search",
+    "confirmDeactivate": {
+      "title": "Deactivate User",
+      "message": "Are you sure you want to deactivate {{name}}? They will no longer be able to log in."
+    },
+    "confirmCancelInvitation": {
+      "title": "Cancel Invitation",
+      "message": "Are you sure you want to cancel the invitation for {{email}}?"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -84,7 +158,8 @@
     "analytics": "Analytics",
     "emailSettings": "Email Settings",
     "backup": "Backup & Restore",
-    "cmsPages": "CMS Pages"
+    "cmsPages": "CMS Pages",
+    "users": "Users"
   },
   "archives": {
     "title": "Archives",
@@ -1015,6 +1090,88 @@
       "admin_logout": "Admin {{actorName}} logged out",
       "system_activity": "System activity: {{type}}",
       "unknown": "Unknown activity"
+    },
+    "userManagement": "User Management",
+    "inviteUser": "Invite User",
+    "pendingInvitations": "Pending Invitations",
+    "roles": {
+      "super_admin": "Super Admin",
+      "admin": "Admin",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    },
+    "userStatus": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "inviteForm": {
+      "email": "Email Address",
+      "role": "Role",
+      "send": "Send Invitation"
+    },
+    "acceptInvite": {
+      "title": "Accept Admin Invitation",
+      "username": "Choose a Username",
+      "password": "Create Password",
+      "submit": "Create Account"
+    }
+  },
+  "permissions": {
+    "insufficient": "You don't have permission to perform this action",
+    "viewOnly": "View Only"
+  },
+  "acceptInvitation": {
+    "title": "Accept Invitation",
+    "subtitle": "Create your admin account",
+    "validating": "Validating invitation...",
+    "invalidToken": "Invalid Invitation",
+    "invalidTokenMessage": "This invitation link is invalid or has expired. Please contact your administrator for a new invitation.",
+    "expiredToken": "Invitation Expired",
+    "expiredTokenMessage": "This invitation has expired. Please request a new invitation from your administrator.",
+    "alreadyUsed": "Invitation Already Used",
+    "alreadyUsedMessage": "This invitation has already been used to create an account.",
+    "invitedAs": "You've been invited as",
+    "expiresAt": "Invitation expires",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "Choose a username",
+    "usernameHelp": "3-50 characters, letters, numbers, underscores, and hyphens only",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Create a strong password",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "passwordStrength": "Password strength",
+    "requirements": {
+      "title": "Password requirements:",
+      "minLength": "At least 12 characters",
+      "uppercase": "At least one uppercase letter",
+      "lowercase": "At least one lowercase letter",
+      "number": "At least one number",
+      "special": "At least one special character"
+    },
+    "strength": {
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong"
+    },
+    "createAccount": "Create Account",
+    "creating": "Creating account...",
+    "success": "Account Created!",
+    "successMessage": "Your account has been created successfully. You can now log in with your credentials.",
+    "redirecting": "Redirecting to login in {{seconds}}...",
+    "goToLogin": "Go to Login",
+    "errors": {
+      "usernameRequired": "Username is required",
+      "usernameTooShort": "Username must be at least 3 characters",
+      "usernameTooLong": "Username must be at most 50 characters",
+      "usernameInvalid": "Username can only contain letters, numbers, underscores, and hyphens",
+      "passwordRequired": "Password is required",
+      "passwordTooShort": "Password must be at least 12 characters",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "confirmPasswordRequired": "Please confirm your password",
+      "usernameTaken": "This username is already taken",
+      "emailTaken": "An account with this email already exists",
+      "genericError": "Failed to create account. Please try again."
     }
   },
   "errors": {
@@ -1232,6 +1389,10 @@
       "notConfigured": {
         "title": "Backup Not Configured",
         "message": "Please configure backup settings in the Configuration tab before running backups."
+      },
+      "actions": {
+        "runBackupNow": "Run Backup Now",
+        "running": "Running..."
       },
       "coverage": {
         "title": "Backup Coverage",

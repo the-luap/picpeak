@@ -4,12 +4,13 @@ const fs = require('fs').promises;
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
 const router = express.Router();
 
 // Get all archived events
-router.get('/', adminAuth, async (req, res) => {
+router.get('/', adminAuth, requirePermission('archives.view'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -81,7 +82,7 @@ router.get('/', adminAuth, async (req, res) => {
 });
 
 // Get single archive details
-router.get('/:id', adminAuth, async (req, res) => {
+router.get('/:id', adminAuth, requirePermission('archives.view'), async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -137,7 +138,7 @@ router.get('/:id', adminAuth, async (req, res) => {
 });
 
 // Restore archive
-router.post('/:id/restore', adminAuth, async (req, res) => {
+router.post('/:id/restore', adminAuth, requirePermission('archives.restore'), async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -300,7 +301,7 @@ router.post('/:id/restore', adminAuth, async (req, res) => {
 });
 
 // Download archive
-router.get('/:id/download', adminAuth, async (req, res) => {
+router.get('/:id/download', adminAuth, requirePermission('archives.download'), async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -349,7 +350,7 @@ router.get('/:id/download', adminAuth, async (req, res) => {
 });
 
 // Delete archive permanently
-router.delete('/:id', adminAuth, async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('archives.delete'), async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)

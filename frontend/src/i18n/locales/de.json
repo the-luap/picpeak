@@ -1,4 +1,78 @@
 {
+  "userManagement": {
+    "title": "Benutzerverwaltung",
+    "subtitle": "Admin-Benutzer und Einladungen verwalten",
+    "loading": "Lade Benutzer...",
+    "loadError": "Fehler beim Laden der Benutzer. Bitte versuchen Sie es erneut.",
+    "inviteUser": "Benutzer einladen",
+    "createInvitation": "Einladung erstellen",
+    "email": "E-Mail-Adresse",
+    "emailPlaceholder": "benutzer@beispiel.de",
+    "role": "Rolle",
+    "selectRole": "Rolle auswählen",
+    "sendInvitation": "Einladung senden",
+    "editUser": "Benutzer bearbeiten",
+    "editingUser": "Bearbeite Benutzer",
+    "saveChanges": "Änderungen speichern",
+    "deactivateUser": "Benutzer deaktivieren",
+    "cancelInvitation": "Einladung abbrechen",
+    "invitationSent": "Einladung erfolgreich gesendet",
+    "invitationError": "Fehler beim Senden der Einladung",
+    "invitationCancelled": "Einladung abgebrochen",
+    "cancelInvitationError": "Fehler beim Abbrechen der Einladung",
+    "userUpdated": "Benutzer erfolgreich aktualisiert",
+    "updateUserError": "Fehler beim Aktualisieren des Benutzers",
+    "userDeactivated": "Benutzer erfolgreich deaktiviert",
+    "deactivateUserError": "Fehler beim Deaktivieren des Benutzers",
+    "noRole": "Keine Rolle",
+    "neverLoggedIn": "Nie angemeldet",
+    "expired": "Abgelaufen",
+    "deactivate": "Deaktivieren",
+    "cancel": "Abbrechen",
+    "tabs": {
+      "users": "Benutzer",
+      "invitations": "Einladungen"
+    },
+    "stats": {
+      "totalUsers": "Benutzer gesamt",
+      "activeUsers": "Aktive Benutzer",
+      "pendingInvitations": "Ausstehende Einladungen",
+      "inactiveUsers": "Inaktive Benutzer"
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "table": {
+      "user": "Benutzer",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "status": "Status",
+      "lastLogin": "Letzte Anmeldung",
+      "actions": "Aktionen",
+      "invitedBy": "Eingeladen von",
+      "expires": "Läuft ab"
+    },
+    "validation": {
+      "emailRequired": "E-Mail ist erforderlich",
+      "emailInvalid": "Ungültiges E-Mail-Format",
+      "roleRequired": "Rolle ist erforderlich"
+    },
+    "searchUsersPlaceholder": "Benutzer suchen...",
+    "searchInvitationsPlaceholder": "Einladungen suchen...",
+    "noUsers": "Keine Benutzer gefunden",
+    "noUsersFound": "Keine Benutzer entsprechen Ihrer Suche",
+    "noInvitations": "Keine ausstehenden Einladungen",
+    "noInvitationsFound": "Keine Einladungen entsprechen Ihrer Suche",
+    "confirmDeactivate": {
+      "title": "Benutzer deaktivieren",
+      "message": "Sind Sie sicher, dass Sie {{name}} deaktivieren möchten? Sie können sich dann nicht mehr anmelden."
+    },
+    "confirmCancelInvitation": {
+      "title": "Einladung abbrechen",
+      "message": "Sind Sie sicher, dass Sie die Einladung für {{email}} abbrechen möchten?"
+    }
+  },
   "common": {
     "loading": "Wird geladen...",
     "error": "Fehler",
@@ -84,7 +158,8 @@
     "analytics": "Analytik",
     "emailSettings": "E-Mail-Einstellungen",
     "backup": "Backup & Wiederherstellung",
-    "cmsPages": "CMS-Seiten"
+    "cmsPages": "CMS-Seiten",
+    "users": "Benutzer"
   },
   "backup": {
     "external": {
@@ -152,6 +227,10 @@
       "notConfigured": {
         "title": "Backup nicht konfiguriert",
         "message": "Bitte konfigurieren Sie die Backup-Einstellungen im Tab \"Konfiguration\", bevor Sie Backups ausführen."
+      },
+      "actions": {
+        "runBackupNow": "Backup jetzt starten",
+        "running": "Läuft..."
       },
       "coverage": {
         "title": "Backup-Abdeckung",
@@ -1282,6 +1361,88 @@
       "admin_logout": "Admin {{actorName}} abgemeldet",
       "system_activity": "Systemaktivität: {{type}}",
       "unknown": "Unbekannte Aktivität"
+    },
+    "userManagement": "Benutzerverwaltung",
+    "inviteUser": "Benutzer einladen",
+    "pendingInvitations": "Ausstehende Einladungen",
+    "roles": {
+      "super_admin": "Super-Admin",
+      "admin": "Admin",
+      "editor": "Redakteur",
+      "viewer": "Betrachter"
+    },
+    "userStatus": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "inviteForm": {
+      "email": "E-Mail-Adresse",
+      "role": "Rolle",
+      "send": "Einladung senden"
+    },
+    "acceptInvite": {
+      "title": "Admin-Einladung annehmen",
+      "username": "Benutzernamen wählen",
+      "password": "Passwort erstellen",
+      "submit": "Konto erstellen"
+    }
+  },
+  "permissions": {
+    "insufficient": "Sie haben keine Berechtigung, diese Aktion auszuführen",
+    "viewOnly": "Nur Ansicht"
+  },
+  "acceptInvitation": {
+    "title": "Einladung annehmen",
+    "subtitle": "Erstellen Sie Ihr Administratorkonto",
+    "validating": "Einladung wird überprüft...",
+    "invalidToken": "Ungültige Einladung",
+    "invalidTokenMessage": "Dieser Einladungslink ist ungültig oder abgelaufen. Bitte kontaktieren Sie Ihren Administrator für eine neue Einladung.",
+    "expiredToken": "Einladung abgelaufen",
+    "expiredTokenMessage": "Diese Einladung ist abgelaufen. Bitte fordern Sie eine neue Einladung von Ihrem Administrator an.",
+    "alreadyUsed": "Einladung bereits verwendet",
+    "alreadyUsedMessage": "Diese Einladung wurde bereits verwendet, um ein Konto zu erstellen.",
+    "invitedAs": "Sie wurden eingeladen als",
+    "expiresAt": "Einladung läuft ab",
+    "usernameLabel": "Benutzername",
+    "usernamePlaceholder": "Wählen Sie einen Benutzernamen",
+    "usernameHelp": "3-50 Zeichen, nur Buchstaben, Zahlen, Unterstriche und Bindestriche",
+    "passwordLabel": "Passwort",
+    "passwordPlaceholder": "Erstellen Sie ein sicheres Passwort",
+    "confirmPasswordLabel": "Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Bestätigen Sie Ihr Passwort",
+    "passwordStrength": "Passwortstärke",
+    "requirements": {
+      "title": "Passwortanforderungen:",
+      "minLength": "Mindestens 12 Zeichen",
+      "uppercase": "Mindestens ein Großbuchstabe",
+      "lowercase": "Mindestens ein Kleinbuchstabe",
+      "number": "Mindestens eine Zahl",
+      "special": "Mindestens ein Sonderzeichen"
+    },
+    "strength": {
+      "weak": "Schwach",
+      "fair": "Mittel",
+      "good": "Gut",
+      "strong": "Stark"
+    },
+    "createAccount": "Konto erstellen",
+    "creating": "Konto wird erstellt...",
+    "success": "Konto erstellt!",
+    "successMessage": "Ihr Konto wurde erfolgreich erstellt. Sie können sich jetzt mit Ihren Zugangsdaten anmelden.",
+    "redirecting": "Weiterleitung zur Anmeldung in {{seconds}}...",
+    "goToLogin": "Zur Anmeldung",
+    "errors": {
+      "usernameRequired": "Benutzername ist erforderlich",
+      "usernameTooShort": "Benutzername muss mindestens 3 Zeichen lang sein",
+      "usernameTooLong": "Benutzername darf maximal 50 Zeichen lang sein",
+      "usernameInvalid": "Benutzername darf nur Buchstaben, Zahlen, Unterstriche und Bindestriche enthalten",
+      "passwordRequired": "Passwort ist erforderlich",
+      "passwordTooShort": "Passwort muss mindestens 12 Zeichen lang sein",
+      "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+      "confirmPasswordRequired": "Bitte bestätigen Sie Ihr Passwort",
+      "usernameTaken": "Dieser Benutzername ist bereits vergeben",
+      "emailTaken": "Ein Konto mit dieser E-Mail-Adresse existiert bereits",
+      "genericError": "Konto konnte nicht erstellt werden. Bitte versuchen Sie es erneut."
     }
   },
   "errors": {

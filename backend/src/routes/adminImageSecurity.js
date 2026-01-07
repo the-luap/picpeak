@@ -1,6 +1,7 @@
 const express = require('express');
 const { db } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const secureImageMiddleware = require('../middleware/secureImageMiddleware');
 const logger = require('../utils/logger');
 
@@ -9,7 +10,7 @@ const router = express.Router();
 /**
  * Get image security settings
  */
-router.get('/settings', adminAuth, async (req, res) => {
+router.get('/settings', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const settings = await db('app_settings')
       .whereIn('setting_key', [
@@ -46,7 +47,7 @@ router.get('/settings', adminAuth, async (req, res) => {
 /**
  * Update image security settings
  */
-router.put('/settings', adminAuth, async (req, res) => {
+router.put('/settings', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const updates = req.body;
     
@@ -97,7 +98,7 @@ router.put('/settings', adminAuth, async (req, res) => {
 /**
  * Get security monitoring dashboard data
  */
-router.get('/dashboard', adminAuth, async (req, res) => {
+router.get('/dashboard', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
     
@@ -202,7 +203,7 @@ router.get('/dashboard', adminAuth, async (req, res) => {
 /**
  * Get detailed security logs
  */
-router.get('/logs', adminAuth, async (req, res) => {
+router.get('/logs', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -271,7 +272,7 @@ router.get('/logs', adminAuth, async (req, res) => {
 /**
  * Get image access logs for a specific event
  */
-router.get('/events/:eventId/access-logs', adminAuth, async (req, res) => {
+router.get('/events/:eventId/access-logs', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { eventId } = req.params;
     const { page = 1, limit = 50 } = req.query;
@@ -321,7 +322,7 @@ router.get('/events/:eventId/access-logs', adminAuth, async (req, res) => {
 /**
  * Block/unblock suspicious IPs
  */
-router.post('/block-ip', adminAuth, async (req, res) => {
+router.post('/block-ip', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const { ip, action = 'block' } = req.body;
     
@@ -367,7 +368,7 @@ router.post('/block-ip', adminAuth, async (req, res) => {
 /**
  * Clear security logs older than specified time
  */
-router.delete('/logs/cleanup', adminAuth, async (req, res) => {
+router.delete('/logs/cleanup', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const { olderThan = '30d' } = req.body;
     
@@ -424,7 +425,7 @@ router.delete('/logs/cleanup', adminAuth, async (req, res) => {
 /**
  * Export security data for analysis
  */
-router.get('/export', adminAuth, async (req, res) => {
+router.get('/export', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { format = 'json', timeframe = '7d' } = req.query;
     

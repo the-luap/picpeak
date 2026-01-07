@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { generateThumbnail } = require('../services/imageProcessor');
 const path = require('path');
 const fs = require('fs').promises;
@@ -10,7 +11,7 @@ const logger = require('../utils/logger');
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 // Get thumbnail settings
-router.get('/settings', adminAuth, async (req, res) => {
+router.get('/settings', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const settings = await db('app_settings')
       .whereIn('key', [
@@ -42,7 +43,7 @@ router.get('/settings', adminAuth, async (req, res) => {
 });
 
 // Update thumbnail settings
-router.put('/settings', adminAuth, async (req, res) => {
+router.put('/settings', adminAuth, requirePermission('photos.edit'), async (req, res) => {
   try {
     const { width, height, fit, quality, format } = req.body;
     
@@ -91,7 +92,7 @@ router.put('/settings', adminAuth, async (req, res) => {
 });
 
 // Regenerate all thumbnails with new settings
-router.post('/regenerate', adminAuth, async (req, res) => {
+router.post('/regenerate', adminAuth, requirePermission('photos.edit'), async (req, res) => {
   try {
     const { eventId } = req.body; // Optional: regenerate for specific event only
     
@@ -164,7 +165,7 @@ router.post('/regenerate', adminAuth, async (req, res) => {
 });
 
 // Get regeneration status
-router.get('/regenerate/status', adminAuth, async (req, res) => {
+router.get('/regenerate/status', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     // Count photos with and without thumbnails
     const totalPhotos = await db('photos').count('id as count').first();

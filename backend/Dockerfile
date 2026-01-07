@@ -12,7 +12,8 @@ LABEL org.opencontainers.image.description="PicPeak Backend Service"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Upgrade npm to fix glob CVE-2025-64756 vulnerability
-RUN npm install -g npm@latest
+# Pin to npm 10.x which supports --omit=dev flag
+RUN npm install -g npm@10
 
 WORKDIR /app
 
@@ -34,7 +35,8 @@ WORKDIR /app
 RUN apk upgrade --no-cache
 
 # Upgrade npm to fix glob CVE-2025-64756 vulnerability
-RUN npm install -g npm@latest
+# Pin to npm 10.x which supports --omit=dev flag
+RUN npm install -g npm@10
 
 # Install dumb-init for proper signal handling and postgresql-client for database checks
 RUN apk add --no-cache dumb-init postgresql-client
@@ -46,8 +48,8 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --chown=nodejs:nodejs . .
 
-# Make wait script executable
-RUN chmod +x wait-for-db.sh
+# Ensure all source files are readable and wait script is executable
+RUN chmod -R a+r /app && chmod +x wait-for-db.sh
 
 # Create necessary directories
 RUN mkdir -p storage/events/active storage/events/archived storage/thumbnails data logs && \

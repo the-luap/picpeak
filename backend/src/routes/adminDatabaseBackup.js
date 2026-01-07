@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { databaseBackupService } = require('../services/databaseBackup');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
@@ -11,7 +12,7 @@ router.use(adminAuth);
 /**
  * Get database backup status and configuration
  */
-router.get('/status', async (req, res) => {
+router.get('/status', requirePermission('backup.view'), async (req, res) => {
   try {
     // Get configuration
     const config = await databaseBackupService.getBackupConfig();
@@ -45,7 +46,7 @@ router.get('/status', async (req, res) => {
 /**
  * Update database backup configuration
  */
-router.put('/config', async (req, res) => {
+router.put('/config', requirePermission('backup.create'), async (req, res) => {
   try {
     const allowedSettings = [
       'database_backup_enabled',
@@ -108,7 +109,7 @@ router.put('/config', async (req, res) => {
 /**
  * Trigger manual database backup
  */
-router.post('/backup', async (req, res) => {
+router.post('/backup', requirePermission('backup.create'), async (req, res) => {
   try {
     if (databaseBackupService.isRunning) {
       return res.status(409).json({ error: 'Backup already in progress' });
@@ -134,7 +135,7 @@ router.post('/backup', async (req, res) => {
 /**
  * Get current backup progress
  */
-router.get('/progress', async (req, res) => {
+router.get('/progress', requirePermission('backup.view'), async (req, res) => {
   try {
     const progress = databaseBackupService.getProgress();
     
@@ -151,7 +152,7 @@ router.get('/progress', async (req, res) => {
 /**
  * Get backup history with pagination
  */
-router.get('/history', async (req, res) => {
+router.get('/history', requirePermission('backup.view'), async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -183,7 +184,7 @@ router.get('/history', async (req, res) => {
 /**
  * Delete old backup files
  */
-router.delete('/cleanup', async (req, res) => {
+router.delete('/cleanup', requirePermission('backup.delete'), async (req, res) => {
   try {
     const { retentionDays = 30 } = req.body;
     
@@ -202,7 +203,7 @@ router.delete('/cleanup', async (req, res) => {
 /**
  * Test database backup configuration
  */
-router.post('/test', async (req, res) => {
+router.post('/test', requirePermission('backup.create'), async (req, res) => {
   try {
     const config = await databaseBackupService.getBackupConfig();
     
@@ -255,7 +256,7 @@ router.post('/test', async (req, res) => {
 /**
  * Get table checksums
  */
-router.get('/checksums', async (req, res) => {
+router.get('/checksums', requirePermission('backup.view'), async (req, res) => {
   try {
     const checksums = await databaseBackupService.getTableChecksums();
     

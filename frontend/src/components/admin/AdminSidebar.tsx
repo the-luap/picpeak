@@ -1,21 +1,23 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  Mail, 
-  Archive, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Calendar,
+  Mail,
+  Archive,
+  BarChart3,
   Settings,
   X,
   Palette,
   FileText,
-  HardDrive
+  HardDrive,
+  Users
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { settingsService } from '../../services/settings.service';
 import { VersionInfo } from './VersionInfo';
+import { usePermissions } from '../../contexts/PermissionsContext';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -26,23 +28,32 @@ interface NavItem {
   nameKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  permission?: string;
 }
 
 const navigation: NavItem[] = [
   { nameKey: 'navigation.dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { nameKey: 'navigation.events', href: '/admin/events', icon: Calendar },
-  { nameKey: 'navigation.archives', href: '/admin/archives', icon: Archive },
-  { nameKey: 'admin.analytics', href: '/admin/analytics', icon: BarChart3 },
-  { nameKey: 'navigation.emailSettings', href: '/admin/email', icon: Mail },
-  { nameKey: 'navigation.branding', href: '/admin/branding', icon: Palette },
-  { nameKey: 'navigation.settings', href: '/admin/settings', icon: Settings },
-  { nameKey: 'navigation.backup', href: '/admin/backup', icon: HardDrive },
-  { nameKey: 'navigation.cmsPages', href: '/admin/cms', icon: FileText },
+  { nameKey: 'navigation.events', href: '/admin/events', icon: Calendar, permission: 'events.view' },
+  { nameKey: 'navigation.archives', href: '/admin/archives', icon: Archive, permission: 'archives.view' },
+  { nameKey: 'admin.analytics', href: '/admin/analytics', icon: BarChart3, permission: 'analytics.view' },
+  { nameKey: 'navigation.emailSettings', href: '/admin/email', icon: Mail, permission: 'email.view' },
+  { nameKey: 'navigation.branding', href: '/admin/branding', icon: Palette, permission: 'branding.view' },
+  { nameKey: 'navigation.settings', href: '/admin/settings', icon: Settings, permission: 'settings.view' },
+  { nameKey: 'navigation.backup', href: '/admin/backup', icon: HardDrive, permission: 'backup.view' },
+  { nameKey: 'navigation.cmsPages', href: '/admin/cms', icon: FileText, permission: 'cms.view' },
+  { nameKey: 'navigation.users', href: '/admin/users', icon: Users, permission: 'users.view' },
 ];
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
+
+  // Filter navigation items based on permissions
+  const filteredNavigation = navigation.filter(item => {
+    if (!item.permission) return true;
+    return hasPermission(item.permission);
+  });
 
   return (
     <div
@@ -66,7 +77,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto min-h-0">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const isActive = location.pathname === item.href || 
                            (item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
             
@@ -90,14 +101,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
           })}
         </nav>
 
-        {/* Bottom section - sticky to bottom */}
-        <div className="flex-shrink-0">
-          {/* Version Info */}
-          <VersionInfo />
-          
-          {/* Storage Info */}
-          <StorageInfo />
-        </div>
+        {/* Bottom section - sticky to bottom (only for users with settings.view permission) */}
+        {hasPermission('settings.view') && (
+          <div className="flex-shrink-0">
+            {/* Version Info */}
+            <VersionInfo />
+
+            {/* Storage Info */}
+            <StorageInfo />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -111,14 +124,9 @@ const StorageInfo: React.FC = () => {
     refetchInterval: 60000 // Refresh every minute
   });
 
+  // Don't render anything while loading or if data failed to load
   if (!storageInfo) {
-    return (
-      <div className="p-4 border-t border-neutral-200">
-        <div className="bg-neutral-100 rounded-lg p-3">
-          <div className="h-12 animate-pulse bg-neutral-200 rounded" />
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const limitInUse = storageInfo.storage_soft_limit || storageInfo.storage_limit || 1;

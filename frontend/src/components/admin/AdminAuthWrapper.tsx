@@ -1,11 +1,13 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { AdminAuthProvider } from '../../contexts';
+import { AdminAuthProvider, PermissionsProvider } from '../../contexts';
 
 export const AdminAuthWrapper: React.FC = () => {
   return (
     <AdminAuthProvider>
-      <Outlet />
+      <PermissionsProvider>
+        <Outlet />
+      </PermissionsProvider>
     </AdminAuthProvider>
   );
 };

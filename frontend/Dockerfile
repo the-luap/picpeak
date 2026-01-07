@@ -30,13 +30,13 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage (use Alpine with patched libpng)
-FROM nginx:1.27-alpine3.21
+# Production stage (use Alpine with patched libpng/c-ares)
+FROM nginx:1.27-alpine
 
-# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+# Upgrade all packages to fix security vulnerabilities
+# This ensures libpng >= 1.6.51 (fixes CVE-2025-64720, CVE-2025-65018, CVE-2025-64505, CVE-2025-64506)
+# and c-ares >= 1.34.5 (fixes CVE-2025-31498)
 RUN apk upgrade --no-cache
-# Ensure libpng includes CVE fixes (pull patched version from edge)
-RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main 'libpng>=1.6.51-r0'
 
 # Install runtime dependencies
 RUN apk add --no-cache curl

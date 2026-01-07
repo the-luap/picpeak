@@ -1,12 +1,13 @@
 const express = require('express');
 const { db } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { sanitizeDays, addDateRangeCondition } = require('../utils/sqlSecurity');
 const { formatBoolean } = require('../utils/dbCompat');
 const router = express.Router();
 
 // Get dashboard statistics
-router.get('/stats', adminAuth, async (req, res) => {
+router.get('/stats', adminAuth, requirePermission('analytics.view'), async (req, res) => {
   try {
     // Get active events count
     const activeEvents = await db('events')
@@ -106,7 +107,7 @@ router.get('/stats', adminAuth, async (req, res) => {
 });
 
 // Get recent activity
-router.get('/activity', adminAuth, async (req, res) => {
+router.get('/activity', adminAuth, requirePermission('analytics.view'), async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     
@@ -144,7 +145,7 @@ router.get('/activity', adminAuth, async (req, res) => {
 });
 
 // Get system health status
-router.get('/health', adminAuth, async (req, res) => {
+router.get('/health', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const os = require('os');
     
@@ -216,7 +217,7 @@ router.get('/health', adminAuth, async (req, res) => {
 });
 
 // Get analytics data for charts
-router.get('/analytics', adminAuth, async (req, res) => {
+router.get('/analytics', adminAuth, requirePermission('analytics.view'), async (req, res) => {
   try {
     const days = sanitizeDays(req.query.days || 7);
     

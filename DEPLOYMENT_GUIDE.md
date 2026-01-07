@@ -450,6 +450,20 @@ ADMIN_EMAIL=your-email@yourdomain.com
 
 For production deployments, you should use a reverse proxy for SSL/HTTPS. The application exposes ports directly, allowing you to use any reverse proxy solution.
 
+### Routing Schema
+
+PicPeak consists of two services that need to be routed correctly:
+
+| Path | Service | Port | Description |
+|------|---------|------|-------------|
+| `/api/*` | Backend | 3001 | All API endpoints |
+| `/photos/*` | Backend | 3001 | Protected photo files |
+| `/thumbnails/*` | Backend | 3001 | Protected thumbnail files |
+| `/uploads/*` | Backend | 3001 | Upload files |
+| `/*` (everything else) | Frontend | 3000 | React SPA (including `/admin/*`, `/gallery/*`) |
+
+> **Important:** The `/admin/*` routes are served by the frontend (React SPA), NOT the backend. The backend only handles `/api/admin/*` requests.
+
 ### Option 1: Nginx
 
 Install nginx and create `/etc/nginx/sites-available/picpeak`:
@@ -468,34 +482,27 @@ server {
     ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
 
-    # Frontend
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Frontend (serves UI and /admin/*)
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Backend API and protected resources
-    location /api {
+    # Backend: API endpoints
+    location /api/ {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
-    location ~ ^/(photos|thumbnails|uploads) {
+
+    # Backend: Protected media files
+    location ~ ^/(photos|thumbnails|uploads)/ {
         proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Frontend: Everything else (React SPA)
+    location / {
+        proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -530,10 +537,16 @@ services:
   backend:
     labels:
       - "traefik.enable=true"
+      # API endpoints
       - "traefik.http.routers.picpeak-api.rule=Host(`your-domain.com`) && PathPrefix(`/api`)"
       - "traefik.http.routers.picpeak-api.entrypoints=websecure"
       - "traefik.http.routers.picpeak-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.picpeak-api.loadbalancer.server.port=3001"
+      # Protected media files
+      - "traefik.http.routers.picpeak-media.rule=Host(`your-domain.com`) && (PathPrefix(`/photos`) || PathPrefix(`/thumbnails`) || PathPrefix(`/uploads`))"
+      - "traefik.http.routers.picpeak-media.entrypoints=websecure"
+      - "traefik.http.routers.picpeak-media.tls.certresolver=letsencrypt"
+      - "traefik.http.services.picpeak-media.loadbalancer.server.port=3001"
 ```
 
 ### Option 3: Caddy
@@ -542,21 +555,12 @@ Create a `Caddyfile`:
 
 ```caddyfile
 your-domain.com {
-    # Frontend
-    handle /* {
-        reverse_proxy localhost:3000
-    }
-
-    # Backend API and admin
+    # Backend: API endpoints
     handle /api/* {
         reverse_proxy localhost:3001
     }
-    
-    handle /admin/* {
-        reverse_proxy localhost:3001
-    }
 
-    # Protected resources
+    # Backend: Protected media files
     handle /photos/* {
         reverse_proxy localhost:3001
     }
@@ -567,6 +571,11 @@ your-domain.com {
 
     handle /uploads/* {
         reverse_proxy localhost:3001
+    }
+
+    # Frontend: Everything else (React SPA including /admin/*, /gallery/*)
+    handle {
+        reverse_proxy localhost:3000
     }
 }
 ```

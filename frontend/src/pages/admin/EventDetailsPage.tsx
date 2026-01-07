@@ -58,6 +58,7 @@ import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters, type FilterSummary } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
+import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
 const resolveShareLink = (link: string): string => {
@@ -141,6 +142,7 @@ export const EventDetailsPage: React.FC = () => {
   type EditFormState = {
     welcome_message: string;
     color_theme: string;
+    css_template_id: number | null;
     expires_at: string;
     allow_user_uploads: boolean;
     upload_category_id: number | null;
@@ -164,6 +166,7 @@ export const EventDetailsPage: React.FC = () => {
   const [editForm, setEditForm] = useState<EditFormState>({
     welcome_message: '',
     color_theme: '',
+    css_template_id: null,
     expires_at: '',
     allow_user_uploads: false,
     upload_category_id: null,
@@ -207,7 +210,17 @@ export const EventDetailsPage: React.FC = () => {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
-  
+  const [cssTemplates, setCssTemplates] = useState<EnabledTemplate[]>([]);
+
+  // Fetch CSS templates when component mounts or editing starts
+  useEffect(() => {
+    if (isEditing) {
+      cssTemplatesService.getEnabledTemplates()
+        .then(setCssTemplates)
+        .catch(err => console.error('Failed to load CSS templates:', err));
+    }
+  }, [isEditing]);
+
   // Photo filters state
   const [photoFilters, setPhotoFilters] = useState<PhotoFilterParams>({
     category_id: undefined as number | null | undefined,
@@ -375,6 +388,7 @@ export const EventDetailsPage: React.FC = () => {
     setEditForm({
       welcome_message: event.welcome_message || '',
       color_theme: event.color_theme || '',
+      css_template_id: event.css_template_id || null,
       expires_at: format(safeParseDate(event.expires_at), 'yyyy-MM-dd'),
       allow_user_uploads: event.allow_user_uploads || false,
       upload_category_id: event.upload_category_id || null,
@@ -474,6 +488,7 @@ export const EventDetailsPage: React.FC = () => {
       expires_at: editForm.expires_at,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
+      css_template_id: editForm.css_template_id,
       // Download protection settings
       protection_level: editForm.protection_level,
       disable_right_click: editForm.disable_right_click,
@@ -1357,6 +1372,9 @@ export const EventDetailsPage: React.FC = () => {
                 isPreviewMode={true}
                 showGalleryLayouts={true}
                 hideActions={true}
+                cssTemplates={cssTemplates}
+                cssTemplateId={editForm.css_template_id}
+                onCssTemplateChange={(templateId) => setEditForm(prev => ({ ...prev, css_template_id: templateId }))}
               />
             </Card>
           )}

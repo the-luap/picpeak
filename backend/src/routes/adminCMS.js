@@ -2,10 +2,11 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const router = express.Router();
 
 // Get all CMS pages
-router.get('/pages', adminAuth, async (req, res) => {
+router.get('/pages', adminAuth, requirePermission('cms.view'), async (req, res) => {
   try {
     const pages = await db('cms_pages').select('*').orderBy('slug', 'asc');
     res.json(pages);
@@ -16,7 +17,7 @@ router.get('/pages', adminAuth, async (req, res) => {
 });
 
 // Get a single CMS page
-router.get('/pages/:slug', adminAuth, async (req, res) => {
+router.get('/pages/:slug', adminAuth, requirePermission('cms.view'), async (req, res) => {
   try {
     const { slug } = req.params;
     const page = await db('cms_pages').where('slug', slug).first();
@@ -33,7 +34,7 @@ router.get('/pages/:slug', adminAuth, async (req, res) => {
 });
 
 // Update a CMS page
-router.put('/pages/:slug', adminAuth, [
+router.put('/pages/:slug', adminAuth, requirePermission('cms.edit'), [
   body('title_en').optional().isString(),
   body('title_de').optional().isString(),
   body('content_en').optional().isString(),

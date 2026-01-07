@@ -3,10 +3,11 @@ const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const router = express.Router();
 
 // Get all global categories
-router.get('/global', adminAuth, async (req, res) => {
+router.get('/global', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const categories = await db('photo_categories')
       .where('is_global', formatBoolean(true))
@@ -20,7 +21,7 @@ router.get('/global', adminAuth, async (req, res) => {
 });
 
 // Get categories for a specific event (global + event-specific)
-router.get('/event/:eventId', adminAuth, async (req, res) => {
+router.get('/event/:eventId', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const { eventId } = req.params;
     
@@ -40,7 +41,7 @@ router.get('/event/:eventId', adminAuth, async (req, res) => {
 });
 
 // Create a new category
-router.post('/', adminAuth, [
+router.post('/', adminAuth, requirePermission('settings.edit'), [
   body('name').notEmpty().withMessage('Category name is required'),
   body('slug').optional(),
   body('is_global').optional().isBoolean(),
@@ -104,7 +105,7 @@ router.post('/', adminAuth, [
 });
 
 // Update a category
-router.put('/:id', adminAuth, [
+router.put('/:id', adminAuth, requirePermission('settings.edit'), [
   body('name').notEmpty().withMessage('Category name is required')
 ], async (req, res) => {
   try {
@@ -149,7 +150,7 @@ router.put('/:id', adminAuth, [
 });
 
 // Delete a category
-router.delete('/:id', adminAuth, async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const { id } = req.params;
     

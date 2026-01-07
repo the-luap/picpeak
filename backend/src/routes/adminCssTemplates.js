@@ -8,6 +8,7 @@ const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const { db, withRetry } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 const { sanitizeCSS, validateCSS, MAX_CSS_SIZE } = require('../utils/cssSanitizer');
 const { DEFAULT_CSS_TEMPLATE } = require('../../migrations/core/052_add_css_templates');
 
@@ -15,7 +16,7 @@ const { DEFAULT_CSS_TEMPLATE } = require('../../migrations/core/052_add_css_temp
  * GET /admin/css-templates
  * Get all CSS templates
  */
-router.get('/', adminAuth, async (req, res) => {
+router.get('/', adminAuth, requirePermission('branding.view'), async (req, res) => {
   try {
     const templates = await withRetry(() =>
       db('css_templates').orderBy('slot_number')
@@ -31,7 +32,7 @@ router.get('/', adminAuth, async (req, res) => {
  * GET /admin/css-templates/enabled
  * Get only enabled templates (for event form dropdown)
  */
-router.get('/enabled', adminAuth, async (req, res) => {
+router.get('/enabled', adminAuth, requirePermission('branding.view'), async (req, res) => {
   try {
     const templates = await withRetry(() =>
       db('css_templates')
@@ -50,7 +51,7 @@ router.get('/enabled', adminAuth, async (req, res) => {
  * GET /admin/css-templates/:slotNumber
  * Get a specific template by slot number
  */
-router.get('/:slotNumber', adminAuth, [
+router.get('/:slotNumber', adminAuth, requirePermission('branding.view'), [
   param('slotNumber').isInt({ min: 1, max: 3 })
 ], async (req, res) => {
   try {
@@ -81,7 +82,7 @@ router.get('/:slotNumber', adminAuth, [
  * PUT /admin/css-templates/:slotNumber
  * Update a template
  */
-router.put('/:slotNumber', adminAuth, [
+router.put('/:slotNumber', adminAuth, requirePermission('branding.edit'), [
   param('slotNumber').isInt({ min: 1, max: 3 }),
   body('name').optional().isString().isLength({ max: 50 }),
   body('css_content').optional().isString(),
@@ -158,7 +159,7 @@ router.put('/:slotNumber', adminAuth, [
  * POST /admin/css-templates/:slotNumber/reset
  * Reset template to default (only for slot 1)
  */
-router.post('/:slotNumber/reset', adminAuth, [
+router.post('/:slotNumber/reset', adminAuth, requirePermission('branding.edit'), [
   param('slotNumber').isInt({ min: 1, max: 1 }).withMessage('Only template 1 can be reset to default')
 ], async (req, res) => {
   try {

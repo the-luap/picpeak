@@ -48,7 +48,7 @@ export const ImageSecurityTab: React.FC = () => {
   const { data: fetchedSettings, isLoading, error } = useQuery({
     queryKey: ['image-security-settings'],
     queryFn: async () => {
-      const response = await api.get('/api/admin/image-security/settings');
+      const response = await api.get('/admin/image-security/settings');
       return response.data;
     },
   });
@@ -66,7 +66,7 @@ export const ImageSecurityTab: React.FC = () => {
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async (newSettings: ImageSecuritySettings) => {
-      const response = await api.put('/api/admin/image-security/settings', newSettings);
+      const response = await api.put('/admin/image-security/settings', newSettings);
       return response.data;
     },
     onSuccess: () => {

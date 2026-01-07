@@ -66,8 +66,9 @@ class PhotosService {
     await api.post(`/admin/events/${eventId}/photos/bulk-delete`, { photoIds });
   }
 
-  async updatePhotoCategory(eventId: number, photoId: number, categoryId: number | null): Promise<void> {
-    await api.patch(`/admin/events/${eventId}/photos/${photoId}`, { category_id: categoryId });
+  async updatePhotoCategory(eventId: number, photoId: number, categoryId: number | string | null): Promise<AdminPhoto> {
+    const response = await api.patch(`/admin/events/${eventId}/photos/${photoId}`, { category_id: categoryId });
+    return response.data.photo;
   }
 
   async updatePhotosCategory(eventId: number, photoIds: number[], categoryId: number | null): Promise<void> {
