@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1](https://github.com/the-luap/picpeak/compare/v2.1.0...v2.1.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* **ci:** add QEMU setup for multi-arch builds and skip for PRs ([0d36a27](https://github.com/the-luap/picpeak/commit/0d36a273bb58ffd0172efacd828e7171d954b41c))
+* Multi-administrator RBAC, CSS templates & security hardening ([#80](https://github.com/the-luap/picpeak/issues/80)) ([37d4e1c](https://github.com/the-luap/picpeak/commit/37d4e1cb6132346699a90aebfbaec83d84f931f4))
+
 ## [2.1.0](https://github.com/the-luap/picpeak/compare/v2.0.0...v2.1.0) (2026-01-07)
 
 
