@@ -49,14 +49,20 @@ jobs:
         # For main/develop/tags, build multi-arch
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=true" >> $GITHUB_OUTPUT
         else
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=false" >> $GITHUB_OUTPUT
         fi
+
+    - name: Set up QEMU
+      if: steps.platforms.outputs.skip_qemu != 'true'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      with:
-        platforms: ${{ steps.platforms.outputs.platforms }}
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
@@ -140,14 +146,20 @@ jobs:
         # For main/develop/tags, build multi-arch
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=true" >> $GITHUB_OUTPUT
         else
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=false" >> $GITHUB_OUTPUT
         fi
+
+    - name: Set up QEMU
+      if: steps.platforms.outputs.skip_qemu != 'true'
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      with:
-        platforms: ${{ steps.platforms.outputs.platforms }}
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
