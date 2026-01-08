@@ -993,12 +993,16 @@ async function getBackupStatus(limit = 10) {
       }
     }
 
+    const lastRunWithManifest = lastRun ? { ...lastRun, manifestValid } : null;
+
     return {
       isRunning,
       isHealthy: Boolean(lastRun && lastRun.status === 'completed'),
-      lastRun: lastRun ? { ...lastRun, manifestValid } : null,
+      lastRun: lastRunWithManifest,
+      lastBackup: lastRunWithManifest, // Alias for frontend compatibility
       recentRuns: runs,
       recentBackups: runs, // Alias for frontend compatibility
+      totalBackups: runs.filter(r => r.status === 'completed').length,
       nextScheduledRun: getNextScheduledRun()
     };
   } catch (error) {
