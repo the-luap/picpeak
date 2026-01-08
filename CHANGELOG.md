@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3](https://github.com/the-luap/picpeak/compare/v2.2.2...v2.2.3) (2026-01-08)
+
+
+### Bug Fixes
+
+* **nginx:** add Docker DNS resolver for Swarm/dynamic service discovery ([049837f](https://github.com/the-luap/picpeak/commit/049837f9d675ff5a4d93c02e5eb771bf65bc2616))
+* **nginx:** Add Docker DNS resolver for Swarm/dynamic service discovery (v2.2.3) ([cc1ddfd](https://github.com/the-luap/picpeak/commit/cc1ddfd42cccac07d5869fe2ee19c25a9ffa50e8))
+
 ## [2.2.2](https://github.com/the-luap/picpeak/compare/v2.2.1...v2.2.2) (2026-01-08)
 
 
