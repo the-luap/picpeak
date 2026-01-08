@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2](https://github.com/the-luap/picpeak/compare/v2.2.1...v2.2.2) (2026-01-08)
+
+
+### Bug Fixes
+
+* align backend port to 3000 across all configurations ([3a8d53f](https://github.com/the-luap/picpeak/commit/3a8d53f4927f577c4031c4bc3531e08191dc632a))
+* Align nginx backend port for production Docker deployments (v2.2.2) ([#88](https://github.com/the-luap/picpeak/issues/88)) ([e0bd19a](https://github.com/the-luap/picpeak/commit/e0bd19a74dd81bdd45be2384820830bd96769e1c))
+
 ## [2.2.1](https://github.com/the-luap/picpeak/compare/v2.2.0...v2.2.1) (2026-01-08)
 
 
