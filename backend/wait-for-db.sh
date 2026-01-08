@@ -7,7 +7,8 @@ host="${DB_HOST:-postgres}"
 port="${DB_PORT:-5432}"
 user="${DB_USER:-picpeak}"
 target_db="${DB_NAME:-picpeak}"
-default_db="${DB_CHECK_DB:-postgres}"
+# Use target database for checks - the picpeak user may not have access to 'postgres' database
+default_db="${DB_CHECK_DB:-$target_db}"
 
 sanitize_identifier() {
   printf '%s' "$1" | sed "s/'/''/g"
@@ -15,27 +16,44 @@ sanitize_identifier() {
 
 echo "Waiting for PostgreSQL at $host:$port..."
 
-# Wait for PostgreSQL server to accept connections (using the default database)
-until PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$default_db" -c '\q' >/dev/null 2>&1; do
-  >&2 echo "PostgreSQL is unavailable - sleeping"
+# First, wait for PostgreSQL server to be reachable
+max_attempts=30
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$target_db" -c '\q' >/dev/null 2>&1; then
+    >&2 echo "PostgreSQL is up - database \"$target_db\" is accessible."
+    break
+  fi
+
+  # If target DB doesn't work, try connecting to 'postgres' or 'template1' to create it
+  if PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "template1" -c '\q' >/dev/null 2>&1; then
+    >&2 echo "PostgreSQL is up - checking if database \"$target_db\" needs to be created..."
+
+    # Check if database exists
+    db_exists=$(PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "template1" -tAc "SELECT 1 FROM pg_database WHERE datname = '$(sanitize_identifier "$target_db")'" 2>/dev/null || echo 0)
+
+    if [ "$db_exists" != "1" ]; then
+      >&2 echo "Database \"$target_db\" not found. Attempting to create..."
+      if PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "template1" -c "CREATE DATABASE \"$target_db\";" >/dev/null 2>&1; then
+        >&2 echo "Database \"$target_db\" created successfully."
+      else
+        >&2 echo "Warning: Could not create database. It may already exist or user lacks permissions."
+      fi
+    fi
+    break
+  fi
+
+  attempt=$((attempt + 1))
+  >&2 echo "PostgreSQL is unavailable - sleeping (attempt $attempt/$max_attempts)"
   sleep 2
 done
 
->&2 echo "PostgreSQL is up - verifying target database \"$target_db\""
-
-# Ensure the target database exists (helps when volumes are reused or DB_NAME is customised)
-db_exists=$(PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$default_db" -tAc "SELECT 1 FROM pg_database WHERE datname = '$(sanitize_identifier "$target_db")'" 2>/dev/null || echo 0)
-
-if [ "$db_exists" != "1" ]; then
-  >&2 echo "Database \"$target_db\" not found. Attempting to create..."
-  if ! PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$default_db" -c "CREATE DATABASE \"$target_db\";" >/dev/null 2>&1; then
-    >&2 echo "Failed to create database \"$target_db\". Please ensure it exists and is accessible."
-    exit 1
-  fi
-  >&2 echo "Database \"$target_db\" created successfully."
+if [ $attempt -eq $max_attempts ]; then
+  >&2 echo "Failed to connect to PostgreSQL after $max_attempts attempts."
+  exit 1
 fi
 
-# Wait until the target database itself is ready to accept connections
+# Final verification - wait for target database to accept connections
 until PGPASSWORD="$DB_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$target_db" -c '\q' >/dev/null 2>&1; do
   >&2 echo "Waiting for database \"$target_db\" to accept connections..."
   sleep 2
