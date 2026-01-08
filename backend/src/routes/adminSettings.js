@@ -326,8 +326,12 @@ router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.singl
       .first();
 
     if (oldLogoSetting && oldLogoSetting.setting_value) {
-      const oldPath = JSON.parse(oldLogoSetting.setting_value);
       try {
+        // Handle both JSON-serialized and legacy raw path values
+        let oldPath = oldLogoSetting.setting_value;
+        if (oldPath.startsWith('"')) {
+          oldPath = JSON.parse(oldPath);
+        }
         await fs.unlink(oldPath);
       } catch (error) {
         console.error('Failed to delete old logo:', error);
