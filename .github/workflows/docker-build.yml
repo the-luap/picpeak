@@ -45,14 +45,14 @@ jobs:
     - name: Determine build platforms
       id: platforms
       run: |
-        # For PRs, build only amd64 to avoid QEMU emulation issues with Sharp
-        # For main/develop/tags, build multi-arch
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=true" >> $GITHUB_OUTPUT
-        else
+        # Only build ARM64 for tagged releases (v*.*.*)
+        # QEMU emulation is too slow/unreliable for npm operations on regular builds
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
           echo "skip_qemu=false" >> $GITHUB_OUTPUT
+        else
+          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=true" >> $GITHUB_OUTPUT
         fi
 
     - name: Set up QEMU
@@ -142,14 +142,14 @@ jobs:
     - name: Determine build platforms
       id: platforms
       run: |
-        # For PRs, build only amd64 to avoid QEMU emulation issues
-        # For main/develop/tags, build multi-arch
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=true" >> $GITHUB_OUTPUT
-        else
+        # Only build ARM64 for tagged releases (v*.*.*)
+        # QEMU emulation is too slow/unreliable for npm operations on regular builds
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
           echo "skip_qemu=false" >> $GITHUB_OUTPUT
+        else
+          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          echo "skip_qemu=true" >> $GITHUB_OUTPUT
         fi
 
     - name: Set up QEMU
