@@ -355,13 +355,13 @@ router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.singl
     await db('app_settings')
       .insert({
         setting_key: 'branding_logo_url',
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         setting_type: 'branding',
         updated_at: new Date()
       })
       .onConflict('setting_key')
       .merge({
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         updated_at: new Date()
       });
 
@@ -891,13 +891,13 @@ router.post('/favicon', adminAuth, requirePermission('settings.edit'), faviconUp
     await db('app_settings')
       .insert({
         setting_key: 'branding_favicon_url',
-        setting_value: faviconUrl,
+        setting_value: JSON.stringify(faviconUrl),
         setting_type: 'branding',
         updated_at: new Date()
       })
       .onConflict('setting_key')
       .merge({
-        setting_value: faviconUrl,
+        setting_value: JSON.stringify(faviconUrl),
         updated_at: new Date()
       });
 
