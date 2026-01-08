@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.4](https://github.com/the-luap/picpeak/compare/v2.2.3...v2.2.4) (2026-01-08)
+
+
+### Bug Fixes
+
+* **backup:** add lastBackup alias and totalBackups for frontend compatibility ([749100c](https://github.com/the-luap/picpeak/commit/749100c92abd2bb123b137e3d3c6bb342b8f5f00))
+* Docker Swarm DNS resolution and backup status display (v2.2.3) ([082d8ab](https://github.com/the-luap/picpeak/commit/082d8ab2054416b2a4f9e0438aa2bda0a8f4277e))
+* Docker Swarm DNS resolution and backup status display (v2.2.3) ([082d8ab](https://github.com/the-luap/picpeak/commit/082d8ab2054416b2a4f9e0438aa2bda0a8f4277e))
+
 ## [2.2.3](https://github.com/the-luap/picpeak/compare/v2.2.2...v2.2.3) (2026-01-08)
 
 
