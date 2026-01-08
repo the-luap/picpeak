@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1](https://github.com/the-luap/picpeak/compare/v2.2.0...v2.2.1) (2026-01-08)
+
+
+### Bug Fixes
+
+* handle legacy non-JSON logo paths when replacing logo ([0d5ce48](https://github.com/the-luap/picpeak/commit/0d5ce48dccf0c61f210725ffae15dafc5e9f7cab))
+* JSON serialize favicon and logo URLs for PostgreSQL storage ([b83f427](https://github.com/the-luap/picpeak/commit/b83f4272b584f937fea1f47656182e514b12d980))
+* resolve branding display issues and invitation parsing errors ([1931d73](https://github.com/the-luap/picpeak/commit/1931d73b60d3419203cc8b420841abbfc9e14d2d))
+* Resolve branding display issues and invitation parsing errors (v2.2.1) ([#86](https://github.com/the-luap/picpeak/issues/86)) ([d7ecf83](https://github.com/the-luap/picpeak/commit/d7ecf83d32ec6608280b96e6cdee48e9a0ad0afa))
+
 ## [2.2.0](https://github.com/the-luap/picpeak/compare/v2.1.1...v2.2.0) (2026-01-08)
 
 
