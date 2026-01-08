@@ -248,7 +248,7 @@ These features are currently in beta testing and may have limited functionality 
 | **Face Recognition** | AI-powered face detection to help guests find their photos and create automatic person-based albums | Low | 🔄 Open |
 | **Gallery Feedback** | Allow guests to like, rate, and comment on photos with admin notifications and moderation | Medium | ✅ Implemented |
 | **Video Support** | Upload and display videos alongside photos in galleries with streaming support | Low | ✅ Implemented |
-| **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | 📋 Planned |
+| **Multiple Administrators** | Support for multiple admin accounts with role-based permissions and activity tracking | Low | ✅ Implemented |
 | **Filtering & Export Options** | Filter photos by likes, ratings, comments, or favorites. Search by filename. Sort by date, name, size, or rating. Export filtered selections as ZIP or generate Capture One/Lightroom-compatible file lists for professional workflows | Medium | ✅ Implemented |
 
 **Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned

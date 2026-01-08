@@ -36,6 +36,10 @@ const config: VitestUserConfig = {
         target: 'http://localhost:7101',
         changeOrigin: true,
       },
+      '/uploads': {
+        target: 'http://localhost:7101',
+        changeOrigin: true,
+      },
     },
   }
 }

@@ -46,6 +46,20 @@ function transformRole(role) {
 }
 
 /**
+ * Transform invitation object from snake_case (DB) to camelCase (API)
+ */
+function transformInvitation(invitation) {
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    expiresAt: invitation.expires_at,
+    createdAt: invitation.created_at,
+    roleName: invitation.role_name,
+    invitedBy: invitation.invited_by
+  };
+}
+
+/**
  * GET /me/permissions
  * Get current user's permissions
  */
@@ -81,7 +95,7 @@ router.get('/roles', adminAuth, requirePermission('users.view'), handleAsync(asy
  */
 router.get('/invitations', adminAuth, requirePermission('users.view'), handleAsync(async (req, res) => {
   const invitations = await userManagementService.getPendingInvitations();
-  res.json({ invitations });
+  res.json({ invitations: invitations.map(transformInvitation) });
 }));
 
 /**
