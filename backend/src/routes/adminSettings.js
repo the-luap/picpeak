@@ -326,8 +326,12 @@ router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.singl
       .first();
 
     if (oldLogoSetting && oldLogoSetting.setting_value) {
-      const oldPath = JSON.parse(oldLogoSetting.setting_value);
       try {
+        // Handle both JSON-serialized and legacy raw path values
+        let oldPath = oldLogoSetting.setting_value;
+        if (oldPath.startsWith('"')) {
+          oldPath = JSON.parse(oldPath);
+        }
         await fs.unlink(oldPath);
       } catch (error) {
         console.error('Failed to delete old logo:', error);
@@ -355,13 +359,13 @@ router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.singl
     await db('app_settings')
       .insert({
         setting_key: 'branding_logo_url',
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         setting_type: 'branding',
         updated_at: new Date()
       })
       .onConflict('setting_key')
       .merge({
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         updated_at: new Date()
       });
 
@@ -891,13 +895,13 @@ router.post('/favicon', adminAuth, requirePermission('settings.edit'), faviconUp
     await db('app_settings')
       .insert({
         setting_key: 'branding_favicon_url',
-        setting_value: faviconUrl,
+        setting_value: JSON.stringify(faviconUrl),
         setting_type: 'branding',
         updated_at: new Date()
       })
       .onConflict('setting_key')
       .merge({
-        setting_value: faviconUrl,
+        setting_value: JSON.stringify(faviconUrl),
         updated_at: new Date()
       });
 

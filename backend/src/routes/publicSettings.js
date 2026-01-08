@@ -58,6 +58,7 @@ router.get('/', async (req, res) => {
       branding_logo_display_header: settingsObject.branding_logo_display_header !== false,
       branding_logo_display_hero: settingsObject.branding_logo_display_hero !== false,
       branding_logo_display_mode: settingsObject.branding_logo_display_mode || 'logo_and_text',
+      branding_hide_powered_by: settingsObject.branding_hide_powered_by === true,
       theme_config: settingsObject.theme_config || null,
       default_language: settingsObject.general_default_language || 'en',
       enable_analytics: settingsObject.general_enable_analytics !== false,

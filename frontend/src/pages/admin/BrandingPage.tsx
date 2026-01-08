@@ -81,9 +81,8 @@ export const BrandingPage: React.FC = () => {
   useEffect(() => {
     if (settings) {
       const formatted = settingsService.formatBrandingSettings(settings);
-      // Don't set logo_url here - it will be synced from theme
-      const { logo_url, ...brandingWithoutLogo } = formatted;
-      setBrandingSettings(prev => ({ ...prev, ...brandingWithoutLogo }));
+      // Include logo_url from branding settings
+      setBrandingSettings(prev => ({ ...prev, ...formatted }));
     }
   }, [settings]);
 
@@ -91,15 +90,17 @@ export const BrandingPage: React.FC = () => {
   useEffect(() => {
     if (themeSettings) {
       const formatted = settingsService.formatThemeSettings(themeSettings) as ThemeConfig;
-      
+
       if (formatted && Object.keys(formatted).length > 0) {
         // Use the theme's logo URL as stored in the theme config
         setCurrentTheme(formatted);
         setTheme(formatted);
-        
-        // Always sync the logo URL from theme to branding settings - theme is source of truth
-        setBrandingSettings(prev => ({ ...prev, logo_url: formatted.logoUrl || '' }));
-        
+
+        // Only sync logo URL from theme if it exists there (logo is stored in branding settings)
+        if (formatted.logoUrl) {
+          setBrandingSettings(prev => ({ ...prev, logo_url: formatted.logoUrl }));
+        }
+
         // Try to identify which preset this matches
         for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
           if (JSON.stringify(preset.config) === JSON.stringify(formatted)) {
