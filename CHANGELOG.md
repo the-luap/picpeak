@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/the-luap/picpeak/compare/v2.1.1...v2.2.0) (2026-01-08)
+
+
+### Features
+
+* **i18n:** add translations for settings tabs ([c030e87](https://github.com/the-luap/picpeak/commit/c030e872135b39701ef1f4bbb2f28bcaf4ce7fae))
+
+
+### Bug Fixes
+
+* Add settings translations and fix manual backup process ([#82](https://github.com/the-luap/picpeak/issues/82)) ([476fcce](https://github.com/the-luap/picpeak/commit/476fcce13f30f9f2d2f98a0c87c25fba09e9eebc))
+* **backup:** allow manual backups when automated backups are disabled ([e6dd89e](https://github.com/the-luap/picpeak/commit/e6dd89e969fb7018633159155975bd2bd2fb0409))
+* **db:** improve PostgreSQL connection check in wait-for-db.sh ([e85a68a](https://github.com/the-luap/picpeak/commit/e85a68a386c72c276b4958599b5246e60dfac716))
+
 ## [2.1.1](https://github.com/the-luap/picpeak/compare/v2.1.0...v2.1.1) (2026-01-07)
 
 
