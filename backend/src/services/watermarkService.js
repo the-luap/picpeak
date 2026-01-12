@@ -177,14 +177,25 @@ class WatermarkService {
         settings.position
       );
 
-      // Apply watermark
-      const watermarkedBuffer = await image
-        .composite([{
-          input: watermarkBuffer,
-          top: position.top,
-          left: position.left
-        }])
-        .toBuffer();
+      // Apply watermark with high quality output to preserve original image quality
+      let watermarkedImage = image.composite([{
+        input: watermarkBuffer,
+        top: position.top,
+        left: position.left
+      }]);
+
+      // Preserve original format with high quality settings
+      const format = metadata.format || 'jpeg';
+      let watermarkedBuffer;
+
+      if (format === 'png') {
+        watermarkedBuffer = await watermarkedImage.png({ quality: 100, compressionLevel: 6 }).toBuffer();
+      } else if (format === 'webp') {
+        watermarkedBuffer = await watermarkedImage.webp({ quality: 95, lossless: false }).toBuffer();
+      } else {
+        // Default to JPEG with maximum quality (100) to prevent recompression
+        watermarkedBuffer = await watermarkedImage.jpeg({ quality: 100, mozjpeg: true }).toBuffer();
+      }
 
       // Cache the result
       this.cache.set(cacheKey, {
