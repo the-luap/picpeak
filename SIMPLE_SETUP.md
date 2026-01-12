@@ -451,6 +451,8 @@ cd /opt/picpeak/app/backend
 sudo -u picpeak node scripts/reset-admin-password.js
 ```
 
+> **Note:** The new password will be displayed in the console output and saved to `ADMIN_PASSWORD_RESET.txt`. Save it immediately!
+
 ### Getting Help
 
 1. **Check logs:**

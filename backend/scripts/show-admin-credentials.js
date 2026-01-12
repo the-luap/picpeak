@@ -36,12 +36,14 @@ async function showAdminCredentials(resetPassword = false) {
         .where('id', admin.id)
         .update({
           password_hash: passwordHash,
+          must_change_password: true,
           updated_at: new Date()
         });
-      
-      // Password logging removed for security - check logs or database if needed
-      console.log('Password: [NEWLY RESET - stored in database]');
-      console.log('\n⚠️  IMPORTANT: New password has been set in database!');
+
+      console.log(`Password: ${newPassword}`);
+      console.log('\n⚠️  IMPORTANT:');
+      console.log('1. Save this password securely - it will not be shown again');
+      console.log('2. You will be required to change it on next login');
     } else {
       console.log('Password: [hidden - use --reset flag to generate new password]');
     }
