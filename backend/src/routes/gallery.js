@@ -829,8 +829,17 @@ router.get('/:slug/thumbnail/:photoId',
         'X-Protected-Thumbnail': 'true'
       });
 
-      // Send file
-      res.sendFile(path.resolve(thumbPath));
+      // Check if watermarks are enabled and apply to thumbnail
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+
+      if (watermarkSettings && watermarkSettings.enabled) {
+        // Apply watermark to thumbnail
+        const watermarkedBuffer = await watermarkService.applyWatermark(thumbPath, watermarkSettings);
+        res.send(watermarkedBuffer);
+      } else {
+        // Send file without watermark
+        res.sendFile(path.resolve(thumbPath));
+      }
     } catch (error) {
       logger.error('Error serving thumbnail:', {
         error: error.message,

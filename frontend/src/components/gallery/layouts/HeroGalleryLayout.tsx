@@ -142,8 +142,11 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                 } 
                 alt="Event logo" 
                 className="h-20 sm:h-24 lg:h-32 mx-auto"
-                style={{ 
-                  filter: 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                style={{
+                  // Only apply brightness/invert filter to default logo; custom logos display as-is
+                  filter: eventLogo
+                    ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                    : 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
                 }}
               />
             </div>

@@ -366,7 +366,10 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     className={`${heroLogoSize.className} w-auto object-contain mx-auto`}
                     style={{
                       ...(heroLogoSize.style || {}),
-                      filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                      // Only apply brightness/invert filter to default logo; custom logos display as-is
+                      filter: brandingSettings?.logo_url
+                        ? 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                        : 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
                     }}
                   />
                   {shouldShowCompanyName() && brandingSettings?.company_name && (
