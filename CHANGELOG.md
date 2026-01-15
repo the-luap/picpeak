@@ -5,6 +5,24 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.0.1-beta.0...v3.1.0-beta.0) (2026-01-15)
+
+
+### Features
+
+* dynamic website title from branding settings ([d29aab7](https://github.com/the-luap/picpeak/commit/d29aab7c70c5777451666fb7d5c7a9729dab684a))
+* pre-generate watermarks for instant lightbox loading ([1be974a](https://github.com/the-luap/picpeak/commit/1be974afbb0b7a1bdbdd140327771907a5d3c2ae)), closes [#112](https://github.com/the-luap/picpeak/issues/112)
+* pre-generated watermarks and mobile upload button improvements ([c6fdd38](https://github.com/the-luap/picpeak/commit/c6fdd38e842e1a8c0aa9cbab9fc791e6669e402d))
+
+
+### Bug Fixes
+
+* add lightbox loading spinner and watermark cache invalidation ([050ed37](https://github.com/the-luap/picpeak/commit/050ed378199eb3b15c7c7f243792f68f858803f5))
+* lightbox watermark loading, white label translations, and dynamic footer year ([ce8587b](https://github.com/the-luap/picpeak/commit/ce8587b24df3f53a11a74348eff8b5c5b96c5488))
+* prevent database migration restart failures ([83a4344](https://github.com/the-luap/picpeak/commit/83a4344a01de4f65c5024fdf2d177a04457ccd2f)), closes [#107](https://github.com/the-luap/picpeak/issues/107)
+* show upload button in mobile topbar instead of sidebar ([ae181cf](https://github.com/the-luap/picpeak/commit/ae181cf92fc9c1e85cad7a7b843a4d83cec636ac)), closes [#113](https://github.com/the-luap/picpeak/issues/113)
+* watermark thumbnails, custom logo display, and German translations ([ea20446](https://github.com/the-luap/picpeak/commit/ea20446a797a00cf45dbe7bf6f06574a79c4d8a6))
+
 ## [3.0.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.0.0-beta.0...v3.0.1-beta.0) (2026-01-15)
 
 
