@@ -1232,6 +1232,20 @@
       "error": "Fehler",
       "checking": "Prüfe..."
     },
+    "updates": {
+      "available": "Update verfügbar",
+      "newVersion": "Version {{version}} ist verfügbar",
+      "currentVersion": "Aktuell: {{version}}",
+      "channel": "Kanal: {{channel}}",
+      "channelStable": "Stabil",
+      "channelBeta": "Beta",
+      "beta": "BETA",
+      "viewReleaseNotes": "Versionshinweise anzeigen",
+      "updateAvailableShort": "v{{version}} verfügbar",
+      "checkForUpdates": "Nach Updates suchen",
+      "upToDate": "Alles aktuell",
+      "lastChecked": "Zuletzt geprüft: {{time}}"
+    },
     "notifications": "Benachrichtigungen",
     "viewAllNotifications": "Alle Benachrichtigungen anzeigen",
     "noNotifications": "Keine neuen Benachrichtigungen",

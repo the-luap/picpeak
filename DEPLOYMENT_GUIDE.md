@@ -2,9 +2,24 @@
 
 This guide covers multiple deployment options for PicPeak, from simple local setups to production-ready configurations.
 
-## 🎯 Quick Start - Simple Setup (Recommended for Beginners)
+## 📋 Table of Contents
 
-For the easiest installation without Docker or complex configurations, use our **unified setup script**:
+- [Quick Start](#-quick-start)
+- [Prerequisites](#prerequisites)
+- [Configuration](#-configuration)
+- [Deployment](#-deployment)
+- [First Login](#-first-login)
+- [Release Channels](#-release-channels)
+- [Reverse Proxy Setup](#-reverse-proxy-setup)
+- [External Media Library](#external-media-library)
+- [Maintenance](#-maintenance)
+- [Troubleshooting](#-troubleshooting)
+
+## 🚀 Quick Start
+
+### Option 1: Automated Setup Script (Easiest)
+
+For the simplest installation, use our unified setup script:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/the-luap/picpeak/main/scripts/picpeak-setup.sh -o picpeak-setup.sh && \
@@ -12,27 +27,11 @@ chmod +x picpeak-setup.sh && \
 sudo ./picpeak-setup.sh
 ```
 
-This automated script handles everything including:
-- Choice between Docker or Native installation
-- OS detection and dependency installation
-- Database setup and service configuration
-- SSL/HTTPS setup (optional)
-
-Perfect for:
-- Small to medium deployments
-- Local or VPS installations  
-- Users new to server management
-- Quick testing and evaluation
+This script handles Docker/Native installation choice, OS detection, dependencies, database setup, and optional SSL.
 
 👉 **See [SIMPLE_SETUP.md](./SIMPLE_SETUP.md) for detailed instructions.**
 
----
-
-## 🐳 Docker Compose Deployment
-
-### Option 1: Using Pre-built Images (Recommended)
-
-PicPeak provides official Docker images via GitHub Container Registry for quick deployment without building:
+### Option 2: Docker with Pre-built Images (Recommended)
 
 ```bash
 # Clone repository for configuration files
@@ -43,35 +42,40 @@ cd picpeak
 cp .env.example .env
 nano .env  # Edit with your values
 
-# Use pre-built images deployment
+# Create required directories
+mkdir -p events/active events/archived data logs backup storage
+chmod -R 755 events data logs backup storage
+
+# Deploy using pre-built images
 docker compose -f docker-compose.production.yml up -d
+
+# Check logs
+docker compose -f docker-compose.production.yml logs -f
 ```
 
-The production compose file uses:
-- **Backend**: `ghcr.io/the-luap/picpeak/backend:latest`
-- **Frontend**: `ghcr.io/the-luap/picpeak/frontend:latest`
+**Available image tags:**
+| Channel | Tags | Description |
+|---------|------|-------------|
+| Stable | `stable`, `latest`, `v2.3.0` | Production-ready releases |
+| Beta | `beta`, `v2.3.0-beta.1` | Early access to new features |
+| Branch | `main`, `beta` | Latest from each branch |
 
-Available tags:
-- `latest` - Latest stable release
-- `main` - Latest main branch build
-- `develop` - Development branch (may be unstable)
-- `v1.0.0` - Specific version tags
+To select a channel, set `PICPEAK_CHANNEL` in your `.env` file (see [Release Channels](#release-channels) section)
 
-### Option 2: Building from Source
+### Option 3: Build from Source
 
-If you need to customize the application or the pre-built images aren't available, you can build locally:
+```bash
+git clone https://github.com/the-luap/picpeak.git
+cd picpeak
+cp .env.example .env
+nano .env  # Edit with your values
 
-## 📋 Table of Contents
+mkdir -p events/active events/archived data logs backup storage
+chmod -R 755 events data logs backup storage
 
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Deployment](#deployment)
-- [First Login](#first-login)
-- [Reverse Proxy Setup](#reverse-proxy-setup)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
- - [External Media Library](#external-media-library)
+docker compose build
+docker compose up -d
+```
 
 ## Prerequisites
 
@@ -79,106 +83,6 @@ If you need to customize the application or the pre-built images aren't availabl
 - Domain name (for production)
 - SMTP server credentials for emails
 - At least 2GB RAM and 20GB storage
-
-## 🚀 Quick Start
-
-### Method 1: Using Pre-built Images (Fastest)
-
-1. **Clone the repository for configs**
-   ```bash
-   git clone https://github.com/the-luap/picpeak.git
-   cd picpeak
-   ```
-
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   nano .env  # Edit with your values
-   ```
-
-3. **Create required directories**
-   ```bash
-   mkdir -p events/active events/archived data logs backup storage
-   chmod -R 755 events data logs backup storage
-   ```
-
-4. **Deploy using pre-built images**
-   ```bash
-   docker compose -f docker-compose.production.yml up -d
-   ```
-
-5. **Check logs**
-   ```bash
-   docker compose -f docker-compose.production.yml logs -f
-   ```
-
-## External Media Library
-
-PicPeak can reference an existing, read‑only media library mounted into the backend container. This avoids copying originals into PicPeak storage.
-
-- Map your host library path to the container as read‑only in `docker-compose.production.yml`:
-  - Add volume under `backend`: `- ${EXTERNAL_MEDIA}:/external-media:ro`
-  - Add backend env: `EXTERNAL_MEDIA_ROOT=/external-media`
-- In `.env`, set:
-  - `EXTERNAL_MEDIA=/mnt/photos` (example host path)
-  - `EXTERNAL_MEDIA_ROOT=/external-media`
-
-Usage:
-- In Admin → Events, set “Source Mode” to “Reference (external folder)”, select a folder under `/external-media`, then import to index and generate thumbnails. Originals stay in your library.
-
-Backups and Archives:
-- Backups only include data under `STORAGE_PATH` and exclude external originals. The backup manifest includes `metadata.external_references = { excluded: true, events: N, photos: M }` and the Admin UI surfaces a warning.
-- Archiving reference events creates a manifest‑only ZIP and deletes thumbnails for that event. External originals are never moved or deleted.
-
-Local (npm) setup (no Docker):
-
-1. Create or choose a folder that contains your external originals, e.g. `/Users/you/Pictures/picpeak-external` (macOS/Linux) or `C:\\Pictures\\picpeak-external` (Windows).
-2. In `backend/.env` (or your shell), set:
-   - `EXTERNAL_MEDIA_ROOT=/absolute/path/to/picpeak-external`
-   - Ensure `STORAGE_PATH` points to your PicPeak storage (defaults to `./storage`).
-3. Start services from source:
-   - Backend: `cd backend && npm install && npm run migrate && JWT_SECRET=... npm start`
-   - Frontend: `cd frontend && npm install && npm run dev` (or build + serve)
-4. In Admin → Events:
-   - Create an event, set “Source Mode” to “Reference (external folder)”.
-   - Use the folder picker to browse under your `EXTERNAL_MEDIA_ROOT` and select the subfolder to reference.
-   - Click “Import from selected folder” to index files and generate thumbnails on demand.
-
-Notes:
-- PicPeak only reads from `EXTERNAL_MEDIA_ROOT`; it never modifies or deletes your originals there.
-- Thumbnails are generated under `STORAGE_PATH/thumbnails` and are included in backups; originals in `EXTERNAL_MEDIA_ROOT` are excluded.
-- On Windows, use absolute paths (e.g., `C:\\Photos\\Library`) for `EXTERNAL_MEDIA_ROOT`.
-
-### Method 2: Building from Source
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/the-luap/picpeak.git
-   cd picpeak
-   ```
-
-2. **Set up environment**
-   ```bash
-   cp .env.example .env
-   nano .env  # Edit with your values
-   ```
-
-3. **Create required directories**
-   ```bash
-   mkdir -p events/active events/archived data logs backup storage
-   chmod -R 755 events data logs backup storage
-   ```
-
-4. **Build and deploy**
-   ```bash
-   docker compose build
-   docker compose up -d
-   ```
-
-5. **Check logs**
-   ```bash
-   docker compose logs -f
-   ```
 
 ## 🔧 Configuration
 
@@ -358,14 +262,16 @@ docker exec picpeak-backend cat data/ADMIN_CREDENTIALS.txt
 # Show current admin username and email (password is hidden)
 docker exec picpeak-backend node scripts/show-admin-credentials.js
 
-# Reset the admin password to a new random password
+# Reset the admin password to a new random password (displays new password in console)
 docker exec picpeak-backend node scripts/show-admin-credentials.js --reset
 ```
+
+> **Note:** When using `--reset`, the new password will be displayed in the console output. Save it immediately - it will not be shown again!
 
 #### Important Security Notes
 
 - **Login requires the email address**, not username
-- The admin password is only displayed once during initial setup
+- When resetting password, the new password is displayed once in the console - save it immediately
 - **Password change is MANDATORY** on first login - the system will force you to change it
 - If you lose the password before first login, use the `--reset` option to generate a new one
 - New password requirements: minimum 12 characters, mixed case, numbers, and special characters
@@ -445,6 +351,61 @@ ADMIN_EMAIL=your-email@yourdomain.com
 ```
 
 **Note**: This only works on first deployment. To change the admin email after deployment, you'll need to update it in the database or create a new admin user through the admin panel.
+
+## 🔄 Release Channels
+
+PicPeak offers two release channels for different needs:
+
+### Stable Channel (Recommended)
+- Production-ready releases
+- Thoroughly tested before release
+- Docker tags: `stable`, `latest`, or specific version like `v2.3.0`
+
+### Beta Channel
+- Early access to new features
+- May contain bugs or incomplete functionality
+- Docker tags: `beta` or specific version like `v2.3.0-beta.1`
+
+### Configuring Your Channel
+
+Set the `PICPEAK_CHANNEL` environment variable in your `.env` file:
+
+```bash
+# For stable releases (default)
+PICPEAK_CHANNEL=stable
+
+# For beta releases
+PICPEAK_CHANNEL=beta
+
+# For a specific version
+PICPEAK_CHANNEL=v2.3.0
+```
+
+The `docker-compose.production.yml` uses this variable for both backend and frontend images:
+```yaml
+image: ghcr.io/the-luap/picpeak/backend:${PICPEAK_CHANNEL:-stable}
+```
+
+### Switching Channels
+
+To switch between channels:
+
+```bash
+# Edit your .env file
+nano .env
+# Change PICPEAK_CHANNEL=stable to PICPEAK_CHANNEL=beta (or vice versa)
+
+# Pull the new images and restart
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
+
+### Update Notifications
+
+The admin dashboard automatically notifies you when updates are available for your channel. This feature:
+- Checks GitHub releases hourly (cached to avoid rate limits)
+- Shows updates relevant to your current channel (stable or beta)
+- Can be disabled by setting `UPDATE_CHECK_ENABLED=false` in your `.env`
 
 ## 🔒 Reverse Proxy Setup
 
@@ -656,19 +617,26 @@ docker compose up -d
 docker compose ps
 ```
 
-#### Specific Version Updates
+#### Specific Version or Channel Updates
 
-To use a specific version of the images:
+To use a specific version or switch channels, update your `.env` file:
 
 ```bash
-# Edit docker-compose.production.yml to specify version tags
-# Change: ghcr.io/the-luap/picpeak/backend:latest
-# To:     ghcr.io/the-luap/picpeak/backend:v1.0.0
+# Edit .env to change the channel or pin to a specific version
+nano .env
+
+# Options for PICPEAK_CHANNEL:
+# - stable    (recommended, production-ready)
+# - beta      (early access to new features)
+# - v2.3.0    (pin to specific stable version)
+# - v2.3.0-beta.1  (pin to specific beta version)
 
 # Then pull and restart
 docker compose -f docker-compose.production.yml pull
 docker compose -f docker-compose.production.yml up -d
 ```
+
+The admin dashboard will notify you when updates are available for your configured channel.
 
 ### Database Migrations
 

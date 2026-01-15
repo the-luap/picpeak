@@ -392,11 +392,21 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
       .first();
 
     if (oldWatermarkLogoSetting && oldWatermarkLogoSetting.setting_value) {
-      const oldPath = JSON.parse(oldWatermarkLogoSetting.setting_value);
+      let oldPath;
       try {
-        await fs.unlink(oldPath);
-      } catch (error) {
-        console.error('Failed to delete old watermark logo:', error);
+        // Try to parse as JSON first (for JSON-stringified paths)
+        oldPath = JSON.parse(oldWatermarkLogoSetting.setting_value);
+      } catch (e) {
+        // If it's not valid JSON, use the raw value
+        oldPath = oldWatermarkLogoSetting.setting_value;
+      }
+
+      if (oldPath && typeof oldPath === 'string') {
+        try {
+          await fs.unlink(oldPath);
+        } catch (error) {
+          console.error('Failed to delete old watermark logo:', error);
+        }
       }
     }
 
@@ -421,13 +431,13 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
     await db('app_settings')
       .insert({
         setting_key: 'branding_watermark_logo_url',
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         setting_type: 'branding',
         updated_at: new Date()
       })
       .onConflict('setting_key')
       .merge({
-        setting_value: publicPath,
+        setting_value: JSON.stringify(publicPath),
         updated_at: new Date()
       });
 

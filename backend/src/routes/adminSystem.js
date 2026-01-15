@@ -7,6 +7,7 @@ const path = require('path');
 const os = require('os');
 const { formatBoolean } = require('../utils/dbCompat');
 const logger = require('../utils/logger');
+const { checkForUpdates, getCurrentChannel } = require('../services/updateCheckService');
 const router = express.Router();
 
 // Get system version
@@ -22,16 +23,45 @@ router.get('/version', adminAuth, requirePermission('settings.view'), async (req
     } catch (err) {
       console.error('Could not read package.json:', err);
     }
-    
+
+    const channel = getCurrentChannel(backendVersion);
+
     res.json({
       backend: backendVersion,
       frontend: '1.0.0', // This will be set by frontend
       node: process.version,
-      environment: process.env.NODE_ENV || 'production'
+      environment: process.env.NODE_ENV || 'production',
+      channel: channel
     });
   } catch (error) {
     console.error('Error fetching version:', error);
     res.status(500).json({ error: 'Failed to fetch version information' });
+  }
+});
+
+// Check for updates
+router.get('/updates', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
+    // Check if update checking is enabled
+    const updateCheckEnabled = process.env.UPDATE_CHECK_ENABLED !== 'false';
+
+    if (!updateCheckEnabled) {
+      return res.json({
+        enabled: false,
+        message: 'Update checking is disabled'
+      });
+    }
+
+    const forceRefresh = req.query.refresh === 'true';
+    const updateInfo = await checkForUpdates(forceRefresh);
+
+    res.json({
+      enabled: true,
+      ...updateInfo
+    });
+  } catch (error) {
+    logger.error('Error checking for updates:', error);
+    res.status(500).json({ error: 'Failed to check for updates' });
   }
 });
 

@@ -3,6 +3,81 @@
  * These templates support the RBAC (Role-Based Access Control) feature
  */
 exports.up = async function(knex) {
+  // First, ensure the email_templates table has multilingual columns
+  // This is needed for fresh installations where legacy migrations don't run
+  const columnInfo = await knex('email_templates').columnInfo();
+
+  if (!columnInfo.subject_en) {
+    // Need to add multilingual columns
+    console.log('Adding multilingual columns to email_templates table...');
+
+    // Check if we're using SQLite or PostgreSQL
+    const client = knex.client.config.client;
+    const isSqlite = client === 'sqlite3' || client === 'better-sqlite3';
+
+    if (isSqlite) {
+      // SQLite doesn't support column rename directly in all versions
+      // We need to recreate the table with new structure
+
+      // Get existing data
+      const existingData = await knex('email_templates').select('*');
+
+      // Drop the old table
+      await knex.schema.dropTable('email_templates');
+
+      // Create new table with multilingual columns
+      await knex.schema.createTable('email_templates', (table) => {
+        table.increments('id').primary();
+        table.string('template_key').unique().notNullable();
+        table.string('subject_en');
+        table.string('subject_de');
+        table.text('body_html_en');
+        table.text('body_html_de');
+        table.text('body_text_en');
+        table.text('body_text_de');
+        table.json('variables');
+        table.datetime('updated_at').defaultTo(knex.fn.now());
+      });
+
+      // Re-insert existing data with column mapping
+      for (const row of existingData) {
+        await knex('email_templates').insert({
+          template_key: row.template_key,
+          subject_en: row.subject,
+          subject_de: row.subject, // Copy to German as default
+          body_html_en: row.body_html,
+          body_html_de: row.body_html,
+          body_text_en: row.body_text,
+          body_text_de: row.body_text,
+          variables: row.variables,
+          updated_at: row.updated_at
+        });
+      }
+
+      console.log('Migrated email_templates table to multilingual structure');
+    } else {
+      // PostgreSQL supports ALTER TABLE for column operations
+      await knex.schema.alterTable('email_templates', (table) => {
+        table.renameColumn('subject', 'subject_en');
+        table.renameColumn('body_html', 'body_html_en');
+        table.renameColumn('body_text', 'body_text_en');
+      });
+
+      await knex.schema.alterTable('email_templates', (table) => {
+        table.string('subject_de');
+        table.text('body_html_de');
+        table.text('body_text_de');
+      });
+
+      // Copy English values to German as defaults
+      await knex('email_templates').update({
+        subject_de: knex.raw('subject_en'),
+        body_html_de: knex.raw('body_html_en'),
+        body_text_de: knex.raw('body_text_en')
+      });
+    }
+  }
+
   // Check which templates already exist
   const existingTemplates = await knex('email_templates')
     .select('template_key')

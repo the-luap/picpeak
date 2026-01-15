@@ -90,38 +90,50 @@ router.get('/:slug/photo/:photoId/view', verifyGalleryAccess, async (req, res) =
     }, 'view');
     
     // Get protection settings from event
+    const eventProtectionLevel = req.event.protection_level || protectionLevel;
     const protectionSettings = {
-      protectionLevel: req.event.protection_level || protectionLevel,
+      protectionLevel: eventProtectionLevel,
       quality: req.event.image_quality || 85,
       addFingerprint: req.event.add_fingerprint !== false,
-      fragmentImage: protectionLevel === 'maximum'
+      fragmentImage: eventProtectionLevel === 'maximum'
     };
-    
+
     // Build full path to photo
     const photoPath = path.join(getStoragePath(), 'events/active', req.event.slug, photo.path);
-    
-    // Process image with protection
-    const processedImage = await secureImageService.processProtectedImage(photoPath, protectionSettings);
-    
-    // Apply watermark if enabled
+
+    // For basic/standard protection without special features, serve original file
+    // This avoids unnecessary recompression
+    const needsProcessing = eventProtectionLevel === 'enhanced' ||
+                            eventProtectionLevel === 'maximum' ||
+                            protectionSettings.addFingerprint;
+
     let finalImage;
-    if (processedImage.type === 'fragmented') {
-      // Return fragmented image data for canvas reconstruction
-      return res.json({
-        type: 'fragmented',
-        fragments: processedImage.fragments.map(f => ({
-          index: f.index,
-          row: f.row,
-          col: f.col,
-          data: f.buffer.toString('base64'),
-          position: f.position
-        })),
-        dimensions: processedImage.originalDimensions,
-        fragmentDimensions: processedImage.fragmentDimensions
-      });
+
+    if (!needsProcessing) {
+      // Serve original file without processing
+      const fs = require('fs').promises;
+      finalImage = await fs.readFile(photoPath);
     } else {
-      const watermarkSettings = await watermarkService.getWatermarkSettings();
-      finalImage = await watermarkService.applyWatermark(photoPath, watermarkSettings);
+      // Process image with protection measures
+      const processedImage = await secureImageService.processProtectedImage(photoPath, protectionSettings);
+
+      if (processedImage.type === 'fragmented') {
+        // Return fragmented image data for canvas reconstruction
+        return res.json({
+          type: 'fragmented',
+          fragments: processedImage.fragments.map(f => ({
+            index: f.index,
+            row: f.row,
+            col: f.col,
+            data: f.buffer.toString('base64'),
+            position: f.position
+          })),
+          dimensions: processedImage.originalDimensions,
+          fragmentDimensions: processedImage.fragmentDimensions
+        });
+      }
+
+      finalImage = processedImage;
     }
     
     // Set security headers

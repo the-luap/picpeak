@@ -157,6 +157,8 @@ class SecureImageService {
 
   /**
    * Process image with protection measures
+   * For basic/standard protection without fingerprinting, returns original file
+   * For enhanced/maximum protection, applies quality reduction and fingerprinting
    */
   async processProtectedImage(imagePath, options = {}) {
     const {
@@ -169,11 +171,58 @@ class SecureImageService {
     } = options;
 
     try {
+      // For basic protection level, always return original file without processing
+      if (protectionLevel === 'basic') {
+        return await fs.readFile(imagePath);
+      }
+
+      // For standard protection without fingerprinting, return original file
+      // This avoids unnecessary recompression when no protection features are needed
+      if (protectionLevel === 'standard' && !addFingerprint && !fragmentImage) {
+        return await fs.readFile(imagePath);
+      }
+
+      // Get metadata to check if processing is actually needed
+      const metadata = await sharp(imagePath).metadata();
+
+      // For standard protection with fingerprint only (no resize needed, no quality change),
+      // we can add fingerprint without full recompression by preserving format
+      const needsResize = metadata.width > maxWidth || metadata.height > maxHeight;
+      const needsQualityReduction = protectionLevel === 'enhanced' || protectionLevel === 'maximum';
+
+      // If standard protection and only fingerprinting is needed, and image doesn't need resize,
+      // just add metadata without recompressing
+      if (protectionLevel === 'standard' && addFingerprint && !needsResize) {
+        let image = sharp(imagePath);
+
+        // Add fingerprint to metadata without changing image quality
+        const fingerprint = crypto.randomBytes(16).toString('hex');
+
+        // Preserve original format with high quality
+        const format = metadata.format || 'jpeg';
+        if (format === 'png') {
+          image = image.png({ compressionLevel: 6 });
+        } else if (format === 'webp') {
+          image = image.webp({ quality: 95 });
+        } else {
+          image = image.jpeg({ quality: 100, mozjpeg: true });
+        }
+
+        image = image.withMetadata({
+          exif: {
+            [sharp.EXIF.IFD0.ImageDescription]: `Protected:${fingerprint}`
+          }
+        });
+
+        return await image.toBuffer();
+      }
+
+      // For enhanced/maximum protection or when resize is needed, do full processing
       let image = sharp(imagePath);
-      const metadata = await image.metadata();
+      let effectiveQuality = quality;
 
       // Resize if too large
-      if (metadata.width > maxWidth || metadata.height > maxHeight) {
+      if (needsResize) {
         image = image.resize(maxWidth, maxHeight, {
           fit: 'inside',
           withoutEnlargement: true
@@ -182,18 +231,26 @@ class SecureImageService {
 
       // Apply quality reduction for protection
       if (protectionLevel === 'enhanced') {
-        quality = Math.min(quality, 70);
+        effectiveQuality = Math.min(quality, 70);
       } else if (protectionLevel === 'maximum') {
-        quality = Math.min(quality, 60);
+        effectiveQuality = Math.min(quality, 60);
       }
 
-      // Convert to appropriate format
-      image = image.jpeg({ quality, progressive: true });
+      // Preserve original format when possible, apply quality settings
+      const format = metadata.format || 'jpeg';
+      if (format === 'png' && !needsQualityReduction) {
+        image = image.png({ compressionLevel: 6 });
+      } else if (format === 'webp') {
+        image = image.webp({ quality: effectiveQuality });
+      } else {
+        // JPEG or when quality reduction is needed (convert to JPEG)
+        image = image.jpeg({ quality: effectiveQuality, progressive: true });
+      }
 
       // Add invisible watermark/fingerprint
       if (addFingerprint) {
         const fingerprint = crypto.randomBytes(16).toString('hex');
-        
+
         // Embed fingerprint in metadata
         image = image.withMetadata({
           exif: {

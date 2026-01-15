@@ -1037,6 +1037,20 @@
       "error": "Error",
       "checking": "Checking..."
     },
+    "updates": {
+      "available": "Update Available",
+      "newVersion": "Version {{version}} is available",
+      "currentVersion": "Current: {{version}}",
+      "channel": "Channel: {{channel}}",
+      "channelStable": "Stable",
+      "channelBeta": "Beta",
+      "beta": "BETA",
+      "viewReleaseNotes": "View Release Notes",
+      "updateAvailableShort": "v{{version}} available",
+      "checkForUpdates": "Check for Updates",
+      "upToDate": "You're up to date",
+      "lastChecked": "Last checked: {{time}}"
+    },
     "notifications": "Notifications",
     "viewAllNotifications": "View all notifications",
     "noNotifications": "No new notifications",
