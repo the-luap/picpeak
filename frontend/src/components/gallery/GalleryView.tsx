@@ -608,9 +608,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             );
           }
           
-          // Upload button only on desktop when sidebar is shown
+          // Upload button for sidebar layouts (shown on both mobile and desktop)
           const allowUploads = data?.event?.allow_user_uploads || event?.allow_user_uploads;
-          if (allowUploads && showSidebar && !isMobile) {
+          if (allowUploads && showSidebar) {
             items.push(
               <Button
                 key="upload-button"
@@ -619,7 +619,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
                 leftIcon={<Upload className="w-4 h-4" />}
                 onClick={() => setShowUploadModal(true)}
               >
-                {t('upload.uploadPhotos')}
+                <span className="hidden sm:inline">{t('upload.uploadPhotos')}</span>
+                <span className="sm:hidden">{t('common.upload')}</span>
               </Button>
             );
           }
