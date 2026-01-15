@@ -444,7 +444,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             </p>
           )}
           <p className="text-xs sm:text-sm text-neutral-500">
-            {brandingSettings?.footer_text || '© 2024 Your Company. All rights reserved.'}
+            {brandingSettings?.footer_text || `© ${new Date().getFullYear()}${brandingSettings?.company_name ? ` ${brandingSettings.company_name}` : ''}. All rights reserved.`}
             {!brandingSettings?.hide_powered_by && (
               <> | Powered by <span className="font-semibold">PicPeak</span></>
             )}

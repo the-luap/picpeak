@@ -15,7 +15,7 @@ export const BrandingPage: React.FC = () => {
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>({
     company_name: '',
     company_tagline: '',
-    footer_text: '© 2024 Your Company. All rights reserved.',
+    footer_text: '',
     support_email: '',
     watermark_enabled: false,
     watermark_position: 'bottom-right',
@@ -307,7 +307,7 @@ export const BrandingPage: React.FC = () => {
                 onChange={(e) => handleBrandingChange('footer_text', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 rows={2}
-                placeholder="© 2024 Your Company. All rights reserved."
+                placeholder={`© ${new Date().getFullYear()} Your Company. All rights reserved.`}
               />
             </div>
           </div>
