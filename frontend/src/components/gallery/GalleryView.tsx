@@ -380,12 +380,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       }
     });
     
-    // Transform URLs for watermarks if enabled
+    // Transform full-size URLs for watermarks if enabled
+    // Note: Thumbnails are watermarked server-side at the thumbnail endpoint
     if (watermarkEnabled) {
       photos = photos.map(photo => ({
         ...photo,
-        url: `/gallery/${slug}/photo/${photo.id}`,
-        thumbnail_url: `/gallery/${slug}/photo/${photo.id}` // Use watermarked version for thumbnails too
+        url: `/gallery/${slug}/photo/${photo.id}`
       }));
     }
     
