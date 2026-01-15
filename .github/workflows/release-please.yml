@@ -34,38 +34,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Docker images will be built and tagged with this version." >> $GITHUB_STEP_SUMMARY
 
-  # Sync version to package.json files after release
-  sync-versions:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Update package.json versions
-        run: |
-          VERSION="${{ needs.release-please.outputs.version }}"
-          echo "Updating package.json files to version $VERSION"
-
-          # Update backend package.json
-          cd backend
-          npm version $VERSION --no-git-tag-version --allow-same-version
-          cd ..
-
-          # Update frontend package.json
-          cd frontend
-          npm version $VERSION --no-git-tag-version --allow-same-version
-          cd ..
-
-      - name: Commit version updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add backend/package.json frontend/package.json
-          git diff --staged --quiet || git commit -m "chore: sync package.json versions to ${{ needs.release-please.outputs.version }}"
-          git push
