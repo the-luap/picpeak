@@ -79,7 +79,51 @@ Note on Docker file permissions (PUID/PGID)
 - Example in `.env`:
   - `PUID=1000`
   - `PGID=1000`
-- Without this, creating events, uploads, thumbnails, or logs can fail with “Permission denied”.
+- Without this, creating events, uploads, thumbnails, or logs can fail with "Permission denied".
+
+## 🔄 Release Channels
+
+PicPeak offers two release channels for different needs:
+
+### Stable Channel (Recommended)
+- Production-ready releases
+- Thoroughly tested before release
+- Docker tags: `stable`, `latest`, or specific version like `v2.3.0`
+
+### Beta Channel
+- Early access to new features
+- May contain bugs or incomplete functionality
+- Docker tags: `beta` or specific version like `v2.3.0-beta.1`
+
+### Switching Channels
+
+Set the `PICPEAK_CHANNEL` environment variable in your `.env` file:
+
+```bash
+# For stable releases (default)
+PICPEAK_CHANNEL=stable
+
+# For beta releases
+PICPEAK_CHANNEL=beta
+
+# For a specific version
+PICPEAK_CHANNEL=v2.3.0
+```
+
+Then update your containers:
+
+```bash
+docker-compose -f docker-compose.production.yml pull
+docker-compose -f docker-compose.production.yml up -d
+```
+
+### Update Notifications
+
+The admin dashboard automatically notifies you when updates are available for your channel. To disable update checks, set:
+
+```bash
+UPDATE_CHECK_ENABLED=false
+```
 
 ## 📖 Documentation
 

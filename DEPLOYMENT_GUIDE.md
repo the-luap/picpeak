@@ -9,6 +9,7 @@ This guide covers multiple deployment options for PicPeak, from simple local set
 - [Configuration](#-configuration)
 - [Deployment](#-deployment)
 - [First Login](#-first-login)
+- [Release Channels](#-release-channels)
 - [Reverse Proxy Setup](#-reverse-proxy-setup)
 - [External Media Library](#external-media-library)
 - [Maintenance](#-maintenance)
@@ -52,7 +53,14 @@ docker compose -f docker-compose.production.yml up -d
 docker compose -f docker-compose.production.yml logs -f
 ```
 
-Available image tags: `latest` (stable), `main`, `develop`, `v1.0.0` (version tags)
+**Available image tags:**
+| Channel | Tags | Description |
+|---------|------|-------------|
+| Stable | `stable`, `latest`, `v2.3.0` | Production-ready releases |
+| Beta | `beta`, `v2.3.0-beta.1` | Early access to new features |
+| Branch | `main`, `beta` | Latest from each branch |
+
+To select a channel, set `PICPEAK_CHANNEL` in your `.env` file (see [Release Channels](#release-channels) section)
 
 ### Option 3: Build from Source
 
@@ -344,6 +352,61 @@ ADMIN_EMAIL=your-email@yourdomain.com
 
 **Note**: This only works on first deployment. To change the admin email after deployment, you'll need to update it in the database or create a new admin user through the admin panel.
 
+## 🔄 Release Channels
+
+PicPeak offers two release channels for different needs:
+
+### Stable Channel (Recommended)
+- Production-ready releases
+- Thoroughly tested before release
+- Docker tags: `stable`, `latest`, or specific version like `v2.3.0`
+
+### Beta Channel
+- Early access to new features
+- May contain bugs or incomplete functionality
+- Docker tags: `beta` or specific version like `v2.3.0-beta.1`
+
+### Configuring Your Channel
+
+Set the `PICPEAK_CHANNEL` environment variable in your `.env` file:
+
+```bash
+# For stable releases (default)
+PICPEAK_CHANNEL=stable
+
+# For beta releases
+PICPEAK_CHANNEL=beta
+
+# For a specific version
+PICPEAK_CHANNEL=v2.3.0
+```
+
+The `docker-compose.production.yml` uses this variable for both backend and frontend images:
+```yaml
+image: ghcr.io/the-luap/picpeak/backend:${PICPEAK_CHANNEL:-stable}
+```
+
+### Switching Channels
+
+To switch between channels:
+
+```bash
+# Edit your .env file
+nano .env
+# Change PICPEAK_CHANNEL=stable to PICPEAK_CHANNEL=beta (or vice versa)
+
+# Pull the new images and restart
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
+
+### Update Notifications
+
+The admin dashboard automatically notifies you when updates are available for your channel. This feature:
+- Checks GitHub releases hourly (cached to avoid rate limits)
+- Shows updates relevant to your current channel (stable or beta)
+- Can be disabled by setting `UPDATE_CHECK_ENABLED=false` in your `.env`
+
 ## 🔒 Reverse Proxy Setup
 
 For production deployments, you should use a reverse proxy for SSL/HTTPS. The application exposes ports directly, allowing you to use any reverse proxy solution.
@@ -554,19 +617,26 @@ docker compose up -d
 docker compose ps
 ```
 
-#### Specific Version Updates
+#### Specific Version or Channel Updates
 
-To use a specific version of the images:
+To use a specific version or switch channels, update your `.env` file:
 
 ```bash
-# Edit docker-compose.production.yml to specify version tags
-# Change: ghcr.io/the-luap/picpeak/backend:latest
-# To:     ghcr.io/the-luap/picpeak/backend:v1.0.0
+# Edit .env to change the channel or pin to a specific version
+nano .env
+
+# Options for PICPEAK_CHANNEL:
+# - stable    (recommended, production-ready)
+# - beta      (early access to new features)
+# - v2.3.0    (pin to specific stable version)
+# - v2.3.0-beta.1  (pin to specific beta version)
 
 # Then pull and restart
 docker compose -f docker-compose.production.yml pull
 docker compose -f docker-compose.production.yml up -d
 ```
+
+The admin dashboard will notify you when updates are available for your configured channel.
 
 ### Database Migrations
 

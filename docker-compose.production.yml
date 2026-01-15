@@ -38,7 +38,8 @@ services:
 
   backend:
     # Use pre-built image from GitHub Container Registry
-    image: ghcr.io/the-luap/picpeak/backend:latest
+    # PICPEAK_CHANNEL: 'stable' (default), 'beta', or specific version like 'v2.3.0'
+    image: ghcr.io/the-luap/picpeak/backend:${PICPEAK_CHANNEL:-stable}
     container_name: picpeak-backend
     env_file: .env
     environment:
@@ -46,6 +47,7 @@ services:
       - DB_HOST=${DB_HOST:-postgres}
       - REDIS_HOST=redis
       - PHOTOS_DIR=/app/storage/events
+      - PICPEAK_RELEASE_CHANNEL=${PICPEAK_CHANNEL:-stable}
     volumes:
       - ${APP_STORAGE}:/app/storage
       - ${LOGS}:/app/logs
@@ -69,7 +71,8 @@ services:
 
   frontend:
     # Use pre-built image from GitHub Container Registry
-    image: ghcr.io/the-luap/picpeak/frontend:latest
+    # Uses same channel as backend for consistency
+    image: ghcr.io/the-luap/picpeak/frontend:${PICPEAK_CHANNEL:-stable}
     container_name: picpeak-frontend
     # Note: Pre-built frontend uses Nginx to proxy /api to backend:3001.
     # Prefer keeping API base as '/api' in builds to avoid CORS.
