@@ -137,7 +137,7 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab
       if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: 'trivy-backend.sarif'
         category: 'backend-vulnerabilities'
@@ -248,7 +248,7 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab
       if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: 'trivy-frontend.sarif'
         category: 'frontend-vulnerabilities'
