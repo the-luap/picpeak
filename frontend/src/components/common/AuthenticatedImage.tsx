@@ -7,7 +7,7 @@ import {
   resolveSlugFromRequestUrl,
 } from '../../utils/galleryAuthStorage';
 
-interface AuthenticatedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface AuthenticatedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'onLoad'> {
   src: string;
   fallbackSrc?: string;
   useWatermark?: boolean;
@@ -29,6 +29,7 @@ interface AuthenticatedImageProps extends React.ImgHTMLAttributes<HTMLImageEleme
   detectDevTools?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
+  onLoad?: () => void;
 }
 
 export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
@@ -54,6 +55,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
   detectDevTools,
   protectionLevel,
   useEnhancedProtection,
+  onLoad,
   ...props
 }) => {
   const unusedProps = {
@@ -221,6 +223,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
     img.onload = () => {
       imageRef.current = img;
       drawToCanvas();
+      onLoad?.();
     };
 
     img.onerror = (e) => {
@@ -235,7 +238,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
       img.onload = null;
       img.onerror = null;
     };
-  }, [imageSrc, useCanvasRendering, drawToCanvas]);
+  }, [imageSrc, useCanvasRendering, drawToCanvas, onLoad]);
 
   if (isLoading) {
     return (
@@ -282,5 +285,5 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
     );
   }
 
-  return <img src={imageSrc} alt={alt} {...props} />;
+  return <img src={imageSrc} alt={alt} onLoad={onLoad} {...props} />;
 };

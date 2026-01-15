@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
-import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star, Loader2 } from 'lucide-react';
 import type { Photo } from '../../types';
 import { useDownloadPhoto } from '../../hooks/useGallery';
 import { AuthenticatedImage } from '../common';
@@ -62,12 +62,18 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'rating'; rating?: number }>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     const onResize = () => setIsSmallScreen(window.innerWidth < 640);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Reset image loaded state when changing photos
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [currentIndex]);
   
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
@@ -488,6 +494,13 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
         }}
       >
+        {/* Loading spinner */}
+        {!imageLoaded && currentPhoto.media_type !== 'video' && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <Loader2 className="w-12 h-12 text-white animate-spin" />
+          </div>
+        )}
+
         {currentPhoto.media_type === 'video' ? (
           <VideoPlayer
             src={currentPhoto.url}
@@ -505,8 +518,10 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             style={{
               transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
               transition: isDragging ? 'none' : 'transform 0.2s',
+              opacity: imageLoaded ? 1 : 0,
             }}
             draggable={false}
+            onLoad={() => setImageLoaded(true)}
             useWatermark={useEnhancedProtection}
             watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
             isGallery={true}
@@ -524,7 +539,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
             onProtectionViolation={(violationType) => {
               console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
-            
+
             // Track analytics
             if (typeof window !== 'undefined' && (window as any).umami) {
               (window as any).umami.track('lightbox_protection_violation', {
@@ -534,7 +549,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 zoom
               });
             }
-            
+
             // For maximum protection, close lightbox on violation
             if (protectionLevel === 'maximum' &&
                 ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {

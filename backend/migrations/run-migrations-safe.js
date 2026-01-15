@@ -67,26 +67,37 @@ async function runMigrationSafely(filepath) {
     const migrationPath = path.join(__dirname, filepath);
     const migration = require(migrationPath);
     const filename = path.basename(filepath);
-    
+
     if (migration.up) {
       console.log(`Running migration: ${filepath}`);
-      
+
       // Run migration in a transaction if possible
+      // IMPORTANT: Include the migrations table insert INSIDE the transaction
+      // to ensure atomicity between schema changes and tracking
       if (db.client.config.client === 'pg') {
         await db.transaction(async (trx) => {
           await migration.up(trx);
+          // Insert migration record inside transaction for atomicity
+          await trx('migrations').insert({ filename });
         });
       } else {
         await migration.up(db);
+        await db('migrations').insert({ filename });
       }
-      
-      await db('migrations').insert({ filename });
+
       console.log(`Migration ${filepath} completed successfully`);
     }
   } catch (error) {
     // Check if error is because schema already exists
-    if (error.code === '42P07' || // PostgreSQL: relation already exists
-        error.code === 'SQLITE_ERROR' && error.message.includes('already exists')) {
+    // PostgreSQL error codes:
+    // - 42P07: duplicate_table (relation already exists)
+    // - 42701: duplicate_column (column already exists)
+    // - 42710: duplicate_object (constraint, index, etc. already exists)
+    // - 23505: unique_violation (migration record already exists)
+    const schemaExistsErrors = ['42P07', '42701', '42710', '23505'];
+    const isSQLiteAlreadyExists = error.code === 'SQLITE_ERROR' && error.message.includes('already exists');
+
+    if (schemaExistsErrors.includes(error.code) || isSQLiteAlreadyExists) {
       console.log(`Migration ${filepath} - schema already exists, marking as applied`);
       await markMigrationAsApplied(path.basename(filepath));
     } else {

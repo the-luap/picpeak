@@ -172,7 +172,13 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
     // Get filter parameters from query
     const { filter, guest_id } = req.query;
-    
+
+    // Get watermark settings to generate cache-busting version for URLs
+    const watermarkSettings = await watermarkService.getWatermarkSettings();
+    const wmVersion = watermarkSettings?.enabled
+      ? `wm=${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
+      : '';
+
     // First get all photos
     let photos = await db('photos')
       .where('photos.event_id', req.event.id)
@@ -327,15 +333,17 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       categories: categories,
       photos: photos.map(photo => {
         const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
-        const photoUrl = useJwtUrl ? 
-          `/api/gallery/${req.params.slug}/photo/${photo.id}` : 
+        // Add watermark version to URLs for cache busting when settings change
+        const wmQuery = wmVersion ? `?${wmVersion}` : '';
+        const photoUrl = useJwtUrl ?
+          `/api/gallery/${req.params.slug}/photo/${photo.id}${wmQuery}` :
           `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`;
-        
+
         return {
           id: photo.id,
           filename: photo.filename,
           url: photoUrl,
-          thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}` : null,
+          thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}${wmQuery}` : null,
           secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
@@ -754,6 +762,20 @@ router.get('/:slug/photo/:photoId',
       // Get watermark settings
       const watermarkSettings = await watermarkService.getWatermarkSettings();
 
+      // Generate ETag based on photo id, modification time, and watermark settings
+      // This ensures cache invalidation when watermark settings change
+      const fs = require('fs');
+      const stat = fs.statSync(filePath);
+      const watermarkHash = watermarkSettings?.enabled
+        ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
+        : '-nowm';
+      const etag = `"${photoId}-${stat.mtime.getTime()}${watermarkHash}"`;
+
+      // Check if client has valid cached version
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
       if (watermarkSettings && watermarkSettings.enabled) {
         // Apply watermark and send
         const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
@@ -761,6 +783,7 @@ router.get('/:slug/photo/:photoId',
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
           'Cache-Control': 'private, max-age=1800', // Cache for 30 minutes
+          'ETag': etag,
           'X-Protection-Level': 'basic'
         });
 
@@ -769,6 +792,7 @@ router.get('/:slug/photo/:photoId',
         // Send original file with basic protection headers
         res.set({
           'Cache-Control': 'private, max-age=1800',
+          'ETag': etag,
           'X-Protection-Level': 'basic'
         });
         // Ensure absolute path for res.sendFile
@@ -820,17 +844,31 @@ router.get('/:slug/thumbnail/:photoId',
         'thumbnail'
       );
 
+      // Check if watermarks are enabled and apply to thumbnail
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+
+      // Generate ETag based on photo id, thumbnail modification time, and watermark settings
+      const fs = require('fs');
+      const stat = fs.statSync(thumbPath);
+      const watermarkHash = watermarkSettings?.enabled
+        ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
+        : '-nowm';
+      const etag = `"thumb-${photoId}-${stat.mtime.getTime()}${watermarkHash}"`;
+
+      // Check if client has valid cached version
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
       // Set appropriate headers with enhanced security
       res.set({
         'Content-Type': 'image/jpeg',
         'Cache-Control': 'private, max-age=1800', // Reduced cache time
         'Cross-Origin-Resource-Policy': 'cross-origin',
         'X-Content-Type-Options': 'nosniff',
-        'X-Protected-Thumbnail': 'true'
+        'X-Protected-Thumbnail': 'true',
+        'ETag': etag
       });
-
-      // Check if watermarks are enabled and apply to thumbnail
-      const watermarkSettings = await watermarkService.getWatermarkSettings();
 
       if (watermarkSettings && watermarkSettings.enabled) {
         // Apply watermark to thumbnail
