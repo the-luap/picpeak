@@ -5,6 +5,23 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/the-luap/picpeak/compare/v2.2.4...v2.3.0) (2026-01-15)
+
+
+### Features
+
+* beta/stable release channels with update notifications and bug fixes ([3c7dc20](https://github.com/the-luap/picpeak/commit/3c7dc2013fc3b57712ddf16db85f495b3cc7bfd7))
+* beta/stable release channels with update notifications and bug fixes ([#98](https://github.com/the-luap/picpeak/issues/98)) ([3c7dc20](https://github.com/the-luap/picpeak/commit/3c7dc2013fc3b57712ddf16db85f495b3cc7bfd7))
+* implement beta/stable release channels with update notifications ([617e778](https://github.com/the-luap/picpeak/commit/617e778a48e0f0c24fcb8441d00ed2a816f19c03))
+
+
+### Bug Fixes
+
+* display new password after admin password reset ([bd8b885](https://github.com/the-luap/picpeak/commit/bd8b885f7f060160eb852870d143f25ce628f3db))
+* gallery thumbnails not loading (404 errors) [#96](https://github.com/the-luap/picpeak/issues/96) ([e3c3c4c](https://github.com/the-luap/picpeak/commit/e3c3c4c951c52de99bd0afd95b08d119153997b4))
+* prevent unnecessary image recompression and fix SQLite migration [#95](https://github.com/the-luap/picpeak/issues/95) ([3cdc0ea](https://github.com/the-luap/picpeak/commit/3cdc0ea7152e63cd72124a91394741a6e6904af3))
+* watermark upload JSON parsing and image quality preservation ([0e3b50d](https://github.com/the-luap/picpeak/commit/0e3b50d1b6a2dc532ebdc0981f81f77722e8f23a))
+
 ## [2.2.4](https://github.com/the-luap/picpeak/compare/v2.2.3...v2.2.4) (2026-01-08)
 
 
