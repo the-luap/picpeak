@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2](https://github.com/the-luap/picpeak/compare/v2.3.1...v2.3.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* watermark thumbnails, custom logo display, and German translations ([f843e4c](https://github.com/the-luap/picpeak/commit/f843e4c25cef02eef354fd3ee25824e20e4f8fc8))
+* watermark thumbnails, custom logo display, and German translations ([ea20446](https://github.com/the-luap/picpeak/commit/ea20446a797a00cf45dbe7bf6f06574a79c4d8a6))
+
 ## [2.3.1](https://github.com/the-luap/picpeak/compare/v2.3.0...v2.3.1) (2026-01-15)
 
 
