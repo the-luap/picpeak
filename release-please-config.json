@@ -22,7 +22,18 @@
     ".": {
       "release-type": "simple",
       "changelog-path": "CHANGELOG.md",
-      "extra-files": []
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "backend/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/package.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }
