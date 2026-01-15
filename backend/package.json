@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "migrate": "node migrations/run-migrations.js",
     "migrate:safe": "node migrations/run-migrations-safe.js",
+    "generate:watermarks": "node scripts/generate-watermarks.js",
     "test": "jest",
     "lint": "eslint src/"
   },

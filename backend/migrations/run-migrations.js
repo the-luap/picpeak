@@ -26,11 +26,22 @@ async function runMigration(filepath) {
   const migrationPath = path.join(__dirname, filepath);
   const migration = require(migrationPath);
   const filename = path.basename(filepath);
-  
+
   if (migration.up) {
     console.log(`Running migration: ${filepath}`);
-    await migration.up(db);
-    await db('migrations').insert({ filename });
+
+    // Run migration in a transaction if PostgreSQL to ensure atomicity
+    // between schema changes and migration tracking
+    if (db.client.config.client === 'pg') {
+      await db.transaction(async (trx) => {
+        await migration.up(trx);
+        await trx('migrations').insert({ filename });
+      });
+    } else {
+      await migration.up(db);
+      await db('migrations').insert({ filename });
+    }
+
     console.log(`Migration ${filepath} completed`);
   }
 }

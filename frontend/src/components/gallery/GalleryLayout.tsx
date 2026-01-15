@@ -366,7 +366,10 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     className={`${heroLogoSize.className} w-auto object-contain mx-auto`}
                     style={{
                       ...(heroLogoSize.style || {}),
-                      filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                      // Only apply brightness/invert filter to default logo; custom logos display as-is
+                      filter: brandingSettings?.logo_url
+                        ? 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                        : 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
                     }}
                   />
                   {shouldShowCompanyName() && brandingSettings?.company_name && (
@@ -441,7 +444,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             </p>
           )}
           <p className="text-xs sm:text-sm text-neutral-500">
-            {brandingSettings?.footer_text || '© 2024 Your Company. All rights reserved.'}
+            {brandingSettings?.footer_text || `© ${new Date().getFullYear()}${brandingSettings?.company_name ? ` ${brandingSettings.company_name}` : ''}. All rights reserved.`}
             {!brandingSettings?.hide_powered_by && (
               <> | Powered by <span className="font-semibold">PicPeak</span></>
             )}

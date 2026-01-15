@@ -23,6 +23,8 @@ const { clearShareLinkSettingsCache } = require('../services/shareLinkService');
 const { resetSecurityConfigCache } = require('../utils/authSecurity');
 const router = express.Router();
 const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
+const watermarkService = require('../services/watermarkService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -196,6 +198,9 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       hide_powered_by
     } = req.body;
 
+    // Get current watermark settings hash for change detection
+    const oldSettingsHash = await watermarkService.getSettingsHash();
+
     const brandingSettings = {
       company_name,
       company_tagline,
@@ -306,7 +311,40 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
 
     clearPublicSiteCache();
 
-    res.json({ message: 'Branding settings updated successfully' });
+    // Check if watermark settings changed and trigger regeneration
+    const newSettingsHash = await watermarkService.getSettingsHash();
+    let watermarkRegenerationStarted = false;
+
+    if (oldSettingsHash !== newSettingsHash) {
+      // Clear watermark cache
+      watermarkService.clearCache();
+
+      // Check if watermarking is now enabled or settings changed
+      const currentSettings = await watermarkService.getWatermarkSettings();
+
+      if (currentSettings && currentSettings.enabled) {
+        // Start background regeneration of all watermarks
+        console.log('Watermark settings changed, starting background regeneration');
+        watermarkGeneratorService.regenerateAll()
+          .then(result => {
+            console.log(`Watermark regeneration completed: ${result.success}/${result.total} successful`);
+          })
+          .catch(err => {
+            console.error('Watermark regeneration failed:', err);
+          });
+        watermarkRegenerationStarted = true;
+      } else {
+        // Watermarking was disabled, clear all pre-generated watermarks
+        console.log('Watermarking disabled, clearing pre-generated watermarks');
+        watermarkGeneratorService.clearAllWatermarks()
+          .catch(err => console.error('Failed to clear watermarks:', err));
+      }
+    }
+
+    res.json({
+      message: 'Branding settings updated successfully',
+      watermarkRegenerationStarted
+    });
   } catch (error) {
     console.error('Branding update error:', error);
     res.status(500).json({ error: 'Failed to update branding settings' });
@@ -441,9 +479,27 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
         updated_at: new Date()
       });
 
-    res.json({ 
+    // Trigger watermark regeneration since the logo changed
+    watermarkService.clearCache();
+    const currentSettings = await watermarkService.getWatermarkSettings();
+    let watermarkRegenerationStarted = false;
+
+    if (currentSettings && currentSettings.enabled) {
+      console.log('Watermark logo changed, starting background regeneration');
+      watermarkGeneratorService.regenerateAll()
+        .then(result => {
+          console.log(`Watermark regeneration completed: ${result.success}/${result.total} successful`);
+        })
+        .catch(err => {
+          console.error('Watermark regeneration failed:', err);
+        });
+      watermarkRegenerationStarted = true;
+    }
+
+    res.json({
       message: 'Watermark logo uploaded successfully',
-      watermarkLogoUrl: publicPath
+      watermarkLogoUrl: publicPath,
+      watermarkRegenerationStarted
     });
   } catch (error) {
     console.error('Watermark logo upload error:', error);

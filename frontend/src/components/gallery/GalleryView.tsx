@@ -203,7 +203,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         company_name: settingsData.branding_company_name || '',
         company_tagline: settingsData.branding_company_tagline || '',
         support_email: settingsData.branding_support_email || '',
-        footer_text: settingsData.branding_footer_text || '© 2024 Your Company. All rights reserved.',
+        footer_text: settingsData.branding_footer_text || '',
         watermark_enabled: settingsData.branding_watermark_enabled || false,
         logo_url: settingsData.branding_logo_url || null,
         logo_size: settingsData.branding_logo_size || 'medium',
@@ -380,12 +380,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       }
     });
     
-    // Transform URLs for watermarks if enabled
+    // Transform full-size URLs for watermarks if enabled
+    // Note: Thumbnails are watermarked server-side at the thumbnail endpoint
     if (watermarkEnabled) {
       photos = photos.map(photo => ({
         ...photo,
-        url: `/gallery/${slug}/photo/${photo.id}`,
-        thumbnail_url: `/gallery/${slug}/photo/${photo.id}` // Use watermarked version for thumbnails too
+        url: `/api/gallery/${slug}/photo/${photo.id}`
       }));
     }
     
@@ -608,9 +608,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             );
           }
           
-          // Upload button only on desktop when sidebar is shown
+          // Upload button for sidebar layouts (shown on both mobile and desktop)
           const allowUploads = data?.event?.allow_user_uploads || event?.allow_user_uploads;
-          if (allowUploads && showSidebar && !isMobile) {
+          if (allowUploads && showSidebar) {
             items.push(
               <Button
                 key="upload-button"
@@ -619,7 +619,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
                 leftIcon={<Upload className="w-4 h-4" />}
                 onClick={() => setShowUploadModal(true)}
               >
-                {t('upload.uploadPhotos')}
+                <span className="hidden sm:inline">{t('upload.uploadPhotos')}</span>
+                <span className="sm:hidden">{t('common.upload')}</span>
               </Button>
             );
           }

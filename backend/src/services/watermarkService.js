@@ -2,6 +2,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
 const { db } = require('../database/db');
+const { getStoragePath } = require('../config/storage');
 
 class WatermarkService {
   constructor() {
@@ -231,6 +232,125 @@ class WatermarkService {
    */
   clearCache() {
     this.cache.clear();
+  }
+
+  /**
+   * Get the watermarks directory path, creating it if needed
+   */
+  async getWatermarksDir() {
+    const watermarksDir = path.join(getStoragePath(), 'watermarks');
+    try {
+      await fs.access(watermarksDir);
+    } catch {
+      await fs.mkdir(watermarksDir, { recursive: true });
+    }
+    return watermarksDir;
+  }
+
+  /**
+   * Get the file extension from a filename
+   */
+  getFileExtension(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    // Map common extensions
+    if (ext === '.jpeg') return '.jpg';
+    return ext || '.jpg';
+  }
+
+  /**
+   * Generate watermarked version of a photo and save to disk
+   * @param {Object} photo - Photo object with id, filename, and path info
+   * @param {string} originalPath - Full path to the original image file
+   * @param {Object} settings - Watermark settings (optional, will fetch if not provided)
+   * @returns {Object} { success, watermarkPath, error }
+   */
+  async generateAndSaveWatermark(photo, originalPath, settings = null) {
+    try {
+      // Get settings if not provided
+      if (!settings) {
+        settings = await this.getWatermarkSettings();
+      }
+
+      // If watermarking is disabled, return early
+      if (!settings || !settings.enabled) {
+        return { success: false, watermarkPath: null, error: 'Watermarking is disabled' };
+      }
+
+      // Verify original file exists
+      try {
+        await fs.access(originalPath);
+      } catch {
+        return { success: false, watermarkPath: null, error: 'Original file not found' };
+      }
+
+      // Generate watermarked buffer using existing method
+      const watermarkedBuffer = await this.applyWatermark(originalPath, settings);
+
+      // Determine output path
+      const watermarksDir = await this.getWatermarksDir();
+      const ext = this.getFileExtension(photo.filename);
+      const outputFilename = `${photo.id}_watermarked${ext}`;
+      const outputPath = path.join(watermarksDir, outputFilename);
+
+      // Write the watermarked image to disk
+      await fs.writeFile(outputPath, watermarkedBuffer);
+
+      // Return relative path for database storage
+      const relativePath = `watermarks/${outputFilename}`;
+
+      return {
+        success: true,
+        watermarkPath: relativePath,
+        error: null
+      };
+    } catch (error) {
+      console.error(`Error generating watermark for photo ${photo.id}:`, error);
+      return {
+        success: false,
+        watermarkPath: null,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Delete a pre-generated watermark file
+   * @param {string} watermarkPath - Relative path to the watermark file
+   * @returns {boolean} - True if deleted successfully
+   */
+  async deleteWatermarkFile(watermarkPath) {
+    if (!watermarkPath) return false;
+
+    try {
+      const fullPath = path.join(getStoragePath(), watermarkPath);
+      await fs.unlink(fullPath);
+      return true;
+    } catch (error) {
+      // File might not exist, which is fine
+      if (error.code !== 'ENOENT') {
+        console.error('Error deleting watermark file:', error);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Create a hash of current watermark settings for change detection
+   * @returns {string} - Hash string of settings
+   */
+  async getSettingsHash() {
+    const settings = await this.getWatermarkSettings();
+    if (!settings) return '';
+
+    const hashData = `${settings.enabled}-${settings.logoPath || ''}-${settings.position}-${settings.opacity}-${settings.size}`;
+    // Simple hash for change detection (not cryptographic)
+    let hash = 0;
+    for (let i = 0; i < hashData.length; i++) {
+      const char = hashData.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(16);
   }
 }
 
