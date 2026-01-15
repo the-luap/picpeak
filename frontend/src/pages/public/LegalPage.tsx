@@ -144,7 +144,7 @@ export const LegalPage: React.FC = () => {
             </Link>
           </div>
           <p className="text-sm text-neutral-500 mt-4">
-            © 2024 PicPeak. All rights reserved.
+            © {new Date().getFullYear()} PicPeak. All rights reserved.
           </p>
         </div>
       </footer>

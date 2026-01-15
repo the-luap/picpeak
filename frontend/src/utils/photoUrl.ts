@@ -12,10 +12,10 @@ interface PhotoUrlOptions {
  */
 export function getPhotoUrl({ slug, photo, watermarkEnabled = false, token }: PhotoUrlOptions): string {
   if (watermarkEnabled && token) {
-    // Use the watermarked photo endpoint
-    return `/gallery/${slug}/photo/${photo.id}`;
+    // Use the watermarked photo endpoint (needs /api prefix)
+    return `/api/gallery/${slug}/photo/${photo.id}`;
   }
-  
+
   // Use the static photo URL
   return photo.url;
 }

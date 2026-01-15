@@ -203,7 +203,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         company_name: settingsData.branding_company_name || '',
         company_tagline: settingsData.branding_company_tagline || '',
         support_email: settingsData.branding_support_email || '',
-        footer_text: settingsData.branding_footer_text || '© 2024 Your Company. All rights reserved.',
+        footer_text: settingsData.branding_footer_text || '',
         watermark_enabled: settingsData.branding_watermark_enabled || false,
         logo_url: settingsData.branding_logo_url || null,
         logo_size: settingsData.branding_logo_size || 'medium',
@@ -385,7 +385,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     if (watermarkEnabled) {
       photos = photos.map(photo => ({
         ...photo,
-        url: `/gallery/${slug}/photo/${photo.id}`
+        url: `/api/gallery/${slug}/photo/${photo.id}`
       }));
     }
     
