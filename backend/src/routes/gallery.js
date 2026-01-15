@@ -12,6 +12,7 @@ const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
+const { ensureThumbnail } = require('../services/imageProcessor');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
@@ -787,29 +788,29 @@ router.get('/:slug/photo/:photoId',
 );
 
 // Serve thumbnail
-router.get('/:slug/thumbnail/:photoId', 
-  verifyGalleryAccess, 
+router.get('/:slug/thumbnail/:photoId',
+  verifyGalleryAccess,
   async (req, res) => {
     try {
       const { photoId } = req.params;
-      
+
       const photo = await db('photos')
         .where({ id: photoId, event_id: req.event.id })
         .first();
-      
-      if (!photo || !photo.thumbnail_path) {
-        return res.status(404).json({ error: 'Thumbnail not found' });
+
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
       }
-      
-      const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
-      
-      // Check if file exists
-      const fs = require('fs').promises;
-      try {
-        await fs.access(thumbPath);
-      } catch (error) {
-        return res.status(404).json({ error: 'Thumbnail file not found' });
+
+      // Ensure thumbnail exists and is valid, regenerate if needed
+      const thumbnailPath = await ensureThumbnail(photo);
+
+      if (!thumbnailPath) {
+        logger.error(`Failed to generate thumbnail for photo ${photoId}`);
+        return res.status(404).json({ error: 'Thumbnail generation failed' });
       }
+
+      const thumbPath = path.join(getStoragePath(), thumbnailPath);
 
       // Log thumbnail access
       await secureImageService.logImageAccess(
@@ -818,7 +819,7 @@ router.get('/:slug/thumbnail/:photoId',
         req.clientInfo,
         'thumbnail'
       );
-      
+
       // Set appropriate headers with enhanced security
       res.set({
         'Content-Type': 'image/jpeg',
@@ -827,7 +828,7 @@ router.get('/:slug/thumbnail/:photoId',
         'X-Content-Type-Options': 'nosniff',
         'X-Protected-Thumbnail': 'true'
       });
-      
+
       // Send file
       res.sendFile(path.resolve(thumbPath));
     } catch (error) {
