@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4](https://github.com/the-luap/picpeak/compare/v2.3.3...v2.3.4) (2026-01-15)
+
+
+### Bug Fixes
+
+* add lightbox loading spinner and watermark cache invalidation ([050ed37](https://github.com/the-luap/picpeak/commit/050ed378199eb3b15c7c7f243792f68f858803f5))
+* database migration restart bug, lightbox loading spinner, and watermark cache invalidation ([7c58749](https://github.com/the-luap/picpeak/commit/7c5874980640ae8c3d1050ce24daeb0a2aeab7a3))
+* prevent database migration restart failures ([83a4344](https://github.com/the-luap/picpeak/commit/83a4344a01de4f65c5024fdf2d177a04457ccd2f)), closes [#107](https://github.com/the-luap/picpeak/issues/107)
+
 ## [2.3.3](https://github.com/the-luap/picpeak/compare/v2.3.2...v2.3.3) (2026-01-15)
 
 
