@@ -5,6 +5,18 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/the-luap/picpeak/compare/v2.3.4...v2.4.0) (2026-01-15)
+
+
+### Features
+
+* dynamic website title from branding settings ([d29aab7](https://github.com/the-luap/picpeak/commit/d29aab7c70c5777451666fb7d5c7a9729dab684a))
+
+
+### Bug Fixes
+
+* dynamic website title from branding settings ([4701edc](https://github.com/the-luap/picpeak/commit/4701edc12ecfab27cb2d1cfb0b4ed4fd53f56cc6))
+
 ## [2.3.4](https://github.com/the-luap/picpeak/compare/v2.3.3...v2.3.4) (2026-01-15)
 
 
