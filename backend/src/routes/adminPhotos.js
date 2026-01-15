@@ -12,6 +12,7 @@ const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const { processUploadedPhotos } = require('../services/photoProcessor');
 const chunkedUpload = require('../services/chunkedUploadService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -308,7 +309,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               let thumbnailPath = null;
               try {
                 thumbnailPath = await generateThumbnail(operation.finalPath);
-                
+
                 // Update the database with thumbnail path
                 if (thumbnailPath && insertedIds[idx]) {
                   const photoId = insertedIds[idx]?.id || insertedIds[idx];
@@ -318,6 +319,14 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
                 }
               } catch (thumbError) {
                 console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
+              }
+
+              // Queue watermark generation in background (non-blocking)
+              // This pre-generates watermarked versions for fast serving in lightbox
+              if (insertedIds[idx]) {
+                const photoId = insertedIds[idx]?.id || insertedIds[idx];
+                watermarkGeneratorService.generateForPhoto(photoId)
+                  .catch(err => console.warn(`Watermark generation queued failed for photo ${photoId}:`, err.message));
               }
               
               // Add to successful uploads
@@ -461,7 +470,12 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
         }
       }
     }
-    
+
+    // Delete pre-generated watermark if exists
+    if (photo.watermark_path) {
+      await watermarkGeneratorService.deleteForPhoto(photo.id);
+    }
+
     // Remove from database
     await db('photos').where({ id: photoId }).delete();
     
@@ -582,8 +596,13 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
           }
         }
       }
+
+      // Delete pre-generated watermark
+      if (photo.watermark_path) {
+        await watermarkGeneratorService.deleteForPhoto(photo.id);
+      }
     }
-    
+
     // Delete from database
     await db('photos')
       .whereIn('id', photoIds)

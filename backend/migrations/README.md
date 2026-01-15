@@ -1,6 +1,6 @@
 # Database Migrations
 
-This directory contains database migrations for the Wedding Photo Sharing platform.
+This directory contains database migrations for the PicPeak photo sharing platform.
 
 ## Directory Structure
 
@@ -9,6 +9,7 @@ Essential migrations that are always run for new deployments. These include:
 - `init.js` - Initial database schema creation
 - Backup service tables (029-035)
 - Gallery feedback tables (033)
+- Pre-generated watermarks (061)
 
 ### `/legacy`
 Migrations needed only when upgrading from older versions. New deployments can skip these as the core schema already includes all necessary tables and columns.

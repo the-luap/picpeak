@@ -5,6 +5,7 @@ const archiver = require('archiver');
 const path = require('path');
 const router = express.Router();
 const watermarkService = require('../services/watermarkService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
@@ -777,8 +778,34 @@ router.get('/:slug/photo/:photoId',
       }
 
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Apply watermark and send
+        // Try to serve pre-generated watermarked file for instant loading
+        if (photo.watermark_path) {
+          const watermarkFilePath = path.join(getStoragePath(), photo.watermark_path);
+          try {
+            const fs = require('fs');
+            // Check if pre-generated watermark file exists
+            if (fs.existsSync(watermarkFilePath)) {
+              res.set({
+                'Content-Type': photo.mime_type || 'image/jpeg',
+                'Cache-Control': 'private, max-age=1800',
+                'ETag': etag,
+                'X-Protection-Level': 'basic'
+              });
+              return res.sendFile(watermarkFilePath);
+            }
+          } catch (err) {
+            // File doesn't exist or error, fall through to on-the-fly generation
+            logger.warn(`Pre-generated watermark not found for photo ${photoId}, falling back to on-the-fly`);
+          }
+        }
+
+        // Fallback: Apply watermark on-the-fly (slower, but ensures image is served)
+        // Also queue regeneration for next time
         const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+
+        // Queue watermark generation in background for next request
+        watermarkGeneratorService.generateForPhoto(photo.id)
+          .catch(err => logger.warn(`Background watermark generation failed for photo ${photo.id}:`, err.message));
 
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
