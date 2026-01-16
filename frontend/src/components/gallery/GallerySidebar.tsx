@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Star } from 'lucide-react';
+import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Star, Upload } from 'lucide-react';
 import { Button } from '../common';
 import { PhotoCategory } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -139,6 +139,24 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
 
         {/* Content */}
         <div className="gallery-sidebar-content flex-1 overflow-y-auto">
+          {/* Upload Section - Show prominently at top for mobile users */}
+          {allowUploads && onUploadClick && (
+            <div className="gallery-sidebar-section gallery-sidebar-upload p-4 border-b border-neutral-200">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Upload className="w-4 h-4" />}
+                onClick={() => {
+                  onUploadClick();
+                  if (isMobile) onClose();
+                }}
+                className="gallery-btn w-full"
+              >
+                {t('upload.uploadPhotos')}
+              </Button>
+            </div>
+          )}
+
           {/* Search Section - Hidden for carousel layout */}
           {galleryLayout !== 'carousel' && (
             <div className="gallery-sidebar-section gallery-sidebar-search p-4 border-b border-neutral-200">
