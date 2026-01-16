@@ -102,13 +102,20 @@ router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) 
     // Convert to object format
     const settingsObject = {};
     settings.forEach(setting => {
-      if (setting.setting_value) {
-        try {
-          // Try to parse as JSON first
-          settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
-        } catch (e) {
-          // If it's not valid JSON, use the raw value
+      // Check for null/undefined explicitly to handle boolean false and 0 values
+      // PostgreSQL json column returns parsed values (false as boolean, not string)
+      if (setting.setting_value !== null && setting.setting_value !== undefined) {
+        // If the value is already parsed (from json column), use it directly
+        if (typeof setting.setting_value !== 'string') {
           settingsObject[setting.setting_key] = setting.setting_value;
+        } else {
+          try {
+            // Try to parse as JSON first
+            settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
+          } catch (e) {
+            // If it's not valid JSON, use the raw value
+            settingsObject[setting.setting_key] = setting.setting_value;
+          }
         }
       } else {
         settingsObject[setting.setting_key] = null;
@@ -129,17 +136,24 @@ router.get('/:type', adminAuth, requirePermission('settings.view'), async (req, 
     const settings = await db('app_settings')
       .where('setting_type', type)
       .select('*');
-    
+
     // Convert to object format
     const settingsObject = {};
     settings.forEach(setting => {
-      if (setting.setting_value) {
-        try {
-          // Try to parse as JSON first
-          settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
-        } catch (e) {
-          // If it's not valid JSON, use the raw value
+      // Check for null/undefined explicitly to handle boolean false and 0 values
+      // PostgreSQL json column returns parsed values (false as boolean, not string)
+      if (setting.setting_value !== null && setting.setting_value !== undefined) {
+        // If the value is already parsed (from json column), use it directly
+        if (typeof setting.setting_value !== 'string') {
           settingsObject[setting.setting_key] = setting.setting_value;
+        } else {
+          try {
+            // Try to parse as JSON first
+            settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
+          } catch (e) {
+            // If it's not valid JSON, use the raw value
+            settingsObject[setting.setting_key] = setting.setting_value;
+          }
         }
       } else {
         settingsObject[setting.setting_key] = null;

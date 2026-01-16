@@ -99,6 +99,56 @@ export const EventsTab: React.FC<EventsTabProps> = ({
               </div>
             </label>
           </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.event_require_event_date}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, event_require_event_date: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700">
+                  {t('settings.events.requireEventDate', 'Require event date')}
+                </span>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {t('settings.events.requireEventDateHelp', 'Event date must be provided when creating events')}
+                </p>
+                {!eventSettings.event_require_event_date && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {t('settings.events.eventDateWarning', 'Gallery URLs will use random identifiers instead of dates')}
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.event_require_expiration}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, event_require_expiration: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700">
+                  {t('settings.events.requireExpiration', 'Require expiration date')}
+                </span>
+                <p className="text-xs text-neutral-500 mt-1">
+                  {t('settings.events.requireExpirationHelp', 'Galleries must have an expiration date')}
+                </p>
+                {!eventSettings.event_require_expiration && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {t('settings.events.expirationWarning', 'Galleries without expiration will remain active until manually archived')}
+                  </p>
+                )}
+              </div>
+            </label>
+          </div>
         </div>
 
         <div className="mt-6">

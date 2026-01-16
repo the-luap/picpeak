@@ -49,6 +49,8 @@ export interface EventSettings {
   event_require_customer_name: boolean;
   event_require_customer_email: boolean;
   event_require_admin_email: boolean;
+  event_require_event_date: boolean;
+  event_require_expiration: boolean;
 }
 
 export function useSettingsState() {
@@ -109,7 +111,9 @@ export function useSettingsState() {
   const [eventSettings, setEventSettings] = useState<EventSettings>({
     event_require_customer_name: true,
     event_require_customer_email: true,
-    event_require_admin_email: true
+    event_require_admin_email: true,
+    event_require_event_date: true,
+    event_require_expiration: true
   });
 
   // Account form state
@@ -178,7 +182,9 @@ export function useSettingsState() {
       setEventSettings({
         event_require_customer_name: toBoolean(settings.event_require_customer_name, true),
         event_require_customer_email: toBoolean(settings.event_require_customer_email, true),
-        event_require_admin_email: toBoolean(settings.event_require_admin_email, true)
+        event_require_admin_email: toBoolean(settings.event_require_admin_email, true),
+        event_require_event_date: toBoolean(settings.event_require_event_date, true),
+        event_require_expiration: toBoolean(settings.event_require_expiration, true)
       });
     }
   }, [settings, i18n]);

@@ -148,6 +148,8 @@ export const CreateEventPage: React.FC = () => {
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
   const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
   const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
+  const requireEventDate = publicSettings?.event_require_event_date !== false;
+  const requireExpiration = publicSettings?.event_require_expiration !== false;
 
   // Update default expiration days when settings are loaded
   useEffect(() => {
@@ -201,7 +203,7 @@ export const CreateEventPage: React.FC = () => {
       newErrors.event_name = t('validation.eventNameRequired');
     }
 
-    if (!formData.event_date) {
+    if (requireEventDate && !formData.event_date) {
       newErrors.event_date = t('validation.eventDateRequired');
     }
 
@@ -247,7 +249,7 @@ export const CreateEventPage: React.FC = () => {
       }
     }
 
-    if (formData.expires_in_days < 1 || formData.expires_in_days > 365) {
+    if (requireExpiration && (formData.expires_in_days < 1 || formData.expires_in_days > 365)) {
       newErrors.expires_in_days = t('validation.expirationRange');
     }
 
@@ -267,7 +269,7 @@ export const CreateEventPage: React.FC = () => {
     const payload = {
       event_type: formData.event_type,
       event_name: formData.event_name,
-      event_date: formData.event_date,
+      event_date: formData.event_date || undefined,
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
       admin_email: formData.admin_email,
@@ -275,7 +277,7 @@ export const CreateEventPage: React.FC = () => {
       password: formData.require_password ? formData.password : undefined,
       welcome_message: formData.welcome_message || '',
       color_theme: JSON.stringify(formData.theme_config),
-      expiration_days: formData.expires_in_days,
+      expiration_days: requireExpiration ? formData.expires_in_days : undefined,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
       css_template_id: formData.css_template_id,
@@ -394,7 +396,7 @@ export const CreateEventPage: React.FC = () => {
 
               <Input
                 type="date"
-                label={t('events.eventDate')}
+                label={requireEventDate ? t('events.eventDate') : `${t('events.eventDate')} (${t('common.optional')})`}
                 value={formData.event_date}
                 onChange={handleInputChange('event_date')}
                 error={errors.event_date}
@@ -666,30 +668,42 @@ export const CreateEventPage: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                {t('events.galleryExpiration')}
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="w-32">
-                  <Input
-                    type="number"
-                    value={formData.expires_in_days}
-                    onChange={handleInputChange('expires_in_days')}
-                    error={errors.expires_in_days}
-                    min={1}
-                    max={365}
-                    leftIcon={<Clock className="w-5 h-5" />}
-                  />
+            {requireExpiration ? (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  {t('events.galleryExpiration')}
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="w-32">
+                    <Input
+                      type="number"
+                      value={formData.expires_in_days}
+                      onChange={handleInputChange('expires_in_days')}
+                      error={errors.expires_in_days}
+                      min={1}
+                      max={365}
+                      leftIcon={<Clock className="w-5 h-5" />}
+                    />
+                  </div>
+                  <span className="text-sm text-neutral-600">{t('events.daysAfterEvent')}</span>
                 </div>
-                <span className="text-sm text-neutral-600">{t('events.daysAfterEvent')}</span>
+                {formData.event_date && (
+                  <p className="mt-2 text-sm text-neutral-500">
+                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+                  </p>
+                )}
               </div>
-              {formData.event_date && (
-                <p className="mt-2 text-sm text-neutral-500">
-                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+            ) : (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('events.noExpiration', 'No Expiration')}</span>
+                </div>
+                <p className="mt-1 text-xs text-blue-700">
+                  {t('events.noExpirationHelp', 'This gallery will remain active until manually archived.')}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* User Upload Settings */}
             <div className="pt-4 border-t border-neutral-200">

@@ -168,9 +168,10 @@ async function galleryAuth(req, res, next) {
       return res.status(404).json({ error: 'Gallery not found or expired' });
     }
     
-    // Check if gallery has expired
-    if (new Date(event.expires_at) < new Date()) {
-      return res.status(410).json({ 
+    // Check if gallery has expired (only if expires_at is set)
+    // Galleries with null expires_at never expire
+    if (event.expires_at && new Date(event.expires_at) < new Date()) {
+      return res.status(410).json({
         error: 'Gallery has expired',
         code: 'GALLERY_EXPIRED'
       });
