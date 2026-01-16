@@ -240,11 +240,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               {/* Right side - Action buttons */}
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {/* Extra header items (upload button, etc.) */}
-                {headerExtra && (
-                  <div className="hidden sm:block">
-                    {headerExtra}
-                  </div>
-                )}
+                {headerExtra}
                 
                 {/* Download all button - hidden on mobile when sidebar is shown */}
                 {showDownloadAll && onDownloadAll && (
