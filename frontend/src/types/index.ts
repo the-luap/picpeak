@@ -4,7 +4,7 @@ export interface Event {
   slug: string;
   event_type: string;
   event_name: string;
-  event_date: string;
+  event_date: string | null;
   customer_name?: string;
   customer_email: string;
   admin_email: string;
@@ -12,7 +12,7 @@ export interface Event {
   color_theme?: string;
   share_link: string;
   created_at: string;
-  expires_at: string;
+  expires_at: string | null;
   is_active: boolean;
   is_archived: boolean;
   archive_path?: string;
@@ -46,8 +46,8 @@ export interface Event {
 export interface GalleryInfo {
   event_name: string;
   event_type: string;
-  event_date: string;
-  expires_at: string;
+  event_date: string | null;
+  expires_at: string | null;
   is_active: boolean;
   is_expired: boolean;
   requires_password?: boolean;
@@ -97,10 +97,10 @@ export interface GalleryData {
     id: number;
     event_name: string;
     event_type: string;
-    event_date: string;
+    event_date: string | null;
     welcome_message?: string;
     color_theme?: string;
-    expires_at: string;
+    expires_at: string | null;
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;

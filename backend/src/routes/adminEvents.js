@@ -25,14 +25,18 @@ const getEventFieldRequirements = async () => {
       .whereIn('setting_key', [
         'event_require_customer_name',
         'event_require_customer_email',
-        'event_require_admin_email'
+        'event_require_admin_email',
+        'event_require_event_date',
+        'event_require_expiration'
       ])
       .select('setting_key', 'setting_value');
 
     const requirements = {
       require_customer_name: true,
       require_customer_email: true,
-      require_admin_email: true
+      require_admin_email: true,
+      require_event_date: true,
+      require_expiration: true
     };
 
     settings.forEach(s => {
@@ -47,6 +51,8 @@ const getEventFieldRequirements = async () => {
       if (s.setting_key === 'event_require_customer_name') requirements.require_customer_name = value;
       if (s.setting_key === 'event_require_customer_email') requirements.require_customer_email = value;
       if (s.setting_key === 'event_require_admin_email') requirements.require_admin_email = value;
+      if (s.setting_key === 'event_require_event_date') requirements.require_event_date = value;
+      if (s.setting_key === 'event_require_expiration') requirements.require_expiration = value;
     });
 
     return requirements;
@@ -55,7 +61,9 @@ const getEventFieldRequirements = async () => {
     return {
       require_customer_name: true,
       require_customer_email: true,
-      require_admin_email: true
+      require_admin_email: true,
+      require_event_date: true,
+      require_expiration: true
     };
   }
 };
@@ -106,7 +114,7 @@ const hasCustomerContactColumns = async () => {
 router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
   body('event_name').notEmpty().trim(),
-  body('event_date').isDate(),
+  body('event_date').optional().isDate(),
   body('customer_name').optional().trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
   body('admin_email').optional().isEmail().normalizeEmail(),
@@ -201,6 +209,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     if (fieldRequirements.require_admin_email && !admin_email) {
       validationErrors.push({ path: 'admin_email', msg: 'Admin email is required' });
     }
+    if (fieldRequirements.require_event_date && !event_date) {
+      validationErrors.push({ path: 'event_date', msg: 'Event date is required' });
+    }
 
     if (validationErrors.length > 0) {
       return res.status(400).json({ errors: validationErrors });
@@ -245,10 +256,13 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric with dash
       .replace(/-+/g, '-')         // Replace multiple dashes with single dash
       .replace(/^-|-$/g, '');      // Remove leading/trailing dashes
-    const baseSlug = `${event_type}-${processedEventName}-${event_date}`;
+
+    // Use event_date in slug if provided, otherwise use random suffix
+    const slugSuffix = event_date || crypto.randomBytes(3).toString('hex');
+    const baseSlug = `${event_type}-${processedEventName}-${slugSuffix}`;
     let slug = baseSlug;
     let counter = 1;
-    
+
     while (await db('events').where({ slug }).first()) {
       slug = `${baseSlug}-${counter}`;
       counter++;
@@ -264,15 +278,20 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     
     // Calculate expiration date (days after event date)
-    // Parse YYYY-MM-DD format as local date to avoid timezone issues
-    let expires_at;
-    if (event_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = event_date.split('-').map(num => parseInt(num, 10));
-      expires_at = new Date(year, month - 1, day);
-    } else {
-      expires_at = new Date(event_date);
+    // If expiration is not required, expires_at will be null (never expires)
+    // If event_date is not provided, use current date as base for expiration
+    let expires_at = null;
+    if (fieldRequirements.require_expiration) {
+      const baseDate = event_date || new Date().toISOString().split('T')[0];
+      // Parse YYYY-MM-DD format as local date to avoid timezone issues
+      if (baseDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = baseDate.split('-').map(num => parseInt(num, 10));
+        expires_at = new Date(year, month - 1, day);
+      } else {
+        expires_at = new Date(baseDate);
+      }
+      expires_at.setDate(expires_at.getDate() + parseInt(expiration_days, 10));
     }
-    expires_at.setDate(expires_at.getDate() + parseInt(expiration_days, 10));
     
     // Create folder structure
     const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -285,7 +304,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       slug,
       event_type,
       event_name,
-      event_date,
+      event_date: event_date || null,
       ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
       host_name: customerName,
       host_email: customerEmail,
@@ -295,7 +314,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       color_theme,
       share_link: shareLinkToStore,
       share_token: shareToken,
-      expires_at: expires_at.toISOString(),
+      expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString(),
       created_by: req.admin.id,
       allow_user_uploads,
@@ -350,7 +369,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
         event_date: event_date,  // Pass raw date - will be formatted by email processor
         gallery_link: shareUrl,
         gallery_password: requirePassword ? password : 'No password required',
-        expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
+        expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
         welcome_message: welcome_message || ''
       }),
       status: 'pending',
@@ -367,7 +386,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       customer_email: customerEmail,
       require_password: requirePassword,
       share_link: shareUrl,
-      expires_at: expires_at.toISOString(),
+      expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString()
     });
   } catch (error) {

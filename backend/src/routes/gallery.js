@@ -152,7 +152,7 @@ router.get('/:slug/info', async (req, res) => {
       event_date: event.event_date,
       expires_at: event.expires_at,
       is_active: event.is_active,
-      is_expired: !event.is_active || new Date(event.expires_at) < new Date(),
+      is_expired: !event.is_active || (event.expires_at && new Date(event.expires_at) < new Date()),
       requires_password: requiresPassword,
       color_theme: event.color_theme,
       allow_downloads: !(event.allow_downloads === false || event.allow_downloads === 0 || event.allow_downloads === '0'),

@@ -20,15 +20,15 @@ const normalizeEvent = (event: Event): Event => {
 interface CreateEventData {
   event_type: string;
   event_name: string;
-  event_date: string;
+  event_date?: string;
   customer_name?: string;
-  customer_email: string;
-  admin_email: string;
+  customer_email?: string;
+  admin_email?: string;
   require_password?: boolean;
   password?: string;
   welcome_message?: string;
   color_theme?: string;
-  expiration_days: number;
+  expiration_days?: number;
   allow_user_uploads?: boolean;
   upload_category_id?: number | null;
   feedback_enabled?: boolean;

@@ -74,7 +74,9 @@ router.get('/', async (req, res) => {
       // Event field requirements
       event_require_customer_name: settingsObject.event_require_customer_name !== false,
       event_require_customer_email: settingsObject.event_require_customer_email !== false,
-      event_require_admin_email: settingsObject.event_require_admin_email !== false
+      event_require_admin_email: settingsObject.event_require_admin_email !== false,
+      event_require_event_date: settingsObject.event_require_event_date !== false,
+      event_require_expiration: settingsObject.event_require_expiration !== false
     };
 
     res.json(publicSettings);
