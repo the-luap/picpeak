@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.2.1-beta.0...v3.2.2-beta.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* mobile upload button visibility in gallery ([2a2c23d](https://github.com/the-luap/picpeak/commit/2a2c23d11610e6c81684163eb4ea934a6d6104fb)), closes [#113](https://github.com/the-luap/picpeak/issues/113)
+* mobile upload button visibility in gallery ([#113](https://github.com/the-luap/picpeak/issues/113)) ([05a5307](https://github.com/the-luap/picpeak/commit/05a5307e22dc45be4b75b2996ff9fac65dec399d))
+
 ## [3.2.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.2.0-beta.0...v3.2.1-beta.0) (2026-01-16)
 
 
