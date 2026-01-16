@@ -608,9 +608,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             );
           }
           
-          // Upload button for sidebar layouts (shown on both mobile and desktop)
+          // Upload button - always show when uploads are allowed (regardless of layout/theme loading state)
           const allowUploads = data?.event?.allow_user_uploads || event?.allow_user_uploads;
-          if (allowUploads && showSidebar) {
+          if (allowUploads) {
             items.push(
               <Button
                 key="upload-button"
@@ -618,23 +618,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
                 size="sm"
                 leftIcon={<Upload className="w-4 h-4" />}
                 onClick={() => setShowUploadModal(true)}
-              >
-                <span className="hidden sm:inline">{t('upload.uploadPhotos')}</span>
-                <span className="sm:hidden">{t('common.upload')}</span>
-              </Button>
-            );
-          }
-          
-          // Upload button for non-sidebar layouts
-          if (allowUploads && !showSidebar) {
-            items.push(
-              <Button
-                key="upload-button"
-                variant="outline"
-                size="sm"
-                leftIcon={<Upload className="w-4 h-4" />}
-                onClick={() => setShowUploadModal(true)}
-                className="flex-1 sm:flex-initial"
+                className={!showSidebar ? 'flex-1 sm:flex-initial' : ''}
               >
                 <span className="hidden sm:inline">{t('upload.uploadPhotos')}</span>
                 <span className="sm:hidden">{t('common.upload')}</span>
