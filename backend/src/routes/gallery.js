@@ -16,7 +16,7 @@ const { NotFoundError } = require('../utils/errors');
 const { ensureThumbnail } = require('../services/imageProcessor');
 
 // Get storage path from environment or default
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 // Check for slug redirect (for renamed events)
 async function checkSlugRedirect(slug) {

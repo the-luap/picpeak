@@ -15,7 +15,7 @@ const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwor
 const { buildShareLinkVariants } = require('./shareLinkService');
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 // Cache for schema detection
 let customerColumnCache = null;
