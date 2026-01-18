@@ -94,16 +94,16 @@ export const AcceptInvitePage: React.FC = () => {
           });
           setErrors(validationErrors);
         } else {
-          toast.error(errorMessage || t('acceptInvitation.validationError'));
+          toast.error(errorMessage || t('acceptInvitation.errors.genericError'));
         }
       } else if (error.response?.status === 422) {
-        toast.error(errorMessage || t('acceptInvitation.validationError'));
+        toast.error(errorMessage || t('acceptInvitation.errors.genericError'));
       } else if (error.response?.status === 404) {
-        toast.error(t('acceptInvitation.invalidOrExpired'));
+        toast.error(t('acceptInvitation.invalidTokenMessage'));
       } else if (error.response?.status === 409) {
-        toast.error(errorMessage || t('acceptInvitation.alreadyUsed'));
+        toast.error(errorMessage || t('acceptInvitation.alreadyUsedMessage'));
       } else {
-        toast.error(t('acceptInvitation.generalError'));
+        toast.error(t('acceptInvitation.errors.genericError'));
       }
     },
   });
@@ -113,7 +113,7 @@ export const AcceptInvitePage: React.FC = () => {
     {
       label: t('acceptInvitation.requirements.minLength'),
       met: false,
-      test: (pwd: string) => pwd.length >= 8,
+      test: (pwd: string) => pwd.length >= 12,
     },
     {
       label: t('acceptInvitation.requirements.uppercase'),
@@ -166,16 +166,16 @@ export const AcceptInvitePage: React.FC = () => {
   // Validate username
   const validateUsername = (username: string): string | null => {
     if (!username) {
-      return t('acceptInvitation.usernameRequired');
+      return t('acceptInvitation.errors.usernameRequired');
     }
     if (username.length < 3) {
-      return t('acceptInvitation.usernameTooShort');
+      return t('acceptInvitation.errors.usernameTooShort');
     }
     if (username.length > 50) {
-      return t('acceptInvitation.usernameTooLong');
+      return t('acceptInvitation.errors.usernameTooLong');
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-      return t('acceptInvitation.usernameInvalid');
+      return t('acceptInvitation.errors.usernameInvalid');
     }
     return null;
   };
@@ -190,18 +190,18 @@ export const AcceptInvitePage: React.FC = () => {
     }
 
     if (!formData.password) {
-      newErrors.password = t('acceptInvitation.passwordRequired');
+      newErrors.password = t('acceptInvitation.errors.passwordRequired');
     } else {
       const allRequirementsMet = passwordRequirements.every(req => req.test(formData.password));
       if (!allRequirementsMet) {
-        newErrors.password = t('acceptInvitation.passwordRequirements');
+        newErrors.password = t('acceptInvitation.errors.passwordTooShort');
       }
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = t('acceptInvitation.confirmPasswordRequired');
+      newErrors.confirmPassword = t('acceptInvitation.errors.confirmPasswordRequired');
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = t('acceptInvitation.passwordsDoNotMatch');
+      newErrors.confirmPassword = t('acceptInvitation.errors.passwordsDoNotMatch');
     }
 
     setErrors(newErrors);
@@ -269,7 +269,7 @@ export const AcceptInvitePage: React.FC = () => {
 
   // Error state - invalid or expired token
   if (isError || !invitation?.valid) {
-    const errorMessage = (validationError as any)?.response?.data?.error || t('acceptInvitation.invalidOrExpired');
+    const errorMessage = (validationError as any)?.response?.data?.error || t('acceptInvitation.invalidTokenMessage');
 
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
@@ -280,13 +280,13 @@ export const AcceptInvitePage: React.FC = () => {
                 <XCircle className="w-8 h-8 text-red-600" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-                {t('acceptInvitation.invalidTitle')}
+                {t('acceptInvitation.invalidToken')}
               </h1>
               <p className="text-neutral-600 mb-6">
                 {errorMessage}
               </p>
               <p className="text-sm text-neutral-500 mb-6">
-                {t('acceptInvitation.contactAdmin')}
+                {t('acceptInvitation.contactAdminMessage')}
               </p>
               <Button
                 variant="primary"
@@ -312,7 +312,7 @@ export const AcceptInvitePage: React.FC = () => {
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 mb-2">
-                {t('acceptInvitation.successTitle')}
+                {t('acceptInvitation.success')}
               </h1>
               <p className="text-neutral-600 mb-6">
                 {t('acceptInvitation.successMessage')}
@@ -324,7 +324,7 @@ export const AcceptInvitePage: React.FC = () => {
                 variant="primary"
                 onClick={() => navigate('/admin/login')}
               >
-                {t('acceptInvitation.goToLoginNow')}
+                {t('acceptInvitation.goToLogin')}
               </Button>
             </div>
           </Card>
@@ -466,7 +466,7 @@ export const AcceptInvitePage: React.FC = () => {
 
               {/* Password Requirements */}
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-medium text-neutral-600">{t('acceptInvitation.requirementsTitle')}</p>
+                <p className="text-xs font-medium text-neutral-600">{t('acceptInvitation.requirements.title')}</p>
                 {passwordRequirements.map((req, index) => {
                   const isMet = req.test(formData.password);
                   return (

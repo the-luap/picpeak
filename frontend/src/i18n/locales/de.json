@@ -1523,6 +1523,10 @@
     "successMessage": "Ihr Konto wurde erfolgreich erstellt. Sie können sich jetzt mit Ihren Zugangsdaten anmelden.",
     "redirecting": "Weiterleitung zur Anmeldung in {{seconds}}...",
     "goToLogin": "Zur Anmeldung",
+    "contactAdminMessage": "Bitte kontaktieren Sie Ihren Administrator, um eine neue Einladung anzufordern.",
+    "passwordsMatch": "Passwörter stimmen überein",
+    "alreadyHaveAccount": "Bereits ein Konto?",
+    "signIn": "Anmelden",
     "errors": {
       "usernameRequired": "Benutzername ist erforderlich",
       "usernameTooShort": "Benutzername muss mindestens 3 Zeichen lang sein",
