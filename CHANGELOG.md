@@ -5,6 +5,21 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.2.4-beta.0...v3.2.5-beta.0) (2026-01-18)
+
+
+### Bug Fixes
+
+* add STORAGE_PATH to production docker-compose ([cdda709](https://github.com/the-luap/picpeak/commit/cdda70988664a177b351abc6a259ec39664d17ff))
+* correct invitation activation validation and add missing translations ([991aa98](https://github.com/the-luap/picpeak/commit/991aa98f98cffd1d7785c272726615325e2c0208)), closes [#129](https://github.com/the-luap/picpeak/issues/129)
+* correct invitation email link URL path ([86fa104](https://github.com/the-luap/picpeak/commit/86fa1046d5439cb451feb164175c919c49ca219a)), closes [#129](https://github.com/the-luap/picpeak/issues/129)
+* resolve admin invitation flow issues and improve STORAGE_PATH documentation ([41bf6ff](https://github.com/the-luap/picpeak/commit/41bf6ff884d5ef3181f95f3aa4a528434c23947a))
+
+
+### Documentation
+
+* emphasize importance of STORAGE_PATH in env example ([3397807](https://github.com/the-luap/picpeak/commit/3397807670784e02cbe34a7a60db43c95d64f19c))
+
 ## [3.2.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.2.3-beta.0...v3.2.4-beta.0) (2026-01-17)
 
 
