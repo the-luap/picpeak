@@ -1284,6 +1284,10 @@
     "successMessage": "Your account has been created successfully. You can now log in with your credentials.",
     "redirecting": "Redirecting to login in {{seconds}}...",
     "goToLogin": "Go to Login",
+    "contactAdminMessage": "Please contact your administrator to request a new invitation.",
+    "passwordsMatch": "Passwords match",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
     "errors": {
       "usernameRequired": "Username is required",
       "usernameTooShort": "Username must be at least 3 characters",
