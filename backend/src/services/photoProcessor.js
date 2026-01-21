@@ -186,6 +186,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       const photoData = {
         event_id: eventId,
         filename: newFilename,
+        original_filename: file.originalname,
         path: relativePath,
         thumbnail_path: relativeThumbPath,
         type: photoType,
