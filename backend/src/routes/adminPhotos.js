@@ -257,6 +257,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
             const photoData = {
               event_id: parseInt(eventId),
               filename: newFilename,
+              original_filename: file.originalname, // Preserve original filename for Lightroom export
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
