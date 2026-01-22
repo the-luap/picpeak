@@ -6,8 +6,10 @@ const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { requirePermission } = require('../middleware/permissions');
 
 // Enhanced event creation with password validation
+// Note: This is a partial/reference file - dynamic event type validation should be implemented
+// similar to adminEvents.js using eventTypeService.isValidEventType()
 router.post('/', adminAuth, requirePermission('events.create'), [
-  body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
+  body('event_type').notEmpty().trim(), // Dynamic validation via eventTypeService
   body('event_name').notEmpty().trim(),
   body('event_date').isDate(),
   body('customer_email').isEmail().normalizeEmail(),

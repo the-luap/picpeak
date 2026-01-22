@@ -17,6 +17,7 @@ const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwor
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
+const eventTypeService = require('../services/eventTypeService');
 
 // Helper to get event field requirements from settings
 const getEventFieldRequirements = async () => {
@@ -112,7 +113,13 @@ const hasCustomerContactColumns = async () => {
 
 // Create new event
 router.post('/', adminAuth, requirePermission('events.create'), [
-  body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
+  body('event_type').notEmpty().trim().custom(async (value) => {
+    const isValid = await eventTypeService.isValidEventType(value);
+    if (!isValid) {
+      throw new Error('Invalid event type');
+    }
+    return true;
+  }),
   body('event_name').notEmpty().trim(),
   body('event_date').optional().isDate(),
   body('customer_name').optional().trim(),
@@ -250,6 +257,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       }
     }
     
+    // Get event type info for slug generation
+    const eventTypeInfo = await eventTypeService.getEventTypeForSlug(event_type);
+    const slugPrefix = eventTypeInfo.slug_prefix || event_type;
+
     // Generate unique slug
     const processedEventName = event_name
       .toLowerCase()

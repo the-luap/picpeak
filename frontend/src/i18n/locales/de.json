@@ -154,12 +154,61 @@
     "events": "Veranstaltungen",
     "archives": "Archive",
     "settings": "Einstellungen",
+    "eventTypes": "Veranstaltungsarten",
     "branding": "Branding",
     "analytics": "Analytik",
     "emailSettings": "E-Mail-Einstellungen",
     "backup": "Backup & Wiederherstellung",
     "cmsPages": "CMS-Seiten",
     "users": "Benutzer"
+  },
+  "eventTypes": {
+    "title": "Veranstaltungsarten",
+    "subtitle": "Veranstaltungsarten und deren Standard-Themes anpassen",
+    "loading": "Lade Veranstaltungsarten...",
+    "loadError": "Fehler beim Laden der Veranstaltungsarten",
+    "createNew": "Neue Veranstaltungsart",
+    "edit": "Veranstaltungsart bearbeiten",
+    "created": "Veranstaltungsart erfolgreich erstellt",
+    "updated": "Veranstaltungsart erfolgreich aktualisiert",
+    "deleted": "Veranstaltungsart erfolgreich gelöscht",
+    "createError": "Fehler beim Erstellen der Veranstaltungsart",
+    "updateError": "Fehler beim Aktualisieren der Veranstaltungsart",
+    "deleteError": "Fehler beim Löschen der Veranstaltungsart",
+    "searchPlaceholder": "Veranstaltungsarten suchen...",
+    "showInactive": "Inaktive anzeigen",
+    "noResults": "Keine Veranstaltungsarten gefunden",
+    "empty": "Noch keine Veranstaltungsarten",
+    "system": "System",
+    "table": {
+      "type": "Typ",
+      "slugPrefix": "URL-Präfix",
+      "theme": "Standard-Theme",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "name": "Anzeigename",
+      "namePlaceholder": "z.B. Familienshooting",
+      "slugPrefix": "URL-Präfix",
+      "slugPrefixPlaceholder": "z.B. familie",
+      "slugPreview": "Beispiel-URL:",
+      "emoji": "Symbol",
+      "themePreset": "Standard-Theme",
+      "isActive": "Aktiv (sichtbar bei Veranstaltungserstellung)"
+    },
+    "validation": {
+      "slugFormat": "Nur Buchstaben, Zahlen und Bindestriche erlaubt"
+    },
+    "slugInfo": {
+      "title": "URL-Präfix Info:",
+      "description": "Das URL-Präfix wird zur Generierung von Galerie-URLs verwendet. Zum Beispiel erstellt eine Veranstaltungsart mit Präfix \"familie\" URLs wie: familie-mueller-familie-2025-01-22"
+    },
+    "deleteConfirm": {
+      "title": "Veranstaltungsart löschen",
+      "message": "Sind Sie sicher, dass Sie löschen möchten",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Stellen Sie sicher, dass keine Veranstaltungen diesen Typ verwenden."
+    }
   },
   "backup": {
     "external": {

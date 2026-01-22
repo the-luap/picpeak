@@ -154,6 +154,7 @@
     "events": "Events",
     "archives": "Archives",
     "settings": "Settings",
+    "eventTypes": "Event Types",
     "branding": "Branding",
     "analytics": "Analytics",
     "emailSettings": "Email Settings",
@@ -1444,6 +1445,54 @@
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
     "pageUpdated": "Page updated successfully"
+  },
+  "eventTypes": {
+    "title": "Event Types",
+    "subtitle": "Customize event types and their default themes",
+    "loading": "Loading event types...",
+    "loadError": "Failed to load event types",
+    "createNew": "New Event Type",
+    "edit": "Edit Event Type",
+    "created": "Event type created successfully",
+    "updated": "Event type updated successfully",
+    "deleted": "Event type deleted successfully",
+    "createError": "Failed to create event type",
+    "updateError": "Failed to update event type",
+    "deleteError": "Failed to delete event type",
+    "searchPlaceholder": "Search event types...",
+    "showInactive": "Show inactive",
+    "noResults": "No event types found",
+    "empty": "No event types yet",
+    "system": "System",
+    "table": {
+      "type": "Type",
+      "slugPrefix": "URL Prefix",
+      "theme": "Default Theme",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Display Name",
+      "namePlaceholder": "e.g., Family Shoot",
+      "slugPrefix": "URL Prefix",
+      "slugPrefixPlaceholder": "e.g., family",
+      "slugPreview": "Example URL:",
+      "emoji": "Icon",
+      "themePreset": "Default Theme",
+      "isActive": "Active (visible in event creation)"
+    },
+    "validation": {
+      "slugFormat": "Only letters, numbers, and hyphens allowed"
+    },
+    "slugInfo": {
+      "title": "URL Prefix Info:",
+      "description": "The URL prefix is used to generate gallery URLs. For example, an event type with prefix \"family\" will create URLs like: family-smith-family-2025-01-22"
+    },
+    "deleteConfirm": {
+      "title": "Delete Event Type",
+      "message": "Are you sure you want to delete",
+      "warning": "This action cannot be undone. Make sure no events are using this type."
+    }
   },
   "backup": {
     "external": {
