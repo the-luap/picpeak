@@ -187,16 +187,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={generalSettings.enable_watermark}
-              onChange={(e) => setGeneralSettings(prev => ({ ...prev, enable_watermark: e.target.checked }))}
-              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-            />
-            <span className="ml-2 text-sm text-neutral-700">{t('settings.general.enableWatermark')}</span>
-          </label>
-
-          <label className="flex items-center">
-            <input
-              type="checkbox"
               checked={generalSettings.enable_analytics}
               onChange={(e) => setGeneralSettings(prev => ({ ...prev, enable_analytics: e.target.checked }))}
               className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
