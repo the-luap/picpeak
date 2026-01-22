@@ -67,15 +67,16 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   const handleChange = (key: keyof ThemeConfig, newValue: any) => {
     const updated = { ...localTheme, [key]: newValue };
     setLocalTheme(updated);
-    
+
     // When any change is made, mark it as custom
     if (selectedPreset !== 'custom' && onPresetChange) {
       setSelectedPreset('custom');
       onPresetChange('custom');
     }
-    
+
     if (isPreviewMode) {
-      onChange(updated);
+      // Include customCss in the propagated theme
+      onChange({ ...updated, customCss });
     }
   };
 
@@ -84,6 +85,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     if (preset) {
       setSelectedPreset(presetKey);
       setLocalTheme(preset.config);
+      setCustomCss(''); // Clear custom CSS when selecting a preset
       if (onPresetChange) {
         onPresetChange(presetKey);
       }
@@ -722,11 +724,16 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <textarea
           value={customCss}
           onChange={(e) => {
-            setCustomCss(e.target.value);
+            const newCss = e.target.value;
+            setCustomCss(newCss);
             // Mark as custom when CSS is added
-            if (e.target.value && selectedPreset !== 'custom' && onPresetChange) {
+            if (newCss && selectedPreset !== 'custom' && onPresetChange) {
               setSelectedPreset('custom');
               onPresetChange('custom');
+            }
+            // Propagate customCss changes to parent in preview mode
+            if (isPreviewMode) {
+              onChange({ ...localTheme, customCss: newCss });
             }
           }}
           placeholder="/* Add custom CSS here */"
