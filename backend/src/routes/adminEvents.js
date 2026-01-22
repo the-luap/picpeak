@@ -946,7 +946,8 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
     
     // For resending creation email, we need the actual password
     // First, try to get it from the request body if provided
-    let galleryPassword = req.body.password;
+    // Use optional chaining to handle cases where req.body might be undefined
+    let galleryPassword = req.body?.password;
     
     // If no password provided, we can't decrypt the existing one
     // So we'll show a security message
