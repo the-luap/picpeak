@@ -310,10 +310,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
   }, [settingsData, data, setTheme]); // Use data instead of event prop
 
-  // Calculate days until expiration
-  const daysUntilExpiration = differenceInDays(parseISO(event.expires_at), new Date());
-  const showUrgentWarning = daysUntilExpiration <= 7;
-  const isExpired = daysUntilExpiration < 0;
+  // Calculate days until expiration (null means never expires)
+  const daysUntilExpiration = event.expires_at
+    ? differenceInDays(parseISO(event.expires_at), new Date())
+    : null;
+  const showUrgentWarning = daysUntilExpiration !== null && daysUntilExpiration <= 7;
+  const isExpired = daysUntilExpiration !== null && daysUntilExpiration < 0;
 
   // Filter and sort photos
   const filteredPhotos = useMemo(() => {
@@ -602,7 +604,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         headerExtra={(() => {
           const items = [];
           
-          if (daysUntilExpiration <= 1 && daysUntilExpiration > 0) {
+          if (daysUntilExpiration !== null && daysUntilExpiration <= 1 && daysUntilExpiration > 0) {
             items.push(
               <CountdownTimer key="countdown" expiresAt={event.expires_at} className="mr-2" />
             );
@@ -689,6 +691,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             disableRightClick={disableRightClick}
             enableDevtoolsProtection={enableDevtoolsProtection}
             useCanvasRendering={useCanvasRendering}
+            heroLogoVisible={data?.event?.hero_logo_visible !== false}
+            heroLogoSize={data?.event?.hero_logo_size || 'medium'}
+            heroLogoPosition={data?.event?.hero_logo_position || 'top'}
           />
         </div>
 

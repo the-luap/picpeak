@@ -16,7 +16,6 @@ export interface GeneralSettings {
   max_file_size_mb: number;
   max_files_per_upload: number;
   allowed_file_types: string;
-  enable_watermark: boolean;
   enable_analytics: boolean;
   enable_registration: boolean;
   maintenance_mode: boolean;
@@ -76,7 +75,6 @@ export function useSettingsState() {
     max_file_size_mb: 50,
     max_files_per_upload: 500,
     allowed_file_types: 'jpg,jpeg,png,gif,webp',
-    enable_watermark: false,
     enable_analytics: true,
     enable_registration: false,
     maintenance_mode: false,
@@ -146,7 +144,6 @@ export function useSettingsState() {
           Math.max(1, toNumber(settings.general_max_files_per_upload, 500))
         ),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
-        enable_watermark: toBoolean(settings.general_enable_watermark, false),
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),

@@ -14,6 +14,7 @@ const { formatBoolean } = require('../utils/dbCompat');
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const { buildShareLinkVariants } = require('./shareLinkService');
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
+const eventTypeService = require('./eventTypeService');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -67,13 +68,23 @@ const mapEventForApi = (event) => {
 
 /**
  * Generate a unique slug for an event
- * @param {string} eventType
+ * @param {string} eventType - Event type identifier (slug_prefix or legacy type)
  * @param {string} eventName
  * @param {string} eventDate
  * @returns {Promise<string>}
  */
 const generateUniqueSlug = async (eventType, eventName, eventDate) => {
-  const baseSlug = `${eventType}-${eventName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${eventDate}`;
+  // Get the slug_prefix from event type (supports both new dynamic types and legacy)
+  const eventTypeInfo = await eventTypeService.getEventTypeForSlug(eventType);
+  const slugPrefix = eventTypeInfo.slug_prefix || eventType;
+
+  const processedName = eventName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const baseSlug = `${slugPrefix}-${processedName}-${eventDate}`;
   let slug = baseSlug;
   let counter = 1;
 

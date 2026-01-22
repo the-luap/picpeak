@@ -11,6 +11,7 @@ const path = require('path');
 const router = express.Router();
 const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
+const eventTypeService = require('../services/eventTypeService');
 
 // Use parseStringInput from shared parsers for customer data extraction
 const getCustomerNameFromPayload = (payload = {}) => parseStringInput(payload.customer_name);
@@ -55,7 +56,13 @@ const hasCustomerContactColumns = async () => {
 
 // Create new event
 router.post('/', adminAuth, [
-  body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
+  body('event_type').notEmpty().trim().custom(async (value) => {
+    const isValid = await eventTypeService.isValidEventType(value);
+    if (!isValid) {
+      throw new Error('Invalid event type');
+    }
+    return true;
+  }),
   body('event_name').notEmpty(),
   body('event_date').isDate(),
   body('customer_name').notEmpty().trim(),

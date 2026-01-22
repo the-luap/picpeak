@@ -17,6 +17,7 @@ const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwor
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
+const eventTypeService = require('../services/eventTypeService');
 
 // Helper to get event field requirements from settings
 const getEventFieldRequirements = async () => {
@@ -112,7 +113,13 @@ const hasCustomerContactColumns = async () => {
 
 // Create new event
 router.post('/', adminAuth, requirePermission('events.create'), [
-  body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
+  body('event_type').notEmpty().trim().custom(async (value) => {
+    const isValid = await eventTypeService.isValidEventType(value);
+    if (!isValid) {
+      throw new Error('Invalid event type');
+    }
+    return true;
+  }),
   body('event_name').notEmpty().trim(),
   body('event_date').optional().isDate(),
   body('customer_name').optional().trim(),
@@ -151,7 +158,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -190,7 +201,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       moderate_comments = true,
       show_feedback_to_guests = true,
       // CSS Template
-      css_template_id = null
+      css_template_id = null,
+      // Hero logo settings
+      hero_logo_visible = true,
+      hero_logo_size = 'medium',
+      hero_logo_position = 'top'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -250,6 +265,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       }
     }
     
+    // Get event type info for slug generation
+    const eventTypeInfo = await eventTypeService.getEventTypeForSlug(event_type);
+    const slugPrefix = eventTypeInfo.slug_prefix || event_type;
+
     // Generate unique slug
     const processedEventName = event_name
       .toLowerCase()
@@ -324,7 +343,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
       require_password: formatBoolean(requirePassword),
-      css_template_id: css_template_id || null
+      css_template_id: css_template_id || null,
+      hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
+      hero_logo_size: hero_logo_size || 'medium',
+      hero_logo_position: hero_logo_position || 'top'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -601,7 +623,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     }
     return true;
   }),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -711,6 +737,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
     } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
       updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
+    }
+
+    // Format hero logo settings if provided
+    if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
+      updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
     }
 
     // Update event
@@ -946,7 +977,8 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
     
     // For resending creation email, we need the actual password
     // First, try to get it from the request body if provided
-    let galleryPassword = req.body.password;
+    // Use optional chaining to handle cases where req.body might be undefined
+    let galleryPassword = req.body?.password;
     
     // If no password provided, we can't decrypt the existing one
     // So we'll show a security message

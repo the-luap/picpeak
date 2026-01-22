@@ -24,7 +24,8 @@ import {
   SettingsPage,
   BackupManagement,
   CMSPage,
-  UserManagementPage
+  UserManagementPage,
+  EventTypesPage
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
@@ -128,6 +129,7 @@ function App() {
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="branding" element={<BrandingPage />} />
                       <Route path="settings" element={<SettingsPage />} />
+                      <Route path="event-types" element={<EventTypesPage />} />
                       <Route path="backup" element={<BackupManagement />} />
                       <Route path="cms" element={<CMSPage />} />
                       <Route path="users" element={<UserManagementPage />} />

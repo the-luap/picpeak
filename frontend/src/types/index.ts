@@ -41,6 +41,10 @@ export interface Event {
   watermark_downloads?: boolean;
   enable_devtools_protection?: boolean;
   use_canvas_rendering?: boolean;
+  // Hero logo customization fields
+  hero_logo_visible?: boolean;
+  hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
+  hero_logo_position?: 'top' | 'center' | 'bottom';
 }
 
 export interface GalleryInfo {

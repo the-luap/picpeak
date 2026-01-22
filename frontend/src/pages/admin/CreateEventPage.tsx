@@ -21,6 +21,7 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
 import { cssTemplatesService } from '../../services/cssTemplates.service';
+import { eventTypesService } from '../../services/eventTypes.service';
 import { useTranslation } from 'react-i18next';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { Code } from 'lucide-react';
@@ -57,18 +58,12 @@ interface FormData {
   };
 }
 
-const EVENT_TYPE_PRESETS: Record<string, string> = {
-  wedding: 'elegantWedding',
-  birthday: 'birthdayFun',
-  corporate: 'corporateTimeline',
-  other: 'default'
-};
-
-const EVENT_TYPES = [
-  { value: 'wedding', labelKey: 'events.types.wedding', emoji: '💒' },
-  { value: 'birthday', labelKey: 'events.types.birthday', emoji: '🎂' },
-  { value: 'corporate', labelKey: 'events.types.corporate', emoji: '🏢' },
-  { value: 'other', labelKey: 'events.types.other', emoji: '📸' },
+// Fallback event types (used when API is unavailable)
+const FALLBACK_EVENT_TYPES = [
+  { value: 'wedding', name: 'Wedding', emoji: '💒', theme_preset: 'elegantWedding' },
+  { value: 'birthday', name: 'Birthday', emoji: '🎂', theme_preset: 'birthdayFun' },
+  { value: 'corporate', name: 'Corporate', emoji: '🏢', theme_preset: 'corporateTimeline' },
+  { value: 'other', name: 'Other', emoji: '📸', theme_preset: 'default' },
 ];
 
 export const CreateEventPage: React.FC = () => {
@@ -132,6 +127,22 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => cssTemplatesService.getEnabledTemplates()
   });
 
+  // Fetch event types
+  const { data: eventTypes } = useQuery({
+    queryKey: ['event-types', 'active'],
+    queryFn: () => eventTypesService.getActiveEventTypes()
+  });
+
+  // Compute event types to use (API data or fallback)
+  const availableEventTypes = eventTypes?.length
+    ? eventTypes.map(et => ({
+        value: et.slug_prefix,
+        name: et.name,
+        emoji: et.emoji,
+        theme_preset: et.theme_preset
+      }))
+    : FALLBACK_EVENT_TYPES;
+
   // Fetch default settings
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -163,7 +174,10 @@ export const CreateEventPage: React.FC = () => {
 
   // Update theme when event type changes
   useEffect(() => {
-    const recommendedPreset = EVENT_TYPE_PRESETS[formData.event_type];
+    // Find the selected event type's theme preset
+    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
+    const recommendedPreset = selectedType?.theme_preset || 'default';
+
     if (recommendedPreset && GALLERY_THEME_PRESETS[recommendedPreset]) {
       setFormData(prev => ({
         ...prev,
@@ -171,7 +185,7 @@ export const CreateEventPage: React.FC = () => {
         theme_config: GALLERY_THEME_PRESETS[recommendedPreset].config
       }));
     }
-  }, [formData.event_type]);
+  }, [formData.event_type, availableEventTypes]);
 
   const createMutation = useMutation({
     mutationFn: eventsService.createEvent,
@@ -366,7 +380,7 @@ export const CreateEventPage: React.FC = () => {
                 {t('events.eventType')}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {EVENT_TYPES.map((type) => (
+                {availableEventTypes.map((type) => (
                   <button
                     key={type.value}
                     type="button"
@@ -378,7 +392,7 @@ export const CreateEventPage: React.FC = () => {
                     }`}
                   >
                     <div className="text-2xl mb-1">{type.emoji}</div>
-                    <div className="text-sm font-medium">{t(type.labelKey)}</div>
+                    <div className="text-sm font-medium">{type.name}</div>
                   </button>
                 ))}
               </div>

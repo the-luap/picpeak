@@ -52,6 +52,10 @@ interface PhotoGridWithLayoutsProps {
     requireNameEmail?: boolean;
   };
   onFeedbackChange?: () => void;
+  // Hero logo customization options
+  heroLogoVisible?: boolean;
+  heroLogoSize?: 'small' | 'medium' | 'large' | 'xlarge';
+  heroLogoPosition?: 'top' | 'center' | 'bottom';
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -76,7 +80,10 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   eventName,
   eventLogo,
   eventDate,
-  expiresAt
+  expiresAt,
+  heroLogoVisible = true,
+  heroLogoSize = 'medium',
+  heroLogoPosition = 'top'
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -200,6 +207,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     expiresAt,
     feedbackEnabled,
     feedbackOptions,
+    heroLogoVisible,
+    heroLogoSize,
+    heroLogoPosition,
   };
 
   let LayoutComponent;
