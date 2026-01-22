@@ -31,9 +31,9 @@ import {
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
 // Helper to safely parse dates that might be strings, Date objects, or timestamps
-const safeParseDate = (dateValue: unknown): Date => {
+const safeParseDate = (dateValue: unknown): Date | null => {
   if (!dateValue) {
-    return new Date();
+    return null;
   }
   if (dateValue instanceof Date) {
     return dateValue;
@@ -45,7 +45,7 @@ const safeParseDate = (dateValue: unknown): Date => {
     const parsed = parseISO(dateValue);
     return isValid(parsed) ? parsed : new Date(dateValue);
   }
-  return new Date();
+  return null;
 };
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
@@ -389,16 +389,17 @@ export const EventDetailsPage: React.FC = () => {
     );
   }
 
-  const daysUntilExpiration = differenceInDays(safeParseDate(event.expires_at), new Date());
-  const isExpired = daysUntilExpiration <= 0;
-  const isExpiring = daysUntilExpiration > 0 && daysUntilExpiration <= 7;
+  const expiresAtDate = safeParseDate(event.expires_at);
+  const daysUntilExpiration = expiresAtDate ? differenceInDays(expiresAtDate, new Date()) : null;
+  const isExpired = daysUntilExpiration !== null && daysUntilExpiration <= 0;
+  const isExpiring = daysUntilExpiration !== null && daysUntilExpiration > 0 && daysUntilExpiration <= 7;
 
   const handleStartEdit = () => {
     setEditForm({
       welcome_message: event.welcome_message || '',
       color_theme: event.color_theme || '',
       css_template_id: event.css_template_id || null,
-      expires_at: format(safeParseDate(event.expires_at), 'yyyy-MM-dd'),
+      expires_at: expiresAtDate ? format(expiresAtDate, 'yyyy-MM-dd') : '',
       allow_user_uploads: event.allow_user_uploads || false,
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
@@ -616,10 +617,12 @@ export const EventDetailsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">{event.event_name}</h1>
             <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
-              <span className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1" />
-                {format(safeParseDate(event.event_date), 'PPP')}
-              </span>
+              {event.event_date && (
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  {format(safeParseDate(event.event_date)!, 'PPP')}
+                </span>
+              )}
               <span className="capitalize">{event.event_type}</span>
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -1181,18 +1184,24 @@ export const EventDetailsPage: React.FC = () => {
                   <div>
                     <dt className="text-sm font-medium text-neutral-500">{t('events.created')}</dt>
                     <dd className="mt-1 text-sm text-neutral-900">
-                      {format(safeParseDate(event.created_at), 'PP')}
+                      {event.created_at && format(safeParseDate(event.created_at)!, 'PP')}
                     </dd>
                   </div>
                   
                   <div>
                     <dt className="text-sm font-medium text-neutral-500">{t('events.expires')}</dt>
                     <dd className="mt-1 text-sm text-neutral-900">
-                      {format(safeParseDate(event.expires_at), 'PP')}
-                      {!event.is_archived && daysUntilExpiration > 0 && (
-                        <span className="text-neutral-500 ml-1">
-                          {t('events.daysLeft', { count: daysUntilExpiration })}
-                        </span>
+                      {event.expires_at ? (
+                        <>
+                          {format(safeParseDate(event.expires_at)!, 'PP')}
+                          {!event.is_archived && daysUntilExpiration !== null && daysUntilExpiration > 0 && (
+                            <span className="text-neutral-500 ml-1">
+                              {t('events.daysLeft', { count: daysUntilExpiration })}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-neutral-500">{t('events.neverExpires', 'Never')}</span>
                       )}
                     </dd>
                   </div>
@@ -1517,7 +1526,7 @@ export const EventDetailsPage: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-neutral-500">{t('events.archivedOn')}</p>
                   <p className="text-sm text-neutral-900">
-                    {event.archived_at && format(safeParseDate(event.archived_at), 'PPp')}
+                    {event.archived_at && format(safeParseDate(event.archived_at)!, 'PPp')}
                   </p>
                 </div>
                 

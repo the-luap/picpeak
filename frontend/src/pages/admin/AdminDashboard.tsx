@@ -73,6 +73,7 @@ export const AdminDashboard: React.FC = () => {
   // Calculate expiring events
   const activeEvents = eventsData?.events.filter(e => e.is_active && !e.is_archived) || [];
   const expiringEvents = activeEvents.filter(e => {
+    if (!e.expires_at) return false;
     const days = differenceInDays(parseISO(e.expires_at), new Date());
     return days <= 7 && days > 0;
   });
@@ -204,9 +205,11 @@ export const AdminDashboard: React.FC = () => {
                     >
                       <div>
                         <h3 className="font-medium text-neutral-900">{event.event_name}</h3>
-                        <p className="text-sm text-neutral-600">
-                          {format(parseISO(event.event_date), 'PP')}
-                        </p>
+                        {event.event_date && (
+                          <p className="text-sm text-neutral-600">
+                            {format(parseISO(event.event_date), 'PP')}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-orange-600">
