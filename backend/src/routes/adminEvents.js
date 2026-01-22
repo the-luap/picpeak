@@ -158,7 +158,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -197,7 +201,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       moderate_comments = true,
       show_feedback_to_guests = true,
       // CSS Template
-      css_template_id = null
+      css_template_id = null,
+      // Hero logo settings
+      hero_logo_visible = true,
+      hero_logo_size = 'medium',
+      hero_logo_position = 'top'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -335,7 +343,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
       require_password: formatBoolean(requirePassword),
-      css_template_id: css_template_id || null
+      css_template_id: css_template_id || null,
+      hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
+      hero_logo_size: hero_logo_size || 'medium',
+      hero_logo_position: hero_logo_position || 'top'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -612,7 +623,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     }
     return true;
   }),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -722,6 +737,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
     } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
       updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
+    }
+
+    // Format hero logo settings if provided
+    if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
+      updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
     }
 
     // Update event

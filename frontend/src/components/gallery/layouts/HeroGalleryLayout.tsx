@@ -18,6 +18,10 @@ interface HeroGalleryLayoutProps extends BaseGalleryLayoutProps {
   expiresAt?: string;
   // Use a static hero photo independent of current filter
   heroPhotoOverride?: Photo | null;
+  // Hero logo customization options
+  heroLogoVisible?: boolean;
+  heroLogoSize?: 'small' | 'medium' | 'large' | 'xlarge';
+  heroLogoPosition?: 'top' | 'center' | 'bottom';
 }
 
 export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
@@ -34,6 +38,9 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   eventDate,
   expiresAt,
   heroPhotoOverride,
+  heroLogoVisible = true,
+  heroLogoSize = 'medium',
+  heroLogoPosition = 'top',
   allowDownloads = true,
   protectionLevel = 'standard',
   useEnhancedProtection = false,
@@ -51,6 +58,22 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const gallerySettings = theme.gallerySettings || {};
   const overlayOpacity = gallerySettings.heroOverlayOpacity || 0.3;
+
+  // Helper function to get logo size classes
+  const getLogoSizeClasses = (size: string): string => {
+    switch (size) {
+      case 'small':
+        return 'h-12 sm:h-14 lg:h-16';
+      case 'medium':
+        return 'h-20 sm:h-24 lg:h-32';
+      case 'large':
+        return 'h-28 sm:h-32 lg:h-40';
+      case 'xlarge':
+        return 'h-36 sm:h-40 lg:h-48';
+      default:
+        return 'h-20 sm:h-24 lg:h-32';
+    }
+  };
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -133,31 +156,51 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
         {/* Hero Content */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center px-4">
-            {/* Logo - Show custom logo or fallback to PicPeak logo */}
-            <div className="mb-6">
-              <img 
-                src={eventLogo ? 
-                  buildResourceUrl(eventLogo) : 
-                  '/picpeak-logo-transparent.png'
-                } 
-                alt="Event logo" 
-                className="h-20 sm:h-24 lg:h-32 mx-auto"
-                style={{
-                  // Only apply brightness/invert filter to default logo; custom logos display as-is
-                  filter: eventLogo
-                    ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
-                    : 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
-                }}
-              />
-            </div>
-            
+            {/* Logo at top position */}
+            {heroLogoVisible && heroLogoPosition === 'top' && (
+              <div className="mb-6">
+                <img
+                  src={eventLogo ?
+                    buildResourceUrl(eventLogo) :
+                    '/picpeak-logo-transparent.png'
+                  }
+                  alt="Event logo"
+                  className={`${getLogoSizeClasses(heroLogoSize)} mx-auto`}
+                  style={{
+                    filter: eventLogo
+                      ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                      : 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                  }}
+                />
+              </div>
+            )}
+
             {/* Event Title */}
             {eventName && (
               <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white drop-shadow-lg mb-4">
                 {eventName}
               </h1>
             )}
-            
+
+            {/* Logo at center position (between title and dates) */}
+            {heroLogoVisible && heroLogoPosition === 'center' && (
+              <div className="my-6">
+                <img
+                  src={eventLogo ?
+                    buildResourceUrl(eventLogo) :
+                    '/picpeak-logo-transparent.png'
+                  }
+                  alt="Event logo"
+                  className={`${getLogoSizeClasses(heroLogoSize)} mx-auto`}
+                  style={{
+                    filter: eventLogo
+                      ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                      : 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                  }}
+                />
+              </div>
+            )}
+
             {/* Event Dates */}
             {(eventDate || expiresAt) && (
               <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-white/90">
@@ -173,6 +216,25 @@ export const HeroGalleryLayout: React.FC<HeroGalleryLayoutProps> = ({
                     {t('gallery.expires')} {format(parseISO(expiresAt), 'PP')}
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Logo at bottom position */}
+            {heroLogoVisible && heroLogoPosition === 'bottom' && (
+              <div className="mt-6">
+                <img
+                  src={eventLogo ?
+                    buildResourceUrl(eventLogo) :
+                    '/picpeak-logo-transparent.png'
+                  }
+                  alt="Event logo"
+                  className={`${getLogoSizeClasses(heroLogoSize)} mx-auto`}
+                  style={{
+                    filter: eventLogo
+                      ? 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                      : 'brightness(0) invert(1) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5))'
+                  }}
+                />
               </div>
             )}
           </div>

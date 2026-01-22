@@ -25,7 +25,8 @@ import {
   Shield,
   Monitor,
   Droplets,
-  MousePointer
+  MousePointer,
+  Layout
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -160,6 +161,10 @@ export const EventDetailsPage: React.FC = () => {
     watermark_downloads: boolean;
     enable_devtools_protection: boolean;
     use_canvas_rendering: boolean;
+    // Hero logo settings
+    hero_logo_visible: boolean;
+    hero_logo_size: 'small' | 'medium' | 'large' | 'xlarge';
+    hero_logo_position: 'top' | 'center' | 'bottom';
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +189,10 @@ export const EventDetailsPage: React.FC = () => {
     watermark_downloads: false,
     enable_devtools_protection: true,
     use_canvas_rendering: false,
+    // Hero logo settings
+    hero_logo_visible: true,
+    hero_logo_size: 'medium',
+    hero_logo_position: 'top',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -406,6 +415,10 @@ export const EventDetailsPage: React.FC = () => {
       watermark_downloads: event.watermark_downloads ?? false,
       enable_devtools_protection: event.enable_devtools_protection ?? true,
       use_canvas_rendering: event.use_canvas_rendering ?? false,
+      // Load hero logo settings from event
+      hero_logo_visible: event.hero_logo_visible ?? true,
+      hero_logo_size: event.hero_logo_size || 'medium',
+      hero_logo_position: event.hero_logo_position || 'top',
     });
 
     setShowNewPassword(false);
@@ -496,6 +509,10 @@ export const EventDetailsPage: React.FC = () => {
       watermark_downloads: editForm.watermark_downloads,
       enable_devtools_protection: editForm.enable_devtools_protection,
       use_canvas_rendering: editForm.use_canvas_rendering,
+      // Hero logo settings
+      hero_logo_visible: editForm.hero_logo_visible,
+      hero_logo_size: editForm.hero_logo_size,
+      hero_logo_position: editForm.hero_logo_position,
     };
     
     // Only include fields that have defined values
@@ -1062,6 +1079,66 @@ export const EventDetailsPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Hero Logo Settings */}
+                <div className="mt-4 pt-4 border-t border-neutral-200">
+                  <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-primary-600" />
+                    {t('events.heroLogoSettings', 'Hero Logo Settings')}
+                  </h3>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.hero_logo_visible}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_visible: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      />
+                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
+                      <span className="text-sm text-neutral-700">{t('events.heroLogoVisible', 'Display logo in hero section')}</span>
+                    </label>
+
+                    {editForm.hero_logo_visible && (
+                      <>
+                        <div className="ml-6">
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            {t('events.heroLogoSize', 'Logo Size')}
+                          </label>
+                          <select
+                            value={editForm.hero_logo_size}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_size: e.target.value as 'small' | 'medium' | 'large' | 'xlarge' }))}
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                          >
+                            <option value="small">{t('events.heroLogoSizeSmall', 'Small')}</option>
+                            <option value="medium">{t('events.heroLogoSizeMedium', 'Medium')}</option>
+                            <option value="large">{t('events.heroLogoSizeLarge', 'Large')}</option>
+                            <option value="xlarge">{t('events.heroLogoSizeXLarge', 'Extra Large')}</option>
+                          </select>
+                        </div>
+
+                        <div className="ml-6">
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            {t('events.heroLogoPosition', 'Logo Position')}
+                          </label>
+                          <select
+                            value={editForm.hero_logo_position}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_position: e.target.value as 'top' | 'center' | 'bottom' }))}
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                          >
+                            <option value="top">{t('events.heroLogoPositionTop', 'Top (above title)')}</option>
+                            <option value="center">{t('events.heroLogoPositionCenter', 'Center (between title and dates)')}</option>
+                            <option value="bottom">{t('events.heroLogoPositionBottom', 'Bottom (below dates)')}</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    <p className="text-xs text-neutral-500 mt-2">
+                      {t('events.heroLogoInfo', 'These settings apply when the gallery uses the Hero layout. You can hide the logo or customize its size and position.')}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <dl className="space-y-4">
@@ -1192,6 +1269,37 @@ export const EventDetailsPage: React.FC = () => {
                         <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
                           <Droplets className="w-3 h-3 mr-1" />
                           {t('events.watermarked', 'Watermarked')}
+                        </span>
+                      )}
+                    </div>
+                  </dd>
+                </div>
+
+                {/* Hero Logo Settings Display */}
+                <div className="pt-3 mt-3 border-t border-neutral-200">
+                  <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
+                    <Layout className="w-4 h-4" />
+                    {t('events.heroLogoSettings', 'Hero Logo Settings')}
+                  </dt>
+                  <dd className="mt-2 text-sm text-neutral-900">
+                    <div className="flex flex-wrap gap-2">
+                      {event.hero_logo_visible !== false ? (
+                        <>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                            <Image className="w-3 h-3 mr-1" />
+                            {t('events.heroLogoVisibleLabel', 'Logo visible')}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                            {t('events.heroLogoSizeLabel', 'Size')}: {event.hero_logo_size || 'medium'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                            {t('events.heroLogoPositionLabel', 'Position')}: {event.hero_logo_position || 'top'}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                          <Image className="w-3 h-3 mr-1" />
+                          {t('events.heroLogoHidden', 'Logo hidden')}
                         </span>
                       )}
                     </div>

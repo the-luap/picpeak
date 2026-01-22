@@ -689,6 +689,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             disableRightClick={disableRightClick}
             enableDevtoolsProtection={enableDevtoolsProtection}
             useCanvasRendering={useCanvasRendering}
+            heroLogoVisible={data?.event?.hero_logo_visible !== false}
+            heroLogoSize={data?.event?.hero_logo_size || 'medium'}
+            heroLogoPosition={data?.event?.hero_logo_position || 'top'}
           />
         </div>
 

@@ -115,7 +115,10 @@ router.get('/:slug/info', async (req, res) => {
         'require_password',
         'color_theme',
         'enable_devtools_protection',
-        'use_canvas_rendering'
+        'use_canvas_rendering',
+        'hero_logo_visible',
+        'hero_logo_size',
+        'hero_logo_position'
       )
       .first();
 
@@ -162,7 +165,10 @@ router.get('/:slug/info', async (req, res) => {
       watermark_downloads: event.watermark_downloads === true || event.watermark_downloads === 1 || event.watermark_downloads === '1',
       watermark_text: event.watermark_text,
       enable_devtools_protection: event.enable_devtools_protection === true || event.enable_devtools_protection === 1 || event.enable_devtools_protection === '1',
-      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1'
+      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1',
+      hero_logo_visible: event.hero_logo_visible !== false && event.hero_logo_visible !== 0 && event.hero_logo_visible !== '0',
+      hero_logo_size: event.hero_logo_size || 'medium',
+      hero_logo_position: event.hero_logo_position || 'top'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -332,6 +338,9 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         watermark_text: req.event.watermark_text,
         enable_devtools_protection: req.event.enable_devtools_protection === true,
         use_canvas_rendering: req.event.use_canvas_rendering === true,
+        hero_logo_visible: req.event.hero_logo_visible !== false && req.event.hero_logo_visible !== 0 && req.event.hero_logo_visible !== '0',
+        hero_logo_size: req.event.hero_logo_size || 'medium',
+        hero_logo_position: req.event.hero_logo_position || 'top',
         ...protectionSettings
       },
       categories: categories,

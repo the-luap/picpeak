@@ -94,3 +94,11 @@ backup/
 
 # Local SQLite files in backend
 backend/*.sqlite*
+
+# Test files and artifacts
+test-logo*.jpg
+test-logo*.png
+test-results/
+
+# Development docker compose
+docker-compose.dev.yml
