@@ -118,7 +118,8 @@ router.get('/:slug/info', async (req, res) => {
         'use_canvas_rendering',
         'hero_logo_visible',
         'hero_logo_size',
-        'hero_logo_position'
+        'hero_logo_position',
+        'hero_logo_url'
       )
       .first();
 
@@ -168,7 +169,8 @@ router.get('/:slug/info', async (req, res) => {
       use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1',
       hero_logo_visible: event.hero_logo_visible !== false && event.hero_logo_visible !== 0 && event.hero_logo_visible !== '0',
       hero_logo_size: event.hero_logo_size || 'medium',
-      hero_logo_position: event.hero_logo_position || 'top'
+      hero_logo_position: event.hero_logo_position || 'top',
+      hero_logo_url: event.hero_logo_url || null
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -341,6 +343,7 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         hero_logo_visible: req.event.hero_logo_visible !== false && req.event.hero_logo_visible !== 0 && req.event.hero_logo_visible !== '0',
         hero_logo_size: req.event.hero_logo_size || 'medium',
         hero_logo_position: req.event.hero_logo_position || 'top',
+        hero_logo_url: req.event.hero_logo_url || null,
         ...protectionSettings
       },
       categories: categories,
