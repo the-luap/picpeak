@@ -47,7 +47,7 @@
     "react-i18next": "^15.6.0",
     "sanitize-html": "^2.17.0",
     "sharp": "0.34.3",
-    "sqlite3": "^5.1.6",
+    "sqlite3": "^5.0.2",
     "uuid": "^11.1.0",
     "winston": "^3.8.2",
     "zxcvbn": "^4.4.2"
