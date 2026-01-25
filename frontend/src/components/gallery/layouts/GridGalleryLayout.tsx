@@ -252,38 +252,49 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                   </button>
                 )}
                 {/* Quick feedback actions */}
-                {showFeedbackActions && feedbackOptions?.allowLikes && (
-                  <button
-                    className={`p-2 rounded-full transition-colors ${liked ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
-                        onRequireIdentity('like', photo.id);
-                        hideOverlay();
-                        return;
-                      }
-                      // Optimistic UI: mark as liked immediately
-                      if (onLikeSuccess) onLikeSuccess();
-                      try {
-                        await feedbackService.submitFeedback(slug!, String(photo.id), {
-                          feedback_type: 'like',
-                          guest_name: savedIdentity?.name,
-                          guest_email: savedIdentity?.email,
-                        });
-                      } catch (err) {
-                        // Keep optimistic state; a refresh will reconcile
-                        console.warn('Like submit failed, keeping optimistic UI', err);
-                      }
-                      if (onFeedbackChange) onFeedbackChange();
-                      hideOverlay();
-                    }}
-                    aria-label="Like photo"
-                    aria-pressed={liked}
-                    title="Like"
-                  >
-                    <Heart className={`w-5 h-5 ${liked ? 'text-white fill-white' : 'text-neutral-800'}`} />
-                  </button>
-                )}
+{showFeedbackActions && feedbackOptions?.allowLikes && (
+  <button
+    className={`p-2 rounded-full transition-colors ${
+      liked ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'
+    }`}
+    onClick={async (e) => {
+      e.stopPropagation();
+
+      // Require identity modal if needed
+      if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
+        onRequireIdentity('like', photo.id);
+        hideOverlay();
+        return;
+      }
+
+      // Optimistic UI: toggle the liked state immediately
+      if (onLikeSuccess) onLikeSuccess(); // parent handles toggle
+
+      try {
+        // Always send 'like'; backend will handle toggle
+        await feedbackService.submitFeedback(slug!, String(photo.id), {
+          feedback_type: 'like',
+          guest_name: savedIdentity?.name,
+          guest_email: savedIdentity?.email,
+        });
+      } catch (err) {
+        // Optionally, you could revert UI here if needed
+        console.warn('Like toggle failed, keeping optimistic UI', err);
+      }
+
+      // Notify parent / refresh counters
+      if (onFeedbackChange) onFeedbackChange();
+      hideOverlay();
+    }}
+    aria-label={liked ? 'Unlike photo' : 'Like photo'}
+    aria-pressed={liked}
+    title={liked ? 'Unlike' : 'Like'}
+  >
+    <Heart
+      className={`w-5 h-5 ${liked ? 'text-white fill-white' : 'text-neutral-800'}`}
+    />
+  </button>
+)}
               </>
             )}
           </div>
@@ -412,12 +423,16 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           onFeedbackChange={onFeedbackChange}
           liked={likedPhotoIds.has(photo.id)}
           onLikeSuccess={() => {
-            setLikedPhotoIds((prev) => {
-              const next = new Set(prev);
-              next.add(photo.id);
-              return next;
-            });
-          }}
+  setLikedPhotoIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(photo.id)) {
+      next.delete(photo.id); // unlike
+    } else {
+      next.add(photo.id);    // like
+    }
+    return next;
+  });
+}}
         />
       ))}
       <FeedbackIdentityModal
