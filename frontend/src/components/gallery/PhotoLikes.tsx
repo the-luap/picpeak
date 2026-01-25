@@ -49,6 +49,7 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['photo-feedback', gallerySlug, photoId] });
+      queryClient.invalidateQueries({ queryKey: ['gallery-photos'] });
     },
     onError: (error: any) => {
       // Revert optimistic update

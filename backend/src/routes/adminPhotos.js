@@ -176,8 +176,9 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
       return res.status(400).json({ error: 'No files uploaded' });
     }
     
-    // Parse category_id to number if provided
-    const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+    // Parse category_id to number if provided (handle string values like 'individual', 'collage')
+    const rawParsed = category_id ? parseInt(category_id, 10) : NaN;
+    const parsedCategoryId = !isNaN(rawParsed) ? rawParsed : null;
 
     // Determine photo type and category name
     let photoType = 'individual'; // default

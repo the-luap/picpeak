@@ -682,7 +682,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
             showSelectionControls={!showSidebar}
             eventName={event.event_name}
-            eventLogo={brandingSettings?.logo_url}
+            eventLogo={data?.event?.hero_logo_url || brandingSettings?.logo_url}
             eventDate={event.event_date}
             expiresAt={event.expires_at}
             allowDownloads={allowDownloads}

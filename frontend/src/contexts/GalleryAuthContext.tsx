@@ -218,16 +218,18 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
           if (verify?.valid) {
             const response = await authService.shareLinkLogin(currentSlug, routeInfo.token);
             if (response?.event) {
-              const normalizedEvent = normalizeEvent(response.event);
-              setEvent(normalizedEvent);
-              setIsAuthenticated(true);
-              if (normalizedEvent) {
-                sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(normalizedEvent));
-              }
+              // Store token and slug BEFORE setting authenticated state to avoid
+              // race condition where photo queries fire before token is available
               if (response.token) {
                 storeGalleryToken(currentSlug, response.token);
               }
               setActiveGallerySlug(currentSlug);
+              const normalizedEvent = normalizeEvent(response.event);
+              setEvent(normalizedEvent);
+              if (normalizedEvent) {
+                sessionStorage.setItem(`gallery_event_${currentSlug}`, JSON.stringify(normalizedEvent));
+              }
+              setIsAuthenticated(true);
               return;
             }
           }
@@ -263,17 +265,18 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       setError(null);
       setIsLoading(true);
       const response = await authService.verifyGalleryPassword(slug, password, recaptchaToken);
-      const normalizedEvent = normalizeEvent(response.event);
-      setEvent(normalizedEvent);
-      setIsAuthenticated(true);
+      // Store token and slug BEFORE setting authenticated state to avoid
+      // race condition where photo queries fire before token is available
       if (response.token) {
         storeGalleryToken(slug, response.token);
       }
       setActiveGallerySlug(slug);
-
+      const normalizedEvent = normalizeEvent(response.event);
+      setEvent(normalizedEvent);
       if (normalizedEvent) {
         sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(normalizedEvent));
       }
+      setIsAuthenticated(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Invalid password');
       throw err;

@@ -26,7 +26,8 @@ import {
   Monitor,
   Droplets,
   MousePointer,
-  Layout
+  Layout,
+  Trash2
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -54,6 +55,8 @@ import { Button, Input, Card, Loading } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { api } from '../../config/api';
+import { buildResourceUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
@@ -217,6 +220,7 @@ export const EventDetailsPage: React.FC = () => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   const [cssTemplates, setCssTemplates] = useState<EnabledTemplate[]>([]);
@@ -458,6 +462,38 @@ export const EventDetailsPage: React.FC = () => {
     }
     
     setIsEditing(true);
+  };
+
+  const handleEventLogoUpload = async (file: File) => {
+    if (!id) return;
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+      const response = await api.post(`/admin/events/${id}/logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(t('events.eventLogoUploaded', 'Event logo uploaded successfully'));
+      queryClient.invalidateQueries({ queryKey: ['event', id] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || t('events.eventLogoUploadFailed', 'Failed to upload event logo'));
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleEventLogoRemove = async () => {
+    if (!id) return;
+    setLogoUploading(true);
+    try {
+      await api.delete(`/admin/events/${id}/logo`);
+      toast.success(t('events.eventLogoRemoved', 'Event logo removed successfully'));
+      queryClient.invalidateQueries({ queryKey: ['event', id] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || t('events.eventLogoRemoveFailed', 'Failed to remove event logo'));
+    } finally {
+      setLogoUploading(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -1133,6 +1169,74 @@ export const EventDetailsPage: React.FC = () => {
                             <option value="center">{t('events.heroLogoPositionCenter', 'Center (between title and dates)')}</option>
                             <option value="bottom">{t('events.heroLogoPositionBottom', 'Bottom (below dates)')}</option>
                           </select>
+                        </div>
+
+                        {/* Custom Event Logo Upload */}
+                        <div className="ml-6 mt-3 pt-3 border-t border-neutral-100">
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            {t('events.eventCustomLogo', 'Custom Event Logo')}
+                          </label>
+                          <p className="text-xs text-neutral-500 mb-2">
+                            {t('events.eventCustomLogoDescription', 'Upload a custom logo for this event. This overrides the global branding logo for this gallery only.')}
+                          </p>
+
+                          {event.hero_logo_url ? (
+                            <div className="flex items-center gap-3">
+                              <div className="w-16 h-16 border border-neutral-200 rounded-md flex items-center justify-center bg-neutral-50 overflow-hidden">
+                                <img
+                                  src={buildResourceUrl(event.hero_logo_url)}
+                                  alt={t('events.eventCustomLogo', 'Custom Event Logo')}
+                                  className="max-w-full max-h-full object-contain"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                                  <Upload className="w-3 h-3" />
+                                  {t('events.replaceLogo', 'Replace')}
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                                    disabled={logoUploading}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleEventLogoUpload(file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleEventLogoRemove}
+                                  disabled={logoUploading}
+                                  className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  {t('events.removeLogo', 'Remove')}
+                                </button>
+                              </div>
+                              {logoUploading && <Loading size="sm" />}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <label className={`cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium border border-neutral-300 rounded-md hover:bg-neutral-50 ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <Upload className="w-3.5 h-3.5" />
+                                {t('events.uploadEventLogo', 'Upload Logo')}
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                                  disabled={logoUploading}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleEventLogoUpload(file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                              {logoUploading && <Loading size="sm" />}
+                            </div>
+                          )}
                         </div>
                       </>
                     )}

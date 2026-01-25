@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
+const multer = require('multer');
 const { archiveEvent } = require('../services/archiveService');
 const { queueEmail } = require('../services/emailProcessor');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
@@ -18,6 +19,36 @@ const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
 const eventTypeService = require('../services/eventTypeService');
+const { validateFileType } = require('../utils/fileSecurityUtils');
+
+// Get storage path from environment or default
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+
+// Configure multer for event logo uploads
+const eventLogoStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(getStoragePath(), 'uploads/logos/events');
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `event-${req.params.id}-logo-${Date.now()}${ext}`);
+  }
+});
+
+const eventLogoUpload = multer({
+  storage: eventLogoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
+    if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, GIF and SVG image files are allowed'));
+    }
+  }
+});
 
 // Helper to get event field requirements from settings
 const getEventFieldRequirements = async () => {
@@ -809,13 +840,23 @@ router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req,
       if (event.archive_path) {
         const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
         const archivePath = path.join(storagePath, event.archive_path);
-        
+
         try {
           const fsPromises = require('fs').promises;
           await fsPromises.unlink(archivePath);
         } catch (err) {
           console.error('Failed to delete archive file:', err);
           // Don't fail the transaction if file deletion fails
+        }
+      }
+
+      // Delete custom event logo if exists
+      if (event.hero_logo_path) {
+        try {
+          const fsPromises = require('fs').promises;
+          await fsPromises.unlink(event.hero_logo_path);
+        } catch (err) {
+          logger.warn('Failed to delete event logo file during event deletion', { path: event.hero_logo_path, error: err.message });
         }
       }
     });
@@ -1142,6 +1183,105 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   } catch (error) {
     console.error('Error in bulk archive:', error);
     res.status(500).json({ error: 'Failed to perform bulk archive' });
+  }
+});
+
+// Upload event custom logo
+router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoUpload.single('logo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if event exists
+    let eventQuery = db('events').where('id', id);
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No logo file provided' });
+    }
+
+    // Delete old logo file if exists
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+        logger.debug('Deleted old event logo file', { path: event.hero_logo_path });
+      } catch (err) {
+        logger.warn('Failed to delete old event logo file', { path: event.hero_logo_path, error: err.message });
+      }
+    }
+
+    const logoUrl = `/uploads/logos/events/${req.file.filename}`;
+    const logoPath = req.file.path;
+
+    await db('events')
+      .where('id', id)
+      .update({
+        hero_logo_url: logoUrl,
+        hero_logo_path: logoPath
+      });
+
+    await logActivity('event_logo_uploaded',
+      { eventName: event.event_name, filename: req.file.filename },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({
+      message: 'Event logo uploaded successfully',
+      hero_logo_url: logoUrl
+    });
+  } catch (error) {
+    logger.error('Error uploading event logo:', { error: error.message, eventId: req.params.id });
+    res.status(500).json({ error: 'Failed to upload event logo' });
+  }
+});
+
+// Delete event custom logo
+router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let eventQuery = db('events').where('id', id);
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Delete logo file if exists
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+        logger.debug('Deleted event logo file', { path: event.hero_logo_path });
+      } catch (err) {
+        logger.warn('Failed to delete event logo file', { path: event.hero_logo_path, error: err.message });
+      }
+    }
+
+    await db('events')
+      .where('id', id)
+      .update({
+        hero_logo_url: null,
+        hero_logo_path: null
+      });
+
+    await logActivity('event_logo_removed',
+      { eventName: event.event_name },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({ message: 'Event logo removed successfully' });
+  } catch (error) {
+    logger.error('Error deleting event logo:', { error: error.message, eventId: req.params.id });
+    res.status(500).json({ error: 'Failed to delete event logo' });
   }
 });
 
