@@ -1,9 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import {
+  calculateJustifiedLayout,
+  createJustifiedPhotos,
+  type JustifiedLayoutItem,
+} from '../../../utils/justifiedLayoutCalculator';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -216,14 +221,19 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
+  const [containerWidth, setContainerWidth] = useState(0);
   const gallerySettings = theme.gallerySettings || {};
   const gutter = gallerySettings.masonryGutter || 16;
+  const mode = gallerySettings.masonryMode || 'columns';
+  const targetRowHeight = gallerySettings.masonryRowHeight || 250;
+  const lastRowBehavior = gallerySettings.masonryLastRowBehavior || 'left';
 
-  // Calculate number of columns based on container width
+  // Calculate number of columns based on container width (for columns mode)
   useEffect(() => {
-    const updateColumns = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const width = containerRef.current.offsetWidth;
+        setContainerWidth(width);
         if (width < 640) setColumns(2);
         else if (width < 1024) setColumns(3);
         else if (width < 1280) setColumns(4);
@@ -231,17 +241,187 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       }
     };
 
-    updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    updateDimensions();
+
+    // Use ResizeObserver for better performance
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width);
+          const width = entry.contentRect.width;
+          if (width < 640) setColumns(2);
+          else if (width < 1024) setColumns(3);
+          else if (width < 1280) setColumns(4);
+          else setColumns(5);
+        }
+      }
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
   }, []);
 
-  // Distribute photos across columns
-  const photoColumns: Photo[][] = Array.from({ length: columns }, () => []);
-  photos.forEach((photo, index) => {
-    photoColumns[index % columns].push(photo);
-  });
+  // Calculate justified layout for rows mode
+  const rowsLayout = useMemo(() => {
+    if (mode !== 'rows' || containerWidth <= 0 || photos.length === 0) {
+      return { items: [], containerHeight: 0, rowCount: 0 };
+    }
 
+    const justifiedPhotos = createJustifiedPhotos(
+      photos.map((p) => ({
+        id: p.id,
+        width: p.width,
+        height: p.height,
+      }))
+    );
+
+    return calculateJustifiedLayout(justifiedPhotos, {
+      containerWidth,
+      targetRowHeight,
+      spacing: gutter,
+      lastRowBehavior,
+    });
+  }, [mode, photos, containerWidth, targetRowHeight, gutter, lastRowBehavior]);
+
+  // Create a map for quick lookup of layout items by photo ID (rows mode)
+  const layoutItemMap = useMemo(() => {
+    const map = new Map<number, JustifiedLayoutItem>();
+    for (const item of rowsLayout.items) {
+      map.set(item.photoId, item);
+    }
+    return map;
+  }, [rowsLayout.items]);
+
+  // Distribute photos across columns (for columns mode)
+  const photoColumns: Photo[][] = Array.from({ length: columns }, () => []);
+  if (mode === 'columns') {
+    photos.forEach((photo, index) => {
+      photoColumns[index % columns].push(photo);
+    });
+  }
+
+  // ROWS MODE - Google Photos style justified layout
+  if (mode === 'rows') {
+    // Show loading state while measuring container width
+    const isCalculating = containerWidth <= 0 || rowsLayout.items.length === 0;
+
+    return (
+      <div
+        ref={containerRef}
+        className="photo-grid relative"
+        style={{
+          height: isCalculating ? 'auto' : rowsLayout.containerHeight,
+          minHeight: isCalculating ? 200 : undefined
+        }}
+      >
+        {isCalculating ? (
+          // Render a simple grid while calculating to get container width
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.slice(0, 8).map((photo) => (
+              <div key={photo.id} className="aspect-square bg-neutral-200 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : photos.map((photo, index) => {
+          const layoutItem = layoutItemMap.get(photo.id);
+          if (!layoutItem) return null;
+
+          return (
+            <div
+              key={photo.id}
+              className="photo-card absolute group cursor-pointer transition-all duration-300 hover:z-10"
+              style={{
+                left: layoutItem.x,
+                top: layoutItem.y,
+                width: layoutItem.width,
+                height: layoutItem.height,
+              }}
+              onClick={() => onPhotoClick(index)}
+            >
+              <AuthenticatedImage
+                src={photo.thumbnail_url || photo.url}
+                alt={photo.filename}
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
+                isGallery={true}
+                protectFromDownload={!allowDownloads}
+              />
+
+              {/* Feedback Indicators */}
+              {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  {(photo.comment_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                    </div>
+                  )}
+                  {(photo.average_rating ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                    </div>
+                  )}
+                  {(photo.like_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+                {!isSelectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="View full size"
+                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onPhotoClick(index); }}
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
+                    </button>
+                    {allowDownloads && (
+                      <button
+                        type="button"
+                        aria-label="Download photo"
+                        className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDownload(photo, e); }}
+                      >
+                        <Download className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                aria-label={`Select ${photo.filename}`}
+                role="checkbox"
+                aria-checked={selectedPhotos.has(photo.id)}
+                className={`absolute top-2 right-2 z-20 transition-opacity ${
+                  selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                  {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
+                </div>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // COLUMNS MODE - Pinterest style masonry (default)
   return (
     <div
       ref={containerRef}
@@ -249,8 +429,8 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       style={{ gap: `${gutter}px` }}
     >
       {photoColumns.map((column, columnIndex) => (
-        <div 
-          key={columnIndex} 
+        <div
+          key={columnIndex}
           className="flex-1 flex flex-col"
           style={{ gap: `${gutter}px` }}
         >

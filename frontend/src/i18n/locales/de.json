@@ -1258,7 +1258,8 @@
       "carousel": "Vollbild-Diashow mit Navigation",
       "timeline": "Nach Datum organisierte Fotos",
       "hero": "Hervorgehobenes Bild mit Raster darunter",
-      "mosaic": "Künstlerisches Layout mit gemischten Größen"
+      "mosaic": "Künstlerisches Layout mit gemischten Größen",
+      "justified": "Zeilenbasiertes Layout mit Seitenverhältnis-Erhaltung"
     },
     "layoutSettings": "Layout-Einstellungen",
     "photoSpacing": "Foto-Abstand",
@@ -1286,6 +1287,30 @@
       "week": "Woche",
       "month": "Monat"
     },
+    "masonryMode": "Layout-Modus",
+    "masonryModeOptions": {
+      "columns": "Spalten (Pinterest-Stil)",
+      "rows": "Zeilen (Google Fotos-Stil)"
+    },
+    "masonryModeHint": "Spalten ordnet Fotos vertikal an, Zeilen füllt horizontale Linien",
+    "targetRowHeight": "Ziel-Zeilenhöhe",
+    "targetRowHeightHint": "Höhe in Pixeln (150-400). Fotos werden skaliert, um in Zeilen zu passen.",
+    "lastRowBehavior": "Letzte Zeile Ausrichtung",
+    "lastRowOptions": {
+      "left": "Linksbündig",
+      "center": "Zentriert",
+      "justify": "Blocksatz (gestreckt)"
+    },
+    "showHeroSection": "Hero-Bereich anzeigen",
+    "showHeroSectionHint": "Zeigt ein hervorgehobenes Titelbild über der Galerie an",
+    "heroHeight": "Hero-Bereich Höhe",
+    "heroHeightOptions": {
+      "small": "Klein (40-50%)",
+      "medium": "Mittel (50-70%)",
+      "large": "Groß (60-80%)"
+    },
+    "heroOverlayOpacity": "Hero-Overlay Deckkraft",
+    "heroOverlayHint": "Verdunkelt das Titelbild für bessere Lesbarkeit",
     "typographyAndStyle": "Typografie & Stil",
     "bodyFont": "Fließtext-Schriftart",
     "headingFont": "Überschriften-Schriftart",

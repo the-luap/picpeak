@@ -158,6 +158,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
       // Generate thumbnail and extract metadata
       let thumbnailPath;
       let videoMetadata = null;
+      let imageMetadata = null;
 
       if (isVideo) {
         // Process video: extract metadata and generate thumbnail
@@ -169,8 +170,22 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         videoMetadata = result.metadata;
         thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
       } else {
-        // Process image: generate thumbnail
+        // Process image: generate thumbnail and extract dimensions
         thumbnailPath = await generateThumbnail(newPath);
+
+        // Extract image dimensions using sharp
+        try {
+          const sharp = require('sharp');
+          const metadata = await sharp(newPath).metadata();
+          if (metadata.width && metadata.height) {
+            imageMetadata = {
+              width: metadata.width,
+              height: metadata.height
+            };
+          }
+        } catch (metadataError) {
+          console.warn(`Could not extract image dimensions for ${file.originalname}:`, metadataError.message);
+        }
       }
 
       // Calculate relative paths
@@ -204,6 +219,12 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         photoData.audio_codec = videoMetadata.audioCodec;
         photoData.width = videoMetadata.width;
         photoData.height = videoMetadata.height;
+      }
+
+      // Add image dimensions if available
+      if (!isVideo && imageMetadata) {
+        photoData.width = imageMetadata.width;
+        photoData.height = imageMetadata.height;
       }
 
       if (supportsReturning) {
