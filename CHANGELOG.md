@@ -5,6 +5,19 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.5.0-beta.0...v3.6.0-beta.0) (2026-01-27)
+
+
+### Features
+
+* add justified/rows layout mode to masonry gallery ([#146](https://github.com/the-luap/picpeak/issues/146)) ([e081b56](https://github.com/the-luap/picpeak/commit/e081b56a44bf9fdaa3dd225d5dd4dde35bfe83d3))
+* add justified/rows layout mode to masonry gallery ([#146](https://github.com/the-luap/picpeak/issues/146)) + security fixes ([cd1d504](https://github.com/the-luap/picpeak/commit/cd1d50474f673b759c2f9401fdbe209a84773e39))
+
+
+### Bug Fixes
+
+* update packages to fix security vulnerabilities ([8097a0c](https://github.com/the-luap/picpeak/commit/8097a0cb530bd8003597cde81606231efadb0bf5))
+
 ## [3.5.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.4.0-beta.0...v3.5.0-beta.0) (2026-01-25)
 
 
