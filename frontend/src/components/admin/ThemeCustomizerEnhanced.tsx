@@ -366,6 +366,63 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </select>
                 </div>
               )}
+
+              {/* Masonry specific */}
+              {localTheme.galleryLayout === 'masonry' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      {t('branding.masonryMode', 'Layout Mode')}
+                    </label>
+                    <select
+                      value={localTheme.gallerySettings?.masonryMode || 'columns'}
+                      onChange={(e) => updateGallerySettings('masonryMode', e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    >
+                      <option value="columns">{t('branding.masonryModeOptions.columns', 'Columns (Pinterest-style)')}</option>
+                      <option value="rows">{t('branding.masonryModeOptions.rows', 'Rows (Google Photos-style)')}</option>
+                    </select>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {t('branding.masonryModeHint', 'Columns arranges photos vertically, rows fills horizontal lines')}
+                    </p>
+                  </div>
+
+                  {/* Row-specific settings */}
+                  {localTheme.gallerySettings?.masonryMode === 'rows' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 mb-2">
+                          {t('branding.targetRowHeight', 'Target Row Height')}
+                        </label>
+                        <Input
+                          type="number"
+                          min="150"
+                          max="400"
+                          value={localTheme.gallerySettings?.masonryRowHeight || 250}
+                          onChange={(e) => updateGallerySettings('masonryRowHeight', parseInt(e.target.value))}
+                        />
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {t('branding.targetRowHeightHint', 'Height in pixels (150-400). Photos will scale to fit rows.')}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 mb-2">
+                          {t('branding.lastRowBehavior', 'Last Row Alignment')}
+                        </label>
+                        <select
+                          value={localTheme.gallerySettings?.masonryLastRowBehavior || 'left'}
+                          onChange={(e) => updateGallerySettings('masonryLastRowBehavior', e.target.value)}
+                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                        >
+                          <option value="left">{t('branding.lastRowOptions.left', 'Left aligned')}</option>
+                          <option value="center">{t('branding.lastRowOptions.center', 'Centered')}</option>
+                          <option value="justify">{t('branding.lastRowOptions.justify', 'Justified (stretch)')}</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           )}
         </Card>

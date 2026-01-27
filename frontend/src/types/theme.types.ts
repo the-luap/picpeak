@@ -15,7 +15,10 @@ export interface GalleryLayoutSettings {
   };
   
   // Masonry specific
+  masonryMode?: 'columns' | 'rows'; // columns = Pinterest-style, rows = Google Photos-style
   masonryGutter?: number;
+  masonryRowHeight?: number; // Target row height for rows mode (150-400)
+  masonryLastRowBehavior?: 'justify' | 'left' | 'center'; // How to align incomplete last row
   
   // Carousel specific
   carouselAutoplay?: boolean;
@@ -127,7 +130,7 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
   
   modernMasonry: {
     name: 'Modern Masonry',
-    description: 'Pinterest-style dynamic layout',
+    description: 'Pinterest-style columns or Google Photos-style rows',
     config: {
       primaryColor: '#3b82f6',
       accentColor: '#1e40af',
@@ -139,7 +142,10 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       gallerySettings: {
         spacing: 'tight',
         photoAnimation: 'fade',
-        masonryGutter: 16
+        masonryMode: 'columns',
+        masonryGutter: 16,
+        masonryRowHeight: 250,
+        masonryLastRowBehavior: 'left'
       },
       headerStyle: 'minimal',
       footerStyle: 'minimal',

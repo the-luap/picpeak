@@ -973,7 +973,8 @@
       "carousel": "Full-screen slideshow with navigation",
       "timeline": "Photos organized by date",
       "hero": "Featured image with grid below",
-      "mosaic": "Artistic layout with mixed sizes"
+      "mosaic": "Artistic layout with mixed sizes",
+      "justified": "Row-based layout preserving aspect ratios"
     },
     "layoutSettings": "Layout Settings",
     "photoSpacing": "Photo Spacing",
@@ -1001,6 +1002,30 @@
       "week": "Week",
       "month": "Month"
     },
+    "masonryMode": "Layout Mode",
+    "masonryModeOptions": {
+      "columns": "Columns (Pinterest-style)",
+      "rows": "Rows (Google Photos-style)"
+    },
+    "masonryModeHint": "Columns arranges photos vertically, rows fills horizontal lines",
+    "targetRowHeight": "Target Row Height",
+    "targetRowHeightHint": "Height in pixels (150-400). Photos will scale to fit rows.",
+    "lastRowBehavior": "Last Row Alignment",
+    "lastRowOptions": {
+      "left": "Left aligned",
+      "center": "Centered",
+      "justify": "Justified (stretch)"
+    },
+    "showHeroSection": "Show Hero Section",
+    "showHeroSectionHint": "Display a featured hero image above the justified gallery",
+    "heroHeight": "Hero Section Height",
+    "heroHeightOptions": {
+      "small": "Small (40-50%)",
+      "medium": "Medium (50-70%)",
+      "large": "Large (60-80%)"
+    },
+    "heroOverlayOpacity": "Hero Overlay Opacity",
+    "heroOverlayHint": "Darken the hero image to improve text readability",
     "typographyAndStyle": "Typography & Style",
     "bodyFont": "Body Font",
     "headingFont": "Heading Font",

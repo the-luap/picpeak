@@ -368,6 +368,9 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           category_slug: photo.type,
           size: photo.size_bytes,
           uploaded_at: photo.uploaded_at,
+          // Image dimensions for layout calculations
+          width: photo.width || null,
+          height: photo.height || null,
           // Fixed: Use the calculated useJwtUrl variable instead of recalculating
           requires_token: !useJwtUrl,
           // Feedback data

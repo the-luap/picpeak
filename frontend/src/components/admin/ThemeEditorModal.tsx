@@ -22,7 +22,8 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   carousel: <Play className="w-4 h-4" />,
   timeline: <Clock className="w-4 h-4" />,
   hero: <Image className="w-4 h-4" />,
-  mosaic: <LayoutGrid className="w-4 h-4" />
+  mosaic: <LayoutGrid className="w-4 h-4" />,
+  justified: <Layers className="w-4 h-4" />
 };
 
 export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
