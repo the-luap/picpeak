@@ -15,7 +15,7 @@ export interface GalleryLayoutSettings {
   };
   
   // Masonry specific
-  masonryMode?: 'columns' | 'rows'; // columns = Pinterest-style, rows = Google Photos-style
+  masonryMode?: 'columns' | 'rows' | 'flickr' | 'justified'; // columns = Pinterest-style, rows = custom rows, flickr = Flickr justified-layout, justified = react-photo-album (Google Photos style)
   masonryGutter?: number;
   masonryRowHeight?: number; // Target row height for rows mode (150-400)
   masonryLastRowBehavior?: 'justify' | 'left' | 'center'; // How to align incomplete last row

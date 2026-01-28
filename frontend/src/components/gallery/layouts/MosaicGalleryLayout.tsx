@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Download, Maximize2, Check, Heart, MessageSquare } from 'lucide-react';
 // import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -6,6 +6,102 @@ import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
+
+// Orientation types for aspect-ratio-aware layout
+type Orientation = 'landscape' | 'portrait' | 'square';
+
+interface PhotoWithIndex {
+  photo: Photo;
+  originalIndex: number;
+  orientation: Orientation;
+}
+
+// Get photo orientation based on aspect ratio
+const getOrientation = (photo: Photo): Orientation => {
+  const width = photo.width || 1;
+  const height = photo.height || 1;
+  const ratio = width / height;
+
+  if (ratio > 1.2) return 'landscape';
+  if (ratio < 0.83) return 'portrait';
+  return 'square';
+};
+
+// Pattern types that work well with different orientation combinations
+type PatternType =
+  | 'tall-left-2-right'      // Tall photo left, 2 stacked right (good for 1 portrait + 2 landscape)
+  | 'tall-right-2-left'      // Tall photo right, 2 stacked left (good for 1 portrait + 2 landscape)
+  | 'wide-top-2-bottom'      // Wide photo top, 2 below (good for 1 landscape + 2 portrait)
+  | 'wide-bottom-2-top'      // Wide photo bottom, 2 above (good for 1 landscape + 2 portrait)
+  | 'three-columns'          // 3 equal columns (good for similar orientations)
+  | 'three-rows'             // 3 equal rows (good for landscapes)
+  | 'two-portraits'          // 2 tall side by side (good for portraits)
+  | 'hero-wide'              // Single wide landscape hero
+  | 'hero-tall';             // Single tall portrait hero
+
+// Analyze a group of photos and select the best pattern
+const selectBestPattern = (photosWithIndex: PhotoWithIndex[]): { pattern: PatternType; arranged: PhotoWithIndex[] } => {
+  const count = photosWithIndex.length;
+
+  if (count === 1) {
+    const orientation = photosWithIndex[0].orientation;
+    return {
+      pattern: orientation === 'portrait' ? 'hero-tall' : 'hero-wide',
+      arranged: photosWithIndex
+    };
+  }
+
+  if (count === 2) {
+    const portraits = photosWithIndex.filter(p => p.orientation === 'portrait');
+    const landscapes = photosWithIndex.filter(p => p.orientation === 'landscape');
+
+    if (portraits.length === 2) {
+      return { pattern: 'two-portraits', arranged: photosWithIndex };
+    }
+    // For 2 photos, treat as part of a larger pattern or use columns
+    return { pattern: 'three-columns', arranged: photosWithIndex };
+  }
+
+  if (count >= 3) {
+    const portraits = photosWithIndex.filter(p => p.orientation === 'portrait');
+    const landscapes = photosWithIndex.filter(p => p.orientation === 'landscape');
+    const squares = photosWithIndex.filter(p => p.orientation === 'square');
+
+    // All or mostly portraits - use vertical-friendly layout
+    if (portraits.length >= 2) {
+      if (landscapes.length >= 1) {
+        // 2 portraits + 1 landscape: landscape on top, portraits below
+        const arranged = [...landscapes.slice(0, 1), ...portraits.slice(0, 2)];
+        return { pattern: 'wide-top-2-bottom', arranged };
+      }
+      // All portraits - stack them or use 3 columns
+      return { pattern: 'three-columns', arranged: photosWithIndex.slice(0, 3) };
+    }
+
+    // All or mostly landscapes - use horizontal-friendly layout
+    if (landscapes.length >= 2) {
+      if (portraits.length >= 1) {
+        // 1 portrait + 2 landscapes: portrait on left, landscapes stacked right
+        const arranged = [...portraits.slice(0, 1), ...landscapes.slice(0, 2)];
+        return { pattern: 'tall-left-2-right', arranged };
+      }
+      // All landscapes - use rows
+      return { pattern: 'three-rows', arranged: photosWithIndex.slice(0, 3) };
+    }
+
+    // Mixed or mostly squares - use standard patterns with smart placement
+    if (portraits.length === 1 && landscapes.length === 1) {
+      // 1 portrait + 1 landscape + 1 square
+      const arranged = [...portraits, ...squares.slice(0, 1), ...landscapes];
+      return { pattern: 'tall-left-2-right', arranged: arranged.slice(0, 3) };
+    }
+
+    // Default to 3 columns for mixed content
+    return { pattern: 'three-columns', arranged: photosWithIndex.slice(0, 3) };
+  }
+
+  return { pattern: 'three-columns', arranged: photosWithIndex };
+};
 
 interface MosaicPhotoProps {
   photo: Photo;
@@ -200,219 +296,184 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   // const gallerySettings = theme.gallerySettings || {};
   // const pattern = gallerySettings.mosaicPattern || 'structured';
 
-  const handlePhotoClick = (index: number, photoId: number) => {
-    if (isSelectionMode && onPhotoSelect) {
-      onPhotoSelect(photoId);
-    } else {
-      onPhotoClick(index);
+  // Pre-compute photos with their orientations
+  const photosWithOrientations = useMemo(() => {
+    return photos.map((photo, index) => ({
+      photo,
+      originalIndex: index,
+      orientation: getOrientation(photo)
+    }));
+  }, [photos]);
+
+  // Helper to render a MosaicPhoto with common props
+  const renderMosaicPhoto = (photoWithIndex: PhotoWithIndex, className: string = '') => {
+    const { photo, originalIndex } = photoWithIndex;
+    return (
+      <MosaicPhoto
+        key={photo.id}
+        photo={photo}
+        isSelected={selectedPhotos.has(photo.id)}
+        isSelectionMode={isSelectionMode}
+        onClick={() => {
+          if (isSelectionMode && onPhotoSelect) {
+            onPhotoSelect(photo.id);
+          } else {
+            onPhotoClick(originalIndex);
+          }
+        }}
+        onDownload={(e) => onDownload(photo, e)}
+        onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
+        className={className}
+        allowDownloads={allowDownloads}
+        slug={slug}
+        feedbackEnabled={feedbackEnabled}
+        feedbackOptions={feedbackOptions}
+        onQuickComment={() => {
+          if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) {
+            onOpenPhotoWithFeedback(originalIndex);
+          }
+        }}
+      />
+    );
+  };
+
+  // Render pattern based on type and arranged photos
+  const renderPattern = (pattern: PatternType, arranged: PhotoWithIndex[], keyPrefix: string) => {
+    switch (pattern) {
+      case 'tall-left-2-right':
+        // Portrait/tall photo on left, 2 landscape/square stacked on right
+        return (
+          <div key={keyPrefix} className="grid grid-cols-2 gap-2 mb-2 h-[400px]">
+            {arranged[0] && renderMosaicPhoto(arranged[0], 'col-span-1')}
+            <div className="grid grid-rows-2 gap-2">
+              {arranged[1] && renderMosaicPhoto(arranged[1])}
+              {arranged[2] && renderMosaicPhoto(arranged[2])}
+            </div>
+          </div>
+        );
+
+      case 'tall-right-2-left':
+        // 2 landscape/square stacked on left, portrait/tall on right
+        return (
+          <div key={keyPrefix} className="grid grid-cols-2 gap-2 mb-2 h-[400px]">
+            <div className="grid grid-rows-2 gap-2">
+              {arranged[1] && renderMosaicPhoto(arranged[1])}
+              {arranged[2] && renderMosaicPhoto(arranged[2])}
+            </div>
+            {arranged[0] && renderMosaicPhoto(arranged[0], 'col-span-1')}
+          </div>
+        );
+
+      case 'wide-top-2-bottom':
+        // Wide landscape on top, 2 photos below
+        return (
+          <div key={keyPrefix} className="grid grid-rows-2 gap-2 mb-2 h-[450px]">
+            <div className="h-[250px]">
+              {arranged[0] && renderMosaicPhoto(arranged[0])}
+            </div>
+            <div className="grid grid-cols-2 gap-2 h-[192px]">
+              {arranged[1] && renderMosaicPhoto(arranged[1])}
+              {arranged[2] && renderMosaicPhoto(arranged[2])}
+            </div>
+          </div>
+        );
+
+      case 'wide-bottom-2-top':
+        // 2 photos on top, wide landscape below
+        return (
+          <div key={keyPrefix} className="grid grid-rows-2 gap-2 mb-2 h-[450px]">
+            <div className="grid grid-cols-2 gap-2 h-[192px]">
+              {arranged[1] && renderMosaicPhoto(arranged[1])}
+              {arranged[2] && renderMosaicPhoto(arranged[2])}
+            </div>
+            <div className="h-[250px]">
+              {arranged[0] && renderMosaicPhoto(arranged[0])}
+            </div>
+          </div>
+        );
+
+      case 'three-rows':
+        // 3 horizontal rows - good for all landscapes
+        return (
+          <div key={keyPrefix} className="grid grid-rows-3 gap-2 mb-2 h-[500px]">
+            {arranged.slice(0, 3).map((p) => renderMosaicPhoto(p))}
+          </div>
+        );
+
+      case 'two-portraits':
+        // 2 side-by-side tall photos
+        return (
+          <div key={keyPrefix} className="grid grid-cols-2 gap-2 mb-2 h-[500px]">
+            {arranged.slice(0, 2).map((p) => renderMosaicPhoto(p))}
+          </div>
+        );
+
+      case 'hero-wide':
+        // Single wide hero image
+        return (
+          <div key={keyPrefix} className="mb-2 h-[350px]">
+            {arranged[0] && renderMosaicPhoto(arranged[0])}
+          </div>
+        );
+
+      case 'hero-tall':
+        // Single tall hero image
+        return (
+          <div key={keyPrefix} className="mb-2 h-[500px] max-w-md mx-auto">
+            {arranged[0] && renderMosaicPhoto(arranged[0])}
+          </div>
+        );
+
+      case 'three-columns':
+      default:
+        // 3 equal columns - adaptive height based on content
+        const hasPortrait = arranged.some(p => p.orientation === 'portrait');
+        const height = hasPortrait ? 'h-[350px]' : 'h-[250px]';
+        return (
+          <div key={keyPrefix} className={`grid grid-cols-3 gap-2 mb-2 ${height}`}>
+            {arranged.slice(0, 3).map((p) => renderMosaicPhoto(p))}
+          </div>
+        );
     }
   };
 
-  // Create a more structured mosaic layout
+  // Create aspect-ratio-aware mosaic layout
   const renderMosaicLayout = () => {
-    const elements = [];
-    let photoIndex = 0;
-    let patternIndex = 0;
-    
-    while (photoIndex < photos.length) {
-      const remainingPhotos = photos.length - photoIndex;
-      
-      // Choose pattern based on rotation and remaining photos
-      if (patternIndex % 3 === 0 && remainingPhotos >= 3) {
-        // Pattern 1: Large left, 2 small right
-        // Capture indices immediately to avoid closure issues
-        const idx0 = photoIndex;
-        const idx1 = photoIndex + 1;
-        const idx2 = photoIndex + 2;
-        const photo0 = photos[idx0];
-        const photo1 = photos[idx1];
-        const photo2 = photos[idx2];
-        
-        elements.push(
-          <div key={`pattern-${photoIndex}`} className="grid grid-cols-2 gap-2 mb-2 h-[400px]">
-            {photo0 && (
-              <MosaicPhoto
-                photo={photo0}
-                isSelected={selectedPhotos.has(photo0.id)}
-                isSelectionMode={isSelectionMode}
-                onClick={() => onPhotoClick(idx0)}
-                onDownload={(e) => onDownload(photo0, e)}
-                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
-                className="col-span-1"
-                allowDownloads={allowDownloads}
-                slug={slug}
-                feedbackEnabled={feedbackEnabled}
-                feedbackOptions={feedbackOptions}
-                onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx0); }}
-              />
-            )}
-            <div className="grid grid-rows-2 gap-2">
-              {photo1 && (
-                <MosaicPhoto
-                  photo={photo1}
-                  isSelected={selectedPhotos.has(photo1.id)}
-                  isSelectionMode={isSelectionMode}
-                  onClick={() => onPhotoClick(idx1)}
-                  onDownload={(e) => onDownload(photo1, e)}
-                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                  slug={slug}
-                  feedbackEnabled={feedbackEnabled}
-                  feedbackOptions={feedbackOptions}
-                  onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx1); }}
-              />
-              )}
-              {photo2 && (
-                <MosaicPhoto
-                  photo={photo2}
-                  isSelected={selectedPhotos.has(photo2.id)}
-                  isSelectionMode={isSelectionMode}
-                  onClick={() => onPhotoClick(idx2)}
-                  onDownload={(e) => onDownload(photo2, e)}
-                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                  slug={slug}
-                  feedbackEnabled={feedbackEnabled}
-                  feedbackOptions={feedbackOptions}
-                  onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx2); }}
-              />
-              )}
-            </div>
-          </div>
-        );
-        photoIndex += 3;
-      } else if (patternIndex % 3 === 1 && remainingPhotos >= 3) {
-        // Pattern 2: 3 equal columns
-        elements.push(
-          <div key={`pattern-${photoIndex}`} className="grid grid-cols-3 gap-2 mb-2 h-[250px]">
-            {[0, 1, 2].map(offset => {
-              const currentIndex = photoIndex + offset;
-              const photo = photos[currentIndex];
-              return photo ? (
-                <MosaicPhoto
-                  key={photo.id}
-                  photo={photo}
-                  isSelected={selectedPhotos.has(photo.id)}
-                  isSelectionMode={isSelectionMode}
-                  onClick={() => handlePhotoClick(currentIndex, photo.id)}
-                  onDownload={(e) => onDownload(photo, e)}
-                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                  slug={slug}
-                  feedbackEnabled={feedbackEnabled}
-                  feedbackOptions={feedbackOptions}
-                  onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(currentIndex); }}
-                />
-              ) : null;
-            })}
-          </div>
-        );
-        photoIndex += 3;
-      } else if (patternIndex % 3 === 2 && remainingPhotos >= 3) {
-        // Pattern 3: Large span-2 with 2 small on right
-        // Capture indices immediately to avoid closure issues
-        const idx0 = photoIndex;
-        const idx1 = photoIndex + 1;
-        const idx2 = photoIndex + 2;
-        const photo0 = photos[idx0];
-        const photo1 = photos[idx1];
-        const photo2 = photos[idx2];
-        
-        elements.push(
-          <div key={`pattern-${photoIndex}`} className="grid grid-cols-3 gap-2 mb-2 h-[400px]">
-            {photo0 && (
-              <MosaicPhoto
-                photo={photo0}
-                isSelected={selectedPhotos.has(photo0.id)}
-                isSelectionMode={isSelectionMode}
-                onClick={() => onPhotoClick(idx0)}
-                onDownload={(e) => onDownload(photo0, e)}
-                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo0.id)}
-                className="col-span-2"
-                allowDownloads={allowDownloads}
-                slug={slug}
-                feedbackEnabled={feedbackEnabled}
-                feedbackOptions={feedbackOptions}
-                onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx0); }}
-              />
-            )}
-            <div className="grid grid-rows-2 gap-2">
-              {photo1 && (
-                <MosaicPhoto
-                  photo={photo1}
-                  isSelected={selectedPhotos.has(photo1.id)}
-                  isSelectionMode={isSelectionMode}
-                  onClick={() => onPhotoClick(idx1)}
-                  onDownload={(e) => onDownload(photo1, e)}
-                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo1.id)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                  slug={slug}
-                  feedbackEnabled={feedbackEnabled}
-                  feedbackOptions={feedbackOptions}
-                  onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx1); }}
-              />
-              )}
-              {photo2 && (
-                <MosaicPhoto
-                  photo={photo2}
-                  isSelected={selectedPhotos.has(photo2.id)}
-                  isSelectionMode={isSelectionMode}
-                  onClick={() => onPhotoClick(idx2)}
-                  onDownload={(e) => onDownload(photo2, e)}
-                  onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo2.id)}
-                  className=""
-                  allowDownloads={allowDownloads}
-                  slug={slug}
-                  feedbackEnabled={feedbackEnabled}
-                  feedbackOptions={feedbackOptions}
-                  onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(idx2); }}
-              />
-              )}
-            </div>
-          </div>
-        );
-        photoIndex += 3;
-      } else {
-        // Handle remaining photos that don't fit patterns
-        break;
+    const elements: React.ReactNode[] = [];
+    let index = 0;
+    let patternCount = 0;
+
+    while (index < photosWithOrientations.length) {
+      const remaining = photosWithOrientations.length - index;
+
+      // Determine group size based on remaining photos
+      let groupSize = 3;
+      if (remaining === 1) groupSize = 1;
+      else if (remaining === 2) groupSize = 2;
+      else if (remaining === 4) groupSize = 2; // Split 4 into 2+2 for balance
+      else groupSize = 3;
+
+      // Get the next group of photos
+      const group = photosWithOrientations.slice(index, index + groupSize);
+
+      // Select the best pattern for this group based on orientations
+      const { pattern, arranged } = selectBestPattern(group);
+
+      // Alternate some patterns for visual variety
+      let finalPattern = pattern;
+      if (pattern === 'tall-left-2-right' && patternCount % 2 === 1) {
+        finalPattern = 'tall-right-2-left';
+      } else if (pattern === 'wide-top-2-bottom' && patternCount % 2 === 1) {
+        finalPattern = 'wide-bottom-2-top';
       }
-      
-      patternIndex++;
+
+      // Render the pattern
+      elements.push(renderPattern(finalPattern, arranged, `pattern-${index}`));
+
+      index += groupSize;
+      patternCount++;
     }
-    
-    // Add remaining photos in a regular grid
-    if (photoIndex < photos.length) {
-      const remainingPhotos = photos.slice(photoIndex);
-      elements.push(
-        <div key={`remaining-${photoIndex}`} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-          {remainingPhotos.map((photo, idx) => {
-            const index = photoIndex + idx;
-            return (
-              <MosaicPhoto
-                key={photo.id}
-                photo={photo}
-                isSelected={selectedPhotos.has(photo.id)}
-                isSelectionMode={isSelectionMode}
-                onClick={() => onPhotoClick(index)}
-                onDownload={(e) => onDownload(photo, e)}
-                onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
-                className="aspect-square"
-                allowDownloads={allowDownloads}
-                slug={slug}
-                feedbackEnabled={feedbackEnabled}
-                feedbackOptions={feedbackOptions}
-                onQuickComment={() => { if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) onOpenPhotoWithFeedback(index); }}
-              />
-            );
-          })}
-        </div>
-      );
-    }
-    
+
     return elements;
   };
   
