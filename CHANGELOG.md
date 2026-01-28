@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.6.0-beta.0...v3.7.0-beta.0) (2026-01-28)
+
+
+### Features
+
+* add justified layout modes and aspect-ratio-aware mosaic ([#146](https://github.com/the-luap/picpeak/issues/146)) ([608bbd5](https://github.com/the-luap/picpeak/commit/608bbd50e7b31d49c7516a00e96f284fa16e2777))
+* Add justified layout modes and aspect-ratio-aware mosaic ([#146](https://github.com/the-luap/picpeak/issues/146)) ([ef2ae00](https://github.com/the-luap/picpeak/commit/ef2ae00ff20b754c2f2ed797e18c146d12d7f31a))
+
 ## [3.6.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.5.0-beta.0...v3.6.0-beta.0) (2026-01-27)
 
 
