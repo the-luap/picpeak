@@ -380,15 +380,23 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
                     >
                       <option value="columns">{t('branding.masonryModeOptions.columns', 'Columns (Pinterest-style)')}</option>
-                      <option value="rows">{t('branding.masonryModeOptions.rows', 'Rows (Google Photos-style)')}</option>
+                      <option value="rows">{t('branding.masonryModeOptions.rows', 'Rows (Custom justified)')}</option>
+                      <option value="flickr">{t('branding.masonryModeOptions.flickr', 'Flickr (Battle-tested justified)')}</option>
+                      <option value="justified">{t('branding.masonryModeOptions.justified', 'Google Photos (Knuth-Plass algorithm)')}</option>
                     </select>
                     <p className="text-xs text-neutral-500 mt-1">
-                      {t('branding.masonryModeHint', 'Columns arranges photos vertically, rows fills horizontal lines')}
+                      {localTheme.gallerySettings?.masonryMode === 'columns'
+                        ? t('branding.masonryModeHint.columns', 'Pinterest-style vertical columns with varied heights')
+                        : localTheme.gallerySettings?.masonryMode === 'flickr'
+                        ? t('branding.masonryModeHint.flickr', 'Flickr\'s open-source justified layout algorithm')
+                        : localTheme.gallerySettings?.masonryMode === 'justified'
+                        ? t('branding.masonryModeHint.justified', 'Google Photos-style rows using Knuth-Plass algorithm for optimal breaks')
+                        : t('branding.masonryModeHint.rows', 'Custom row-based justified layout')}
                     </p>
                   </div>
 
-                  {/* Row-specific settings */}
-                  {localTheme.gallerySettings?.masonryMode === 'rows' && (
+                  {/* Row-specific settings - show for all row-based modes */}
+                  {['rows', 'flickr', 'justified'].includes(localTheme.gallerySettings?.masonryMode || '') && (
                     <>
                       <div>
                         <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -405,20 +413,23 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                           {t('branding.targetRowHeightHint', 'Height in pixels (150-400). Photos will scale to fit rows.')}
                         </p>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          {t('branding.lastRowBehavior', 'Last Row Alignment')}
-                        </label>
-                        <select
-                          value={localTheme.gallerySettings?.masonryLastRowBehavior || 'left'}
-                          onChange={(e) => updateGallerySettings('masonryLastRowBehavior', e.target.value)}
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
-                        >
-                          <option value="left">{t('branding.lastRowOptions.left', 'Left aligned')}</option>
-                          <option value="center">{t('branding.lastRowOptions.center', 'Centered')}</option>
-                          <option value="justify">{t('branding.lastRowOptions.justify', 'Justified (stretch)')}</option>
-                        </select>
-                      </div>
+                      {/* Last row behavior - only for rows and flickr modes */}
+                      {['rows', 'flickr'].includes(localTheme.gallerySettings?.masonryMode || '') && (
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-2">
+                            {t('branding.lastRowBehavior', 'Last Row Alignment')}
+                          </label>
+                          <select
+                            value={localTheme.gallerySettings?.masonryLastRowBehavior || 'left'}
+                            onChange={(e) => updateGallerySettings('masonryLastRowBehavior', e.target.value)}
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                          >
+                            <option value="left">{t('branding.lastRowOptions.left', 'Left aligned')}</option>
+                            <option value="center">{t('branding.lastRowOptions.center', 'Centered')}</option>
+                            <option value="justify">{t('branding.lastRowOptions.justify', 'Justified (stretch)')}</option>
+                          </select>
+                        </div>
+                      )}
                     </>
                   )}
                 </>

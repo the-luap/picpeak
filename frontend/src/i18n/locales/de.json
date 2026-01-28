@@ -1290,9 +1290,16 @@
     "masonryMode": "Layout-Modus",
     "masonryModeOptions": {
       "columns": "Spalten (Pinterest-Stil)",
-      "rows": "Zeilen (Google Fotos-Stil)"
+      "rows": "Zeilen (Eigenes Layout)",
+      "flickr": "Flickr (Bewährtes Layout)",
+      "justified": "Google Fotos (Knuth-Plass Algorithmus)"
     },
-    "masonryModeHint": "Spalten ordnet Fotos vertikal an, Zeilen füllt horizontale Linien",
+    "masonryModeHint": {
+      "columns": "Pinterest-ähnliche vertikale Spalten mit variierenden Höhen",
+      "rows": "Eigenes zeilenbasiertes Layout",
+      "flickr": "Flickrs Open-Source Justified-Layout Algorithmus",
+      "justified": "Google Fotos-ähnliche Zeilen mit Knuth-Plass Algorithmus für optimale Umbrüche"
+    },
     "targetRowHeight": "Ziel-Zeilenhöhe",
     "targetRowHeightHint": "Höhe in Pixeln (150-400). Fotos werden skaliert, um in Zeilen zu passen.",
     "lastRowBehavior": "Letzte Zeile Ausrichtung",
