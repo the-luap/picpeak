@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
@@ -11,9 +11,6 @@ import {
 } from '../../../utils/justifiedLayoutCalculator';
 // Flickr's justified-layout library
 import justifiedLayout from 'justified-layout';
-// React Photo Album for Google Photos-style layout
-import { RowsPhotoAlbum, RenderPhotoContext } from 'react-photo-album';
-import 'react-photo-album/rows.css';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -244,6 +241,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const targetRowHeight = gallerySettings.masonryRowHeight || 250;
   const lastRowBehavior = gallerySettings.masonryLastRowBehavior || 'left';
 
+
   // Calculate number of columns based on container width (for columns mode)
   useEffect(() => {
     const updateDimensions = () => {
@@ -336,30 +334,43 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     return result;
   }, [mode, photos, containerWidth, targetRowHeight, gutter]);
 
-  // Prepare photos for react-photo-album (justified mode)
-  const albumPhotos = useMemo(() => {
-    if (mode !== 'justified' || photos.length === 0) {
-      return [];
+  // Distribute photos across columns using greedy "shortest column" algorithm
+  // This creates a more balanced masonry layout instead of round-robin
+  const photoColumns: Photo[][] = useMemo(() => {
+    if (mode !== 'columns' || photos.length === 0) {
+      return Array.from({ length: columns }, () => []);
     }
 
-    return photos.map((photo, index) => ({
-      src: photo.thumbnail_url || photo.url,
-      width: photo.width || 800,
-      height: photo.height || 600,
-      key: `photo-${photo.id}`,
-      // Store original data for click handling
-      originalIndex: index,
-      photoData: photo,
-    }));
-  }, [mode, photos]);
+    const cols: Photo[][] = Array.from({ length: columns }, () => []);
+    const colHeights: number[] = Array(columns).fill(0);
 
-  // Distribute photos across columns (for columns mode)
-  const photoColumns: Photo[][] = Array.from({ length: columns }, () => []);
-  if (mode === 'columns') {
-    photos.forEach((photo, index) => {
-      photoColumns[index % columns].push(photo);
+    // Calculate approximate column width for height estimation
+    const approxColWidth = containerWidth > 0 ? (containerWidth - (columns - 1) * gutter) / columns : 300;
+
+    photos.forEach((photo) => {
+      // Find the shortest column
+      let shortestCol = 0;
+      let minHeight = colHeights[0];
+      for (let i = 1; i < columns; i++) {
+        if (colHeights[i] < minHeight) {
+          minHeight = colHeights[i];
+          shortestCol = i;
+        }
+      }
+
+      // Add photo to shortest column
+      cols[shortestCol].push(photo);
+
+      // Estimate height based on aspect ratio
+      const photoWidth = photo.width || 800;
+      const photoHeight = photo.height || 600;
+      const aspectRatio = photoWidth / photoHeight;
+      const estimatedHeight = Math.max(150, Math.min(500, approxColWidth / aspectRatio));
+      colHeights[shortestCol] += estimatedHeight + gutter;
     });
-  }
+
+    return cols;
+  }, [mode, photos, columns, containerWidth, gutter]);
 
   // Calculate approximate column width for aspect ratio calculations
   const columnWidth = useMemo(() => {
@@ -609,127 +620,127 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     );
   }
 
-  // JUSTIFIED MODE - React Photo Album (Google Photos style with Knuth-Plass algorithm)
-  if (mode === 'justified') {
-    // Custom render function for photos in react-photo-album
-    // The render function receives (props, context) where context contains photo, index, width, height
-    const renderPhoto = useCallback((_props: { onClick?: React.MouseEventHandler }, context: RenderPhotoContext<typeof albumPhotos[0]>) => {
-      const { photo, width, height } = context;
-      const photoData = photo.photoData;
-      const originalIndex = photo.originalIndex;
+  // QUILTED MODE - Mixed sizes based on aspect ratio
+  // Landscape photos span 2 columns, portrait photos span 2 rows
+  if (mode === 'quilted') {
+    // Determine grid span based on aspect ratio
+    const getSpanClasses = (photo: Photo): string => {
+      const width = photo.width || 800;
+      const height = photo.height || 600;
+      const ratio = width / height;
 
-      return (
-        <div
-          style={{ width, height }}
-          className="photo-card group cursor-pointer transition-all duration-300 hover:z-10 relative"
-          onClick={() => onPhotoClick(originalIndex)}
-        >
-          <AuthenticatedImage
-            src={photoData.thumbnail_url || photoData.url}
-            alt={photoData.filename}
-            className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
-            style={{ width: '100%', height: '100%' }}
-            loading="lazy"
-            isGallery={true}
-            protectFromDownload={!allowDownloads}
-          />
-
-          {/* Feedback Indicators */}
-          {feedbackEnabled && ((photoData.comment_count ?? 0) > 0 || (photoData.average_rating ?? 0) > 0 || (photoData.like_count ?? 0) > 0) && (
-            <div className="absolute top-2 left-2 flex gap-1 z-10">
-              {(photoData.comment_count ?? 0) > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photoData.comment_count ?? 0}</span>
-                </div>
-              )}
-              {(photoData.average_rating ?? 0) > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{Number(photoData.average_rating ?? 0).toFixed(1)}</span>
-                </div>
-              )}
-              {(photoData.like_count ?? 0) > 0 && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                  <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photoData.like_count ?? 0}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Hover overlay with actions */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
-            {!isSelectionMode && (
-              <>
-                <button
-                  type="button"
-                  aria-label="View full size"
-                  className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
-                  onClick={(e) => { e.stopPropagation(); onPhotoClick(originalIndex); }}
-                >
-                  <Maximize2 className="w-5 h-5 text-white" />
-                </button>
-                {allowDownloads && (
-                  <button
-                    type="button"
-                    aria-label="Download photo"
-                    className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
-                    onClick={(e) => { e.stopPropagation(); onDownload(photoData, e); }}
-                  >
-                    <Download className="w-5 h-5 text-white" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Selection Checkbox */}
-          <button
-            type="button"
-            aria-label={`Select ${photoData.filename}`}
-            role="checkbox"
-            aria-checked={selectedPhotos.has(photoData.id)}
-            className={`absolute top-2 right-2 z-20 transition-opacity ${
-              selectedPhotos.has(photoData.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-            }`}
-            onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photoData.id); }}
-          >
-            <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photoData.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
-              {selectedPhotos.has(photoData.id) && <Check className="w-4 h-4 text-white" />}
-            </div>
-          </button>
-
-          {photoData.type === 'collage' && (
-            <div className="absolute bottom-2 left-2">
-              <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">Collage</span>
-            </div>
-          )}
-        </div>
-      );
-    }, [onPhotoClick, onDownload, allowDownloads, feedbackEnabled, isSelectionMode, selectedPhotos, onPhotoSelect]);
-
-    if (albumPhotos.length === 0) {
-      return (
-        <div ref={containerRef} className="photo-grid">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.slice(0, 8).map((photo) => (
-              <div key={photo.id} className="aspect-square bg-neutral-200 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        </div>
-      );
-    }
+      // Very wide landscape (panoramic) - span 2 columns
+      if (ratio > 1.5) return 'col-span-2';
+      // Very tall portrait - span 2 rows
+      if (ratio < 0.7) return 'row-span-2';
+      // Normal aspect ratio - single cell
+      return '';
+    };
 
     return (
-      <div ref={containerRef} className="photo-grid">
-        <RowsPhotoAlbum
-          photos={albumPhotos}
-          targetRowHeight={targetRowHeight}
-          rowConstraints={{ minPhotos: 1, maxPhotos: 6 }}
-          spacing={gutter}
-          render={{ photo: renderPhoto }}
-        />
+      <div
+        ref={containerRef}
+        className="photo-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gridAutoRows: '200px',
+          gap: `${gutter}px`,
+          gridAutoFlow: 'dense', // Fill gaps automatically
+        }}
+      >
+        {photos.map((photo, index) => {
+          const spanClasses = getSpanClasses(photo);
+
+          return (
+            <div
+              key={photo.id}
+              className={`photo-card group cursor-pointer relative overflow-hidden rounded-lg bg-neutral-100 ${spanClasses}`}
+              onClick={() => onPhotoClick(index)}
+            >
+              <AuthenticatedImage
+                src={photo.thumbnail_url || photo.url}
+                alt={photo.filename}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+                isGallery={true}
+                protectFromDownload={!allowDownloads}
+              />
+
+              {/* Feedback Indicators */}
+              {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  {(photo.comment_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                    </div>
+                  )}
+                  {(photo.average_rating ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                    </div>
+                  )}
+                  {(photo.like_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                {!isSelectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="View full size"
+                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onPhotoClick(index); }}
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
+                    </button>
+                    {allowDownloads && (
+                      <button
+                        type="button"
+                        aria-label="Download photo"
+                        className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDownload(photo, e); }}
+                      >
+                        <Download className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                aria-label={`Select ${photo.filename}`}
+                role="checkbox"
+                aria-checked={selectedPhotos.has(photo.id)}
+                className={`absolute top-2 right-2 z-20 transition-opacity ${
+                  selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                  {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
+                </div>
+              </button>
+
+              {photo.type === 'collage' && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">Collage</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   }
