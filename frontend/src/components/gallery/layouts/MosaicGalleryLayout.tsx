@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Download, Maximize2, Check, Heart, MessageSquare } from 'lucide-react';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
@@ -9,45 +9,17 @@ import type { Photo } from '../../../types';
 /**
  * Mosaic Gallery Layout
  *
- * Uses CSS Grid with span rules based on photo aspect ratios to create
- * a visually appealing mosaic layout. Based on best practices from:
- * - https://www.30secondsofcode.org/css/s/image-mosaic/
- * - https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout
+ * Uses CSS Columns for a gap-free masonry/mosaic effect.
+ * Images flow vertically within columns, maintaining their natural aspect ratios.
+ * This approach eliminates gaps that occur with CSS Grid span rules.
  *
- * Portrait photos span 2 rows, wide landscape photos span 2 columns.
+ * Based on:
+ * - https://css-tricks.com/seamless-responsive-photo-grid/
+ * - https://www.30secondsofcode.org/css/s/image-mosaic/
  */
-
-// Determine grid span based on aspect ratio
-type SpanType = 'normal' | 'tall' | 'wide';
-
-const getSpanType = (photo: Photo): SpanType => {
-  const width = photo.width || 1;
-  const height = photo.height || 1;
-  const ratio = width / height;
-
-  // Very tall portrait (aspect ratio < 0.7) - span 2 rows
-  if (ratio < 0.75) return 'tall';
-  // Very wide landscape (aspect ratio > 1.6) - span 2 columns
-  if (ratio > 1.6) return 'wide';
-  // Normal aspect ratio
-  return 'normal';
-};
-
-// Get CSS classes for grid item based on span type
-const getGridItemClasses = (spanType: SpanType): string => {
-  switch (spanType) {
-    case 'tall':
-      return 'row-span-2';
-    case 'wide':
-      return 'col-span-2';
-    default:
-      return '';
-  }
-};
 
 interface MosaicPhotoProps {
   photo: Photo;
-  spanType: SpanType;
   isSelected: boolean;
   isSelectionMode: boolean;
   onClick: (e: React.MouseEvent) => void;
@@ -66,7 +38,6 @@ interface MosaicPhotoProps {
 
 const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   photo,
-  spanType,
   isSelected,
   isSelectionMode,
   onClick,
@@ -84,12 +55,11 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   const [likedLocal, setLikedLocal] = React.useState(false);
   const canComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onQuickComment);
 
-  const gridItemClasses = getGridItemClasses(spanType);
-
   return (
     <>
       <div
-        className={`photo-card relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 min-h-[200px] ${gridItemClasses}`}
+        className="photo-card relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 mb-2"
+        style={{ breakInside: 'avoid' }}
         onClick={(e) => {
           e.stopPropagation();
           onClick(e);
@@ -98,7 +68,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
         <AuthenticatedImage
           src={photo.thumbnail_url || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           isGallery={true}
           protectFromDownload={!allowDownloads}
@@ -234,37 +204,36 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   feedbackEnabled = false,
   feedbackOptions
 }) => {
-  // Pre-compute photos with their span types
-  const photosWithSpans = useMemo(() => {
-    return photos.map((photo, index) => ({
-      photo,
-      originalIndex: index,
-      spanType: getSpanType(photo)
-    }));
-  }, [photos]);
-
   return (
     <div
       className="photo-grid w-full"
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-        gridAutoRows: '200px',
-        gap: '8px'
+        columnCount: 4,
+        columnGap: '8px',
       }}
     >
-      {photosWithSpans.map(({ photo, originalIndex, spanType }) => (
+      <style>{`
+        @media (max-width: 1280px) {
+          .photo-grid { column-count: 3 !important; }
+        }
+        @media (max-width: 1024px) {
+          .photo-grid { column-count: 2 !important; }
+        }
+        @media (max-width: 640px) {
+          .photo-grid { column-count: 1 !important; }
+        }
+      `}</style>
+      {photos.map((photo, index) => (
         <MosaicPhoto
           key={photo.id}
           photo={photo}
-          spanType={spanType}
           isSelected={selectedPhotos.has(photo.id)}
           isSelectionMode={isSelectionMode}
           onClick={() => {
             if (isSelectionMode && onPhotoSelect) {
               onPhotoSelect(photo.id);
             } else {
-              onPhotoClick(originalIndex);
+              onPhotoClick(index);
             }
           }}
           onDownload={(e) => onDownload(photo, e)}
@@ -275,7 +244,7 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
           feedbackOptions={feedbackOptions}
           onQuickComment={() => {
             if (typeof onOpenPhotoWithFeedback !== 'undefined' && onOpenPhotoWithFeedback) {
-              onOpenPhotoWithFeedback(originalIndex);
+              onOpenPhotoWithFeedback(index);
             }
           }}
         />
