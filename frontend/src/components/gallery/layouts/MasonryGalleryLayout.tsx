@@ -34,6 +34,8 @@ interface MasonryPhotoProps {
     requireNameEmail?: boolean;
   };
   onQuickComment?: () => void;
+  // Column width for calculating proper aspect-ratio-based height
+  columnWidth?: number;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -48,19 +50,28 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   feedbackEnabled = false,
   slug,
   feedbackOptions,
-  onQuickComment
+  onQuickComment,
+  columnWidth = 300
 }) => {
-  const [imageHeight, setImageHeight] = useState<number>(200);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
-  // Generate random heights for masonry effect
-  useEffect(() => {
-    const heights = [200, 250, 300, 350, 400];
-    const randomHeight = heights[Math.floor(Math.random() * heights.length)];
-    setImageHeight(randomHeight);
-  }, [photo.id]);
+  // Calculate height based on actual photo aspect ratio
+  // This preserves the photo's natural proportions in the masonry layout
+  const imageHeight = useMemo(() => {
+    const photoWidth = photo.width || 800;
+    const photoHeight = photo.height || 600;
+    const aspectRatio = photoWidth / photoHeight;
+
+    // Calculate height based on column width and aspect ratio
+    // Clamp to reasonable min/max heights for visual consistency
+    const calculatedHeight = columnWidth / aspectRatio;
+    const minHeight = 150;
+    const maxHeight = 500;
+
+    return Math.max(minHeight, Math.min(maxHeight, calculatedHeight));
+  }, [photo.width, photo.height, columnWidth]);
 
   return (
     <div
@@ -349,6 +360,14 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       photoColumns[index % columns].push(photo);
     });
   }
+
+  // Calculate approximate column width for aspect ratio calculations
+  const columnWidth = useMemo(() => {
+    if (containerWidth <= 0 || columns <= 0) return 300;
+    // Account for gaps between columns
+    const totalGaps = (columns - 1) * gutter;
+    return (containerWidth - totalGaps) / columns;
+  }, [containerWidth, columns, gutter]);
 
   // ROWS MODE - Google Photos style justified layout
   if (mode === 'rows') {
@@ -744,6 +763,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 slug={slug}
                 feedbackOptions={feedbackOptions}
                 onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(originalIndex)}
+                columnWidth={columnWidth}
               />
             );
           })}
