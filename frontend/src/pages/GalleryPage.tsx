@@ -122,11 +122,11 @@ export const GalleryPage: React.FC = () => {
     }
   }, [settingsData, isAuthenticated, i18n]);
 
-  // Apply theme for login page
+  // Apply theme for gallery (both login page and authenticated view)
   React.useEffect(() => {
-    if (!isAuthenticated && galleryInfo && settingsData) {
+    if (galleryInfo && settingsData) {
       let themeToApply = null;
-      
+
       if (galleryInfo.color_theme) {
         try {
           // Check if it's a valid JSON string
@@ -155,13 +155,13 @@ export const GalleryPage: React.FC = () => {
         // No event theme, use global theme
         themeToApply = settingsData.theme_config;
       }
-      
+
       // Apply theme
       if (themeToApply) {
         setTheme(themeToApply);
       }
     }
-  }, [galleryInfo, settingsData, isAuthenticated, setTheme]);
+  }, [galleryInfo, settingsData, setTheme]);
 
   React.useEffect(() => {
     if (!resolvedSlug || isResolvingIdentifier) {
