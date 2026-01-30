@@ -55,11 +55,17 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   const [likedLocal, setLikedLocal] = React.useState(false);
   const canComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onQuickComment);
 
+  // Calculate aspect ratio from photo dimensions (fallback to 1 if unknown)
+  const aspectRatio = (photo.width && photo.height) ? photo.width / photo.height : 1;
+
   return (
     <>
       <div
         className="photo-card relative group cursor-pointer overflow-hidden rounded-lg bg-neutral-100 mb-2"
-        style={{ breakInside: 'avoid' }}
+        style={{
+          breakInside: 'avoid',
+          aspectRatio: aspectRatio.toString()
+        }}
         onClick={(e) => {
           e.stopPropagation();
           onClick(e);
@@ -68,7 +74,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
         <AuthenticatedImage
           src={photo.thumbnail_url || photo.url}
           alt={photo.filename}
-          className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           isGallery={true}
           protectFromDownload={!allowDownloads}
