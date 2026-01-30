@@ -5,6 +5,21 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.7.0-beta.0...v3.8.0-beta.0) (2026-01-30)
+
+
+### Features
+
+* add quilted layout, fix mosaic, and backfill photo dimensions ([#146](https://github.com/the-luap/picpeak/issues/146)) ([46ed1bc](https://github.com/the-luap/picpeak/commit/46ed1bc276867a25b27bf22cd9b9d7e879a6947b))
+* improve gallery layouts with aspect-ratio-aware masonry and mosaic modes ([#146](https://github.com/the-luap/picpeak/issues/146)) ([aacfcd5](https://github.com/the-luap/picpeak/commit/aacfcd517ea5739e834cf84627b55b3449740a5c))
+
+
+### Bug Fixes
+
+* use actual photo aspect ratios in masonry columns mode ([#146](https://github.com/the-luap/picpeak/issues/146)) ([8711f96](https://github.com/the-luap/picpeak/commit/8711f967a15f5d57f6ad01bfdbd8d33f9ee96abc))
+* use CSS Columns for gap-free mosaic layout ([#146](https://github.com/the-luap/picpeak/issues/146)) ([821d329](https://github.com/the-luap/picpeak/commit/821d3296ea4b6bde499e5497d258f15ab8dd1dbc))
+* use photo dimensions for mosaic aspect ratios ([#146](https://github.com/the-luap/picpeak/issues/146)) ([27ff51e](https://github.com/the-luap/picpeak/commit/27ff51e7a1217848859b47940bc88caa6f1fb20f))
+
 ## [3.7.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.6.0-beta.0...v3.7.0-beta.0) (2026-01-28)
 
 
