@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, RotateCcw, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, Check } from 'lucide-react';
+import { X, Save, RotateCcw, Grid3X3, Layers, Play, Clock, LayoutGrid, Check } from 'lucide-react';
 import { Button } from '../common';
 import { ThemeCustomizerEnhanced } from './ThemeCustomizerEnhanced';
 import { GalleryPreview } from './GalleryPreview';
@@ -21,9 +21,7 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   masonry: <Layers className="w-4 h-4" />,
   carousel: <Play className="w-4 h-4" />,
   timeline: <Clock className="w-4 h-4" />,
-  hero: <Image className="w-4 h-4" />,
-  mosaic: <LayoutGrid className="w-4 h-4" />,
-  justified: <Layers className="w-4 h-4" />
+  mosaic: <LayoutGrid className="w-4 h-4" />
 };
 
 export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({

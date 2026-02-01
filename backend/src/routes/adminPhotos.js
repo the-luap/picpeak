@@ -647,9 +647,7 @@ router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos
     }
     
     // Prepare update data
-    const updateData = {
-      updated_at: new Date()
-    };
+    const updateData = {};
 
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')
@@ -726,13 +724,20 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
       .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .select('photos.*', 'photo_categories.name as pc_name', 'photo_categories.slug as pc_slug');
     
-    // Filter by type (individual/collage) - category_id maps to type
-    if (category_id !== undefined) {
-      if (category_id === '' || category_id === '0') {
-        // For backwards compatibility, empty category means no filter
-        // Don't filter anything
-      } else if (category_id === 'individual' || category_id === 'collage') {
+    // Filter by category_id
+    if (category_id !== undefined && category_id !== '' && category_id !== '0') {
+      if (category_id === 'individual' || category_id === 'collage') {
+        // Legacy type-based filtering
         query = query.where({ 'photos.type': category_id });
+      } else if (category_id === 'uncategorized') {
+        // Filter for photos with no category assigned
+        query = query.whereNull('photos.category_id');
+      } else {
+        // Numeric category ID from photo_categories table
+        const numericCategoryId = parseInt(category_id, 10);
+        if (!isNaN(numericCategoryId)) {
+          query = query.where({ 'photos.category_id': numericCategoryId });
+        }
       }
     }
     

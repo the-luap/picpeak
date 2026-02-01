@@ -8,13 +8,14 @@ import { Button } from '../common';
 import { DynamicFavicon } from '../common/DynamicFavicon';
 import { useTheme } from '../../contexts/ThemeContext';
 import { buildResourceUrl } from '../../utils/url';
+import type { HeaderStyleType } from '../../types/theme.types';
 
 interface GalleryLayoutProps {
   event: {
     event_name: string;
     event_type?: string;
-    event_date?: string;
-    expires_at?: string;
+    event_date?: string | null;
+    expires_at?: string | null;
   };
   brandingSettings?: {
     company_name?: string;
@@ -56,8 +57,13 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
-  
-  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid' && theme.galleryLayout !== 'hero';
+
+  // Determine header style - check theme.headerStyle first, then fall back to legacy behavior
+  const headerStyle: HeaderStyleType = theme.headerStyle || 'standard';
+  const isHeroHeader = headerStyle === 'hero';
+
+  // Non-grid layouts that need the sidebar (excluding layouts using hero header)
+  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid';
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   const headingFontFamily = theme.headingFontFamily || fontFamily;
   
@@ -123,9 +129,9 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <DynamicFavicon />
 
       {/* Header structure */}
-      <header className={`gallery-header bg-white border-b border-neutral-200 sticky top-0 z-40 ${isNonGridLayout || theme.galleryLayout === 'hero' ? 'shadow-sm' : ''}`}>
-        {/* For non-grid layouts (excluding hero) - keep the current structure */}
-        {isNonGridLayout && (
+      <header className={`gallery-header bg-white border-b border-neutral-200 sticky top-0 z-40 ${isNonGridLayout || isHeroHeader ? 'shadow-sm' : ''}`}>
+        {/* For non-grid layouts - keep the current structure */}
+        {isNonGridLayout && !isHeroHeader && (
           <div className="bg-neutral-50 border-b border-neutral-200">
             <div className="container py-2">
               <div className="flex items-center justify-between">
@@ -170,8 +176,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For grid layout - everything in one bar */}
-        {!isNonGridLayout && theme.galleryLayout !== 'hero' && (
+        {/* For grid layout - everything in one bar (standard header) */}
+        {!isNonGridLayout && !isHeroHeader && (
           <div className="container py-3">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Left side - Menu button, Logo */}
@@ -292,8 +298,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For hero layout - minimal header with just menu and logout */}
-        {theme.galleryLayout === 'hero' && (
+        {/* For hero header style - minimal header with just menu and logout */}
+        {isHeroHeader && (
           <div className="container py-3">
             <div className="flex items-center justify-between">
               {/* Left side - Menu button */}
@@ -337,8 +343,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
         )}
       </header>
 
-      {/* Hero Header for non-grid layouts (excluding hero layout which has its own) */}
-      {isNonGridLayout && (
+      {/* Hero Header for non-grid layouts when using standard header style */}
+      {isNonGridLayout && !isHeroHeader && (
         <div
           className="gallery-hero relative text-white overflow-hidden"
           style={{

@@ -151,18 +151,6 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
           </div>
         );
       
-      case 'hero':
-        return (
-          <div className="space-y-3">
-            <PreviewPhoto photo={mockPhotos[0]} aspectRatio="aspect-[16/9]" className="w-full" />
-            <div className={`grid grid-cols-4 ${gapClass}`}>
-              {mockPhotos.slice(1, 5).map((photo) => (
-                <PreviewPhoto key={photo.id} photo={photo} />
-              ))}
-            </div>
-          </div>
-        );
-      
       case 'mosaic':
         return (
           <div className={`grid grid-cols-4 grid-rows-3 ${gapClass} h-64`}>

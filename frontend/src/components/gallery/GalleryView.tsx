@@ -30,10 +30,10 @@ interface GalleryViewProps {
     id: number;
     event_name: string;
     event_type: string;
-    event_date: string;
+    event_date: string | null;
     welcome_message?: string;
     color_theme?: string;
-    expires_at: string;
+    expires_at: string | null;
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;
@@ -604,7 +604,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         headerExtra={(() => {
           const items = [];
           
-          if (daysUntilExpiration !== null && daysUntilExpiration <= 1 && daysUntilExpiration > 0) {
+          if (daysUntilExpiration !== null && daysUntilExpiration <= 1 && daysUntilExpiration > 0 && event.expires_at) {
             items.push(
               <CountdownTimer key="countdown" expiresAt={event.expires_at} className="mr-2" />
             );
@@ -632,7 +632,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         })()}
       >
         {/* Expiration Banner */}
-        {showUrgentWarning && (
+        {showUrgentWarning && event.expires_at && (
           <ExpirationBanner daysRemaining={daysUntilExpiration} expiresAt={event.expires_at} />
         )}
 
@@ -694,6 +694,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             heroLogoVisible={data?.event?.hero_logo_visible !== false}
             heroLogoSize={data?.event?.hero_logo_size || 'medium'}
             heroLogoPosition={data?.event?.hero_logo_position || 'top'}
+            headerStyle={data?.event?.header_style || theme.headerStyle}
+            heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
           />
         </div>
 

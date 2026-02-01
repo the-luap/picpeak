@@ -60,7 +60,7 @@ import { buildResourceUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
-import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters, type FilterSummary } from '../../services/photos.service';
+import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
@@ -337,28 +337,6 @@ export const EventDetailsPage: React.FC = () => {
     },
   });
 
-  const applyThemeMutation = useMutation({
-    mutationFn: async ({ theme, presetName }: { theme: ThemeConfig; presetName: string }) => {
-      if (!id) {
-        throw new Error('Missing event identifier');
-      }
-
-      const colorThemeValue = presetName && presetName !== 'custom'
-        ? presetName
-        : JSON.stringify(theme);
-
-      return eventsService.updateEvent(parseInt(id), { color_theme: colorThemeValue });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
-      toast.success(t('branding.themeApplied', 'Theme updated'));
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error || t('branding.themeApplyError', 'Failed to apply theme');
-      toast.error(message);
-    }
-  });
-
   // Archive mutation
   const archiveMutation = useMutation({
     mutationFn: () => eventsService.archiveEvent(parseInt(id!)),
@@ -470,7 +448,7 @@ export const EventDetailsPage: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      const response = await api.post(`/admin/events/${id}/logo`, formData, {
+      await api.post(`/admin/events/${id}/logo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       toast.success(t('events.eventLogoUploaded', 'Event logo uploaded successfully'));
@@ -1745,6 +1723,7 @@ export const EventDetailsPage: React.FC = () => {
                 queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
               }}
               onSelectionChange={setSelectedPhotoIds}
+              categories={categories}
             />
           )}
 

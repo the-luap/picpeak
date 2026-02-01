@@ -1,5 +1,11 @@
 // Gallery Layout Types
-export type GalleryLayoutType = 'grid' | 'masonry' | 'carousel' | 'timeline' | 'hero' | 'mosaic';
+export type GalleryLayoutType = 'grid' | 'masonry' | 'carousel' | 'timeline' | 'mosaic';
+
+// Header Style Types (decoupled from layout)
+export type HeaderStyleType = 'hero' | 'standard' | 'minimal' | 'none';
+
+// Hero Divider Styles
+export type HeroDividerStyle = 'wave' | 'straight' | 'angle' | 'curve' | 'none';
 
 export interface GalleryLayoutSettings {
   // Common settings
@@ -15,10 +21,16 @@ export interface GalleryLayoutSettings {
   };
   
   // Masonry specific
-  masonryMode?: 'columns' | 'rows' | 'flickr' | 'quilted'; // columns = Pinterest-style, rows = justified rows, flickr = Flickr justified-layout, quilted = mixed sizes based on aspect ratio
+  masonryMode?: 'columns' | 'rows' | 'flickr' | 'quilted' | 'justified'; // columns = Pinterest-style, rows = justified rows, flickr = Flickr justified-layout, quilted = mixed sizes, justified = Knuth-Plass
   masonryGutter?: number;
   masonryRowHeight?: number; // Target row height for rows mode (150-400)
   masonryLastRowBehavior?: 'justify' | 'left' | 'center'; // How to align incomplete last row
+
+  // Justified layout specific
+  justifiedRowHeight?: number;
+  justifiedLastRowBehavior?: 'justify' | 'left' | 'center';
+  justifiedShowHero?: boolean;
+  justifiedHeroHeight?: 'small' | 'medium' | 'large';
   
   // Carousel specific
   carouselAutoplay?: boolean;
@@ -58,9 +70,13 @@ export interface ThemeConfig {
   // Gallery Layout
   galleryLayout?: GalleryLayoutType;
   gallerySettings?: GalleryLayoutSettings;
-  
-  // Header/Footer
-  headerStyle?: 'minimal' | 'standard' | 'full';
+
+  // Header Style (decoupled from layout)
+  headerStyle?: HeaderStyleType;
+  heroDividerStyle?: HeroDividerStyle;
+
+  // Legacy Header/Footer (kept for backward compatibility)
+  legacyHeaderStyle?: 'minimal' | 'standard' | 'full';
   footerStyle?: 'minimal' | 'standard' | 'full';
   showEventInfo?: boolean;
   showBranding?: boolean;
@@ -115,14 +131,16 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       headingFontFamily: 'Playfair Display, serif',
       borderRadius: 'lg',
       shadowStyle: 'subtle',
-      galleryLayout: 'hero',
+      galleryLayout: 'grid',
+      headerStyle: 'hero',
+      heroDividerStyle: 'wave',
       gallerySettings: {
         spacing: 'relaxed',
         photoAnimation: 'scale',
         photoShape: 'rounded',
         heroOverlayOpacity: 0.3
       },
-      headerStyle: 'full',
+      legacyHeaderStyle: 'full',
       footerStyle: 'minimal'
     },
     isPreset: true
@@ -172,13 +190,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
         carouselInterval: 5000,
         carouselShowThumbnails: true
       },
-      headerStyle: 'full',
+      headerStyle: 'standard',
       footerStyle: 'standard',
       backgroundPattern: 'dots'
     },
     isPreset: true
   },
-  
+
   corporateTimeline: {
     name: 'Corporate Timeline',
     description: 'Professional chronological layout',

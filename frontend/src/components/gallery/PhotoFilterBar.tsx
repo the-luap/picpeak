@@ -5,7 +5,7 @@ import { Button, Input } from '../common';
 import type { FilterType } from './GalleryFilter';
 
 interface PhotoCategory {
-  id: number;
+  id: number | string;
   name: string;
   slug: string;
   is_global: boolean;
@@ -13,7 +13,7 @@ interface PhotoCategory {
 
 interface Photo {
   id: number;
-  category_id?: number;
+  category_id?: number | string | null;
   like_count?: number;
   favorite_count?: number;
 }
@@ -21,8 +21,8 @@ interface Photo {
 interface PhotoFilterBarProps {
   categories?: PhotoCategory[];
   photos: Photo[];
-  selectedCategoryId: number | null;
-  onCategoryChange: (categoryId: number | null) => void;
+  selectedCategoryId: number | string | null;
+  onCategoryChange: (categoryId: number | string | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   sortBy: 'date' | 'name' | 'size' | 'rating';

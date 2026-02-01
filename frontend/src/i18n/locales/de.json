@@ -1391,7 +1391,30 @@
     "showLogoInHeader": "Logo im Galerie-Header anzeigen",
     "showLogoInHeaderHelp": "Logo in der Hauptkopfzeile anzeigen",
     "showLogoInHero": "Logo im Hero-Bereich anzeigen",
-    "showLogoInHeroHelp": "Logo in Hero-Bereichen anzeigen (für Nicht-Raster-Layouts)"
+    "showLogoInHeroHelp": "Logo in Hero-Bereichen anzeigen (für Nicht-Raster-Layouts)",
+    "headerStyle": "Kopfzeilen-Stil",
+    "headerStyleDescription": "Wählen Sie, wie die Galerie-Kopfzeile aussieht. Der Kopfzeilen-Stil ist unabhängig vom Foto-Layout.",
+    "headerStyleOptions": {
+      "hero": "Hero-Bild",
+      "standard": "Standard-Banner",
+      "minimal": "Minimal",
+      "none": "Keine Kopfzeile"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Bild in voller Höhe mit Event-Info-Overlay",
+      "standard": "Klassisches Banner mit Veranstaltungsdetails",
+      "minimal": "Kompakte Kopfzeile mit wesentlichen Infos",
+      "none": "Kopfzeile komplett ausblenden"
+    },
+    "heroDividerStyle": "Trennlinie-Stil",
+    "heroDividerDescription": "Wählen Sie, wie der Übergang zwischen dem Hero-Bild und dem Galerie-Inhalt aussieht.",
+    "dividerOptions": {
+      "wave": "Welle",
+      "straight": "Gerade",
+      "angle": "Winkel",
+      "curve": "Kurve",
+      "none": "Keine"
+    }
   },
   "admin": {
     "title": "Admin-Panel",

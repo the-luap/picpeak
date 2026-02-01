@@ -193,7 +193,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   // Hero logo settings
   body('hero_logo_visible').optional().isBoolean(),
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
-  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
+  // Header style settings (decoupled from layout)
+  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -236,7 +239,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       // Hero logo settings
       hero_logo_visible = true,
       hero_logo_size = 'medium',
-      hero_logo_position = 'top'
+      hero_logo_position = 'top',
+      // Header style settings
+      header_style = 'standard',
+      hero_divider_style = 'wave'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -377,7 +383,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       css_template_id: css_template_id || null,
       hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
       hero_logo_size: hero_logo_size || 'medium',
-      hero_logo_position: hero_logo_position || 'top'
+      hero_logo_position: hero_logo_position || 'top',
+      header_style: header_style || 'standard',
+      hero_divider_style: hero_divider_style || 'wave'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -658,7 +666,10 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   // Hero logo settings
   body('hero_logo_visible').optional().isBoolean(),
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
-  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom'])
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
+  // Header style settings (decoupled from layout)
+  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

@@ -90,7 +90,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
           >
             {RATING_OPTIONS.map(option => (
               <option key={option.label} value={option.value ?? ''}>
-                {t(option.label, option.label.split('.').pop())}
+                {t(option.label, { defaultValue: option.label.split('.').pop() })}
               </option>
             ))}
           </select>

@@ -277,7 +277,7 @@ export const EventTypesPage: React.FC = () => {
       {showCreateModal && (
         <EventTypeModal
           onClose={() => setShowCreateModal(false)}
-          onSubmit={(data) => createMutation.mutate(data)}
+          onSubmit={(data) => createMutation.mutate(data as CreateEventTypeData)}
           isLoading={createMutation.isPending}
         />
       )}

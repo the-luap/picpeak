@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Download, Trash2, Eye, Package, MessageSquare, Star, Video } from 'lucide-react';
+import { Check, Download, Trash2, Eye, Package, MessageSquare, Star, Video, FolderOpen } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,12 @@ import { AdminPhoto } from '../../services/photos.service';
 import { photosService } from '../../services/photos.service';
 import { Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
+import { BulkCategoryModal } from './BulkCategoryModal';
+
+interface CategoryOption {
+  id: number;
+  name: string;
+}
 
 interface AdminPhotoGridProps {
   photos: AdminPhoto[];
@@ -14,6 +20,7 @@ interface AdminPhotoGridProps {
   onPhotoClick: (photo: AdminPhoto, index: number) => void;
   onPhotosDeleted: () => void;
   onSelectionChange?: (selectedIds: number[]) => void;
+  categories?: CategoryOption[];
 }
 
 export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
@@ -21,13 +28,16 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
   eventId,
   onPhotoClick,
   onPhotosDeleted,
-  onSelectionChange
+  onSelectionChange,
+  categories = []
 }) => {
   const { t } = useTranslation();
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingPhotos, setDeletingPhotos] = useState<Set<number>>(new Set());
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
 
   const handlePhotoSelect = (photoId: number, e?: React.MouseEvent) => {
     if (e) {
@@ -125,6 +135,35 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
     }
   };
 
+  const handleMoveToCategory = async (categoryId: number | null) => {
+    if (selectedPhotos.size === 0) return;
+
+    setIsUpdatingCategory(true);
+    const selectedIds = Array.from(selectedPhotos);
+
+    try {
+      await photosService.updatePhotosCategory(eventId, selectedIds, categoryId);
+      const categoryName = categoryId
+        ? categories.find(c => Number(c.id) === categoryId)?.name || t('photos.selectedCategory', 'selected category')
+        : t('photos.uncategorized', 'Uncategorized');
+      toast.success(
+        t('photos.movedToCategory', '{{count}} photos moved to {{category}}', {
+          count: selectedIds.length,
+          category: categoryName
+        })
+      );
+      setSelectedPhotos(new Set());
+      setIsSelectionMode(false);
+      onSelectionChange?.([]);
+      setIsCategoryModalOpen(false);
+      onPhotosDeleted(); // Refresh the photo list
+    } catch {
+      toast.error(t('photos.moveToCategoryFailed', 'Failed to move photos to category'));
+    } finally {
+      setIsUpdatingCategory(false);
+    }
+  };
+
   return (
     <div>
       {/* Action Bar */}
@@ -154,6 +193,14 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                   <span className="text-sm text-neutral-600">
                     {t('gallery.photosSelected', { count: selectedPhotos.size })}
                   </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    leftIcon={<FolderOpen className="w-4 h-4" />}
+                  >
+                    {t('photos.moveToCategory', 'Move to Category')}
+                  </Button>
                   <button
                     onClick={handleDeleteSelected}
                     disabled={isDeleting}
@@ -309,6 +356,16 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
           <p className="text-neutral-500">{t('gallery.noMedia', 'No media uploaded yet')}</p>
         </div>
       )}
+
+      {/* Bulk Category Modal */}
+      <BulkCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onConfirm={handleMoveToCategory}
+        photoCount={selectedPhotos.size}
+        categories={categories}
+        isLoading={isUpdatingCategory}
+      />
     </div>
   );
 };
