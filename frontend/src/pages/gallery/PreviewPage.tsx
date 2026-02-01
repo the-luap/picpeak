@@ -30,7 +30,7 @@ const mockCategories = [
 export const PreviewPage: React.FC = () => {
   const { setTheme } = useTheme();
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
 

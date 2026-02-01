@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {expiringEvents.slice(0, 5).map((event) => {
-                  const daysLeft = differenceInDays(parseISO(event.expires_at), new Date());
+                  const daysLeft = differenceInDays(parseISO(event.expires_at!), new Date());
                   
                   return (
                     <div
@@ -216,7 +216,7 @@ export const AdminDashboard: React.FC = () => {
                           {t('admin.daysLeft', { count: daysLeft })}
                         </p>
                         <p className="text-xs text-neutral-500">
-                          {t('gallery.expires')} {format(parseISO(event.expires_at), 'PP')}
+                          {t('gallery.expires')} {format(parseISO(event.expires_at!), 'PP')}
                         </p>
                       </div>
                     </div>

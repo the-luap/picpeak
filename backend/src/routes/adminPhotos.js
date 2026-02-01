@@ -647,9 +647,7 @@ router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos
     }
     
     // Prepare update data
-    const updateData = {
-      updated_at: new Date()
-    };
+    const updateData = {};
 
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')

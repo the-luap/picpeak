@@ -15,8 +15,8 @@ export interface BaseGalleryLayoutProps {
   onPhotoSelect?: (photoId: number) => void;
   eventName?: string;
   eventLogo?: string | null;
-  eventDate?: string;
-  expiresAt?: string;
+  eventDate?: string | null;
+  expiresAt?: string | null;
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;

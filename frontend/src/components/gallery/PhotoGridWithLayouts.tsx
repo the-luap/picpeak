@@ -17,14 +17,15 @@ import {
   MasonryGalleryLayout,
   CarouselGalleryLayout,
   TimelineGalleryLayout,
-  HeroGalleryLayout,
   MosaicGalleryLayout,
 } from './layouts';
+import { HeroHeader } from './HeroHeader';
+import type { HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 
 interface PhotoGridWithLayoutsProps {
   photos: Photo[];
   slug: string;
-  categoryId?: number | null;
+  categoryId?: number | string | null;
   // When provided, the hero layout will use this photo
   // instead of deriving from the filtered photo list.
   heroPhotoOverride?: Photo | null;
@@ -35,8 +36,8 @@ interface PhotoGridWithLayoutsProps {
   showSelectionControls?: boolean;
   eventName?: string;
   eventLogo?: string | null;
-  eventDate?: string;
-  expiresAt?: string;
+  eventDate?: string | null;
+  expiresAt?: string | null;
   feedbackEnabled?: boolean;
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
@@ -56,6 +57,9 @@ interface PhotoGridWithLayoutsProps {
   heroLogoVisible?: boolean;
   heroLogoSize?: 'small' | 'medium' | 'large' | 'xlarge';
   heroLogoPosition?: 'top' | 'center' | 'bottom';
+  // Header style (decoupled from layout)
+  headerStyle?: HeaderStyleType;
+  heroDividerStyle?: HeroDividerStyle;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -83,7 +87,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   expiresAt,
   heroLogoVisible = true,
   heroLogoSize = 'medium',
-  heroLogoPosition = 'top'
+  heroLogoPosition = 'top',
+  headerStyle,
+  heroDividerStyle = 'wave'
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -212,6 +218,10 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     heroLogoPosition,
   };
 
+  // Determine if we should show hero header (decoupled from layout)
+  const effectiveHeaderStyle = headerStyle || theme.headerStyle;
+  const showHeroHeader = effectiveHeaderStyle === 'hero';
+
   let LayoutComponent;
   switch (galleryLayout) {
     case 'masonry':
@@ -223,9 +233,6 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     case 'timeline':
       LayoutComponent = TimelineGalleryLayout;
       break;
-    case 'hero':
-      LayoutComponent = HeroGalleryLayout;
-      break;
     case 'mosaic':
       LayoutComponent = MosaicGalleryLayout;
       break;
@@ -235,6 +242,27 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
 
   return (
     <>
+      {/* Hero Header - shown when headerStyle is 'hero' */}
+      {showHeroHeader && (
+        <HeroHeader
+          photos={photos}
+          slug={slug}
+          eventName={eventName}
+          eventLogo={eventLogo}
+          eventDate={eventDate}
+          expiresAt={expiresAt}
+          heroPhotoOverride={heroPhotoOverride}
+          heroLogoVisible={heroLogoVisible}
+          heroLogoSize={heroLogoSize}
+          heroLogoPosition={heroLogoPosition}
+          dividerStyle={heroDividerStyle}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering}
+        />
+      )}
+
       {/* Selection Mode Controls - Not shown for carousel layout or when controls are hidden */}
       {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

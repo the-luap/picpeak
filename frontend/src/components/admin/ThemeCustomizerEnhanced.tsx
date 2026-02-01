@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff } from 'lucide-react';
 import { Button, Card, Input } from '../common';
-import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType } from '../../types/theme.types';
+import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
 // import { settingsService } from '../../services/settings.service';
 // import { toast } from 'react-toastify';
@@ -28,8 +28,43 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   masonry: <Layers className="w-5 h-5" />,
   carousel: <Play className="w-5 h-5" />,
   timeline: <Clock className="w-5 h-5" />,
-  hero: <Image className="w-5 h-5" />,
   mosaic: <LayoutGrid className="w-5 h-5" />
+};
+
+const headerStyleIcons: Record<HeaderStyleType, React.ReactNode> = {
+  hero: <Image className="w-5 h-5" />,
+  standard: <Layout className="w-5 h-5" />,
+  minimal: <Minimize2 className="w-5 h-5" />,
+  none: <EyeOff className="w-5 h-5" />
+};
+
+const dividerStylePreviews: Record<HeroDividerStyle, React.ReactNode> = {
+  wave: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,12 C12,18 37,6 50,12 C63,18 88,6 100,12 L100,24 L0,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  straight: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <rect x="0" y="12" width="100" height="12" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  angle: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,24 L100,8 L100,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  curve: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,16 Q50,0 100,16 L100,24 L0,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  none: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <rect x="0" y="0" width="100" height="24" fill="currentColor" className="text-neutral-100" />
+      <text x="50" y="16" textAnchor="middle" fontSize="10" fill="currentColor" className="text-neutral-400">No divider</text>
+    </svg>
+  )
 };
 
 // Layout descriptions will use translation keys
@@ -434,6 +469,85 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   )}
                 </>
               )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Header Style - Decoupled from Layout */}
+      {showGalleryLayouts && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+            <ImageIcon className="w-5 h-5" />
+            {t('branding.headerStyle', 'Header Style')}
+          </h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
+              <button
+                key={style}
+                onClick={() => handleChange('headerStyle', style)}
+                className={`relative p-4 rounded-lg border-2 transition-all ${
+                  (localTheme.headerStyle || 'standard') === style
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
+                }`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-2 text-neutral-700">
+                    {headerStyleIcons[style]}
+                  </div>
+                  <span className="font-medium text-sm capitalize">
+                    {t(`branding.headerStyleOptions.${style}`, style)}
+                  </span>
+                  <span className="text-xs text-neutral-600 mt-1">
+                    {t(`branding.headerStyleDescriptions.${style}`, '')}
+                  </span>
+                </div>
+                {(localTheme.headerStyle || 'standard') === style && (
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Divider Style - Only show when hero header is selected */}
+          {localTheme.headerStyle === 'hero' && (
+            <div className="mt-6 pt-6 border-t border-neutral-200">
+              <h4 className="font-medium text-sm text-neutral-700 mb-3">
+                {t('branding.heroDividerStyle', 'Divider Style')}
+              </h4>
+              <p className="text-xs text-neutral-600 mb-4">
+                {t('branding.heroDividerDescription', 'Choose how the transition between the hero image and gallery content looks.')}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
+                  <button
+                    key={divider}
+                    onClick={() => handleChange('heroDividerStyle', divider)}
+                    className={`relative p-3 rounded-lg border-2 transition-all ${
+                      (localTheme.heroDividerStyle || 'wave') === divider
+                        ? 'border-primary-600 bg-primary-50'
+                        : 'border-neutral-200 hover:border-neutral-300'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="w-full mb-2 bg-neutral-800 rounded-t overflow-hidden">
+                        <div className="h-8"></div>
+                        {dividerStylePreviews[divider]}
+                      </div>
+                      <span className="text-xs font-medium capitalize">
+                        {t(`branding.dividerOptions.${divider}`, divider)}
+                      </span>
+                    </div>
+                    {(localTheme.heroDividerStyle || 'wave') === divider && (
+                      <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </Card>

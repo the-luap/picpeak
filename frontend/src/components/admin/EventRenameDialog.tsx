@@ -28,7 +28,7 @@ interface EventRenameDialogProps {
 export const EventRenameDialog: React.FC<EventRenameDialogProps> = ({
   isOpen,
   eventName,
-  eventId,
+  eventId: _eventId,
   customerEmail,
   onClose,
   onRename,

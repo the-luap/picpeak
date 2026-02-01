@@ -45,6 +45,12 @@ export interface Event {
   hero_logo_visible?: boolean;
   hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
   hero_logo_position?: 'top' | 'center' | 'bottom';
+  hero_logo_url?: string | null;
+  // Header style settings (decoupled from layout)
+  header_style?: 'hero' | 'standard' | 'minimal' | 'none';
+  hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
+  // CSS Template
+  css_template_id?: number | null;
 }
 
 export interface GalleryInfo {
@@ -119,6 +125,14 @@ export interface GalleryData {
     enable_devtools_protection?: boolean;
     fragmentation_level?: number;
     overlay_protection?: boolean;
+    // Hero logo customization fields
+    hero_logo_visible?: boolean;
+    hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
+    hero_logo_position?: 'top' | 'center' | 'bottom';
+    hero_logo_url?: string | null;
+    // Header style settings (decoupled from layout)
+    header_style?: 'hero' | 'standard' | 'minimal' | 'none';
+    hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
   };
   categories?: PhotoCategory[];
   photos: Photo[];
@@ -159,6 +173,7 @@ export interface AdminUser {
   lastLogin?: string | null;
   lastLoginIp?: string | null;
   createdAt?: string;
+  updatedAt?: string;
   createdByUsername?: string;
 }
 

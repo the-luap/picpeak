@@ -1106,7 +1106,30 @@
     "showLogoInHeader": "Show logo in gallery header",
     "showLogoInHeaderHelp": "Display the logo in the main header bar",
     "showLogoInHero": "Show logo in hero section",
-    "showLogoInHeroHelp": "Display the logo in hero sections (for non-grid layouts)"
+    "showLogoInHeroHelp": "Display the logo in hero sections (for non-grid layouts)",
+    "headerStyle": "Header Style",
+    "headerStyleDescription": "Choose how the gallery header appears. The header style is independent of the photo layout.",
+    "headerStyleOptions": {
+      "hero": "Hero Image",
+      "standard": "Standard Banner",
+      "minimal": "Minimal",
+      "none": "No Header"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Full-height image with event info overlay",
+      "standard": "Classic banner with event details",
+      "minimal": "Compact header with essential info",
+      "none": "Hide header completely"
+    },
+    "heroDividerStyle": "Divider Style",
+    "heroDividerDescription": "Choose how the transition between the hero image and gallery content looks.",
+    "dividerOptions": {
+      "wave": "Wave",
+      "straight": "Straight",
+      "angle": "Angle",
+      "curve": "Curve",
+      "none": "None"
+    }
   },
   "admin": {
     "title": "Admin Panel",

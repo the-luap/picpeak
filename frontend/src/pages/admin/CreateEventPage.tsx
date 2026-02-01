@@ -20,6 +20,7 @@ import { eventsService } from '../../services/events.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
+import { publicSettingsService } from '../../services/publicSettings.service';
 import { cssTemplatesService } from '../../services/cssTemplates.service';
 import { eventTypesService } from '../../services/eventTypes.service';
 import { useTranslation } from 'react-i18next';
@@ -152,7 +153,7 @@ export const CreateEventPage: React.FC = () => {
   // Fetch public settings for field requirements
   const { data: publicSettings } = useQuery({
     queryKey: ['public-settings'],
-    queryFn: () => settingsService.getPublicSettings()
+    queryFn: () => publicSettingsService.getPublicSettings()
   });
 
   // Get field requirements (default to true if not set)
