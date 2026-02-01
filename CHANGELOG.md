@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.8.0-beta.0...v3.9.0-beta.0) (2026-02-01)
+
+
+### Features
+
+* add bulk category editing for photos ([#157](https://github.com/the-luap/picpeak/issues/157)) ([eca36c7](https://github.com/the-luap/picpeak/commit/eca36c70a23f18f937a9f5bddeff855e18f364c3))
+* decouple hero header from gallery layouts ([#158](https://github.com/the-luap/picpeak/issues/158)) ([7b8d8bd](https://github.com/the-luap/picpeak/commit/7b8d8bd92ba7a96717bb4d821b38dddc395f701a))
+* gallery layouts, bulk category editing, and hero header improvements ([7037106](https://github.com/the-luap/picpeak/commit/7037106bff62593bba600d898a781f79f07b459d))
+
+
+### Bug Fixes
+
+* increase upload limit to 1GB and fix category filters ([#155](https://github.com/the-luap/picpeak/issues/155), [#156](https://github.com/the-luap/picpeak/issues/156)) ([397d33a](https://github.com/the-luap/picpeak/commit/397d33a95a09e0b0986c3f6cf5965c544992a764))
+
 ## [3.8.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.7.0-beta.0...v3.8.0-beta.0) (2026-01-30)
 
 
