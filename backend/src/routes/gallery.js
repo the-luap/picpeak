@@ -294,20 +294,35 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       commentMap[c.photo_id] = parseInt(c.comment_count);
     });
     
-    // Get distinct photo types for this event
-    const categoryResults = await db('photos')
+    // Get actual categories used by photos in this event
+    // This includes both global categories and event-specific ones
+    const usedCategoryIds = await db('photos')
       .where('event_id', req.event.id)
-      .select('type')
-      .distinct('type')
-      .orderBy('type', 'asc');
-    
-    // Convert types to category-like objects
-    const categories = categoryResults.map(result => ({
-      id: result.type,
-      name: result.type === 'individual' ? 'Individual Photos' : 'Collages',
-      slug: result.type,
-      is_global: false
-    }));
+      .whereNotNull('category_id')
+      .distinct('category_id')
+      .pluck('category_id');
+
+    // Fetch category details from photo_categories table
+    let categories = [];
+    if (usedCategoryIds.length > 0) {
+      const categoryDetails = await db('photo_categories')
+        .whereIn('id', usedCategoryIds)
+        .select('id', 'name', 'slug', 'is_global')
+        .orderBy('name', 'asc');
+
+      categories = categoryDetails.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+        is_global: cat.is_global
+      }));
+    }
+
+    // Build a map for quick category lookup
+    const categoryMap = {};
+    categories.forEach(cat => {
+      categoryMap[cat.id] = cat;
+    });
     
     // Log view
     await db('access_logs').insert({
@@ -369,9 +384,9 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
-          category_id: photo.type,
-          category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
-          category_slug: photo.type,
+          category_id: photo.category_id || null,
+          category_name: photo.category_id && categoryMap[photo.category_id] ? categoryMap[photo.category_id].name : null,
+          category_slug: photo.category_id && categoryMap[photo.category_id] ? categoryMap[photo.category_id].slug : null,
           size: photo.size_bytes,
           uploaded_at: photo.uploaded_at,
           // Image dimensions for layout calculations
@@ -732,8 +747,34 @@ router.get('/:slug/photo/:photoId',
 
       // Resolve the absolute file path for this photo, supporting both managed and external reference modes
       const { resolvePhotoFilePath } = require('../services/photoResolver');
-      const filePath = resolvePhotoFilePath(req.event, photo);
+      const fs = require('fs');
 
+      let filePath;
+      try {
+        filePath = resolvePhotoFilePath(req.event, photo);
+      } catch (resolveError) {
+        logger.error('Failed to resolve photo path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          error: resolveError.message,
+          photoPath: photo.path,
+          photoFilename: photo.filename
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
+
+      // Verify file exists before attempting to serve
+      if (!fs.existsSync(filePath)) {
+        logger.error('Photo file does not exist at resolved path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          resolvedPath: filePath,
+          photoPath: photo.path
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
 
       // Log access - temporarily disabled for debugging
       // await secureImageService.logImageAccess(
@@ -745,7 +786,6 @@ router.get('/:slug/photo/:photoId',
 
       // Handle video streaming with range requests
       if (isVideo) {
-        const fs = require('fs');
         const stat = fs.statSync(filePath);
         const fileSize = stat.size;
         const range = req.headers.range;
@@ -789,7 +829,6 @@ router.get('/:slug/photo/:photoId',
 
       // Generate ETag based on photo id, modification time, and watermark settings
       // This ensures cache invalidation when watermark settings change
-      const fs = require('fs');
       const stat = fs.statSync(filePath);
       const watermarkHash = watermarkSettings?.enabled
         ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
@@ -806,7 +845,6 @@ router.get('/:slug/photo/:photoId',
         if (photo.watermark_path) {
           const watermarkFilePath = path.join(getStoragePath(), photo.watermark_path);
           try {
-            const fs = require('fs');
             // Check if pre-generated watermark file exists
             if (fs.existsSync(watermarkFilePath)) {
               res.set({
