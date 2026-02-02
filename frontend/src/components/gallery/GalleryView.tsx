@@ -584,6 +584,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       <GalleryLayout
         event={event}
         brandingSettings={brandingSettings}
+        headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}
         onLogout={logout}
         showDownloadAll={!showSidebar && allowDownloads}

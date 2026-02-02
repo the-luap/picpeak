@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Camera } from 'lucide-react';
-import { ThemeConfig, GalleryLayoutType } from '../../types/theme.types';
+import { Camera, Calendar } from 'lucide-react';
+import { ThemeConfig, GalleryLayoutType, HeroDividerStyle } from '../../types/theme.types';
 import { buildResourceUrl } from '../../utils/url';
 
 interface GalleryPreviewBranding {
@@ -92,6 +92,39 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
       ? 'justify-end text-right flex-row-reverse'
       : 'justify-start text-left';
   
+  // Check if hero header style is selected
+  const isHeroHeader = theme.headerStyle === 'hero';
+  const heroDividerStyle: HeroDividerStyle = theme.heroDividerStyle || 'wave';
+
+  // Render hero divider based on style
+  const renderHeroDivider = () => {
+    const bgColor = theme.backgroundColor || '#fafafa';
+    switch (heroDividerStyle) {
+      case 'wave':
+        return (
+          <svg className="w-full h-6" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,60 C150,90 350,30 600,60 C850,90 1050,30 1200,60 L1200,120 L0,120 Z" fill={bgColor} />
+          </svg>
+        );
+      case 'curve':
+        return (
+          <svg className="w-full h-6" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,120 Q600,0 1200,120 L1200,120 L0,120 Z" fill={bgColor} />
+          </svg>
+        );
+      case 'angle':
+        return (
+          <svg className="w-full h-6" viewBox="0 0 1200 120" preserveAspectRatio="none">
+            <path d="M0,120 L600,40 L1200,120 L1200,120 L0,120 Z" fill={bgColor} />
+          </svg>
+        );
+      case 'straight':
+      case 'none':
+      default:
+        return null;
+    }
+  };
+
   const renderLayout = () => {
     const spacing = theme.gallerySettings?.spacing || 'normal';
     const gapClass = spacing === 'tight' ? 'gap-1' : spacing === 'relaxed' ? 'gap-4' : 'gap-2';
@@ -169,7 +202,7 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
   };
   
   return (
-    <div 
+    <div
       className={`bg-white rounded-lg shadow-sm overflow-hidden ${className}`}
       style={{
         backgroundColor: theme.backgroundColor || '#ffffff',
@@ -177,45 +210,101 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
         fontFamily: theme.fontFamily || 'Inter, sans-serif',
       }}
     >
-      {/* Preview Header */}
-      <div 
-        className="px-4 py-3 border-b space-y-2"
-        style={{
-          borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb',
-        }}
-      >
-        <div className={`flex items-center gap-3 ${brandFlexClass}`}>
-          {showLogo && (
-            resolvedLogoUrl ? (
-              <img
-                src={resolvedLogoUrl}
-                alt={brandName}
-                className="h-8 w-auto object-contain"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-neutral-200 flex items-center justify-center">
-                <Camera className="w-4 h-4 text-neutral-500" />
-              </div>
-            )
-          )}
-          {showText && (
-            <div>
-              <p className="text-sm font-semibold leading-tight">{brandName}</p>
-              {brandTagline && (
-                <p className="text-xs text-neutral-500 leading-tight">{brandTagline}</p>
+      {/* Hero Header - shown when headerStyle is 'hero' */}
+      {isHeroHeader && (
+        <div
+          className="relative text-white overflow-hidden"
+          style={{
+            backgroundColor: theme.accentColor || theme.primaryColor || '#22c55e',
+            backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'/%3E%3C/g%3E%3C/svg%3E")',
+          }}
+        >
+          <div className="py-8 px-4 relative z-10">
+            <div className="text-center max-w-md mx-auto">
+              {/* Logo in Hero */}
+              {showLogo && (
+                <div className="mb-3">
+                  {resolvedLogoUrl ? (
+                    <img
+                      src={resolvedLogoUrl}
+                      alt={brandName}
+                      className="h-10 w-auto object-contain mx-auto"
+                      style={{ filter: 'brightness(0) invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' }}
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center mx-auto">
+                      <Camera className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                </div>
               )}
+              {/* Event Name */}
+              <h1
+                className="text-xl font-bold mb-2"
+                style={{
+                  fontFamily: theme.headingFontFamily || theme.fontFamily || 'Inter, sans-serif',
+                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
+                }}
+              >
+                Sample Event
+              </h1>
+              {/* Event Date */}
+              <div className="flex items-center justify-center text-white/80 text-sm" style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.3)' }}>
+                <Calendar className="w-4 h-4 mr-1" />
+                <span>January 15, 2026</span>
+              </div>
             </div>
-          )}
-          {!showLogo && !showText && (
-            <p className="text-sm font-semibold">{brandName}</p>
-          )}
+          </div>
+          {/* Divider */}
+          <div className="absolute bottom-0 left-0 right-0">
+            {renderHeroDivider()}
+          </div>
         </div>
-        <div className="text-xs text-neutral-500 flex justify-between">
-          <span>Gallery preview</span>
-          <span className="capitalize">{activeLayout} layout</span>
+      )}
+
+      {/* Standard Header - shown when headerStyle is NOT 'hero' */}
+      {!isHeroHeader && (
+        <div
+          className="px-4 py-3 border-b space-y-2"
+          style={{
+            borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb',
+          }}
+        >
+          <div className={`flex items-center gap-3 ${brandFlexClass}`}>
+            {showLogo && (
+              resolvedLogoUrl ? (
+                <img
+                  src={resolvedLogoUrl}
+                  alt={brandName}
+                  className="h-8 w-auto object-contain"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-neutral-200 flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-neutral-500" />
+                </div>
+              )
+            )}
+            {showText && (
+              <div>
+                <p className="text-sm font-semibold leading-tight">{brandName}</p>
+                {brandTagline && (
+                  <p className="text-xs text-neutral-500 leading-tight">{brandTagline}</p>
+                )}
+              </div>
+            )}
+            {!showLogo && !showText && (
+              <p className="text-sm font-semibold">{brandName}</p>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Layout info bar */}
+      <div className="px-4 py-1 border-b text-xs text-neutral-500 flex justify-between" style={{ borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb' }}>
+        <span>Gallery preview</span>
+        <span className="capitalize">{isHeroHeader ? `Hero + ${activeLayout}` : `${activeLayout} layout`}</span>
       </div>
-      
+
       {/* Preview Content */}
       <div className="p-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
         {renderLayout()}

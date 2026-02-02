@@ -39,6 +39,7 @@ interface GalleryLayoutProps {
   isDownloading?: boolean;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
+  headerStyle?: HeaderStyleType;
   children: React.ReactNode;
 }
 
@@ -52,14 +53,15 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   isDownloading = false,
   headerExtra,
   menuButton,
+  headerStyle: headerStyleProp,
   children,
 }) => {
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
 
-  // Determine header style - check theme.headerStyle first, then fall back to legacy behavior
-  const headerStyle: HeaderStyleType = theme.headerStyle || 'standard';
+  // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
+  const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
   const isHeroHeader = headerStyle === 'hero';
 
   // Non-grid layouts that need the sidebar (excluding layouts using hero header)
