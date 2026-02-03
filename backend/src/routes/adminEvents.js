@@ -365,6 +365,26 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     await fs.mkdir(path.join(eventPath, 'collages'), { recursive: true });
     await fs.mkdir(path.join(eventPath, 'individual'), { recursive: true });
     
+    // Sync header_style / hero_divider_style from color_theme JSON when not
+    // explicitly provided in the request body (#158).
+    let effectiveHeaderStyle = header_style;
+    let effectiveDividerStyle = hero_divider_style;
+    if (color_theme && (!req.body.header_style || !req.body.hero_divider_style)) {
+      try {
+        if (typeof color_theme === 'string' && color_theme.startsWith('{')) {
+          const parsed = JSON.parse(color_theme);
+          if (!req.body.header_style && parsed.headerStyle) {
+            effectiveHeaderStyle = parsed.headerStyle;
+          }
+          if (!req.body.hero_divider_style && parsed.heroDividerStyle) {
+            effectiveDividerStyle = parsed.heroDividerStyle;
+          }
+        }
+      } catch (_) {
+        // color_theme is not JSON – nothing to extract
+      }
+    }
+
     // Insert into database
     const insertResult = await db('events').insert({
       slug,
@@ -394,8 +414,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
       hero_logo_size: hero_logo_size || 'medium',
       hero_logo_position: hero_logo_position || 'top',
-      header_style: header_style || 'standard',
-      hero_divider_style: hero_divider_style || 'wave',
+      header_style: effectiveHeaderStyle || 'standard',
+      hero_divider_style: effectiveDividerStyle || 'wave',
       hero_image_anchor: hero_image_anchor || 'center'
     }).returning('id');
     
@@ -808,6 +828,27 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     // Format hero logo settings if provided
     if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
       updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
+    }
+
+    // Sync header_style / hero_divider_style from color_theme JSON when not
+    // explicitly provided in the request body (#158).  This ensures the
+    // database columns stay in sync even if the frontend only sends the
+    // serialised theme object.
+    if (updates.color_theme && !Object.prototype.hasOwnProperty.call(updates, 'header_style')) {
+      try {
+        const themeStr = typeof updates.color_theme === 'string' ? updates.color_theme : '';
+        if (themeStr.startsWith('{')) {
+          const parsed = JSON.parse(themeStr);
+          if (parsed.headerStyle) {
+            updates.header_style = parsed.headerStyle;
+          }
+          if (parsed.heroDividerStyle && !Object.prototype.hasOwnProperty.call(updates, 'hero_divider_style')) {
+            updates.hero_divider_style = parsed.heroDividerStyle;
+          }
+        }
+      } catch (_) {
+        // color_theme is not JSON (e.g. preset name) – nothing to extract
+      }
     }
 
     // Update event
