@@ -89,6 +89,7 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(currentPath || ''); }, []);
 
   const navigateUp = () => {
@@ -295,7 +296,7 @@ export const EventDetailsPage: React.FC = () => {
 
   const mediaTypes = useMemo(() => {
     const types = new Set<'photo' | 'video'>();
-    photos.forEach((p: any) => {
+    photos.forEach((p) => {
       const mediaType = (p.media_type as 'photo' | 'video' | undefined)
         || ((p.mime_type && String(p.mime_type).startsWith('video/')) || p.type === 'video' ? 'video' : 'photo');
       if (mediaType === 'video' || mediaType === 'photo') {
@@ -436,7 +437,7 @@ export const EventDetailsPage: React.FC = () => {
             setCurrentPresetName(event.color_theme);
           }
         }
-      } catch (e) {
+      } catch {
         setCurrentTheme(GALLERY_THEME_PRESETS.default.config);
         setCurrentPresetName('default');
       }
@@ -578,7 +579,7 @@ export const EventDetailsPage: React.FC = () => {
     // Update feedback settings separately
     try {
       await feedbackService.updateEventFeedbackSettings(id!, feedbackSettings);
-    } catch (error) {
+    } catch {
       // Error already handled by mutation
     }
   };
@@ -869,7 +870,7 @@ export const EventDetailsPage: React.FC = () => {
 
                 {/* Hero Image Focal Point Picker (#162) */}
                 {editForm.hero_photo_id && (() => {
-                  const heroPhoto = (photos || []).find((p: any) => p.id === editForm.hero_photo_id);
+                  const heroPhoto = (photos || []).find((p) => p.id === editForm.hero_photo_id);
                   const heroImageUrl = heroPhoto?.thumbnail_url || heroPhoto?.url;
                   if (!heroImageUrl) return null;
                   return (
@@ -1477,7 +1478,7 @@ export const EventDetailsPage: React.FC = () => {
                     try {
                       await eventsService.resendCreationEmail(event.id);
                       toast.success(t('events.creationEmailResent'));
-                    } catch (error) {
+                    } catch {
                       toast.error(t('events.failedToResendEmail'));
                     }
                   }}
@@ -1653,7 +1654,7 @@ export const EventDetailsPage: React.FC = () => {
                         toast.info(t('events.downloadingArchive', { name: event.event_name }));
                         await archiveService.downloadArchive(Number(id), `${event.slug}-archive.zip`);
                         toast.success(t('events.downloadStarted'));
-                      } catch (error) {
+                      } catch {
                         toast.error(t('events.failedToDownloadArchive'));
                       }
                     }}

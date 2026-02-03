@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AuthenticatedImage } from '../common';
+import { AuthenticatedImage, Button } from '../common';
 
 interface FocalPointPickerProps {
   imageUrl: string;
@@ -64,7 +64,7 @@ export const FocalPointPicker: React.FC<FocalPointPickerProps> = ({
       >
         <AuthenticatedImage
           src={imageUrl}
-          alt="Hero preview"
+          alt={t('events.heroPreview', 'Hero preview')}
           className="w-full h-full object-cover pointer-events-none"
           style={{ objectPosition: `${x}% ${y}%` }}
           slug={slug}
@@ -78,7 +78,7 @@ export const FocalPointPicker: React.FC<FocalPointPickerProps> = ({
           {/* Outer ring (dark) for contrast on light areas */}
           <div className="w-6 h-6 rounded-full border-2 border-black/50" />
           {/* Inner ring (white) for contrast on dark areas */}
-          <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-white" style={{ margin: '1px' }} />
+          <div className="absolute inset-0 m-px w-6 h-6 rounded-full border-2 border-white" />
           {/* Center dot */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
@@ -94,18 +94,20 @@ export const FocalPointPicker: React.FC<FocalPointPickerProps> = ({
       {/* Preset buttons */}
       <div className="flex gap-2 mt-2">
         {presets.map((p) => (
-          <button
+          <Button
             key={p.value}
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onChange(p.value)}
-            className={`px-3 py-1 text-xs font-medium rounded-md border transition-colors ${
+            className={
               keywordToPercent(currentValue) === p.value
                 ? 'bg-primary-50 border-primary-300 text-primary-700'
-                : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50'
-            }`}
+                : ''
+            }
           >
             {p.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

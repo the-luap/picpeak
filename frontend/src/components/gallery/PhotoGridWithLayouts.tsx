@@ -111,7 +111,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   // Clear selection when category changes
   useEffect(() => {
     setSelectedPhotos(new Set());
-  }, [categoryId]);
+  }, [categoryId, setSelectedPhotos]);
 
   const handlePhotoClick = (index: number) => {
     setOpenFeedbackInitially(false);
@@ -171,7 +171,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     try {
       await galleryService.downloadSelectedPhotos(slug, ids);
       analyticsService.trackGalleryEvent('bulk_download', { gallery: slug, photo_count: ids.length });
-    } catch (error) {
+    } catch {
       toastify.error(t('gallery.downloadError'));
     } finally {
       setSelectedPhotos(new Set());

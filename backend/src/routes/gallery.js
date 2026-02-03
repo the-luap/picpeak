@@ -795,7 +795,7 @@ router.get('/:slug/photo/:photoId',
 
         if (range) {
           // Parse range header
-          const parts = range.replace(/bytes=/, "").split("-");
+          const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
           const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
           const chunksize = (end - start) + 1;
