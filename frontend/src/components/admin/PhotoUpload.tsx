@@ -96,12 +96,30 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     setIsUploading(true);
     setUploadProgress(0);
 
-    // For large uploads, chunk the files to prevent memory issues
-    const CHUNK_SIZE = Math.max(1, Math.min(50, maxFilesPerUpload)); // Upload up to 50 (or limit) files at a time
-    const chunks = [];
-    
-    for (let i = 0; i < selectedFiles.length; i += CHUNK_SIZE) {
-      chunks.push(selectedFiles.slice(i, i + CHUNK_SIZE));
+    // For large uploads, chunk the files by both count AND size to prevent memory/network issues
+    const MAX_FILES_PER_CHUNK = Math.max(1, Math.min(50, maxFilesPerUpload)); // Max 50 files per chunk
+    const MAX_BYTES_PER_CHUNK = 500 * 1024 * 1024; // Max 500MB per chunk (nginx limit is 1GB)
+    const chunks: File[][] = [];
+
+    let currentChunk: File[] = [];
+    let currentChunkSize = 0;
+
+    for (const file of selectedFiles) {
+      // Start a new chunk if adding this file would exceed limits
+      if (currentChunk.length >= MAX_FILES_PER_CHUNK ||
+          (currentChunkSize + file.size > MAX_BYTES_PER_CHUNK && currentChunk.length > 0)) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+        currentChunkSize = 0;
+      }
+
+      currentChunk.push(file);
+      currentChunkSize += file.size;
+    }
+
+    // Don't forget the last chunk
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
     }
 
     setTotalChunks(chunks.length);

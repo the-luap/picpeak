@@ -52,9 +52,10 @@ import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { publicSettingsService } from '../../services/publicSettings.service';
 import { api } from '../../config/api';
 import { buildResourceUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
@@ -89,6 +90,7 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(currentPath || ''); }, []);
 
   const navigateUp = () => {
@@ -168,6 +170,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_visible: boolean;
     hero_logo_size: 'small' | 'medium' | 'large' | 'xlarge';
     hero_logo_position: 'top' | 'center' | 'bottom';
+    // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+    hero_image_anchor: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -196,6 +200,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_visible: true,
     hero_logo_size: 'medium',
     hero_logo_position: 'top',
+    // Hero image anchor position (#162)
+    hero_image_anchor: 'center',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -291,7 +297,7 @@ export const EventDetailsPage: React.FC = () => {
 
   const mediaTypes = useMemo(() => {
     const types = new Set<'photo' | 'video'>();
-    photos.forEach((p: any) => {
+    photos.forEach((p) => {
       const mediaType = (p.media_type as 'photo' | 'video' | undefined)
         || ((p.mime_type && String(p.mime_type).startsWith('video/')) || p.type === 'video' ? 'video' : 'photo');
       if (mediaType === 'video' || mediaType === 'photo') {
@@ -308,6 +314,13 @@ export const EventDetailsPage: React.FC = () => {
       setPhotoFilters(prev => ({ ...prev, media_type: undefined }));
     }
   }, [showMediaFilter, photoFilters.media_type]);
+
+  // Fetch public settings (for field requirement checks like expiration)
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => publicSettingsService.getPublicSettings(),
+  });
+  const requireExpiration = publicSettings?.event_require_expiration !== false;
 
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
@@ -402,6 +415,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_visible: event.hero_logo_visible ?? true,
       hero_logo_size: event.hero_logo_size || 'medium',
       hero_logo_position: event.hero_logo_position || 'top',
+      // Hero image anchor position (#162)
+      hero_image_anchor: event.hero_image_anchor || 'center',
     });
 
     setShowNewPassword(false);
@@ -430,7 +445,7 @@ export const EventDetailsPage: React.FC = () => {
             setCurrentPresetName(event.color_theme);
           }
         }
-      } catch (e) {
+      } catch {
         setCurrentTheme(GALLERY_THEME_PRESETS.default.config);
         setCurrentPresetName('default');
       }
@@ -510,10 +525,15 @@ export const EventDetailsPage: React.FC = () => {
       toast.error(t('events.externalFolderRequired', 'Please select an external folder before saving.'));
       return;
     }
-    
+
+    if (requireExpiration && !editForm.expires_at) {
+      toast.error(t('validation.expirationRequired', 'Expiration date is required.'));
+      return;
+    }
+
     // Clean up the data - remove undefined values
     const updateData: any = {
-      expires_at: editForm.expires_at,
+      expires_at: editForm.expires_at || null,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
       css_template_id: editForm.css_template_id,
@@ -528,6 +548,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_visible: editForm.hero_logo_visible,
       hero_logo_size: editForm.hero_logo_size,
       hero_logo_position: editForm.hero_logo_position,
+      // Hero image anchor position (#162)
+      hero_image_anchor: editForm.hero_image_anchor,
     };
     
     // Only include fields that have defined values
@@ -570,7 +592,7 @@ export const EventDetailsPage: React.FC = () => {
     // Update feedback settings separately
     try {
       await feedbackService.updateEventFeedbackSettings(id!, feedbackSettings);
-    } catch (error) {
+    } catch {
       // Error already handled by mutation
     }
   };
@@ -858,6 +880,29 @@ export const EventDetailsPage: React.FC = () => {
                   onSelect={(photoId) => setEditForm(prev => ({ ...prev, hero_photo_id: photoId }))}
                   isEditing={isEditing}
                 />
+
+                {/* Hero Image Focal Point Picker (#162) */}
+                {editForm.hero_photo_id && (() => {
+                  const heroPhoto = (photos || []).find((p) => p.id === editForm.hero_photo_id);
+                  const heroImageUrl = heroPhoto?.thumbnail_url || heroPhoto?.url;
+                  if (!heroImageUrl) return null;
+                  return (
+                    <div className="ml-6 mt-2">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        {t('events.heroImageAnchor', 'Hero Image Crop Position')}
+                      </label>
+                      <p className="text-xs text-neutral-500 mb-2">
+                        {t('events.heroImageAnchorDescription', 'Click on the image to set the focal point for cropping.')}
+                      </p>
+                      <FocalPointPicker
+                        imageUrl={heroImageUrl}
+                        currentValue={editForm.hero_image_anchor}
+                        onChange={(value) => setEditForm(prev => ({ ...prev, hero_image_anchor: value }))}
+                        slug={event.slug}
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="flex items-start gap-2">
@@ -1446,7 +1491,7 @@ export const EventDetailsPage: React.FC = () => {
                     try {
                       await eventsService.resendCreationEmail(event.id);
                       toast.success(t('events.creationEmailResent'));
-                    } catch (error) {
+                    } catch {
                       toast.error(t('events.failedToResendEmail'));
                     }
                   }}
@@ -1622,7 +1667,7 @@ export const EventDetailsPage: React.FC = () => {
                         toast.info(t('events.downloadingArchive', { name: event.event_name }));
                         await archiveService.downloadArchive(Number(id), `${event.slug}-archive.zip`);
                         toast.success(t('events.downloadStarted'));
-                      } catch (error) {
+                      } catch {
                         toast.error(t('events.failedToDownloadArchive'));
                       }
                     }}

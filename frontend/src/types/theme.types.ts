@@ -43,7 +43,6 @@ export interface GalleryLayoutSettings {
   
   // Hero specific
   heroImageId?: number;
-  heroImagePosition?: 'top' | 'center' | 'bottom';
   heroOverlayOpacity?: number;
   
   // Mosaic specific

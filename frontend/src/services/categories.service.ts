@@ -6,6 +6,7 @@ export interface PhotoCategory {
   slug: string;
   is_global: boolean;
   event_id: number | null;
+  hero_photo_id?: number | null;
   created_at: string;
 }
 
@@ -38,6 +39,12 @@ export const categoriesService = {
   // Update a category
   async updateCategory(id: number, name: string): Promise<PhotoCategory> {
     const response = await api.put<PhotoCategory>(`/admin/categories/${id}`, { name });
+    return response.data;
+  },
+
+  // Set category hero photo (#163)
+  async setCategoryHeroPhoto(id: number, heroPhotoId: number | null): Promise<PhotoCategory> {
+    const response = await api.put<PhotoCategory>(`/admin/categories/${id}/hero`, { hero_photo_id: heroPhotoId });
     return response.data;
   },
 

@@ -60,6 +60,8 @@ interface PhotoGridWithLayoutsProps {
   // Header style (decoupled from layout)
   headerStyle?: HeaderStyleType;
   heroDividerStyle?: HeroDividerStyle;
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  heroImageAnchor?: string;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -89,7 +91,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   heroLogoSize = 'medium',
   heroLogoPosition = 'top',
   headerStyle,
-  heroDividerStyle = 'wave'
+  heroDividerStyle = 'wave',
+  heroImageAnchor = 'center'
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -108,7 +111,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   // Clear selection when category changes
   useEffect(() => {
     setSelectedPhotos(new Set());
-  }, [categoryId]);
+  }, [categoryId, setSelectedPhotos]);
 
   const handlePhotoClick = (index: number) => {
     setOpenFeedbackInitially(false);
@@ -168,7 +171,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     try {
       await galleryService.downloadSelectedPhotos(slug, ids);
       analyticsService.trackGalleryEvent('bulk_download', { gallery: slug, photo_count: ids.length });
-    } catch (error) {
+    } catch {
       toastify.error(t('gallery.downloadError'));
     } finally {
       setSelectedPhotos(new Set());
@@ -260,6 +263,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
           useCanvasRendering={useCanvasRendering}
+          heroImageAnchor={heroImageAnchor}
         />
       )}
 

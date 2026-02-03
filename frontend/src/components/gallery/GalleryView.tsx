@@ -584,6 +584,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       <GalleryLayout
         event={event}
         brandingSettings={brandingSettings}
+        headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}
         onLogout={logout}
         showDownloadAll={!showSidebar && allowDownloads}
@@ -696,6 +697,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             heroLogoPosition={data?.event?.hero_logo_position || 'top'}
             headerStyle={data?.event?.header_style || theme.headerStyle}
             heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
+            heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
           />
         </div>
 

@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, query, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
@@ -17,9 +17,19 @@ const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
-const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
+const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 const eventTypeService = require('../services/eventTypeService');
 const { validateFileType } = require('../utils/fileSecurityUtils');
+
+// Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
+const validateHeroImageAnchor = (value) => {
+  if (['top', 'center', 'bottom'].includes(value)) return true;
+  if (typeof value === 'string' && /^\d{1,3}%\s+\d{1,3}%$/.test(value)) {
+    const [x, y] = value.split(/\s+/).map(v => parseInt(v));
+    if (x >= 0 && x <= 100 && y >= 0 && y <= 100) return true;
+  }
+  throw new Error('Must be top, center, bottom, or "X% Y%" (0-100)');
+};
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -196,7 +206,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
-  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -242,7 +254,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_position = 'top',
       // Header style settings
       header_style = 'standard',
-      hero_divider_style = 'wave'
+      hero_divider_style = 'wave',
+      // Hero image anchor position (#162)
+      hero_image_anchor = 'center'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -302,10 +316,6 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       }
     }
     
-    // Get event type info for slug generation
-    const eventTypeInfo = await eventTypeService.getEventTypeForSlug(event_type);
-    const slugPrefix = eventTypeInfo.slug_prefix || event_type;
-
     // Generate unique slug
     const processedEventName = event_name
       .toLowerCase()
@@ -326,7 +336,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     
     // Generate share link respecting configured format
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const { sharePath, shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
+    const { shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password with configurable rounds (random placeholder when not required)
     const password_hash = requirePassword
@@ -385,7 +395,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_size: hero_logo_size || 'medium',
       hero_logo_position: hero_logo_position || 'top',
       header_style: header_style || 'standard',
-      hero_divider_style: hero_divider_style || 'wave'
+      hero_divider_style: hero_divider_style || 'wave',
+      hero_image_anchor: hero_image_anchor || 'center'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -621,7 +632,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
-  body('expires_at').optional().isISO8601(),
+  body('expires_at').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
@@ -653,7 +664,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('overlay_protection').optional().isBoolean(),
   body('image_quality').optional().isInt({ min: 1, max: 100 }),
   body('fragmentation_level').optional().isInt({ min: 1, max: 10 }),
-  body('password').optional().isString().custom((value, { req }) => {
+  body('password').optional().isString().custom((value) => {
     if (value === undefined || value === null || value === '') {
       return true;
     }
@@ -669,7 +680,9 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
-  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -779,6 +792,17 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
     } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
       updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
+    }
+
+    // Enforce expires_at requirement based on app settings
+    if (Object.prototype.hasOwnProperty.call(updates, 'expires_at')) {
+      if (!updates.expires_at) {
+        const fieldReqs = await getEventFieldRequirements();
+        if (fieldReqs.require_expiration) {
+          return res.status(400).json({ error: 'Expiration date is required.' });
+        }
+        updates.expires_at = null;
+      }
     }
 
     // Format hero logo settings if provided
