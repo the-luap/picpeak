@@ -49,6 +49,8 @@ export interface Event {
   // Header style settings (decoupled from layout)
   header_style?: 'hero' | 'standard' | 'minimal' | 'none';
   hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  hero_image_anchor?: string;
   // CSS Template
   css_template_id?: number | null;
 }
@@ -133,6 +135,8 @@ export interface GalleryData {
     // Header style settings (decoupled from layout)
     header_style?: 'hero' | 'standard' | 'minimal' | 'none';
     hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
+    // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+    hero_image_anchor?: string;
   };
   categories?: PhotoCategory[];
   photos: Photo[];

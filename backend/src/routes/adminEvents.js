@@ -196,7 +196,16 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
-  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom((value) => {
+    if (['top', 'center', 'bottom'].includes(value)) return true;
+    if (typeof value === 'string' && /^\d{1,3}%\s+\d{1,3}%$/.test(value)) {
+      const [x, y] = value.split(/\s+/).map(v => parseInt(v));
+      if (x >= 0 && x <= 100 && y >= 0 && y <= 100) return true;
+    }
+    throw new Error('Must be top, center, bottom, or "X% Y%" (0-100)');
+  })
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -242,7 +251,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_position = 'top',
       // Header style settings
       header_style = 'standard',
-      hero_divider_style = 'wave'
+      hero_divider_style = 'wave',
+      // Hero image anchor position (#162)
+      hero_image_anchor = 'center'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -385,7 +396,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_size: hero_logo_size || 'medium',
       hero_logo_position: hero_logo_position || 'top',
       header_style: header_style || 'standard',
-      hero_divider_style: hero_divider_style || 'wave'
+      hero_divider_style: hero_divider_style || 'wave',
+      hero_image_anchor: hero_image_anchor || 'center'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -669,7 +681,16 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
-  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none'])
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom((value) => {
+    if (['top', 'center', 'bottom'].includes(value)) return true;
+    if (typeof value === 'string' && /^\d{1,3}%\s+\d{1,3}%$/.test(value)) {
+      const [x, y] = value.split(/\s+/).map(v => parseInt(v));
+      if (x >= 0 && x <= 100 && y >= 0 && y <= 100) return true;
+    }
+    throw new Error('Must be top, center, bottom, or "X% Y%" (0-100)');
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

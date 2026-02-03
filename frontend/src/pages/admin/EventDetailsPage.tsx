@@ -52,7 +52,7 @@ import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { api } from '../../config/api';
@@ -168,6 +168,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_visible: boolean;
     hero_logo_size: 'small' | 'medium' | 'large' | 'xlarge';
     hero_logo_position: 'top' | 'center' | 'bottom';
+    // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+    hero_image_anchor: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -196,6 +198,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_visible: true,
     hero_logo_size: 'medium',
     hero_logo_position: 'top',
+    // Hero image anchor position (#162)
+    hero_image_anchor: 'center',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -402,6 +406,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_visible: event.hero_logo_visible ?? true,
       hero_logo_size: event.hero_logo_size || 'medium',
       hero_logo_position: event.hero_logo_position || 'top',
+      // Hero image anchor position (#162)
+      hero_image_anchor: event.hero_image_anchor || 'center',
     });
 
     setShowNewPassword(false);
@@ -528,6 +534,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_visible: editForm.hero_logo_visible,
       hero_logo_size: editForm.hero_logo_size,
       hero_logo_position: editForm.hero_logo_position,
+      // Hero image anchor position (#162)
+      hero_image_anchor: editForm.hero_image_anchor,
     };
     
     // Only include fields that have defined values
@@ -858,6 +866,29 @@ export const EventDetailsPage: React.FC = () => {
                   onSelect={(photoId) => setEditForm(prev => ({ ...prev, hero_photo_id: photoId }))}
                   isEditing={isEditing}
                 />
+
+                {/* Hero Image Focal Point Picker (#162) */}
+                {editForm.hero_photo_id && (() => {
+                  const heroPhoto = (photos || []).find((p: any) => p.id === editForm.hero_photo_id);
+                  const heroImageUrl = heroPhoto?.thumbnail_url || heroPhoto?.url;
+                  if (!heroImageUrl) return null;
+                  return (
+                    <div className="ml-6 mt-2">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        {t('events.heroImageAnchor', 'Hero Image Crop Position')}
+                      </label>
+                      <p className="text-xs text-neutral-500 mb-2">
+                        {t('events.heroImageAnchorDescription', 'Click on the image to set the focal point for cropping.')}
+                      </p>
+                      <FocalPointPicker
+                        imageUrl={heroImageUrl}
+                        currentValue={editForm.hero_image_anchor}
+                        onChange={(value) => setEditForm(prev => ({ ...prev, hero_image_anchor: value }))}
+                        slug={event.slug}
+                      />
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <label className="flex items-start gap-2">

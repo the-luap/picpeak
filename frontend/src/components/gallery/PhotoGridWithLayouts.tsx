@@ -60,6 +60,8 @@ interface PhotoGridWithLayoutsProps {
   // Header style (decoupled from layout)
   headerStyle?: HeaderStyleType;
   heroDividerStyle?: HeroDividerStyle;
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  heroImageAnchor?: string;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -89,7 +91,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   heroLogoSize = 'medium',
   heroLogoPosition = 'top',
   headerStyle,
-  heroDividerStyle = 'wave'
+  heroDividerStyle = 'wave',
+  heroImageAnchor = 'center'
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -260,6 +263,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           protectionLevel={protectionLevel}
           useEnhancedProtection={useEnhancedProtection}
           useCanvasRendering={useCanvasRendering}
+          heroImageAnchor={heroImageAnchor}
         />
       )}
 

@@ -22,6 +22,7 @@ export { ThemeCustomizerEnhanced } from './ThemeCustomizerEnhanced';
 export { ThemeDisplay } from './ThemeDisplay';
 export { ThemeEditorModal } from './ThemeEditorModal';
 export { HeroPhotoSelector } from './HeroPhotoSelector';
+export { FocalPointPicker } from './FocalPointPicker';
 export { PhotoUploadModal } from './PhotoUploadModal';
 export { GalleryPreview } from './GalleryPreview';
 export { BackupDashboard } from './BackupDashboard';

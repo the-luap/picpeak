@@ -27,6 +27,8 @@ interface HeroHeaderProps {
   useEnhancedProtection?: boolean;
   useCanvasRendering?: boolean;
   onScrollToContent?: () => void;
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  heroImageAnchor?: string;
 }
 
 export const HeroHeader: React.FC<HeroHeaderProps> = ({
@@ -45,7 +47,8 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
   protectionLevel = 'standard',
   useEnhancedProtection = false,
   useCanvasRendering = false,
-  onScrollToContent
+  onScrollToContent,
+  heroImageAnchor = 'center'
 }) => {
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
@@ -138,6 +141,7 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
           fallbackSrc={heroPhoto.thumbnail_url || undefined}
           alt={heroPhoto.filename}
           className="w-full h-full object-cover"
+          style={{ objectPosition: heroImageAnchor }}
           isGallery={true}
           slug={slug}
           photoId={heroPhoto.id}
