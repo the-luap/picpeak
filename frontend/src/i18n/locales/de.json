@@ -696,7 +696,12 @@
     "noCategory": "Keine Kategorie",
     "noCategoriesYet": "Noch keine Kategorien. Erstellen Sie Ihre erste Kategorie, um Fotos zu organisieren.",
     "deleteConfirm": "Sind Sie sicher, dass Sie \"{{name}}\" löschen möchten?",
-    "cannotDelete": "Kategorie mit Fotos kann nicht gelöscht werden. Bitte weisen Sie die Fotos zuerst neu zu."
+    "cannotDelete": "Kategorie mit Fotos kann nicht gelöscht werden. Bitte weisen Sie die Fotos zuerst neu zu.",
+    "setCoverPhoto": "Titelbild festlegen",
+    "removeCoverPhoto": "Titelbild entfernen",
+    "coverPhotoSet": "Titelbild erfolgreich festgelegt",
+    "coverPhotoRemoved": "Titelbild entfernt",
+    "failedToSetCoverPhoto": "Titelbild konnte nicht festgelegt werden"
   },
   "events": {
     "noStatisticsAvailableYet": "Noch keine Statistiken verfügbar",

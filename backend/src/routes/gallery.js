@@ -309,14 +309,15 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
     if (usedCategoryIds.length > 0) {
       const categoryDetails = await db('photo_categories')
         .whereIn('id', usedCategoryIds)
-        .select('id', 'name', 'slug', 'is_global')
+        .select('id', 'name', 'slug', 'is_global', 'hero_photo_id')
         .orderBy('name', 'asc');
 
       categories = categoryDetails.map(cat => ({
         id: cat.id,
         name: cat.name,
         slug: cat.slug,
-        is_global: cat.is_global
+        is_global: cat.is_global,
+        hero_photo_id: cat.hero_photo_id || null
       }));
     }
 

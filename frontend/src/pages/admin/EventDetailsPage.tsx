@@ -55,6 +55,7 @@ import { Button, Input, Card, Loading } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { publicSettingsService } from '../../services/publicSettings.service';
 import { api } from '../../config/api';
 import { buildResourceUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
@@ -314,6 +315,13 @@ export const EventDetailsPage: React.FC = () => {
     }
   }, [showMediaFilter, photoFilters.media_type]);
 
+  // Fetch public settings (for field requirement checks like expiration)
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => publicSettingsService.getPublicSettings(),
+  });
+  const requireExpiration = publicSettings?.event_require_expiration !== false;
+
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-event-categories', id],
@@ -517,10 +525,15 @@ export const EventDetailsPage: React.FC = () => {
       toast.error(t('events.externalFolderRequired', 'Please select an external folder before saving.'));
       return;
     }
-    
+
+    if (requireExpiration && !editForm.expires_at) {
+      toast.error(t('validation.expirationRequired', 'Expiration date is required.'));
+      return;
+    }
+
     // Clean up the data - remove undefined values
     const updateData: any = {
-      expires_at: editForm.expires_at,
+      expires_at: editForm.expires_at || null,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
       css_template_id: editForm.css_template_id,

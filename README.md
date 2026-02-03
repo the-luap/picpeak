@@ -7,11 +7,26 @@
   [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
   [![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+
+  [Homepage](https://www.picpeak.app) · [Live Demo](https://demo.picpeak.app) · [Documentation](DEPLOYMENT_GUIDE.md)
 </div>
 
 **PicPeak** is a powerful, self-hosted open-source alternative to commercial photo-sharing platforms like PicDrop.com and Scrapbook.de. Designed specifically for photographers and event organizers, PicPeak makes it simple to share beautiful, time-limited photo galleries with clients while maintaining full control over your data and branding.
 
 ![PicPeak Gallery Preview](docs/screenshot-gallery.png)
+
+## 🎮 Live Demo
+
+Try PicPeak without installing anything:
+
+| | |
+|---|---|
+| **Demo URL** | [demo.picpeak.app](https://demo.picpeak.app) |
+| **Admin Panel** | [demo.picpeak.app/admin](https://demo.picpeak.app/admin) |
+| **Email** | `demo@picpeak.app` |
+| **Password** | `Demo2026!` |
+
+> The demo resets periodically. Uploaded content may be removed without notice.
 
 ## 🌟 Why Choose PicPeak?
 
@@ -327,6 +342,8 @@ PicPeak is released under the [MIT License](LICENSE). Use it freely for personal
 <p align="center">
   Made with ❤️ by photographers, for photographers
   <br>
+  <a href="https://www.picpeak.app">Homepage</a> •
+  <a href="https://demo.picpeak.app">Live Demo</a> •
   <a href="https://github.com/the-luap/picpeak">GitHub</a> •
   <a href="DEPLOYMENT_GUIDE.md">Documentation</a> •
   <a href="https://github.com/the-luap/picpeak/issues">Support</a>

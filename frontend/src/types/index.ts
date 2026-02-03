@@ -102,6 +102,7 @@ export interface PhotoCategory {
   name: string;
   slug: string;
   is_global: boolean;
+  hero_photo_id?: number | null;
 }
 
 export interface GalleryData {

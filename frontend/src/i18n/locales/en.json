@@ -309,7 +309,12 @@
     "noCategory": "No category",
     "noCategoriesYet": "No categories yet. Create your first category to organize photos.",
     "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
-    "cannotDelete": "Cannot delete category with photos. Please reassign photos first."
+    "cannotDelete": "Cannot delete category with photos. Please reassign photos first.",
+    "setCoverPhoto": "Set Cover Photo",
+    "removeCoverPhoto": "Remove Cover Photo",
+    "coverPhotoSet": "Cover photo set successfully",
+    "coverPhotoRemoved": "Cover photo removed",
+    "failedToSetCoverPhoto": "Failed to set cover photo"
   },
   "events": {
     "title": "Events",

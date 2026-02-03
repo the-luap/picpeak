@@ -632,7 +632,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
-  body('expires_at').optional().isISO8601(),
+  body('expires_at').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
@@ -792,6 +792,17 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
     } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
       updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
+    }
+
+    // Enforce expires_at requirement based on app settings
+    if (Object.prototype.hasOwnProperty.call(updates, 'expires_at')) {
+      if (!updates.expires_at) {
+        const fieldReqs = await getEventFieldRequirements();
+        if (fieldReqs.require_expiration) {
+          return res.status(400).json({ error: 'Expiration date is required.' });
+        }
+        updates.expires_at = null;
+      }
     }
 
     // Format hero logo settings if provided
