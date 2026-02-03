@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.10.0-beta.0...v3.10.1-beta.0) (2026-02-03)
+
+
+### Bug Fixes
+
+* sync header_style DB column with theme editor selections ([#158](https://github.com/the-luap/picpeak/issues/158)) ([2288309](https://github.com/the-luap/picpeak/commit/228830939553fd32c250704bb89a8ce233324d25))
+* sync header_style DB column with theme editor selections ([#158](https://github.com/the-luap/picpeak/issues/158)) ([a19e7c4](https://github.com/the-luap/picpeak/commit/a19e7c40a200ff822c947a83349ed07ccf4e1b01))
+
 ## [3.10.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.9.0-beta.0...v3.10.0-beta.0) (2026-02-03)
 
 
