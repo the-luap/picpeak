@@ -5,6 +5,22 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.9.0-beta.0...v3.10.0-beta.0) (2026-02-03)
+
+
+### Features
+
+* add category hero/cover photo selection ([#163](https://github.com/the-luap/picpeak/issues/163)) ([6c30e2c](https://github.com/the-luap/picpeak/commit/6c30e2c2edd19a24d4f30a9558690bb7e2331b32))
+* add hero image focal point picker with anchor positioning ([#162](https://github.com/the-luap/picpeak/issues/162)) ([734868a](https://github.com/the-luap/picpeak/commit/734868abc23731b0ac9ad73e799194df1e6aa6ab))
+* gallery layouts, hero customization, bulk categories & event types ([d9e00dc](https://github.com/the-luap/picpeak/commit/d9e00dc0dbd7cef0ddb4665e5306c98aac3573e3))
+
+
+### Bug Fixes
+
+* hero header state and preview in admin theme editor ([#158](https://github.com/the-luap/picpeak/issues/158)) ([f554f46](https://github.com/the-luap/picpeak/commit/f554f463b3492346dba067c0980b52ef42dd5e70))
+* improve photo serving, category filters, and upload chunking ([#155](https://github.com/the-luap/picpeak/issues/155), [#156](https://github.com/the-luap/picpeak/issues/156), [#161](https://github.com/the-luap/picpeak/issues/161)) ([fa4c838](https://github.com/the-luap/picpeak/commit/fa4c83812d87cfa63394e51186e320a072929d37))
+* resolve code quality issues and add missing i18n keys ([#162](https://github.com/the-luap/picpeak/issues/162), [#163](https://github.com/the-luap/picpeak/issues/163)) ([329d224](https://github.com/the-luap/picpeak/commit/329d224846d3f4eefa31e42337f34047c267d578))
+
 ## [3.9.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.8.0-beta.0...v3.9.0-beta.0) (2026-02-01)
 
 
