@@ -550,6 +550,9 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_position: editForm.hero_logo_position,
       // Hero image anchor position (#162)
       hero_image_anchor: editForm.hero_image_anchor,
+      // Header style settings (decoupled from layout, #158)
+      header_style: currentTheme?.headerStyle || 'standard',
+      hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
     };
     
     // Only include fields that have defined values

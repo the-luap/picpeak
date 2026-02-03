@@ -292,6 +292,8 @@ export const CreateEventPage: React.FC = () => {
       password: formData.require_password ? formData.password : undefined,
       welcome_message: formData.welcome_message || '',
       color_theme: JSON.stringify(formData.theme_config),
+      header_style: formData.theme_config.headerStyle || 'standard',
+      hero_divider_style: formData.theme_config.heroDividerStyle || 'wave',
       expiration_days: requireExpiration ? formData.expires_in_days : undefined,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
