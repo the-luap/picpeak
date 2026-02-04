@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Loader2, Image as ImageIcon, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { categoriesService, type PhotoCategory } from '../../services/categories.service';
-import { photosService, type AdminPhoto } from '../../services/photos.service';
+import { photosService } from '../../services/photos.service';
 import { Button, Card, AuthenticatedImage } from '../common';
 import { useTranslation } from 'react-i18next';
 

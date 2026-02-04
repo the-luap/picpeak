@@ -92,8 +92,10 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
       ? 'justify-end text-right flex-row-reverse'
       : 'justify-start text-left';
   
-  // Check if hero header style is selected
+  // Check header style
   const isHeroHeader = theme.headerStyle === 'hero';
+  const isMinimalHeader = theme.headerStyle === 'minimal';
+  const isNoHeader = theme.headerStyle === 'none';
   const heroDividerStyle: HeroDividerStyle = theme.heroDividerStyle || 'wave';
 
   // Render hero divider based on style
@@ -210,7 +212,7 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
         fontFamily: theme.fontFamily || 'Inter, sans-serif',
       }}
     >
-      {/* Hero Header - shown when headerStyle is 'hero' */}
+      {/* Hero Header */}
       {isHeroHeader && (
         <div
           className="relative text-white overflow-hidden"
@@ -221,7 +223,6 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
         >
           <div className="py-8 px-4 relative z-10">
             <div className="text-center max-w-md mx-auto">
-              {/* Logo in Hero */}
               {showLogo && (
                 <div className="mb-3">
                   {resolvedLogoUrl ? (
@@ -238,7 +239,6 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
                   )}
                 </div>
               )}
-              {/* Event Name */}
               <h1
                 className="text-xl font-bold mb-2"
                 style={{
@@ -248,22 +248,20 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
               >
                 Sample Event
               </h1>
-              {/* Event Date */}
               <div className="flex items-center justify-center text-white/80 text-sm" style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.3)' }}>
                 <Calendar className="w-4 h-4 mr-1" />
                 <span>January 15, 2026</span>
               </div>
             </div>
           </div>
-          {/* Divider */}
           <div className="absolute bottom-0 left-0 right-0">
             {renderHeroDivider()}
           </div>
         </div>
       )}
 
-      {/* Standard Header - shown when headerStyle is NOT 'hero' */}
-      {!isHeroHeader && (
+      {/* Standard Header */}
+      {!isHeroHeader && !isMinimalHeader && !isNoHeader && (
         <div
           className="px-4 py-3 border-b space-y-2"
           style={{
@@ -299,10 +297,32 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
         </div>
       )}
 
+      {/* Minimal Header - thin bar with just event name */}
+      {isMinimalHeader && (
+        <div
+          className="px-4 py-2 border-b"
+          style={{
+            borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb',
+          }}
+        >
+          <p
+            className="text-sm font-semibold truncate"
+            style={{
+              fontFamily: theme.headingFontFamily || theme.fontFamily || 'Inter, sans-serif',
+            }}
+          >
+            Sample Event
+          </p>
+        </div>
+      )}
+
+      {/* None Header - no header content at all */}
+      {/* (isNoHeader renders nothing here — goes straight to layout bar) */}
+
       {/* Layout info bar */}
       <div className="px-4 py-1 border-b text-xs text-neutral-500 flex justify-between" style={{ borderColor: theme.primaryColor ? `${theme.primaryColor}20` : '#e5e7eb' }}>
         <span>Gallery preview</span>
-        <span className="capitalize">{isHeroHeader ? `Hero + ${activeLayout}` : `${activeLayout} layout`}</span>
+        <span className="capitalize">{isHeroHeader ? `Hero + ${activeLayout}` : isMinimalHeader ? `Minimal + ${activeLayout}` : isNoHeader ? `No header + ${activeLayout}` : `${activeLayout} layout`}</span>
       </div>
 
       {/* Preview Content */}

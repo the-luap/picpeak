@@ -236,9 +236,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
   }, [showMediaFilter, mediaFilter]);
 
-  // Determine a stable hero photo from the initial (unfiltered) load
+  // Determine the default hero photo from the initial (unfiltered) load
+  const [defaultHeroPhoto, setDefaultHeroPhoto] = useState<Photo | null>(null);
+
   useEffect(() => {
-    if (!staticHeroPhoto && data?.photos && filterType === 'all') {
+    if (!defaultHeroPhoto && data?.photos && filterType === 'all') {
       let hero: Photo | null = null;
       const heroId = data?.event?.hero_photo_id || null;
       if (heroId) {
@@ -249,10 +251,29 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         hero = firstPhoto || data.photos[0];
       }
       if (hero) {
+        setDefaultHeroPhoto(hero);
         setStaticHeroPhoto(hero);
       }
     }
-  }, [data?.photos, data?.event?.hero_photo_id, filterType, staticHeroPhoto]);
+  }, [data?.photos, data?.event?.hero_photo_id, filterType, defaultHeroPhoto]);
+
+  // Switch hero photo when a category with its own hero image is selected
+  useEffect(() => {
+    if (!data?.photos || !defaultHeroPhoto) return;
+
+    if (selectedCategoryId) {
+      const category = (data.categories || []).find(c => c.id === selectedCategoryId);
+      if (category?.hero_photo_id) {
+        const categoryHero = data.photos.find(p => p.id === category.hero_photo_id);
+        if (categoryHero) {
+          setStaticHeroPhoto(categoryHero);
+          return;
+        }
+      }
+    }
+    // No category selected or category has no hero — revert to default
+    setStaticHeroPhoto(defaultHeroPhoto);
+  }, [selectedCategoryId, data?.categories, data?.photos, defaultHeroPhoto]);
 
   // Apply theme when settings are loaded
   useEffect(() => {
