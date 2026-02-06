@@ -5,6 +5,19 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.11.0-beta.0...v3.12.0-beta.0) (2026-02-06)
+
+
+### Features
+
+* add admin dark mode and SEO/robots.txt settings ([9c2a0d2](https://github.com/the-luap/picpeak/commit/9c2a0d272a21dfcace2ec795034e2f1adcba47e0))
+
+
+### Bug Fixes
+
+* improve ghost button visibility in admin dark mode ([4912e2b](https://github.com/the-luap/picpeak/commit/4912e2bccf282134d5598a8ac80942ed46d0523c))
+* resolve mixed light/dark mode styling in admin UI ([#175](https://github.com/the-luap/picpeak/issues/175)) ([f8c8abd](https://github.com/the-luap/picpeak/commit/f8c8abd70bbae35d6cd519894624ade33b5115a8))
+
 ## [3.11.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.10.1-beta.0...v3.11.0-beta.0) (2026-02-06)
 
 
