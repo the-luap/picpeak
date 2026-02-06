@@ -101,8 +101,8 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
           inline-flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm
           transition-colors
           ${isDisabled
-            ? 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
-            : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
+            ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 border-neutral-200 dark:border-neutral-700 cursor-not-allowed'
+            : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
           }
         `}
       >
@@ -129,9 +129,9 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
           />
 
           {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-neutral-200 z-20">
+          <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 z-20">
             <div className="p-2">
-              <p className="px-3 py-2 text-xs font-medium text-neutral-500 uppercase tracking-wider">
+              <p className="px-3 py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                 {hasSelection
                   ? t('export.exportSelected', 'Export {{count}} selected', { count: selectedPhotoIds.length })
                   : t('export.exportFiltered', 'Export filtered photos')
@@ -145,14 +145,14 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
                     key={format.value}
                     onClick={() => handleExport(format.value as 'txt' | 'csv' | 'xmp' | 'json')}
                     disabled={exportMutation.isPending}
-                    className="w-full flex items-start gap-3 px-3 py-2 rounded-md hover:bg-neutral-50 text-left transition-colors"
+                    className="w-full flex items-start gap-3 px-3 py-2 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700 text-left transition-colors"
                   >
-                    <Icon className="w-5 h-5 text-neutral-500 mt-0.5" />
+                    <Icon className="w-5 h-5 text-neutral-500 dark:text-neutral-400 mt-0.5" />
                     <div>
-                      <div className="text-sm font-medium text-neutral-900">
+                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                         {format.label}
                       </div>
-                      <div className="text-xs text-neutral-500">
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
                         {format.description}
                       </div>
                     </div>
@@ -165,7 +165,7 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
       )}
 
       {!hasSelection && !hasFilters && (
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
           {t('export.hint', 'Select photos or apply filters to export')}
         </p>
       )}

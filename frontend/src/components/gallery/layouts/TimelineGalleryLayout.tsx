@@ -75,7 +75,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   return (
     <div className="relative">
       {/* Timeline line */}
-      <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-neutral-300 hidden lg:block" />
+      <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-black/20 hidden lg:block" />
       
       {/* Timeline groups */}
       <div className="space-y-12">
@@ -87,7 +87,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="hidden lg:flex items-center justify-center w-16 h-16 bg-white border-4 border-primary-600 rounded-full z-10">
                   <Calendar className="w-6 h-6 text-primary-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-neutral-800">
+                <h3 className="text-xl font-semibold text-theme">
                   {group.label}
                 </h3>
               </div>

@@ -30,7 +30,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-neutral-700 mb-1.5"
+            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5"
           >
             {label}
           </label>
@@ -38,7 +38,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <div className="relative">
           {leftIcon && (
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-neutral-500">{leftIcon}</span>
+              <span className="text-neutral-500 dark:text-neutral-400">{leftIcon}</span>
             </div>
           )}
           <input
@@ -59,17 +59,17 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
           {rightIcon && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-              <span className="text-neutral-500">{rightIcon}</span>
+              <span className="text-neutral-500 dark:text-neutral-400">{rightIcon}</span>
             </div>
           )}
         </div>
         {error && (
-          <p id={`${inputId}-error`} className="mt-1.5 text-sm text-red-600">
+          <p id={`${inputId}-error`} className="mt-1.5 text-sm text-red-600 dark:text-red-400">
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p id={`${inputId}-helper`} className="mt-1.5 text-sm text-neutral-500">
+          <p id={`${inputId}-helper`} className="mt-1.5 text-sm text-neutral-500 dark:text-neutral-400">
             {helperText}
           </p>
         )}

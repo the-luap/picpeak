@@ -97,7 +97,7 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
       className={`group flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
         isLiked 
           ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-          : 'bg-neutral-50 text-neutral-600 hover:bg-neutral-100'
+          : 'bg-surface text-muted-theme hover:bg-black/10'
       } ${isSubmitting ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
       aria-label={isLiked ? t('feedback.unlike', 'Unlike') : t('feedback.like', 'Like')}
     >

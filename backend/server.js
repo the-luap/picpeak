@@ -252,10 +252,29 @@ function renderBrandFooter(branding) {
 </footer>`;
 }
 
+function buildSeoMetaTags(seoSettings) {
+  const tags = [];
+  const robotsDirectives = [];
+
+  if (seoSettings.seo_meta_noindex) robotsDirectives.push('noindex');
+  if (seoSettings.seo_meta_nofollow) robotsDirectives.push('nofollow');
+
+  if (robotsDirectives.length > 0) {
+    tags.push(`<meta name="robots" content="${robotsDirectives.join(', ')}" />`);
+  }
+
+  if (seoSettings.seo_meta_noai) {
+    tags.push('<meta name="robots" content="noai, noimageai" />');
+  }
+
+  return tags.join('\n  ');
+}
+
 function buildPublicSiteDocument(payload) {
   const inlineStyles = composeInlineStyles(payload);
   const header = renderBrandHeader(payload.branding);
   const footer = renderBrandFooter(payload.branding);
+  const seoMeta = payload.seoSettings ? buildSeoMetaTags(payload.seoSettings) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -265,6 +284,7 @@ function buildPublicSiteDocument(payload) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${payload.title}</title>
   <meta name="description" content="Curated photo galleries and stories from unforgettable celebrations." />
+  ${seoMeta}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -295,6 +315,21 @@ async function handlePublicSiteRequest(req, res, next) {
       res.status(304).end();
       return;
     }
+
+    // Inject SEO meta settings into payload
+    try {
+      const seoRows = await db('app_settings')
+        .where('setting_type', 'seo')
+        .whereIn('setting_key', ['seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai'])
+        .select('setting_key', 'setting_value');
+      const seoSettings = {};
+      for (const row of seoRows) {
+        let val = row.setting_value;
+        if (typeof val === 'string') { try { val = JSON.parse(val); } catch {} }
+        seoSettings[row.setting_key] = val;
+      }
+      payload.seoSettings = seoSettings;
+    } catch {}
 
     const document = buildPublicSiteDocument(payload);
 
@@ -394,6 +429,22 @@ if (process.env.NODE_ENV === 'development') {
     });
   });
 }
+
+// robots.txt endpoint (dynamic, served from DB settings)
+const { generateRobotsTxt } = require('./src/services/robotsTxtService');
+app.get('/robots.txt', async (req, res) => {
+  try {
+    const robotsTxt = await generateRobotsTxt();
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.status(200).send(robotsTxt);
+  } catch (error) {
+    logger.error('Failed to generate robots.txt', { error: error.message });
+    // Safe default for a private photo platform
+    res.setHeader('Content-Type', 'text/plain');
+    res.status(200).send('User-agent: *\nDisallow: /\n');
+  }
+});
 
 // Health check endpoint
 app.get('/health', async (req, res) => {

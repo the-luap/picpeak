@@ -12,7 +12,8 @@ router.get('/', async (req, res) => {
         .where(function() {
           this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics', 'boolean'])
             .orWhere('setting_key', 'like', 'analytics_%')
-            .orWhere('setting_key', 'like', 'event_require_%');
+            .orWhere('setting_key', 'like', 'event_require_%')
+            .orWhereIn('setting_key', ['seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai']);
         })
         .select('setting_key', 'setting_value');
     });
@@ -76,7 +77,11 @@ router.get('/', async (req, res) => {
       event_require_customer_email: settingsObject.event_require_customer_email !== false,
       event_require_admin_email: settingsObject.event_require_admin_email !== false,
       event_require_event_date: settingsObject.event_require_event_date !== false,
-      event_require_expiration: settingsObject.event_require_expiration !== false
+      event_require_expiration: settingsObject.event_require_expiration !== false,
+      // SEO meta tag flags (safe to expose - these are intended for crawlers)
+      seo_meta_noindex: settingsObject.seo_meta_noindex === true,
+      seo_meta_nofollow: settingsObject.seo_meta_nofollow === true,
+      seo_meta_noai: settingsObject.seo_meta_noai === true
     };
 
     res.json(publicSettings);

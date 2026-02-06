@@ -118,7 +118,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   if (photos.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-neutral-600">{t('gallery.noPhotosFound')}</p>
+        <p className="text-muted-theme">{t('gallery.noPhotosFound')}</p>
       </div>
     );
   }
@@ -155,7 +155,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
           
           {isSelectionMode && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-neutral-600">
+              <span className="text-xs sm:text-sm text-muted-theme">
                 {t('gallery.photosSelected', { count: selectedPhotos.size })}
               </span>
               <div className="flex items-center gap-2 flex-wrap">
@@ -299,13 +299,13 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
               {(photo.comment_count ?? 0) > 0 && (
                 <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count ?? 0} comments`}>
                   <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                  <span className="text-xs font-medium text-muted-theme">{photo.comment_count ?? 0}</span>
                 </div>
               )}
               {(photo.average_rating ?? 0) > 0 && (
                 <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`Rating: ${Number(photo.average_rating ?? 0).toFixed(1)}`}>
                   <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
-                  <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                  <span className="text-xs font-medium text-muted-theme">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
                 </div>
               )}
             </div>
@@ -323,7 +323,7 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
                   }}
                   aria-label="View full size"
                 >
-                  <Maximize2 className="w-5 h-5 text-neutral-800" />
+                  <Maximize2 className="w-5 h-5 text-theme" />
                 </button>
                 {allowDownloads && (
                   <button
@@ -331,7 +331,7 @@ const PhotoThumbnail: React.FC<PhotoThumbnailProps> = ({
                     onClick={onDownload}
                     aria-label="Download photo"
                   >
-                    <Download className="w-5 h-5 text-neutral-800" />
+                    <Download className="w-5 h-5 text-theme" />
                   </button>
                 )}
               </>

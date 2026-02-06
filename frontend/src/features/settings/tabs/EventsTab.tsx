@@ -23,10 +23,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
   return (
     <div className="space-y-6">
       <Card padding="md">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
           {t('settings.events.requiredFields', 'Required Fields')}
         </h2>
-        <p className="text-sm text-neutral-600 mb-4">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
           {t('settings.events.requiredFieldsDescription', 'Configure which contact fields are required when creating new events.')}
         </p>
 
@@ -40,10 +40,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
                 className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
               />
               <div>
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('settings.events.requireCustomerName', 'Require customer name')}
                 </span>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   {t('settings.events.requireCustomerNameHelp', 'Customer name must be provided for new events')}
                 </p>
               </div>
@@ -59,10 +59,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
                 className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
               />
               <div>
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('settings.events.requireCustomerEmail', 'Require customer email')}
                 </span>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   {t('settings.events.requireCustomerEmailHelp', 'Customer email must be provided for new events')}
                 </p>
                 {!eventSettings.event_require_customer_email && (
@@ -84,10 +84,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
                 className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
               />
               <div>
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('settings.events.requireAdminEmail', 'Require admin email')}
                 </span>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   {t('settings.events.requireAdminEmailHelp', 'Admin email must be provided for new events')}
                 </p>
                 {!eventSettings.event_require_admin_email && (
@@ -109,10 +109,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
                 className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
               />
               <div>
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('settings.events.requireEventDate', 'Require event date')}
                 </span>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   {t('settings.events.requireEventDateHelp', 'Event date must be provided when creating events')}
                 </p>
                 {!eventSettings.event_require_event_date && (
@@ -134,10 +134,10 @@ export const EventsTab: React.FC<EventsTabProps> = ({
                 className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
               />
               <div>
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('settings.events.requireExpiration', 'Require expiration date')}
                 </span>
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   {t('settings.events.requireExpirationHelp', 'Galleries must have an expiration date')}
                 </p>
                 {!eventSettings.event_require_expiration && (
@@ -165,8 +165,8 @@ export const EventsTab: React.FC<EventsTabProps> = ({
 
       <Card padding="md">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-          <div className="text-sm text-blue-800">
+          <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          <div className="text-sm text-blue-800 dark:text-blue-200">
             <p className="font-medium mb-1">{t('settings.events.noteTitle', 'Note')}</p>
             <p>
               {t('settings.events.noteText', 'These settings only affect new event creation. Existing events are not affected. Default behavior requires all fields.')}

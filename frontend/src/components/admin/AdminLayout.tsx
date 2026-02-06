@@ -17,7 +17,7 @@ export const AdminLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-neutral-600">Loading...</p>
@@ -31,7 +31,7 @@ export const AdminLayout: React.FC = () => {
   }
 
   return (
-    <div className="h-screen bg-neutral-50 flex overflow-hidden">
+    <div className="h-screen bg-neutral-50 dark:bg-neutral-950 flex overflow-hidden">
       {/* Mandatory Password Change Modal */}
       {mustChangePassword && <MandatoryPasswordChangeModal />}
       

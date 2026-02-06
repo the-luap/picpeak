@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, User, LogOut, Settings, Bell, Lock, CheckCircle, Trash2 } from 'lucide-react';
+import { Menu, User, LogOut, Settings, Bell, Lock, CheckCircle, Trash2, Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { useLocalizedTimeAgo } from '../../hooks/useLocalizedTimeAgo';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAdminAuth } from '../../contexts';
+import { useAdminDarkMode } from '../../contexts/AdminDarkModeContext';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { PasswordChangeModal } from './PasswordChangeModal';
 import { LanguageSelector } from '../common';
@@ -20,6 +21,7 @@ interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
+  const { isDark, toggle: toggleDarkMode } = useAdminDarkMode();
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { formatTimeAgo } = useLocalizedTimeAgo();
@@ -68,7 +70,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const unreadCount = notificationsData?.unreadCount || 0;
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-neutral-200">
+    <header className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left side - Menu button, Logo, and Date */}
@@ -87,8 +89,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
             </div>
 
             {/* Date display - hidden on smaller screens */}
-            <div className="hidden xl:block pl-3 border-l border-neutral-200 ml-1">
-              <p className="text-base text-neutral-700">
+            <div className="hidden xl:block pl-3 border-l border-neutral-200 dark:border-neutral-700 ml-1">
+              <p className="text-base text-neutral-700 dark:text-neutral-300">
                 {format(new Date(), 'PPPP')}
               </p>
             </div>
@@ -98,12 +100,21 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
           <div className="flex items-center gap-3">
             {/* Language Selector */}
             <LanguageSelector />
-            
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+              title={isDark ? t('admin.lightMode', 'Switch to light mode') : t('admin.darkMode', 'Switch to dark mode')}
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {/* Notifications */}
             <div className="relative" ref={notificationRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
+                className="relative p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -113,14 +124,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
 
               {/* Notifications dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-neutral-200">
-                  <div className="px-4 py-3 border-b border-neutral-100 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-neutral-900">{t('admin.notifications')}</h3>
+                <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700">
+                  <div className="px-4 py-3 border-b border-neutral-100 dark:border-neutral-700 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t('admin.notifications')}</h3>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
                         <button
                           onClick={() => markAllAsReadMutation.mutate()}
-                          className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                          className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
                           title={t('admin.markAllRead')}
                         >
                           <CheckCircle className="w-3 h-3" />
@@ -129,7 +140,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                       )}
                       <button
                         onClick={() => clearAllMutation.mutate()}
-                        className="text-xs text-neutral-600 hover:text-neutral-700 flex items-center gap-1"
+                        className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 flex items-center gap-1"
                         title={t('admin.clearAll')}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -139,7 +150,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-sm text-neutral-500">
+                      <div className="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                         {t('admin.noNotificationsMessage')}
                       </div>
                     ) : (
@@ -148,7 +159,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                         return (
                           <div
                             key={notification.id}
-                            className={`px-4 py-3 hover:bg-neutral-50 cursor-pointer border-l-4 ${
+                            className={`px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer border-l-4 ${
                               notification.isRead ? 'border-transparent opacity-75' : 'border-primary-500'
                             }`}
                           >
@@ -157,10 +168,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                                 <Bell className="w-4 h-4" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-neutral-900">
+                                <p className="text-sm text-neutral-900 dark:text-neutral-100">
                                   {notificationsService.formatNotificationMessage(notification)}
                                 </p>
-                                <p className="text-xs text-neutral-500 mt-1">
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                                   {formatTimeAgo(notification.createdAt)}
                                 </p>
                               </div>
@@ -171,10 +182,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                     )}
                   </div>
                   {notifications.length > 0 && (
-                    <div className="px-4 py-2 border-t border-neutral-100 text-center">
-                      <button 
+                    <div className="px-4 py-2 border-t border-neutral-100 dark:border-neutral-700 text-center">
+                      <button
                         onClick={() => setShowNotifications(false)}
-                        className="text-sm text-primary-600 hover:text-primary-700"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
                       >
                         {t('admin.close')}
                       </button>
@@ -188,11 +199,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-3 p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                className="flex items-center gap-3 p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-neutral-900">{user?.username}</p>
-                  <p className="text-xs text-neutral-500">{user?.email}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.username}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</p>
                 </div>
                 <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-white" />
@@ -201,17 +212,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
 
               {/* User dropdown */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-neutral-200 py-1">
-                  <div className="px-4 py-2 border-b border-neutral-100 sm:hidden">
-                    <p className="text-sm font-medium text-neutral-900">{user?.username}</p>
-                    <p className="text-xs text-neutral-500">{user?.email}</p>
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-neutral-800 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-700 py-1">
+                  <div className="px-4 py-2 border-b border-neutral-100 dark:border-neutral-700 sm:hidden">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.username}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</p>
                   </div>
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
                       navigate('/admin/settings');
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-3"
+                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-3"
                   >
                     <Settings className="w-4 h-4" />
                     {t('navigation.settings')}
@@ -221,14 +232,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                       setShowUserMenu(false);
                       setShowPasswordModal(true);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-3"
+                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-3"
                   >
                     <Lock className="w-4 h-4" />
                     {t('admin.changePassword')}
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-3"
+                    className="w-full px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-3"
                   >
                     <LogOut className="w-4 h-4" />
                     {t('common.logout')}

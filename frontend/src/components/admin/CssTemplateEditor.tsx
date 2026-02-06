@@ -92,14 +92,14 @@ export const CssTemplateEditor: React.FC = () => {
     <Card>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
             <Code className="w-5 h-5" />
             {t('cssTemplates.title', 'Custom CSS Templates')}
           </h2>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-neutral-200 mb-6">
+        <div className="flex border-b border-neutral-200 dark:border-neutral-700 mb-6">
           {[1, 2, 3].map(slot => {
             const template = localTemplates.find(t => t.slot_number === slot);
             return (
@@ -109,7 +109,7 @@ export const CssTemplateEditor: React.FC = () => {
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeSlot === slot
                     ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300'
+                    : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
                 {t('cssTemplates.template', 'Template')} {slot}
@@ -130,7 +130,7 @@ export const CssTemplateEditor: React.FC = () => {
           <div className="space-y-6">
             {/* Template Name */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 dark:text-neutral-300 mb-2">
                 {t('cssTemplates.templateName', 'Template Name')}
               </label>
               <input
@@ -138,7 +138,7 @@ export const CssTemplateEditor: React.FC = () => {
                 value={activeTemplate.name}
                 onChange={(e) => updateLocalTemplate({ name: e.target.value })}
                 maxLength={50}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
 
@@ -151,18 +151,18 @@ export const CssTemplateEditor: React.FC = () => {
                   onChange={(e) => updateLocalTemplate({ is_enabled: e.target.checked })}
                   className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                 />
-                <span className="text-sm font-medium text-neutral-700">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('cssTemplates.enableTemplate', 'Enable this template')}
                 </span>
               </label>
-              <p className="text-xs text-neutral-500 mt-1 ml-6">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 ml-6">
                 {t('cssTemplates.enableHint', 'Enabled templates can be selected when creating events')}
               </p>
             </div>
 
             {/* CSS Editor */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 dark:text-neutral-300 mb-2">
                 {t('cssTemplates.cssContent', 'CSS Content')}
               </label>
               <div className="relative">
@@ -177,22 +177,22 @@ export const CssTemplateEditor: React.FC = () => {
                   {(activeTemplate.css_content?.length || 0).toLocaleString()} / 102,400 {t('common.characters', 'characters')}
                 </div>
               </div>
-              <p className="text-xs text-neutral-500 mt-2">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
                 {t('cssTemplates.cssHint', 'Use .gallery-page to scope styles to the gallery. Available variables: --gallery-bg, --gallery-text, --gallery-accent')}
               </p>
             </div>
 
             {/* Security Notice */}
-            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-amber-800">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-amber-800 dark:text-amber-200">
                 <strong>{t('cssTemplates.securityNotice', 'Security Notice')}:</strong>{' '}
                 {t('cssTemplates.securityText', 'CSS is sanitized to prevent malicious code. External URLs, @import, and JavaScript expressions are blocked.')}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+            <div className="flex items-center justify-between pt-4 border-t border-neutral-100 dark:border-neutral-700">
               <div className="flex items-center gap-3">
                 {activeSlot === 1 && activeTemplate.is_default && (
                   <Button
@@ -227,7 +227,7 @@ export const CssTemplateEditor: React.FC = () => {
 
             {/* Last Updated */}
             {activeTemplate.updated_at && (
-              <p className="text-xs text-neutral-400 text-right">
+              <p className="text-xs text-neutral-400 dark:text-neutral-500 text-right">
                 {t('cssTemplates.lastUpdated', 'Last updated')}: {new Date(activeTemplate.updated_at).toLocaleString()}
               </p>
             )}
