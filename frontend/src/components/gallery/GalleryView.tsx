@@ -513,9 +513,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
         {/* Header Skeleton */}
-        <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
+        <header className="bg-surface border-b border-surface sticky top-0 z-40">
           <div className="container py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -550,9 +550,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-neutral-600">{t('gallery.failedToLoad')}</p>
+          <p className="text-lg text-muted-theme">{t('gallery.failedToLoad')}</p>
           <Button onClick={() => refetch()} className="mt-4">
             {t('gallery.tryAgain')}
           </Button>
@@ -561,7 +561,77 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
-  const showSidebar = theme.galleryLayout !== 'grid';
+  // Determine controls style (sidebar vs classic inline filter bar)
+  // If controlsStyle is explicitly set in theme, use that
+  // Otherwise: use sidebar for non-grid layouts OR hero headers (prevents filter bar above hero)
+  const headerStyle = data?.event?.header_style || theme.headerStyle || 'standard';
+  const isHeroHeader = headerStyle === 'hero';
+  const controlsStyle = theme.controlsStyle;
+  const showSidebar = controlsStyle
+    ? controlsStyle === 'sidebar'
+    : (theme.galleryLayout !== 'grid' || isHeroHeader);
+
+  // Full-page layouts (gallery-premium, gallery-story) have their own integrated UI
+  // Skip all wrapper elements (header, footer, sidebar, filters) for these layouts
+  const isFullPageLayout = theme.galleryLayout === 'gallery-premium' || theme.galleryLayout === 'gallery-story';
+
+  // For full-page layouts, render just the PhotoGridWithLayouts without any wrappers
+  if (isFullPageLayout) {
+    return (
+      <>
+        <PhotoGridWithLayouts
+          photos={filteredPhotos}
+          slug={slug}
+          categoryId={selectedCategoryId}
+          onFeedbackChange={() => refetch()}
+          heroPhotoOverride={staticHeroPhoto}
+          feedbackEnabled={feedbackEnabled}
+          feedbackOptions={{
+            allowLikes: !!feedbackSettings?.allow_likes,
+            allowFavorites: !!feedbackSettings?.allow_favorites,
+            allowRatings: !!feedbackSettings?.allow_ratings,
+            allowComments: !!feedbackSettings?.allow_comments,
+            requireNameEmail: !!feedbackSettings?.require_name_email,
+          }}
+          isSelectionMode={isSelectionMode}
+          selectedPhotos={selectedPhotos}
+          onSelectionChange={setSelectedPhotos}
+          onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
+          showSelectionControls={false}
+          eventName={event.event_name}
+          eventLogo={data?.event?.hero_logo_url || brandingSettings?.logo_url}
+          eventDate={event.event_date}
+          expiresAt={event.expires_at}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={protectionLevel !== 'basic'}
+          disableRightClick={disableRightClick}
+          enableDevtoolsProtection={enableDevtoolsProtection}
+          useCanvasRendering={useCanvasRendering}
+          heroLogoVisible={data?.event?.hero_logo_visible !== false}
+          heroLogoSize={data?.event?.hero_logo_size || 'medium'}
+          heroLogoPosition={data?.event?.hero_logo_position || 'top'}
+          headerStyle={data?.event?.header_style || theme.headerStyle}
+          heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
+          heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+          onLogout={logout}
+        />
+
+        {/* Upload Modal for full-page layouts */}
+        {showUploadModal && (data?.event?.allow_user_uploads || event?.allow_user_uploads) && (
+          <UserPhotoUpload
+            eventId={data?.event?.id || event?.id}
+            categoryId={data?.event?.upload_category_id || event?.upload_category_id}
+            onUploadComplete={() => {
+              setShowUploadModal(false);
+              window.location.reload();
+            }}
+            onClose={() => setShowUploadModal(false)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>

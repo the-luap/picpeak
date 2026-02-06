@@ -289,7 +289,25 @@
     "sortByDate": "Sort by Date",
     "sortByName": "Sort by Name",
     "sortBySize": "Sort by Size",
-    "sortByRating": "Sort by Rating"
+    "sortByRating": "Sort by Rating",
+    "photoGallery": "Photo Gallery",
+    "photos": "Photos",
+    "allRightsReserved": "All rights reserved",
+    "searchMemories": "Search memories...",
+    "thankYou": "Thank You",
+    "thankYouMessage": "For being part of our story and making our special day unforgettable.",
+    "feedback": {
+      "title": "Feedback",
+      "shareThoughts": "Share your thoughts on \"{{name}}\"",
+      "rateThisMoment": "Rate this moment",
+      "comments": "Comments",
+      "noComments": "No comments yet. Be the first!",
+      "yourName": "Your name",
+      "yourEmail": "Your email",
+      "writeLovelyNote": "Write a lovely note...",
+      "postComment": "Post Comment",
+      "anonymous": "Anonymous"
+    }
   },
   "categories": {
     "title": "Photo Categories",
@@ -859,6 +877,34 @@
     "styling": {
       "title": "Custom CSS"
     },
+    "seo": {
+      "title": "SEO & Robots",
+      "indexingTitle": "Search Engine Indexing",
+      "allowIndexing": "Allow search engine indexing",
+      "allowIndexingHelp": "When disabled, all crawlers are blocked via robots.txt. Recommended off for private photo platforms.",
+      "sitemapUrl": "Sitemap URL",
+      "sitemapUrlHelp": "Optional. Added to robots.txt if provided.",
+      "aiBlockingTitle": "AI & Bot Blocking",
+      "blockAiCrawlers": "Block AI/LLM crawlers",
+      "blockAiCrawlersHelp": "Prevent AI training bots from accessing your content.",
+      "blockedAgents": "Blocked AI agents",
+      "addAgentPlaceholder": "Enter agent name...",
+      "blockSocialBots": "Block social media preview bots",
+      "blockSocialBotsHelp": "Prevent link previews on Twitter, Facebook, LinkedIn, etc.",
+      "metaTagsTitle": "Meta Tags & Custom Rules",
+      "metaNoindex": "Add noindex meta tag",
+      "metaNoindexHelp": "Tells search engines not to index pages (HTML-level, complements robots.txt).",
+      "metaNofollow": "Add nofollow meta tag",
+      "metaNofollowHelp": "Tells search engines not to follow links on pages.",
+      "metaNoai": "Add noai/noimageai meta tag",
+      "metaNoaiHelp": "Signals that content should not be used for AI training.",
+      "customRules": "Custom robots.txt rules",
+      "ruleAgentPlaceholder": "User-agent",
+      "rulePathPlaceholder": "Disallow path",
+      "showPreview": "Show robots.txt preview",
+      "hidePreview": "Hide robots.txt preview",
+      "saveSettings": "Save SEO Settings"
+    },
     "analytics": {
       "title": "Analytics",
       "umamiIntegration": "Umami Analytics Integration",
@@ -968,6 +1014,11 @@
     "accentColor": "Accent Color",
     "backgroundColor": "Background Color",
     "textColor": "Text Color",
+    "colorMode": "Color Mode",
+    "colorModeLight": "Light",
+    "colorModeDark": "Dark",
+    "colorModeAuto": "Auto",
+    "colorModeHelp": "Auto follows the visitor's system preference.",
     "customCSS": "Custom CSS",
     "preview": "Preview",
     "previewInNewTab": "Preview in New Tab",
@@ -985,7 +1036,9 @@
       "timeline": "Photos organized by date",
       "hero": "Featured image with grid below",
       "mosaic": "Artistic layout with mixed sizes",
-      "justified": "Row-based layout preserving aspect ratios"
+      "justified": "Row-based layout preserving aspect ratios",
+      "gallery-premium": "Elegant light theme with hero and masonry (Beta)",
+      "gallery-story": "Cinematic dark theme with scene sections (Beta)"
     },
     "layoutSettings": "Layout Settings",
     "photoSpacing": "Photo Spacing",
@@ -1140,7 +1193,18 @@
       "angle": "Angle",
       "curve": "Curve",
       "none": "None"
-    }
+    },
+    "controlsStyle": "Controls Style",
+    "controlsStyleDescription": "Choose how gallery filters and controls are displayed.",
+    "controlsStyleOptions": {
+      "classic": "Classic",
+      "sidebar": "Sidebar"
+    },
+    "controlsStyleDescriptions": {
+      "classic": "Inline filter bar below header",
+      "sidebar": "Menu button opens sidebar with filters"
+    },
+    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image."
   },
   "admin": {
     "title": "Admin Panel",
@@ -1226,6 +1290,8 @@
     "markAllAsRead": "Mark all as read",
     "notificationSettings": "Notification Settings",
     "changePassword": "Change Password",
+    "darkMode": "Switch to dark mode",
+    "lightMode": "Switch to light mode",
     "accountSettings": {
       "title": "Admin account",
       "description": "Update the credentials used to sign in to PicPeak.",

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, RotateCcw, Grid3X3, Layers, Play, Clock, LayoutGrid, Check } from 'lucide-react';
+import { X, Save, RotateCcw, Grid3X3, Layers, Play, Clock, LayoutGrid, Check, Columns, Film } from 'lucide-react';
 import { Button } from '../common';
 import { ThemeCustomizerEnhanced } from './ThemeCustomizerEnhanced';
 import { GalleryPreview } from './GalleryPreview';
@@ -21,7 +21,9 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   masonry: <Layers className="w-4 h-4" />,
   carousel: <Play className="w-4 h-4" />,
   timeline: <Clock className="w-4 h-4" />,
-  mosaic: <LayoutGrid className="w-4 h-4" />
+  mosaic: <LayoutGrid className="w-4 h-4" />,
+  'gallery-premium': <Columns className="w-4 h-4" />,
+  'gallery-story': <Film className="w-4 h-4" />
 };
 
 export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
@@ -175,7 +177,12 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
                           <div className="text-neutral-700">
                             {layoutIcons[layout]}
                           </div>
-                          <span className="text-xs capitalize">{layout}</span>
+                          <span className="text-xs capitalize">
+                            {layout}
+                            {(layout === 'gallery-premium' || layout === 'gallery-story') && (
+                              <span className="ml-0.5 text-amber-600">(Beta)</span>
+                            )}
+                          </span>
                         </div>
                         {(previewLayout || theme.galleryLayout || 'grid') === layout && (
                           <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />

@@ -676,7 +676,25 @@
     "sortByDate": "Nach Datum sortieren",
     "sortByName": "Nach Name sortieren",
     "sortBySize": "Nach Größe sortieren",
-    "sortByRating": "Nach Bewertung sortieren"
+    "sortByRating": "Nach Bewertung sortieren",
+    "photoGallery": "Fotogalerie",
+    "photos": "Fotos",
+    "allRightsReserved": "Alle Rechte vorbehalten",
+    "searchMemories": "Erinnerungen suchen...",
+    "thankYou": "Vielen Dank",
+    "thankYouMessage": "Dass Sie Teil unserer Geschichte waren und unseren besonderen Tag unvergesslich gemacht haben.",
+    "feedback": {
+      "title": "Feedback",
+      "shareThoughts": "Teilen Sie Ihre Gedanken zu \"{{name}}\"",
+      "rateThisMoment": "Bewerten Sie diesen Moment",
+      "comments": "Kommentare",
+      "noComments": "Noch keine Kommentare. Seien Sie der Erste!",
+      "yourName": "Ihr Name",
+      "yourEmail": "Ihre E-Mail",
+      "writeLovelyNote": "Schreiben Sie eine nette Nachricht...",
+      "postComment": "Kommentar posten",
+      "anonymous": "Anonym"
+    }
   },
   "categories": {
     "title": "Fotokategorien",
@@ -1170,6 +1188,34 @@
       "infoTitle": "Über Bildschutz",
       "infoText": "Diese Schutzfunktionen helfen, gelegentliches Herunterladen und Kopieren zu verhindern, können aber nicht alle Methoden blockieren. Entschlossene Benutzer finden möglicherweise trotzdem Wege, Bilder zu erfassen. Erwägen Sie die Verwendung von Wasserzeichen und rechtlichen Vereinbarungen für umfassenden Schutz."
     },
+    "seo": {
+      "title": "SEO & Robots",
+      "indexingTitle": "Suchmaschinen-Indexierung",
+      "allowIndexing": "Suchmaschinen-Indexierung erlauben",
+      "allowIndexingHelp": "Wenn deaktiviert, werden alle Crawler über robots.txt blockiert. Für private Foto-Plattformen empfohlen auszuschalten.",
+      "sitemapUrl": "Sitemap-URL",
+      "sitemapUrlHelp": "Optional. Wird zur robots.txt hinzugefügt, falls angegeben.",
+      "aiBlockingTitle": "KI- & Bot-Blockierung",
+      "blockAiCrawlers": "KI-/LLM-Crawler blockieren",
+      "blockAiCrawlersHelp": "Verhindert, dass KI-Trainings-Bots auf Ihre Inhalte zugreifen.",
+      "blockedAgents": "Blockierte KI-Agenten",
+      "addAgentPlaceholder": "Agentenname eingeben...",
+      "blockSocialBots": "Social-Media-Vorschau-Bots blockieren",
+      "blockSocialBotsHelp": "Verhindert Link-Vorschauen auf Twitter, Facebook, LinkedIn usw.",
+      "metaTagsTitle": "Meta-Tags & Benutzerdefinierte Regeln",
+      "metaNoindex": "noindex-Meta-Tag hinzufügen",
+      "metaNoindexHelp": "Teilt Suchmaschinen mit, Seiten nicht zu indexieren (HTML-Ebene, ergänzt robots.txt).",
+      "metaNofollow": "nofollow-Meta-Tag hinzufügen",
+      "metaNofollowHelp": "Teilt Suchmaschinen mit, Links auf Seiten nicht zu folgen.",
+      "metaNoai": "noai/noimageai-Meta-Tag hinzufügen",
+      "metaNoaiHelp": "Signalisiert, dass Inhalte nicht für KI-Training verwendet werden sollen.",
+      "customRules": "Benutzerdefinierte robots.txt-Regeln",
+      "ruleAgentPlaceholder": "User-Agent",
+      "rulePathPlaceholder": "Disallow-Pfad",
+      "showPreview": "robots.txt-Vorschau anzeigen",
+      "hidePreview": "robots.txt-Vorschau ausblenden",
+      "saveSettings": "SEO-Einstellungen speichern"
+    },
     "categories": {
       "title": "Kategorien",
       "about": "Über Fotokategorien",
@@ -1253,6 +1299,11 @@
     "accentColor": "Akzentfarbe",
     "backgroundColor": "Hintergrundfarbe",
     "textColor": "Textfarbe",
+    "colorMode": "Farbmodus",
+    "colorModeLight": "Hell",
+    "colorModeDark": "Dunkel",
+    "colorModeAuto": "Auto",
+    "colorModeHelp": "Auto folgt der Systemeinstellung des Besuchers.",
     "customCSS": "Benutzerdefiniertes CSS",
     "preview": "Vorschau",
     "previewInNewTab": "Vorschau in neuem Tab",
@@ -1270,7 +1321,9 @@
       "timeline": "Nach Datum organisierte Fotos",
       "hero": "Hervorgehobenes Bild mit Raster darunter",
       "mosaic": "Künstlerisches Layout mit gemischten Größen",
-      "justified": "Zeilenbasiertes Layout mit Seitenverhältnis-Erhaltung"
+      "justified": "Zeilenbasiertes Layout mit Seitenverhältnis-Erhaltung",
+      "gallery-premium": "Elegantes helles Theme mit Hero und Masonry (Beta)",
+      "gallery-story": "Filmisches dunkles Theme mit Szenen-Abschnitten (Beta)"
     },
     "layoutSettings": "Layout-Einstellungen",
     "photoSpacing": "Foto-Abstand",
@@ -1425,7 +1478,18 @@
       "angle": "Winkel",
       "curve": "Kurve",
       "none": "Keine"
-    }
+    },
+    "controlsStyle": "Steuerelemente-Stil",
+    "controlsStyleDescription": "Wählen Sie, wie Galerie-Filter und Steuerelemente angezeigt werden.",
+    "controlsStyleOptions": {
+      "classic": "Klassisch",
+      "sidebar": "Seitenleiste"
+    },
+    "controlsStyleDescriptions": {
+      "classic": "Inline-Filterleiste unter der Kopfzeile",
+      "sidebar": "Menü-Schaltfläche öffnet Seitenleiste mit Filtern"
+    },
+    "controlsStyleHeroWarning": "Für Hero-Kopfzeilen wird die Seitenleiste empfohlen, um zu verhindern, dass Steuerelemente über dem Hero-Bild erscheinen."
   },
   "admin": {
     "title": "Admin-Panel",
@@ -1437,6 +1501,8 @@
     "storageUsed": "Speicher verwendet",
     "totalPhotos": "Gesamte Fotos",
     "storagePercent": "{{percent}}% des Limits {{limit}}",
+    "darkMode": "Zum Dunkelmodus wechseln",
+    "lightMode": "Zum Hellmodus wechseln",
     "storageSoftLimitConfigured": "Konfiguriertes Limit: {{limit}}",
     "storageSoftLimitRecommended": "Empfohlenes Limit: {{limit}}",
     "version": "Version",
