@@ -22,6 +22,11 @@
     --font-size-base: 16px;
     --shadow-default: 0 4px 6px rgba(0,0,0,0.1);
     
+    /* Surface colors (for cards, inputs, etc.) */
+    --color-surface: #ffffff;
+    --color-surface-border: #e5e5e5;
+    --color-muted-text: #737373;
+
     /* Tailwind RGB values for primary color */
     --tw-color-primary: 92 135 98;
     --radius: 0.5rem;
@@ -70,6 +75,18 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-neutral-400;
   }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-neutral-800;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-600;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-500;
+  }
 }
 
 @layer components {
@@ -90,11 +107,16 @@
   }
 
   .btn-secondary {
-    @apply bg-neutral-200 text-neutral-900 hover:bg-neutral-300 focus-visible:ring-neutral-400;
+    background-color: var(--color-surface-border);
+    color: var(--color-text);
+    @apply hover:opacity-80 focus-visible:ring-neutral-400;
   }
 
   .btn-outline {
-    @apply border border-neutral-300 bg-transparent text-neutral-700 hover:bg-neutral-100 focus-visible:ring-neutral-400;
+    border-color: var(--color-surface-border);
+    background-color: transparent;
+    color: var(--color-muted-text);
+    @apply border hover:opacity-80 focus-visible:ring-neutral-400;
   }
 
   .btn-sm {
@@ -109,19 +131,44 @@
     @apply h-11 px-8 text-lg;
   }
 
-  /* Input styles */
+  /* Input styles - Admin inputs use explicit Tailwind colors */
   .input {
-    @apply flex h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-10 w-full rounded-lg border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply bg-white border-neutral-300 text-neutral-900;
   }
 
-  /* Card styles */
+  .input::placeholder {
+    @apply text-neutral-500;
+  }
+
+  /* Gallery-specific input that uses theme variables */
+  .input-themed {
+    @apply flex h-10 w-full rounded-lg border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: var(--color-surface);
+    border-color: var(--color-surface-border);
+    color: var(--color-text);
+  }
+
+  .input-themed::placeholder {
+    color: var(--color-muted-text);
+  }
+
+  /* Card styles - Admin cards use explicit Tailwind colors, gallery cards use CSS variables */
   .card {
-    @apply rounded-xl border border-neutral-200 bg-white;
+    @apply rounded-xl border bg-white border-neutral-200;
     box-shadow: var(--shadow-default);
   }
 
   .card-hover {
     @apply card transition-all duration-200 hover:translate-y-[-2px];
+  }
+
+  /* Gallery-specific card that uses theme variables */
+  .card-themed {
+    @apply rounded-xl border;
+    background-color: var(--color-surface);
+    border-color: var(--color-surface-border);
+    box-shadow: var(--shadow-default);
   }
   
   /* Headings with custom font */
@@ -134,9 +181,26 @@
     @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl w-full;
   }
 
+  /* Surface utility classes for gallery dark mode */
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+
+  .border-surface {
+    border-color: var(--color-surface-border);
+  }
+
+  .text-theme {
+    color: var(--color-text);
+  }
+
+  .text-muted-theme {
+    color: var(--color-muted-text);
+  }
+
   /* Image loading skeleton */
   .skeleton {
-    @apply animate-pulse bg-neutral-200 rounded-lg;
+    @apply animate-pulse rounded-lg bg-neutral-200;
   }
 
   /* Gallery grid - Mobile optimized */
@@ -164,6 +228,114 @@
 
   .badge-danger {
     @apply bg-red-100 text-red-800;
+  }
+
+  /* Admin dark mode overrides (via Tailwind dark: class on html) */
+  .dark .card {
+    @apply bg-neutral-800 border-neutral-700;
+  }
+
+  .dark .card-themed {
+    @apply bg-neutral-800 border-neutral-700;
+  }
+
+  .dark .input {
+    @apply bg-neutral-800 border-neutral-700 text-neutral-100;
+  }
+
+  .dark .input::placeholder {
+    @apply text-neutral-500;
+  }
+
+  .dark .input-themed {
+    @apply bg-neutral-800 border-neutral-700 text-neutral-100;
+  }
+
+  .dark .input-themed::placeholder {
+    @apply text-neutral-500;
+  }
+
+  .dark .skeleton {
+    @apply bg-neutral-700;
+  }
+
+  .dark .badge-success {
+    @apply bg-green-900/40 text-green-300;
+  }
+
+  .dark .badge-warning {
+    @apply bg-amber-900/40 text-amber-300;
+  }
+
+  .dark .badge-danger {
+    @apply bg-red-900/40 text-red-300;
+  }
+
+  /* Secondary and outline buttons for admin dark mode */
+  .dark .btn-secondary {
+    @apply bg-neutral-700 border-neutral-600 text-neutral-100;
+  }
+
+  .dark .btn-outline {
+    @apply border-neutral-600 text-neutral-300;
+  }
+
+  .dark .btn-outline:hover {
+    @apply bg-neutral-800;
+  }
+
+  /* Table styles for admin dark mode */
+  .dark table {
+    @apply bg-neutral-800;
+  }
+
+  .dark thead {
+    @apply bg-neutral-900/50;
+  }
+
+  .dark th {
+    @apply text-neutral-300 border-neutral-700;
+  }
+
+  .dark td {
+    @apply text-neutral-200 border-neutral-700;
+  }
+
+  .dark tbody tr {
+    @apply border-neutral-700;
+  }
+
+  .dark tbody tr:hover {
+    @apply bg-neutral-700/50;
+  }
+
+  /* Select/dropdown for admin dark mode */
+  .dark select {
+    @apply bg-neutral-800 border-neutral-700 text-neutral-100;
+  }
+
+  /* Tag/chip styles for admin dark mode */
+  .dark .tag,
+  .dark [class*="tag-"],
+  .dark .chip {
+    @apply bg-neutral-700 text-neutral-200 border-neutral-600;
+  }
+
+  /* Alert/info boxes for admin dark mode */
+  .dark .alert-info {
+    @apply bg-blue-900/30 border-blue-800 text-blue-200;
+  }
+
+  .dark .alert-warning {
+    @apply bg-amber-900/30 border-amber-800 text-amber-200;
+  }
+
+  .dark .alert-success {
+    @apply bg-green-900/30 border-green-800 text-green-200;
+  }
+
+  .dark .alert-danger {
+    @apply bg-red-900/30 border-red-800 text-red-200;
   }
 }
 
@@ -217,7 +389,7 @@
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #5C8762;
+    background: var(--color-primary);
     border-radius: 50%;
     cursor: pointer;
     margin-top: -6px; /* Center the thumb vertically */
@@ -225,7 +397,7 @@
   }
 
   input[type="range"].slider::-webkit-slider-thumb:hover {
-    background: #4a6f4f;
+    background: var(--color-primary-dark);
     transform: scale(1.1);
   }
 
@@ -242,14 +414,14 @@
     border: none;
     width: 20px;
     height: 20px;
-    background: #5C8762;
+    background: var(--color-primary);
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   input[type="range"].slider::-moz-range-thumb:hover {
-    background: #4a6f4f;
+    background: var(--color-primary-dark);
     transform: scale(1.1);
   }
 
@@ -275,7 +447,7 @@
   input[type="range"].slider::-ms-thumb {
     width: 20px;
     height: 20px;
-    background: #5C8762;
+    background: var(--color-primary);
     border-radius: 50%;
     cursor: pointer;
     margin-top: 0;
