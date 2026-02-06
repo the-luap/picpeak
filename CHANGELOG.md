@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.12.0-beta.0...v3.13.0-beta.0) (2026-02-06)
+
+
+### Features
+
+* improve hero image UX and live preview ([#163](https://github.com/the-luap/picpeak/issues/163), [#158](https://github.com/the-luap/picpeak/issues/158)) ([d63f67a](https://github.com/the-luap/picpeak/commit/d63f67a2afba1b92610382aa1012428ccacb86bd))
+
 ## [3.12.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.11.0-beta.0...v3.12.0-beta.0) (2026-02-06)
 
 
