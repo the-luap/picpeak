@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.10.1-beta.0...v3.11.0-beta.0) (2026-02-06)
+
+
+### Features
+
+* add Gallery Premium and Gallery Story layouts (Beta) ([e179def](https://github.com/the-luap/picpeak/commit/e179def3cceefe5fd6acd5574f2986e4f9e223ef))
+* gallery layouts, hero customization, event types, and UX improvements ([#146](https://github.com/the-luap/picpeak/issues/146), [#155](https://github.com/the-luap/picpeak/issues/155)-163, [#170](https://github.com/the-luap/picpeak/issues/170), [#171](https://github.com/the-luap/picpeak/issues/171)) ([4280444](https://github.com/the-luap/picpeak/commit/4280444d70e73db09e67e18ce25bac75cf499b75))
+
+
+### Bug Fixes
+
+* improve password validation errors and event list UX ([#170](https://github.com/the-luap/picpeak/issues/170), [#171](https://github.com/the-luap/picpeak/issues/171)) ([171abb3](https://github.com/the-luap/picpeak/commit/171abb31615484d77cf95a99cb5634afa0160adc))
+* render minimal/none header styles, cap hero height, switch category hero images ([#158](https://github.com/the-luap/picpeak/issues/158), [#162](https://github.com/the-luap/picpeak/issues/162), [#163](https://github.com/the-luap/picpeak/issues/163)) ([bc6c48b](https://github.com/the-luap/picpeak/commit/bc6c48bb2429505c2de3641693a8ff4f623a4951))
+
 ## [3.10.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.10.0-beta.0...v3.10.1-beta.0) (2026-02-03)
 
 
