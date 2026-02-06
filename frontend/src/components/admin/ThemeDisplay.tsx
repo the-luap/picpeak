@@ -7,7 +7,9 @@ import {
   Play,
   Clock,
   LayoutGrid,
-  Layout
+  Layout,
+  Columns,
+  Film
 } from 'lucide-react';
 import { ThemeConfig, GalleryLayoutType, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +26,9 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   masonry: <Layers className="w-4 h-4" />,
   carousel: <Play className="w-4 h-4" />,
   timeline: <Clock className="w-4 h-4" />,
-  mosaic: <LayoutGrid className="w-4 h-4" />
+  mosaic: <LayoutGrid className="w-4 h-4" />,
+  'gallery-premium': <Columns className="w-4 h-4" />,
+  'gallery-story': <Film className="w-4 h-4" />
 };
 
 export const ThemeDisplay: React.FC<ThemeDisplayProps> = ({ 
@@ -78,64 +82,64 @@ export const ThemeDisplay: React.FC<ThemeDisplayProps> = ({
       {/* Theme Name & Layout */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layout className="w-4 h-4 text-neutral-500" />
-          <span className="text-sm font-medium text-neutral-700">{themeName}</span>
+          <Layout className="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+          <span className="text-sm font-medium text-neutral-700 dark:text-neutral-100">{themeName}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-200">
           {layoutIcons[galleryLayout]}
           <span className="capitalize">{t(`branding.layoutDescriptions.${galleryLayout}`)}</span>
         </div>
       </div>
-      
+
       {showDetails && (
         <>
           {/* Color Palette */}
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4 text-neutral-500" />
-            <span className="text-sm text-neutral-600">{t('branding.colors')}:</span>
+            <Palette className="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+            <span className="text-sm text-neutral-600 dark:text-neutral-200">{t('branding.colors')}:</span>
             <div className="flex gap-1">
               {themeConfig.primaryColor && (
-                <div 
-                  className="w-6 h-6 rounded border border-neutral-300" 
+                <div
+                  className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
                   style={{ backgroundColor: themeConfig.primaryColor }}
                   title={t('branding.primaryColor')}
                 />
               )}
               {themeConfig.accentColor && (
-                <div 
-                  className="w-6 h-6 rounded border border-neutral-300" 
+                <div
+                  className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
                   style={{ backgroundColor: themeConfig.accentColor }}
                   title={t('branding.accentColor')}
                 />
               )}
               {themeConfig.backgroundColor && (
-                <div 
-                  className="w-6 h-6 rounded border border-neutral-300" 
+                <div
+                  className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
                   style={{ backgroundColor: themeConfig.backgroundColor }}
                   title={t('branding.backgroundColor')}
                 />
               )}
             </div>
           </div>
-          
+
           {/* Typography */}
           {themeConfig.fontFamily && (
             <div className="flex items-center gap-2">
-              <Type className="w-4 h-4 text-neutral-500" />
-              <span className="text-sm text-neutral-600">{t('branding.bodyFont')}:</span>
-              <span className="text-sm font-medium" style={{ fontFamily: themeConfig.fontFamily }}>
+              <Type className="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
+              <span className="text-sm text-neutral-600 dark:text-neutral-200">{t('branding.bodyFont')}:</span>
+              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-100" style={{ fontFamily: themeConfig.fontFamily }}>
                 {themeConfig.fontFamily}
               </span>
             </div>
           )}
-          
+
           {/* Layout Settings */}
           {themeConfig.gallerySettings && (
-            <div className="text-sm text-neutral-600">
+            <div className="text-sm text-neutral-600 dark:text-neutral-200">
               {themeConfig.gallerySettings.spacing && (
                 <span className="inline-flex items-center gap-1 mr-3">
                   <span>{t('branding.photoSpacing')}:</span>
-                  <span className="font-medium capitalize">
+                  <span className="font-medium capitalize text-neutral-700 dark:text-neutral-100">
                     {t(`branding.spacing.${themeConfig.gallerySettings.spacing}`)}
                   </span>
                 </span>
@@ -143,7 +147,7 @@ export const ThemeDisplay: React.FC<ThemeDisplayProps> = ({
               {themeConfig.gallerySettings.photoAnimation && themeConfig.gallerySettings.photoAnimation !== 'none' && (
                 <span className="inline-flex items-center gap-1">
                   <span>{t('branding.photoAnimation')}:</span>
-                  <span className="font-medium capitalize">
+                  <span className="font-medium capitalize text-neutral-700 dark:text-neutral-100">
                     {t(`branding.animation.${themeConfig.gallerySettings.photoAnimation}`)}
                   </span>
                 </span>

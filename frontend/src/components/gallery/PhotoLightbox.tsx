@@ -567,12 +567,12 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
       {/* Feedback Panel */}
       {showFeedback && (
-        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[26rem] bg-white shadow-xl z-20 overflow-y-auto flex flex-col border-l border-neutral-200">
-          <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-            <h3 className="font-semibold text-neutral-900">Photo Feedback</h3>
+        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[26rem] bg-surface shadow-xl z-20 overflow-y-auto flex flex-col border-l border-surface">
+          <div className="sticky top-0 bg-surface border-b border-surface px-4 py-3 flex items-center justify-between">
+            <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>Photo Feedback</h3>
             <button
               onClick={() => setShowFeedback(false)}
-              className="p-1 hover:bg-neutral-100 rounded transition-colors"
+              className="p-1 hover:bg-black/10 rounded transition-colors"
               aria-label="Close feedback"
             >
               <X className="w-5 h-5" />

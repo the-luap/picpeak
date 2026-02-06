@@ -59,15 +59,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
 
   return (
     <div
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-neutral-200 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:h-screen ${
+      className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-700 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:h-screen ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
       <div className="flex flex-col h-screen lg:h-full">
         {/* Brand */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200 flex-shrink-0">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-neutral-200 dark:border-neutral-700 flex-shrink-0">
           <div className="flex items-center">
-            <span className="text-xl font-bold text-neutral-900">{t('admin.title')}</span>
+            <span className="text-xl font-bold text-neutral-900 dark:text-neutral-100">{t('admin.title')}</span>
           </div>
           <button
             onClick={onClose}
@@ -90,8 +90,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
                 onClick={() => onClose()}
                 className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
                 }`}
               >
                 <item.icon className={`w-5 h-5 mr-3 ${
@@ -138,26 +138,26 @@ const StorageInfo: React.FC = () => {
   const isOverSoftLimit = limitInUse && storageInfo.total_used >= limitInUse;
   const progressBarClass = isOverSoftLimit ? 'bg-red-600' : 'bg-primary-600';
   const containerClass = isOverSoftLimit
-    ? 'bg-red-50 border border-red-200'
-    : 'bg-neutral-100';
+    ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+    : 'bg-neutral-100 dark:bg-neutral-800';
   const softLimitDisplay = settingsService.formatBytes(limitInUse);
 
   return (
-    <div className="p-4 border-t border-neutral-200">
+    <div className="p-4 border-t border-neutral-200 dark:border-neutral-700">
       <div className={`${containerClass} rounded-lg p-3 transition-colors duration-300`}>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-neutral-700">{t('admin.storageUsed')}</span>
-          <span className="font-medium text-neutral-900">
+          <span className="text-neutral-700 dark:text-neutral-300">{t('admin.storageUsed')}</span>
+          <span className="font-medium text-neutral-900 dark:text-neutral-100">
             {settingsService.formatBytes(storageInfo.total_used)}
           </span>
         </div>
-        <div className="mt-2 w-full bg-neutral-200 rounded-full h-2">
-          <div 
+        <div className="mt-2 w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
+          <div
             className={`${progressBarClass} h-2 rounded-full transition-all duration-300`}
             style={{ width: `${Math.min(usagePercent, 100)}%` }}
           />
         </div>
-        <p className="text-xs text-neutral-600 mt-1">
+        <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
           {t('admin.storagePercent', { percent: usagePercent, limit: softLimitDisplay })}
         </p>
       </div>

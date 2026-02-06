@@ -240,6 +240,8 @@ export const settingsService = {
       endpoint = '/admin/settings/analytics';
     } else if (firstKey?.startsWith('branding_')) {
       endpoint = '/admin/settings/branding';
+    } else if (firstKey?.startsWith('seo_')) {
+      endpoint = '/admin/settings/seo';
     }
     
     await api.put(endpoint, settings);

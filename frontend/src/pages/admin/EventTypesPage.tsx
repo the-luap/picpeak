@@ -119,11 +119,11 @@ export const EventTypesPage: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
               <Tags className="w-6 h-6" />
               {t('eventTypes.title', 'Event Types')}
             </h1>
-            <p className="text-neutral-600 mt-1">
+            <p className="text-neutral-600 dark:text-neutral-400 mt-1">
               {t('eventTypes.subtitle', 'Customize event types and their default themes')}
             </p>
           </div>
@@ -153,9 +153,9 @@ export const EventTypesPage: React.FC = () => {
               type="checkbox"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+              className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
             />
-            <span className="text-sm text-neutral-700">
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">
               {t('eventTypes.showInactive', 'Show inactive')}
             </span>
           </label>
@@ -166,32 +166,32 @@ export const EventTypesPage: React.FC = () => {
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-neutral-50 border-b border-neutral-200">
+            <thead className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-200 dark:border-neutral-700">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase w-10">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase w-10">
                   {/* Drag handle column */}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                   {t('eventTypes.table.type', 'Type')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                   {t('eventTypes.table.slugPrefix', 'URL Prefix')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                   {t('eventTypes.table.theme', 'Default Theme')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                   {t('eventTypes.table.status', 'Status')}
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase">
                   {t('eventTypes.table.actions', 'Actions')}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200">
+            <tbody className="bg-white dark:bg-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-700">
               {filteredTypes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">
                     {searchTerm
                       ? t('eventTypes.noResults', 'No event types found')
                       : t('eventTypes.empty', 'No event types yet')}
@@ -199,7 +199,7 @@ export const EventTypesPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredTypes.map((type) => (
-                  <tr key={type.id} className={`hover:bg-neutral-50 ${!type.is_active ? 'opacity-60' : ''}`}>
+                  <tr key={type.id} className={`hover:bg-neutral-50 dark:hover:bg-neutral-700/50 ${!type.is_active ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-4">
                       <GripVertical className="w-4 h-4 text-neutral-400 cursor-grab" />
                     </td>
@@ -207,9 +207,9 @@ export const EventTypesPage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{type.emoji}</span>
                         <div>
-                          <div className="font-medium text-neutral-900">{type.name}</div>
+                          <div className="font-medium text-neutral-900 dark:text-neutral-100">{type.name}</div>
                           {type.is_system && (
-                            <span className="text-xs text-neutral-500">
+                            <span className="text-xs text-neutral-500 dark:text-neutral-400">
                               {t('eventTypes.system', 'System')}
                             </span>
                           )}
@@ -217,21 +217,21 @@ export const EventTypesPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <code className="px-2 py-1 bg-neutral-100 rounded text-sm">
+                      <code className="px-2 py-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 rounded text-sm">
                         {type.slug_prefix}
                       </code>
                     </td>
-                    <td className="px-4 py-4 text-sm text-neutral-600">
+                    <td className="px-4 py-4 text-sm text-neutral-600 dark:text-neutral-300">
                       {GALLERY_THEME_PRESETS[type.theme_preset]?.name || type.theme_preset || '-'}
                     </td>
                     <td className="px-4 py-4">
                       {type.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-full text-xs">
                           <Eye className="w-3 h-3" />
                           {t('common.active', 'Active')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-neutral-100 text-neutral-600 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 rounded-full text-xs">
                           <EyeOff className="w-3 h-3" />
                           {t('common.inactive', 'Inactive')}
                         </span>
@@ -241,7 +241,7 @@ export const EventTypesPage: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingType(type)}
-                          className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-600 hover:text-primary-600"
+                          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-primary-600"
                           title={t('common.edit', 'Edit')}
                         >
                           <Edit className="w-4 h-4" />
@@ -249,7 +249,7 @@ export const EventTypesPage: React.FC = () => {
                         {!type.is_system && (
                           <button
                             onClick={() => setDeleteConfirm(type)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-neutral-600 hover:text-red-600"
+                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-red-600"
                             title={t('common.delete', 'Delete')}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -266,8 +266,8 @@ export const EventTypesPage: React.FC = () => {
       </Card>
 
       {/* Slug Preview Info */}
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <p className="text-sm text-blue-800">
+      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
           <strong>{t('eventTypes.slugInfo.title', 'URL Prefix Info:')}</strong>{' '}
           {t('eventTypes.slugInfo.description', 'The URL prefix is used to generate gallery URLs. For example, an event type with prefix "family" will create URLs like: family-smith-family-2025-01-22')}
         </p>
@@ -368,17 +368,17 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
       <Card className="w-full max-w-lg">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-neutral-900">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
               {isEditing
                 ? t('eventTypes.edit', 'Edit Event Type')
                 : t('eventTypes.createNew', 'New Event Type')}
             </h2>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-neutral-100 rounded-lg"
+              className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg"
               disabled={isLoading}
             >
-              <X className="w-5 h-5 text-neutral-500" />
+              <X className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
             </button>
           </div>
 
@@ -410,9 +410,9 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                   error={errors.slug_prefix}
                 />
                 {form.slug_prefix && (
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {t('eventTypes.form.slugPreview', 'Example URL:')}{' '}
-                    <code className="bg-neutral-100 px-1 rounded">
+                    <code className="bg-neutral-100 dark:bg-neutral-700 px-1 rounded">
                       {form.slug_prefix}-event-name-2025-01-22
                     </code>
                   </p>
@@ -421,7 +421,7 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
 
               {/* Emoji */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   {t('eventTypes.form.emoji', 'Icon')}
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -432,8 +432,8 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                       onClick={() => setForm({ ...form, emoji })}
                       className={`p-2 text-xl rounded-lg border-2 transition-all ${
                         form.emoji === emoji
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                          : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
                       }`}
                     >
                       {emoji}
@@ -444,13 +444,13 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
 
               {/* Theme Preset */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   {t('eventTypes.form.themePreset', 'Default Theme')}
                 </label>
                 <select
                   value={form.theme_preset}
                   onChange={(e) => setForm({ ...form, theme_preset: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   {Object.entries(GALLERY_THEME_PRESETS).map(([key, preset]) => (
                     <option key={key} value={key}>
@@ -467,16 +467,16 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                     type="checkbox"
                     checked={eventType?.is_active}
                     onChange={(e) => onSubmit({ is_active: e.target.checked })}
-                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
                   />
-                  <span className="text-sm text-neutral-700">
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">
                     {t('eventTypes.form.isActive', 'Active (visible in event creation)')}
                   </span>
                 </label>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200">
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
               <Button variant="outline" onClick={onClose} disabled={isLoading}>
                 {t('common.cancel', 'Cancel')}
               </Button>
@@ -512,19 +512,19 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       <Card className="w-full max-w-md">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-red-100 rounded-full">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
+            <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-full">
+              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-xl font-semibold text-neutral-900">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
               {t('eventTypes.deleteConfirm.title', 'Delete Event Type')}
             </h2>
           </div>
 
-          <p className="text-neutral-600 mb-4">
+          <p className="text-neutral-600 dark:text-neutral-400 mb-4">
             {t('eventTypes.deleteConfirm.message', 'Are you sure you want to delete')} "{eventType.name}"?
           </p>
 
-          <p className="text-sm text-neutral-500 bg-neutral-50 p-3 rounded-lg mb-6">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-700 p-3 rounded-lg mb-6">
             {t('eventTypes.deleteConfirm.warning', 'This action cannot be undone. Make sure no events are using this type.')}
           </p>
 

@@ -44,27 +44,27 @@ export const BulkCategoryModal: React.FC<BulkCategoryModalProps> = ({
       <Card className="w-full max-w-md">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-neutral-900">
+            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
               {t('photos.moveToCategory', 'Move {{count}} photos to category', { count: photoCount })}
             </h2>
             <button
               onClick={handleClose}
-              className="p-1 hover:bg-neutral-100 rounded-lg transition-colors"
+              className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
               disabled={isLoading}
             >
-              <X className="w-5 h-5 text-neutral-500" />
+              <X className="w-5 h-5 text-neutral-500 dark:text-neutral-400" />
             </button>
           </div>
 
           <div className="mb-6">
-            <label htmlFor="category-select" className="block text-sm font-medium text-neutral-700 mb-2">
+            <label htmlFor="category-select" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t('photos.selectCategory', 'Select category')}
             </label>
             <select
               id="category-select"
               value={selectedCategoryId ?? ''}
               onChange={(e) => setSelectedCategoryId(e.target.value === '' ? null : Number(e.target.value))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               disabled={isLoading}
             >
               <option value="">{t('photos.uncategorized', 'Uncategorized')}</option>

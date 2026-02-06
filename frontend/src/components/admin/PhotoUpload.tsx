@@ -203,13 +203,13 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     <div className="space-y-4">
       {/* Category Selection */}
       <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-2">
+        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
           {t('upload.photoCategory')}
         </label>
         <select
           value={selectedCategoryId || ''}
           onChange={(e) => setSelectedCategoryId(e.target.value ? Number(e.target.value) : null)}
-          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+          className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500"
         >
           <option value="">{t('upload.noCategory')}</option>
           {categories.map((category) => (
@@ -225,21 +225,21 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         className={clsx(
           "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
           "hover:border-primary-400 hover:bg-primary-50/50",
-          selectedFiles.length > 0 ? "border-primary-400 bg-primary-50/30" : "border-neutral-300"
+          selectedFiles.length > 0 ? "border-primary-400 bg-primary-50/30 dark:bg-primary-900/20" : "border-neutral-300 dark:border-neutral-600"
         )}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className="w-12 h-12 mx-auto text-neutral-400 mb-4" />
-        <p className="text-neutral-700 font-medium mb-1">
+        <Upload className="w-12 h-12 mx-auto text-neutral-400 dark:text-neutral-500 mb-4" />
+        <p className="text-neutral-700 dark:text-neutral-300 font-medium mb-1">
           {t('upload.clickToUpload')}
         </p>
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           {t('upload.fileRequirements', { limit: maxFilesPerUpload })}
         </p>
         <p
           className={clsx(
             "text-xs mt-2",
-            remainingSlots === 0 ? "text-red-600" : "text-neutral-500"
+            remainingSlots === 0 ? "text-red-600" : "text-neutral-500 dark:text-neutral-400"
           )}
         >
           {remainingSlots === 0
@@ -263,22 +263,22 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       {/* Selected Files */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-neutral-700">
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
             {t('upload.selectedFiles')} ({selectedFiles.length})
           </p>
           <div className="max-h-48 overflow-y-auto space-y-2">
             {selectedFiles.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-2 bg-neutral-50 rounded-lg"
+                className="flex items-center justify-between p-2 bg-neutral-50 dark:bg-neutral-800 rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   <Image className="w-5 h-5 text-neutral-400" />
                   <div>
-                    <p className="text-sm font-medium text-neutral-700 truncate max-w-xs">
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-xs">
                       {file.name}
                     </p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
                       {formatFileSize(file.size)}
                     </p>
                   </div>
@@ -288,7 +288,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
                     e.stopPropagation();
                     removeFile(index);
                   }}
-                  className="p-1 hover:bg-neutral-200 rounded"
+                  className="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -313,21 +313,21 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       {/* Progress Bar */}
       {isUploading && (
         <div className="mt-4">
-          <div className="flex justify-between text-sm text-neutral-600 mb-1">
+          <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400 mb-1">
             <span>
               {t('upload.uploading')}
               {totalChunks > 1 && ` (${t('common.chunk')} ${currentChunk}/${totalChunks})`}
             </span>
             <span>{uploadProgress}%</span>
           </div>
-          <div className="w-full bg-neutral-200 rounded-full h-2">
+          <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
             <div
               className="bg-primary-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
           {totalChunks > 1 && (
-            <p className="text-xs text-neutral-500 mt-1">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
               {t('upload.uploadingChunks', { count: selectedFiles.length, total: totalChunks })}
             </p>
           )}

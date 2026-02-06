@@ -110,3 +110,6 @@ test-results/
 
 # Development docker compose
 docker-compose.dev.yml
+
+# New layout development files
+new-layouts/

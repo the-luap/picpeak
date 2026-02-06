@@ -57,9 +57,9 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
     filters.hasComments;
 
   return (
-    <div className="bg-white rounded-lg border border-neutral-200 p-4 mb-4">
+    <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-neutral-900 flex items-center gap-2">
+        <h3 className="font-medium text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
           <Filter className="w-4 h-4" />
           {t('filter.feedbackFilters', 'Feedback Filters')}
         </h3>
@@ -78,14 +78,14 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
       <div className="space-y-4">
         {/* Rating Filter */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
             <Star className="w-4 h-4 inline mr-1" />
             {t('filter.rating', 'Rating')}
           </label>
           <select
             value={filters.minRating ?? ''}
             onChange={(e) => handleRatingChange(e.target.value === '' ? null : parseFloat(e.target.value))}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             disabled={isLoading}
           >
             {RATING_OPTIONS.map(option => (
@@ -107,10 +107,10 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               disabled={isLoading}
             />
             <Heart className="w-4 h-4 text-red-500" />
-            <span className="text-sm text-neutral-700">
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">
               {t('filter.hasLikes', 'Has likes')}
               {summary && (
-                <span className="text-neutral-500 ml-1">({summary.withLikes})</span>
+                <span className="text-neutral-500 dark:text-neutral-400 ml-1">({summary.withLikes})</span>
               )}
             </span>
           </label>
@@ -124,10 +124,10 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               disabled={isLoading}
             />
             <Bookmark className="w-4 h-4 text-yellow-500" />
-            <span className="text-sm text-neutral-700">
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">
               {t('filter.hasFavorites', 'Has favorites')}
               {summary && (
-                <span className="text-neutral-500 ml-1">({summary.withFavorites})</span>
+                <span className="text-neutral-500 dark:text-neutral-400 ml-1">({summary.withFavorites})</span>
               )}
             </span>
           </label>
@@ -141,10 +141,10 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               disabled={isLoading}
             />
             <MessageCircle className="w-4 h-4 text-blue-500" />
-            <span className="text-sm text-neutral-700">
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">
               {t('filter.hasComments', 'Has comments')}
               {summary && (
-                <span className="text-neutral-500 ml-1">({summary.withComments})</span>
+                <span className="text-neutral-500 dark:text-neutral-400 ml-1">({summary.withComments})</span>
               )}
             </span>
           </label>
@@ -153,15 +153,15 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
         {/* Logic Toggle */}
         {(filters.hasLikes || filters.hasFavorites || filters.hasComments) && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-600">{t('filter.combineWith', 'Combine with')}:</span>
-            <div className="flex rounded-lg border border-neutral-200 overflow-hidden">
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('filter.combineWith', 'Combine with')}:</span>
+            <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
               <button
                 type="button"
                 onClick={() => handleLogicChange('AND')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   filters.logic === 'AND' || !filters.logic
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                 }`}
                 disabled={isLoading}
               >
@@ -173,7 +173,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   filters.logic === 'OR'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                 }`}
                 disabled={isLoading}
               >
@@ -185,7 +185,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
 
         {/* Summary */}
         {summary && (
-          <div className="pt-2 border-t border-neutral-100 text-sm text-neutral-600">
+          <div className="pt-2 border-t border-neutral-100 dark:border-neutral-700 text-sm text-neutral-600 dark:text-neutral-400">
             {t('filter.showingPhotos', 'Total photos')}: {summary.total}
             {summary.withRatings > 0 && (
               <span className="ml-2">

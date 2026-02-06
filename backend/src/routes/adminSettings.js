@@ -733,6 +733,70 @@ router.put('/analytics', adminAuth, requirePermission('settings.edit'), async (r
   }
 });
 
+// Update SEO settings
+router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, res) => {
+  try {
+    const settings = req.body;
+
+    // Validate seo_blocked_ai_agents is an array of strings
+    if (settings.seo_blocked_ai_agents !== undefined) {
+      if (!Array.isArray(settings.seo_blocked_ai_agents) ||
+          !settings.seo_blocked_ai_agents.every(a => typeof a === 'string')) {
+        return res.status(400).json({ error: 'seo_blocked_ai_agents must be an array of strings' });
+      }
+    }
+
+    // Validate seo_custom_rules structure
+    if (settings.seo_custom_rules !== undefined) {
+      if (!Array.isArray(settings.seo_custom_rules)) {
+        return res.status(400).json({ error: 'seo_custom_rules must be an array' });
+      }
+      for (const rule of settings.seo_custom_rules) {
+        if (!rule.userAgent || typeof rule.userAgent !== 'string') {
+          return res.status(400).json({ error: 'Each custom rule must have a userAgent string' });
+        }
+        if (!Array.isArray(rule.disallow) || !rule.disallow.every(d => typeof d === 'string')) {
+          return res.status(400).json({ error: 'Each custom rule must have a disallow array of strings' });
+        }
+      }
+    }
+
+    // Update or insert each setting
+    for (const [key, value] of Object.entries(settings)) {
+      await db('app_settings')
+        .insert({
+          setting_key: key,
+          setting_value: JSON.stringify(value),
+          setting_type: 'seo',
+          updated_at: new Date()
+        })
+        .onConflict('setting_key')
+        .merge({
+          setting_value: JSON.stringify(value),
+          updated_at: new Date()
+        });
+    }
+
+    // Clear robots.txt cache
+    const { clearRobotsTxtCache } = require('../services/robotsTxtService');
+    clearRobotsTxtCache();
+
+    // Log activity
+    await db('activity_logs').insert({
+      activity_type: 'seo_settings_updated',
+      actor_type: 'admin',
+      actor_id: req.admin.id,
+      actor_name: req.admin.username,
+      metadata: JSON.stringify({ settings_count: Object.keys(settings).length })
+    });
+
+    res.json({ message: 'SEO settings updated successfully' });
+  } catch (error) {
+    console.error('SEO settings update error:', error);
+    res.status(500).json({ error: 'Failed to update SEO settings' });
+  }
+});
+
 // Get storage info
 router.get('/storage/info', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {

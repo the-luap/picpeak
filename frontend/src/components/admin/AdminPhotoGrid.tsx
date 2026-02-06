@@ -190,7 +190,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
               
               {selectedPhotos.size > 0 && (
                 <>
-                  <span className="text-sm text-neutral-600">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
                     {t('gallery.photosSelected', { count: selectedPhotos.size })}
                   </span>
                   <Button
@@ -215,7 +215,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
           )}
         </div>
         
-        <div className="text-sm text-neutral-600">
+        <div className="text-sm text-neutral-600 dark:text-neutral-400">
           {t('gallery.photosCount', { count: photos.length })}
         </div>
       </div>
@@ -234,7 +234,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
             <div
               key={photo.id}
               data-testid={`admin-photo-tile-${photo.id}`}
-              className={`relative group cursor-pointer rounded-lg overflow-hidden bg-neutral-100 transition-opacity ${
+              className={`relative group cursor-pointer rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 transition-opacity ${
                 isSelectionMode ? 'ring-2 ring-offset-2 ' + (selectedPhotos.has(photo.id) ? 'ring-primary-500' : 'ring-transparent') : ''
               } ${isDeleting ? 'opacity-50' : ''}`}
               onClick={() => !isDeleting && onPhotoClick(photo, index)}
@@ -353,7 +353,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
 
       {photos.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-neutral-500">{t('gallery.noMedia', 'No media uploaded yet')}</p>
+          <p className="text-neutral-500 dark:text-neutral-400">{t('gallery.noMedia', 'No media uploaded yet')}</p>
         </div>
       )}
 

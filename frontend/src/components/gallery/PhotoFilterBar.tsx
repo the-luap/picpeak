@@ -89,14 +89,14 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
           </Button>
           
           {showSortMenu && (
-            <div className="absolute right-0 md:right-auto md:left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 z-10">
+            <div className="absolute right-0 md:right-auto md:left-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-surface py-1 z-10">
               <button
                 onClick={() => {
                   onSortChange('date');
                   setShowSortMenu(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
-                  sortBy === 'date' ? 'text-primary-600 bg-primary-50' : 'text-neutral-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
+                  sortBy === 'date' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByDate')}
@@ -106,8 +106,8 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   onSortChange('name');
                   setShowSortMenu(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
-                  sortBy === 'name' ? 'text-primary-600 bg-primary-50' : 'text-neutral-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
+                  sortBy === 'name' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByName')}
@@ -117,8 +117,8 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   onSortChange('size');
                   setShowSortMenu(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
-                  sortBy === 'size' ? 'text-primary-600 bg-primary-50' : 'text-neutral-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
+                  sortBy === 'size' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortBySize')}
@@ -128,8 +128,8 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   onSortChange('rating');
                   setShowSortMenu(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
-                  sortBy === 'rating' ? 'text-primary-600 bg-primary-50' : 'text-neutral-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
+                  sortBy === 'rating' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByRating', 'Sort by Rating')}
@@ -178,7 +178,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
             {/* Desktop: compact horizontal feedback filter with headline (icons only) */}
             {feedbackEnabled && onFilterChange && (
               <div className="hidden lg:flex items-center gap-2 mx-2 flex-shrink-0">
-                <span className="text-sm text-neutral-600 whitespace-nowrap">
+                <span className="text-sm text-muted-theme whitespace-nowrap">
                   {t('gallery.feedbackFilter', 'Feedback Filter')}
                 </span>
                 <div className="flex items-center gap-1">
@@ -231,7 +231,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
               </div>
             )}
 
-            <p className="text-xs md:text-sm text-neutral-600 flex-shrink-0 ml-auto">
+            <p className="text-xs md:text-sm text-muted-theme flex-shrink-0 ml-auto">
               {photoCount} {t('common.media', 'media')}
             </p>
           </div>
@@ -239,7 +239,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
 
         {showMediaFilter && onMediaFilterChange && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs md:text-sm text-neutral-600 whitespace-nowrap">
+            <span className="text-xs md:text-sm text-muted-theme whitespace-nowrap">
               {t('gallery.mediaType', 'Media')}
             </span>
             <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
         {/* Mobile/Tablet: compact horizontal icons with headline below categories */}
         {feedbackEnabled && onFilterChange && (
           <div className="flex lg:hidden items-center gap-2">
-            <span className="text-xs text-neutral-600 whitespace-nowrap">
+            <span className="text-xs text-muted-theme whitespace-nowrap">
               {t('gallery.feedbackFilter', 'Feedback Filter')}
             </span>
             <div className="flex items-center gap-1">

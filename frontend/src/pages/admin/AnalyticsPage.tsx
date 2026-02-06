@@ -197,7 +197,7 @@ export const AnalyticsPage: React.FC = () => {
     const isPositive = trend > 0;
     return (
       <span className={`inline-flex items-center text-xs font-medium ${
-        isPositive ? 'text-green-700' : 'text-red-700'
+        isPositive ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
       }`}>
         <TrendingUp className={`w-3 h-3 mr-1 ${!isPositive ? 'rotate-180' : ''}`} />
         {Math.abs(trend)}%
@@ -237,8 +237,8 @@ export const AnalyticsPage: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">{t('analytics.title')}</h1>
-            <p className="text-neutral-600 mt-1">{t('analytics.detailedSubtitle')}</p>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('analytics.title')}</h1>
+            <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('analytics.detailedSubtitle')}</p>
           </div>
           <Button
             variant="outline"
@@ -265,8 +265,8 @@ export const AnalyticsPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">{t('analytics.title')}</h1>
-          <p className="text-neutral-600 mt-1">{t('analytics.subtitle')}</p>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('analytics.title')}</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('analytics.subtitle')}</p>
         </div>
         <div className="flex items-center gap-3">
           {umamiConfig.shareUrl && (
@@ -288,7 +288,7 @@ export const AnalyticsPage: React.FC = () => {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as any)}
-            className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             <option value="7d">{t('analytics.last7Days')}</option>
             <option value="30d">{t('analytics.last30Days')}</option>
@@ -302,8 +302,8 @@ export const AnalyticsPage: React.FC = () => {
         <Card padding="md">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-neutral-600">{t('analytics.pageViews')}</p>
-              <p className="text-3xl font-bold text-neutral-900">{analytics?.pageViews.total.toLocaleString()}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('analytics.pageViews')}</p>
+              <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{analytics?.pageViews.total.toLocaleString()}</p>
               <div className="mt-1">
                 {renderTrendBadge(analytics?.pageViews.trend || 0)}
               </div>
@@ -319,8 +319,8 @@ export const AnalyticsPage: React.FC = () => {
         <Card padding="md">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-neutral-600">{t('analytics.uniqueVisitors')}</p>
-              <p className="text-3xl font-bold text-neutral-900">{analytics?.uniqueVisitors.total.toLocaleString()}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('analytics.uniqueVisitors')}</p>
+              <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{analytics?.uniqueVisitors.total.toLocaleString()}</p>
               <div className="mt-1">
                 {renderTrendBadge(analytics?.uniqueVisitors.trend || 0)}
               </div>
@@ -336,8 +336,8 @@ export const AnalyticsPage: React.FC = () => {
         <Card padding="md">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-neutral-600">{t('analytics.totalDownloads')}</p>
-              <p className="text-3xl font-bold text-neutral-900">{analytics?.downloads.total.toLocaleString()}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('analytics.totalDownloads')}</p>
+              <p className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">{analytics?.downloads.total.toLocaleString()}</p>
               <div className="mt-1">
                 {renderTrendBadge(analytics?.downloads.trend || 0)}
               </div>
@@ -345,8 +345,8 @@ export const AnalyticsPage: React.FC = () => {
             <Download className="w-8 h-8 text-purple-600" />
           </div>
           <div className="mt-4 space-y-2">
-            <p className="text-xs text-neutral-500 uppercase">{t('analytics.topGallery')}</p>
-            <p className="text-sm font-medium text-neutral-900 truncate">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 uppercase">{t('analytics.topGallery')}</p>
+            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
               {analytics?.downloads.topGalleries[0]?.name}
             </p>
           </div>
@@ -357,19 +357,19 @@ export const AnalyticsPage: React.FC = () => {
         {/* Top Pages */}
         <div className="lg:col-span-2">
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.topPages')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('analytics.topPages')}</h2>
             <div className="space-y-3">
               {analytics?.topPages.map((page, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-neutral-900">{page.path}</p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{page.path}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
                       {page.uniqueVisitors} {t('analytics.visitors')}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-neutral-900">{page.views}</p>
-                    <p className="text-xs text-neutral-500">{t('analytics.views')}</p>
+                    <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{page.views}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t('analytics.views')}</p>
                   </div>
                 </div>
               ))}
@@ -378,23 +378,23 @@ export const AnalyticsPage: React.FC = () => {
 
           {/* Top Downloads */}
           <Card padding="md" className="mt-6">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.topDownloadsByGallery')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('analytics.topDownloadsByGallery')}</h2>
             <div className="space-y-3">
               {analytics?.downloads.topGalleries.map((gallery, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-neutral-900">{gallery.name}</p>
+                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{gallery.name}</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 bg-neutral-200 rounded-full h-2 max-w-[100px]">
+                    <div className="flex-1 bg-neutral-200 dark:bg-neutral-700 rounded-full h-2 max-w-[100px]">
                       <div
                         className="bg-purple-600 h-2 rounded-full"
-                        style={{ 
-                          width: `${(gallery.downloads / (analytics.downloads.topGalleries[0]?.downloads || 1)) * 100}%` 
+                        style={{
+                          width: `${(gallery.downloads / (analytics.downloads.topGalleries[0]?.downloads || 1)) * 100}%`
                         }}
                       />
                     </div>
-                    <p className="text-sm font-semibold text-neutral-900 w-12 text-right">
+                    <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 w-12 text-right">
                       {gallery.downloads}
                     </p>
                   </div>
@@ -408,28 +408,28 @@ export const AnalyticsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Device Breakdown */}
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.deviceBreakdown')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('analytics.deviceBreakdown')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Monitor className="w-5 h-5 text-neutral-600" />
-                  <span className="text-sm text-neutral-700">{t('analytics.desktop')}</span>
+                  <Monitor className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('analytics.desktop')}</span>
                 </div>
-                <span className="text-sm font-semibold">{analytics?.devices.desktop}%</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{analytics?.devices.desktop}%</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Smartphone className="w-5 h-5 text-neutral-600" />
-                  <span className="text-sm text-neutral-700">{t('analytics.mobile')}</span>
+                  <Smartphone className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('analytics.mobile')}</span>
                 </div>
-                <span className="text-sm font-semibold">{analytics?.devices.mobile}%</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{analytics?.devices.mobile}%</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Tablet className="w-5 h-5 text-neutral-600" />
-                  <span className="text-sm text-neutral-700">{t('analytics.tablet')}</span>
+                  <Tablet className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('analytics.tablet')}</span>
                 </div>
-                <span className="text-sm font-semibold">{analytics?.devices.tablet}%</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{analytics?.devices.tablet}%</span>
               </div>
             </div>
           </Card>
@@ -463,34 +463,34 @@ export const AnalyticsPage: React.FC = () => {
 
             return (
               <Card padding="md">
-                <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('analytics.storageUsage')}</h2>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('analytics.storageUsage')}</h2>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-neutral-600">{t('analytics.used')}</span>
-                      <span className="font-medium">{adminService.formatBytes(dashboardStats.storageUsed)}</span>
+                      <span className="text-neutral-600 dark:text-neutral-400">{t('analytics.used')}</span>
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">{adminService.formatBytes(dashboardStats.storageUsed)}</span>
                     </div>
-                    <div className="w-full bg-neutral-200 rounded-full h-2">
+                    <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
                       <div
                         className={`${progressColor} h-2 rounded-full transition-all`}
                         style={{ width: `${usageWidth}%` }}
                       />
                     </div>
-                    <p className="text-xs text-neutral-500 mt-1">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                       {usagePercent}% {t('analytics.of')} {limitDisplay}
                     </p>
-                    <p className={`text-xs mt-1 ${overSoftLimit ? 'text-red-600 font-semibold' : 'text-red-500 font-medium'}`}>
+                    <p className={`text-xs mt-1 ${overSoftLimit ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-red-500 dark:text-red-400 font-medium'}`}>
                       {limitDescriptor}
                     </p>
                   </div>
-                  <div className="pt-2 border-t">
+                  <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
                     <div className="flex justify-between text-sm">
-                      <span className="text-neutral-600">{t('analytics.totalPhotos')}</span>
-                      <span className="font-medium">{dashboardStats.totalPhotos.toLocaleString()}</span>
+                      <span className="text-neutral-600 dark:text-neutral-400">{t('analytics.totalPhotos')}</span>
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">{dashboardStats.totalPhotos.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm mt-2">
-                      <span className="text-neutral-600">{t('analytics.activeEvents')}</span>
-                      <span className="font-medium">{dashboardStats.activeEvents}</span>
+                      <span className="text-neutral-600 dark:text-neutral-400">{t('analytics.activeEvents')}</span>
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">{dashboardStats.activeEvents}</span>
                     </div>
                   </div>
                 </div>
@@ -502,12 +502,12 @@ export const AnalyticsPage: React.FC = () => {
 
       {/* Configuration Notice */}
       {umamiConfig.enabled === false && (
-        <Card padding="md" className="mt-6 bg-amber-50 border-amber-200">
+        <Card padding="md" className="mt-6 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800">
           <div className="flex items-start gap-3">
-            <Activity className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <Activity className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-900">{t('analytics.notConfigured')}</p>
-              <p className="text-sm text-amber-700 mt-1">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">{t('analytics.notConfigured')}</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 {t('analytics.configureInstructions')}
               </p>
             </div>

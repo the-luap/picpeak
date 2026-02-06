@@ -325,8 +325,8 @@ export const CMSPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">{t('cms.title')}</h1>
-        <p className="text-neutral-600 mt-1">{t('cms.subtitle')}</p>
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('cms.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('cms.subtitle')}</p>
       </div>
 
       <div className="mb-8">
@@ -337,8 +337,8 @@ export const CMSPage: React.FC = () => {
                 <Globe className="w-5 h-5" />
                 <span className="text-sm font-semibold uppercase tracking-wide">{t('settings.publicSite.badge')}</span>
               </div>
-              <h2 className="text-2xl font-semibold text-neutral-900">{t('settings.publicSite.title')}</h2>
-              <p className="text-neutral-600 mt-1 max-w-2xl">{t('settings.publicSite.subtitle')}</p>
+              <h2 className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{t('settings.publicSite.title')}</h2>
+              <p className="text-neutral-600 dark:text-neutral-400 mt-1 max-w-2xl">{t('settings.publicSite.subtitle')}</p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
@@ -359,7 +359,7 @@ export const CMSPage: React.FC = () => {
                   }`}
                 />
               </span>
-              <span className="text-sm font-medium text-neutral-700">
+              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 {publicSiteEnabled ? t('settings.publicSite.enabled') : t('settings.publicSite.disabled')}
               </span>
             </label>
@@ -373,35 +373,35 @@ export const CMSPage: React.FC = () => {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2">
                     <Sparkles className="w-4 h-4 text-primary-500" />
                     {t('settings.publicSite.htmlLabel')}
                   </label>
                   <textarea
-                    className="w-full h-64 font-mono text-sm rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:text-neutral-500"
+                    className="w-full h-64 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
                     value={publicSiteHtml}
                     onChange={(event) => setPublicSiteHtml(event.target.value)}
                     disabled={!publicSiteEnabled}
                     placeholder={t('settings.publicSite.htmlPlaceholder') || ''}
                   />
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     {t('settings.publicSite.htmlHelp')}
                   </p>
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2">
                     <ShieldCheck className="w-4 h-4 text-primary-500" />
                     {t('settings.publicSite.cssLabel')}
                   </label>
                   <textarea
-                    className="w-full h-48 font-mono text-sm rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:text-neutral-500"
+                    className="w-full h-48 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
                     value={publicSiteCss}
                     onChange={(event) => setPublicSiteCss(event.target.value)}
                     disabled={!publicSiteEnabled}
                     placeholder={t('settings.publicSite.cssPlaceholder') || ''}
                   />
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     {t('settings.publicSite.cssHelp')}
                   </p>
                 </div>
@@ -425,7 +425,7 @@ export const CMSPage: React.FC = () => {
                   </Button>
                 </div>
 
-                <div className="rounded-lg bg-neutral-50 border border-neutral-200 p-3 text-xs text-neutral-600 leading-relaxed">
+                <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 p-3 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
                   <p className="font-semibold mb-1">{t('settings.publicSite.sanitizationNotice')}</p>
                   <p>{t('settings.publicSite.htmlHelp')}</p>
                 </div>
@@ -433,10 +433,10 @@ export const CMSPage: React.FC = () => {
 
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neutral-800 uppercase tracking-wide">
+                  <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wide">
                     {t('settings.publicSite.previewTitle')}
                   </h3>
-                  <span className="text-xs text-neutral-500">{t('settings.publicSite.previewSandboxed')}</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{t('settings.publicSite.previewSandboxed')}</span>
                 </div>
                 {publicSiteEnabled ? (
                   <div className="rounded-xl border border-neutral-200 overflow-hidden shadow-sm bg-white">
@@ -448,7 +448,7 @@ export const CMSPage: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-sm text-neutral-500">
+                  <div className="rounded-xl border border-dashed border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800/50 p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                     {t('settings.publicSite.previewDisabled')}
                   </div>
                 )}
@@ -462,7 +462,7 @@ export const CMSPage: React.FC = () => {
         {/* Page Selection */}
         <div className="lg:col-span-1">
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('cms.pages')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('cms.pages')}</h2>
             <div className="space-y-2">
               {pages?.map((page) => (
                 <button
@@ -477,14 +477,14 @@ export const CMSPage: React.FC = () => {
                   }}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
                     selectedPage === page.slug
-                      ? 'bg-primary-100 text-primary-700 border border-primary-300'
-                      : 'bg-white border border-neutral-200 hover:bg-neutral-50'
+                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-700'
+                      : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
                   }`}
                 >
                   <FileText className="w-5 h-5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{t(`legal.${page.slug}`)}</p>
-                    <p className="text-sm text-neutral-500">/{page.slug}</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">/{page.slug}</p>
                   </div>
                   {selectedPage === page.slug && hasUnsavedChanges && (
                     <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0" />
@@ -495,7 +495,7 @@ export const CMSPage: React.FC = () => {
           </Card>
 
           <Card padding="md" className="mt-4">
-            <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('cms.previewLinks')}</h3>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">{t('cms.previewLinks')}</h3>
             <div className="space-y-2 text-sm">
               <a
                 href={`${window.location.origin}/${selectedPage}?lang=en`}
@@ -549,18 +549,18 @@ export const CMSPage: React.FC = () => {
         <div className="lg:col-span-3">
           <Card padding="md">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-neutral-900">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 {t('cms.editPage', { page: t(`legal.${selectedPage}`) })}
               </h2>
-              
+
               {/* Language Tabs */}
               <div className="flex gap-2">
                 <button
                   onClick={() => setEditingLang('en')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     editingLang === 'en'
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
                 >
                   English
@@ -569,8 +569,8 @@ export const CMSPage: React.FC = () => {
                   onClick={() => setEditingLang('de')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     editingLang === 'de'
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
                 >
                   Deutsch
@@ -581,7 +581,7 @@ export const CMSPage: React.FC = () => {
             <div className="space-y-4">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                   {t('cms.pageTitle')} ({editingLang === 'en' ? 'English' : 'German'})
                 </label>
                 <Input
@@ -593,7 +593,7 @@ export const CMSPage: React.FC = () => {
 
               {/* Content */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                   {t('cms.pageContent')} ({editingLang === 'en' ? 'English' : 'German'})
                 </label>
                 <CMSEditor
@@ -606,7 +606,7 @@ export const CMSPage: React.FC = () => {
             </div>
 
             {currentPage?.updated_at && (
-              <p className="text-xs text-neutral-500 mt-4">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-4">
                 {t('cms.lastUpdated')} {new Date(currentPage.updated_at).toLocaleString()}
               </p>
             )}
