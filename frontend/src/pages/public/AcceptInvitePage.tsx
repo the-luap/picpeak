@@ -192,9 +192,10 @@ export const AcceptInvitePage: React.FC = () => {
     if (!formData.password) {
       newErrors.password = t('acceptInvitation.errors.passwordRequired');
     } else {
-      const allRequirementsMet = passwordRequirements.every(req => req.test(formData.password));
-      if (!allRequirementsMet) {
-        newErrors.password = t('acceptInvitation.errors.passwordTooShort');
+      // Find the first failing requirement and show its specific error
+      const failingRequirement = passwordRequirements.find(req => !req.test(formData.password));
+      if (failingRequirement) {
+        newErrors.password = failingRequirement.label;
       }
     }
 

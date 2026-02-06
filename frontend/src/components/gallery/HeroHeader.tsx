@@ -135,7 +135,7 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
   return (
     <div className="relative -mt-6">
       {/* Hero Section */}
-      <div className="relative h-[60vh] sm:h-[70vh] lg:h-[80vh] -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
+      <div className="relative h-[60vh] sm:h-[70vh] lg:h-[80vh] max-h-[700px] -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
         <AuthenticatedImage
           src={heroPhoto.url}
           fallbackSrc={heroPhoto.thumbnail_url || undefined}

@@ -18,6 +18,8 @@ import {
   CarouselGalleryLayout,
   TimelineGalleryLayout,
   MosaicGalleryLayout,
+  GalleryPremiumLayout,
+  GalleryStoryLayout,
 } from './layouts';
 import { HeroHeader } from './HeroHeader';
 import type { HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
@@ -62,6 +64,8 @@ interface PhotoGridWithLayoutsProps {
   heroDividerStyle?: HeroDividerStyle;
   // Hero image anchor position (#162) – keyword or "X% Y%" focal point
   heroImageAnchor?: string;
+  // Logout callback for full-page layouts
+  onLogout?: () => void;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -92,7 +96,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   heroLogoPosition = 'top',
   headerStyle,
   heroDividerStyle = 'wave',
-  heroImageAnchor = 'center'
+  heroImageAnchor = 'center',
+  onLogout
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -186,7 +191,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   if (photos.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-neutral-600">{t('gallery.noPhotosFound')}</p>
+        <p className="text-muted-theme">{t('gallery.noPhotosFound')}</p>
       </div>
     );
   }
@@ -219,6 +224,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     heroLogoVisible,
     heroLogoSize,
     heroLogoPosition,
+    onLogout,
   };
 
   // Determine if we should show hero header (decoupled from layout)
@@ -239,14 +245,23 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     case 'mosaic':
       LayoutComponent = MosaicGalleryLayout;
       break;
+    case 'gallery-premium':
+      LayoutComponent = GalleryPremiumLayout;
+      break;
+    case 'gallery-story':
+      LayoutComponent = GalleryStoryLayout;
+      break;
     default:
       LayoutComponent = GridGalleryLayout;
   }
 
+  // Gallery Premium and Gallery Story layouts have their own integrated hero/header
+  const isFullPageLayout = galleryLayout === 'gallery-premium' || galleryLayout === 'gallery-story';
+
   return (
     <>
-      {/* Hero Header - shown when headerStyle is 'hero' */}
-      {showHeroHeader && (
+      {/* Hero Header - shown when headerStyle is 'hero' (skip for full-page layouts with integrated hero) */}
+      {showHeroHeader && !isFullPageLayout && (
         <HeroHeader
           photos={photos}
           slug={slug}
@@ -267,8 +282,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
         />
       )}
 
-      {/* Selection Mode Controls - Not shown for carousel layout or when controls are hidden */}
-      {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && (
+      {/* Selection Mode Controls - Not shown for carousel, full-page layouts, or when controls are hidden */}
+      {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && !isFullPageLayout && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button
@@ -297,7 +312,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           
           {isSelectionMode && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-neutral-600">
+              <span className="text-xs sm:text-sm text-muted-theme">
                 {t('gallery.photosSelected', { count: selectedPhotos.size })}
               </span>
               <div className="flex items-center gap-2 flex-wrap">
@@ -328,8 +343,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
       {/* Render the selected layout */}
       <LayoutComponent {...layoutProps} />
 
-      {/* Lightbox */}
-      {selectedPhotoIndex !== null && (
+      {/* Lightbox - skip for full-page layouts which have their own lightbox */}
+      {selectedPhotoIndex !== null && !isFullPageLayout && (
         <PhotoLightbox
           photos={photos}
           initialIndex={selectedPhotoIndex}

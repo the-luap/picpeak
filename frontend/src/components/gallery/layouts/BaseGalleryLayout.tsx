@@ -29,6 +29,8 @@ export interface BaseGalleryLayoutProps {
     allowComments?: boolean;
     requireNameEmail?: boolean;
   };
+  // Logout callback for full-page layouts
+  onLogout?: () => void;
 }
 
 export abstract class BaseGalleryLayout<T extends BaseGalleryLayoutProps = BaseGalleryLayoutProps> extends React.Component<T> {
