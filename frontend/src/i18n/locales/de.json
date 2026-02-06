@@ -719,7 +719,8 @@
     "removeCoverPhoto": "Titelbild entfernen",
     "coverPhotoSet": "Titelbild erfolgreich festgelegt",
     "coverPhotoRemoved": "Titelbild entfernt",
-    "failedToSetCoverPhoto": "Titelbild konnte nicht festgelegt werden"
+    "failedToSetCoverPhoto": "Titelbild konnte nicht festgelegt werden",
+    "categoryHeroHint": "Wenn kein Titelbild für eine Kategorie festgelegt ist, wird das Standard-Hero-Foto verwendet."
   },
   "events": {
     "noStatisticsAvailableYet": "Noch keine Statistiken verfügbar",
@@ -882,7 +883,7 @@
     "heroLogoPositionLabel": "Position",
     "heroLogoHidden": "Logo ausgeblendet",
     "heroPhoto": "Hero-Foto",
-    "heroPhotoHelp": "Wählen Sie ein hervorgehobenes Foto für das Hero-Galerie-Layout",
+    "heroPhotoHelp": "Wählen Sie ein Standard-Hero-Foto für die Galerie. Sie können dies pro Kategorie überschreiben.",
     "selectHeroPhoto": "Hero-Foto auswählen",
     "noHeroPhotoSelected": "Kein Hero-Foto ausgewählt",
     "heroPhotoSelected": "Hero-Foto ausgewählt",
@@ -1432,6 +1433,7 @@
     "saveTheme": "Design speichern",
     "previewLayout": "Vorschau-Layout",
     "livePreview": "Live-Vorschau",
+    "heroPlaceholderText": "Das Hero-Foto Ihrer Veranstaltung wird hier angezeigt",
     "whiteLabel": "White Label",
     "hidePoweredBy": "\"Powered by PicPeak\" Branding ausblenden",
     "hidePoweredByHelp": "Entfernen Sie die PicPeak-Kennzeichnung aus Galerie-Fußzeilen für ein vollständig personalisiertes Erscheinungsbild",

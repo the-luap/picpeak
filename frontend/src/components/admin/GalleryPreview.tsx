@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Camera, Calendar } from 'lucide-react';
 import { ThemeConfig, GalleryLayoutType, HeroDividerStyle } from '../../types/theme.types';
 import { buildResourceUrl } from '../../utils/url';
+import { useTranslation } from 'react-i18next';
 
 interface GalleryPreviewBranding {
   company_name?: string;
@@ -64,12 +65,13 @@ const PreviewPhoto: React.FC<{
   </div>
 );
 
-export const GalleryPreview: React.FC<GalleryPreviewProps> = ({ 
-  theme, 
+export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
+  theme,
   branding,
   layoutType,
-  className = '' 
+  className = ''
 }) => {
+  const { t } = useTranslation();
   const mockPhotos = useMemo(() => generateMockPhotos(12), []);
   
   // Use the provided layoutType or fallback to theme's gallery layout
@@ -251,6 +253,11 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
               <div className="flex items-center justify-center text-white/80 text-sm" style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.3)' }}>
                 <Calendar className="w-4 h-4 mr-1" />
                 <span>January 15, 2026</span>
+              </div>
+              {/* Hero photo placeholder hint */}
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-white/60 text-xs">
+                <Camera className="w-3 h-3" />
+                <span>{t('branding.heroPlaceholderText')}</span>
               </div>
             </div>
           </div>
