@@ -123,6 +123,11 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
         )}
       </div>
 
+      {/* Hint about hero photo fallback */}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">
+        {t('categories.categoryHeroHint')}
+      </p>
+
       {/* Add new category form */}
       {isAdding && (
         <div className="flex gap-2">

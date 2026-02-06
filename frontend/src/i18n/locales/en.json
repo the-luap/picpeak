@@ -332,7 +332,8 @@
     "removeCoverPhoto": "Remove Cover Photo",
     "coverPhotoSet": "Cover photo set successfully",
     "coverPhotoRemoved": "Cover photo removed",
-    "failedToSetCoverPhoto": "Failed to set cover photo"
+    "failedToSetCoverPhoto": "Failed to set cover photo",
+    "categoryHeroHint": "If no cover photo is set for a category, the default hero photo will be used."
   },
   "events": {
     "title": "Events",
@@ -508,7 +509,7 @@
     "heroLogoPositionLabel": "Position",
     "heroLogoHidden": "Logo hidden",
     "heroPhoto": "Hero Photo",
-    "heroPhotoHelp": "Select a featured photo for the hero gallery layout",
+    "heroPhotoHelp": "Select a default hero photo for the gallery. You can override this per category.",
     "selectHeroPhoto": "Select Hero Photo",
     "noHeroPhotoSelected": "No hero photo selected",
     "heroPhotoSelected": "Hero photo selected",
@@ -1147,6 +1148,7 @@
     "saveTheme": "Save Theme",
     "previewLayout": "Preview Layout",
     "livePreview": "Live Preview",
+    "heroPlaceholderText": "Your event's hero photo will appear here",
     "whiteLabel": "White Label",
     "hidePoweredBy": "Hide \"Powered by PicPeak\" branding",
     "hidePoweredByHelp": "Remove the PicPeak attribution from gallery footers for a fully white-labeled experience",
