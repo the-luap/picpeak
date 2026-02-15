@@ -71,6 +71,7 @@ export interface Photo {
   filename: string;
   url: string;
   thumbnail_url?: string;
+  hero_url?: string; // Hero-optimized image URL (1920x1080) for full-width hero sections
   secure_url_template?: string;
   download_url_template?: string;
   requires_token?: boolean;
