@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.13.0-beta.0...v3.13.1-beta.0) (2026-02-15)
+
+
+### Bug Fixes
+
+* restore aspect-ratio layouts and improve hero image quality ([#180](https://github.com/the-luap/picpeak/issues/180)) ([3974ba5](https://github.com/the-luap/picpeak/commit/3974ba5de5a6605ad906608d3e4d61620a215059))
+* restore aspect-ratio layouts and improve hero image quality ([#180](https://github.com/the-luap/picpeak/issues/180)) ([5cef7fd](https://github.com/the-luap/picpeak/commit/5cef7fdd188389512bc4b55ae61536c8b1219eb8))
+
 ## [3.13.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.12.0-beta.0...v3.13.0-beta.0) (2026-02-06)
 
 
