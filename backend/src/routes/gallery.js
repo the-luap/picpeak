@@ -13,7 +13,7 @@ const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
-const { ensureThumbnail } = require('../services/imageProcessor');
+const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -385,6 +385,8 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           filename: photo.filename,
           url: photoUrl,
           thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}${wmQuery}` : null,
+          // Hero-optimized image URL (1920x1080) for full-width hero sections
+          hero_url: `/api/gallery/${req.params.slug}/hero/${photo.id}${wmQuery}`,
           secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
@@ -978,6 +980,92 @@ router.get('/:slug/thumbnail/:photoId',
         eventId: req.event?.id
       });
       res.status(500).json({ error: 'Failed to serve thumbnail' });
+    }
+  }
+);
+
+// Serve hero-optimized image (1920x1080 for full-width hero sections)
+router.get('/:slug/hero/:photoId',
+  verifyGalleryAccess,
+  async (req, res) => {
+    try {
+      const { photoId } = req.params;
+
+      const photo = await db('photos')
+        .where({ id: photoId, event_id: req.event.id })
+        .first();
+
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Check if this is a video - videos don't get hero images
+      const isVideo = photo.media_type === 'video' || (photo.mime_type && photo.mime_type.startsWith('video/'));
+      if (isVideo) {
+        // For videos, redirect to the regular photo endpoint
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      // Ensure hero image exists and is valid, regenerate if needed
+      const heroPath = await ensureHeroImage(photo);
+
+      if (!heroPath) {
+        // If hero generation fails, fall back to original photo
+        logger.warn(`Failed to generate hero image for photo ${photoId}, falling back to original`);
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      const heroFullPath = path.join(getStoragePath(), heroPath);
+      const fs = require('fs');
+
+      // Verify file exists before attempting to serve
+      if (!fs.existsSync(heroFullPath)) {
+        logger.error('Hero image file does not exist at resolved path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          resolvedPath: heroFullPath
+        });
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      // Get file stats for ETag
+      const stat = fs.statSync(heroFullPath);
+      const etag = `"hero-${photoId}-${stat.mtime.getTime()}"`;
+
+      // Check if client has valid cached version
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
+      // Check if watermarks should be applied
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+
+      res.set({
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Hero-Image': 'true',
+        'ETag': etag
+      });
+
+      if (watermarkSettings && watermarkSettings.enabled) {
+        // Apply watermark to hero image
+        const watermarkedBuffer = await watermarkService.applyWatermark(heroFullPath, watermarkSettings);
+        res.send(watermarkedBuffer);
+      } else {
+        // Send hero image without watermark
+        res.sendFile(path.resolve(heroFullPath));
+      }
+    } catch (error) {
+      logger.error('Error serving hero image:', {
+        error: error.message,
+        photoId: req.params.photoId,
+        eventId: req.event?.id
+      });
+      // Fall back to original photo on any error
+      res.redirect(`/api/gallery/${req.params.slug}/photo/${req.params.photoId}`);
     }
   }
 );

@@ -62,10 +62,11 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
     const aspectRatio = photoWidth / photoHeight;
 
     // Calculate height based on column width and aspect ratio
-    // Clamp to reasonable min/max heights for visual consistency
+    // Use dynamic constraints based on column width to preserve aspect ratio variation
+    // This allows panoramic images to be short and tall portraits to be tall
     const calculatedHeight = columnWidth / aspectRatio;
-    const minHeight = 150;
-    const maxHeight = 500;
+    const minHeight = Math.max(80, columnWidth * 0.25); // Allow wide panoramics (4:1)
+    const maxHeight = columnWidth * 2.5; // Allow tall portraits (1:2.5)
 
     return Math.max(minHeight, Math.min(maxHeight, calculatedHeight));
   }, [photo.width, photo.height, columnWidth]);
@@ -361,11 +362,13 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       // Add photo to shortest column
       cols[shortestCol].push(photo);
 
-      // Estimate height based on aspect ratio
+      // Estimate height based on aspect ratio (using same constraints as MasonryPhoto)
       const photoWidth = photo.width || 800;
       const photoHeight = photo.height || 600;
       const aspectRatio = photoWidth / photoHeight;
-      const estimatedHeight = Math.max(150, Math.min(500, approxColWidth / aspectRatio));
+      const minHeightConstraint = Math.max(80, approxColWidth * 0.25);
+      const maxHeightConstraint = approxColWidth * 2.5;
+      const estimatedHeight = Math.max(minHeightConstraint, Math.min(maxHeightConstraint, approxColWidth / aspectRatio));
       colHeights[shortestCol] += estimatedHeight + gutter;
     });
 

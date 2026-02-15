@@ -137,8 +137,8 @@ export const HeroHeader: React.FC<HeroHeaderProps> = ({
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] lg:h-[80vh] max-h-[700px] -mx-4 sm:-mx-6 lg:-mx-8 mb-8">
         <AuthenticatedImage
-          src={heroPhoto.url}
-          fallbackSrc={heroPhoto.thumbnail_url || undefined}
+          src={heroPhoto.hero_url || heroPhoto.url}
+          fallbackSrc={heroPhoto.url}
           alt={heroPhoto.filename}
           className="w-full h-full object-cover"
           style={{ objectPosition: heroImageAnchor }}
