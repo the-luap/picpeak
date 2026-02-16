@@ -359,8 +359,8 @@ async function initializeRateLimiters() {
 }
 
 // Note: Rate limiters will be initialized after database connection
-app.use(express.json({ limit: '10gb' }));
-app.use(express.urlencoded({ extended: true, limit: '10gb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Request logging for API routes (with timestamps)
 const apiRequestLogger = (req, res, next) => {
@@ -386,8 +386,23 @@ app.use('/api/admin', sessionTimeoutMiddleware);
 
 // Middleware to set CORS headers for static files
 const setCorsHeaders = (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  const origin = req.headers.origin;
+  const staticAllowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3005',
+    process.env.ADMIN_URL || 'http://localhost:3005'
+  ];
+  if (process.env.NODE_ENV === 'development') {
+    staticAllowedOrigins.push(
+      'http://localhost:5173',
+      'http://localhost:3002',
+      'http://localhost:3001',
+      'http://localhost:3000'
+    );
+  }
+  if (origin && staticAllowedOrigins.indexOf(origin) !== -1) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 };
@@ -451,19 +466,16 @@ app.get('/health', async (req, res) => {
   try {
     // Check database connectivity
     await db.raw('SELECT 1');
-    
-    res.json({ 
-      status: 'ok', 
-      database: 'connected',
-      timestamp: new Date().toISOString() 
+
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     logger.error('Health check failed:', error);
-    res.status(503).json({ 
-      status: 'error', 
-      database: 'disconnected',
-      error: error.message,
-      timestamp: new Date().toISOString() 
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString()
     });
   }
 });

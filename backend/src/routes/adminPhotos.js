@@ -727,7 +727,8 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
 router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
+    const { category_id, type, search, sort = 'date' } = req.query;
+    const order = ['asc', 'desc'].includes(req.query.order) ? req.query.order : 'desc';
     
     let query = db('photos')
       .where({ 'photos.event_id': eventId })

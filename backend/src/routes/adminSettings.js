@@ -122,6 +122,11 @@ router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) 
       }
     });
 
+    // Mask sensitive secrets before sending to client
+    if (settingsObject.security_recaptcha_secret_key) {
+      settingsObject.security_recaptcha_secret_key = '••••••••';
+    }
+
     res.json(settingsObject);
   } catch (error) {
     console.error('Settings fetch error:', error);
@@ -159,6 +164,11 @@ router.get('/:type', adminAuth, requirePermission('settings.view'), async (req, 
         settingsObject[setting.setting_key] = null;
       }
     });
+
+    // Mask sensitive secrets before sending to client
+    if (settingsObject.security_recaptcha_secret_key) {
+      settingsObject.security_recaptcha_secret_key = '••••••••';
+    }
 
     res.json(settingsObject);
   } catch (error) {

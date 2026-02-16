@@ -120,6 +120,9 @@ async function generateThumbnail(imagePath, options = {}) {
       failOnError: false // Don't fail on minor issues
     });
     
+    // Strip EXIF/metadata from thumbnails (privacy: prevent GPS leak etc.)
+    sharpInstance = sharpInstance.withMetadata(false);
+
     // Apply resize with configured settings
     // For square thumbnails with 'cover' fit, we crop to center
     sharpInstance = sharpInstance.resize(settings.width, settings.height, {
@@ -338,6 +341,9 @@ async function generateHeroImage(imagePath, options = {}) {
       sequentialRead: true,
       failOnError: false
     });
+
+    // Strip EXIF/metadata from hero images (privacy: prevent GPS leak etc.)
+    sharpInstance = sharpInstance.withMetadata(false);
 
     // Resize to fit hero dimensions while maintaining aspect ratio
     // Use 'cover' to fill the hero area (crops if needed)
