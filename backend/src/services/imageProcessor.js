@@ -1,4 +1,5 @@
 const sharp = require('sharp');
+const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
@@ -442,6 +443,55 @@ async function ensureHeroImage(photo) {
   return null;
 }
 
+/**
+ * Extract capture date from EXIF metadata
+ * @param {string} imagePath - Path to the image file
+ * @returns {Date|null} - The capture date or null if not available
+ */
+async function extractCaptureDate(imagePath) {
+  try {
+    // Parse EXIF data, looking for common date fields
+    const exif = await exifr.parse(imagePath, {
+      pick: ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized', 'ModifyDate']
+    });
+
+    if (!exif) {
+      return null;
+    }
+
+    // Priority order: DateTimeOriginal > CreateDate > DateTimeDigitized > ModifyDate
+    const captureDate = exif.DateTimeOriginal ||
+                        exif.CreateDate ||
+                        exif.DateTimeDigitized ||
+                        exif.ModifyDate;
+
+    if (captureDate) {
+      // exifr returns Date objects directly when parsing dates
+      if (captureDate instanceof Date) {
+        // Validate the date is reasonable (not in the future, not before 1990)
+        const now = new Date();
+        const minDate = new Date('1990-01-01');
+        if (captureDate > minDate && captureDate <= now) {
+          return captureDate;
+        }
+      }
+      // Handle string dates if necessary
+      if (typeof captureDate === 'string') {
+        const parsed = new Date(captureDate);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    // Log only as debug - many images don't have EXIF data
+    logger.debug(`Could not extract EXIF date from ${path.basename(imagePath)}:`, error.message);
+    return null;
+  }
+}
+
 module.exports = {
   generateThumbnail,
   isThumbnailValid,
@@ -449,5 +499,6 @@ module.exports = {
   generateVideoPlaceholder,
   generateHeroImage,
   isHeroValid,
-  ensureHeroImage
+  ensureHeroImage,
+  extractCaptureDate
 };

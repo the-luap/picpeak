@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Star, Upload } from 'lucide-react';
+import { X, Download, Filter, SortAsc, Search, Calendar, Type, HardDrive, Check, Star, Upload, Camera } from 'lucide-react';
 import { Button } from '../common';
 import { PhotoCategory } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -13,8 +13,8 @@ interface GallerySidebarProps {
   onCategoryChange: (categoryId: number | string | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  sortBy: 'date' | 'name' | 'size' | 'rating';
-  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating') => void;
+  sortBy: 'date' | 'name' | 'size' | 'rating' | 'capture_date';
+  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating' | 'capture_date') => void;
   isSelectionMode: boolean;
   onToggleSelectionMode: () => void;
   selectedCount: number;
@@ -101,6 +101,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
 
   const sortOptions = [
     { value: 'date', label: t('gallery.sortByDate'), icon: Calendar },
+    { value: 'capture_date', label: t('gallery.sortByCaptureDate', 'Capture Date'), icon: Camera },
     { value: 'name', label: t('gallery.sortByName'), icon: Type },
     { value: 'size', label: t('gallery.sortBySize'), icon: HardDrive },
     { value: 'rating', label: t('gallery.sortByRating', 'Rating'), icon: Star }

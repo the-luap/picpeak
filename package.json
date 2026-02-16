@@ -8,8 +8,9 @@
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
-    "puppeteer": "^24.17.0",
-    "@playwright/test": "^1.48.2"
+    "@playwright/test": "^1.48.2",
+    "dotenv": "^17.3.1",
+    "puppeteer": "^24.17.0"
   },
   "overrides": {
     "prebuild-install": {

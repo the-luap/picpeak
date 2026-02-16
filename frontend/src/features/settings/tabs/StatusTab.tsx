@@ -12,6 +12,7 @@ import { Button, Card, Input } from '../../../components/common';
 import { useTranslation } from 'react-i18next';
 import { settingsService } from '../../../services/settings.service';
 import { useStatusTab } from '../hooks/useStatusTab';
+import { UpdateNotificationSettings } from '../components/UpdateNotificationSettings';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -526,6 +527,9 @@ export const StatusTab: React.FC<StatusTabProps> = ({
           </Card>
         </>
       )}
+
+      {/* Update Notification Settings */}
+      <UpdateNotificationSettings />
 
       {/* Last update time */}
       {systemStatus && (

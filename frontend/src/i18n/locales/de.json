@@ -674,6 +674,7 @@
     "searchPlaceholder": "Fotos suchen...",
     "sortBy": "Sortieren nach",
     "sortByDate": "Nach Datum sortieren",
+    "sortByCaptureDate": "Nach Aufnahmedatum sortieren",
     "sortByName": "Nach Name sortieren",
     "sortBySize": "Nach Größe sortieren",
     "sortByRating": "Nach Bewertung sortieren",
@@ -1248,6 +1249,25 @@
       "sent": "Gesendet",
       "failed": "Fehlgeschlagen",
       "lastUpdate": "Letzte Aktualisierung"
+    },
+    "updateNotifications": {
+      "title": "Update-Benachrichtigungen",
+      "description": "Erhalten Sie E-Mail-Benachrichtigungen, wenn neue Versionen von PicPeak verfügbar sind.",
+      "enableEmails": "E-Mail-Benachrichtigungen aktivieren",
+      "enableEmailsDesc": "E-Mail an Admins senden, wenn eine neue Version verfügbar ist",
+      "recipients": "E-Mail-Empfänger",
+      "recipientsPlaceholder": "admin@beispiel.de, andere@beispiel.de",
+      "recipientsHelper": "Kommagetrennte E-Mail-Adressen. Leer lassen, um an alle Admin-Benutzer zu senden.",
+      "lastNotified": "Letzte Benachrichtigung gesendet für Version: {{version}}",
+      "checkNow": "Prüfen & Benachrichtigen",
+      "sendTest": "Test-E-Mail senden",
+      "saved": "Einstellungen gespeichert",
+      "saveError": "Fehler beim Speichern der Einstellungen",
+      "emailSent": "Benachrichtigungs-E-Mail an {{count}} Empfänger gesendet",
+      "emailFailed": "Fehler beim Senden der Benachrichtigung",
+      "checkSuccess": "Benachrichtigung für neue Version gesendet",
+      "checkNoAction": "Keine Benachrichtigung erforderlich: {{reason}}",
+      "checkError": "Fehler beim Prüfen auf Updates"
     }
   },
   "branding": {
@@ -1528,7 +1548,18 @@
       "updateAvailableShort": "v{{version}} verfügbar",
       "checkForUpdates": "Nach Updates suchen",
       "upToDate": "Alles aktuell",
-      "lastChecked": "Zuletzt geprüft: {{time}}"
+      "lastChecked": "Zuletzt geprüft: {{time}}",
+      "updateNow": "Jetzt aktualisieren",
+      "updateDialog": {
+        "title": "PicPeak aktualisieren",
+        "detectedEnv": "Erkannte Umgebung",
+        "beforeUpdating": "Vor dem Update:",
+        "updateCommands": "Update-Befehle:",
+        "afterUpdating": "Nach dem Update:",
+        "copyAllCommands": "Alle Befehle kopieren",
+        "completeChecklist": "Checkliste vor dem Update ausfüllen",
+        "error": "Fehler beim Laden der Update-Anweisungen"
+      }
     },
     "notifications": "Benachrichtigungen",
     "viewAllNotifications": "Alle Benachrichtigungen anzeigen",

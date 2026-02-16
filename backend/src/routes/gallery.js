@@ -187,8 +187,8 @@ router.get('/:slug/info', async (req, res) => {
 // Get all photos
 router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
-    // Get filter parameters from query
-    const { filter, guest_id } = req.query;
+    // Get filter and sort parameters from query
+    const { filter, guest_id, sort = 'upload_date', order = 'desc' } = req.query;
 
     // Get watermark settings to generate cache-busting version for URLs
     const watermarkSettings = await watermarkService.getWatermarkSettings();
@@ -196,11 +196,25 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       ? `wm=${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
       : '';
 
-    // First get all photos
-    let photos = await db('photos')
+    // Build the query with sorting
+    const sortOrder = order === 'asc' ? 'asc' : 'desc';
+    let photosQuery = db('photos')
       .where('photos.event_id', req.event.id)
-      .select('photos.*')
-      .orderBy('photos.uploaded_at', 'desc');
+      .select('photos.*');
+
+    // Apply sort option
+    if (sort === 'capture_date') {
+      // Sort by capture date, falling back to uploaded_at if capture date is null
+      photosQuery = photosQuery.orderByRaw('COALESCE(photos.captured_at, photos.uploaded_at) ' + sortOrder);
+    } else if (sort === 'filename') {
+      photosQuery = photosQuery.orderBy('photos.filename', sortOrder);
+    } else {
+      // Default: sort by upload date
+      photosQuery = photosQuery.orderBy('photos.uploaded_at', sortOrder);
+    }
+
+    // Execute the query
+    let photos = await photosQuery;
     
     // Apply filtering if requested (supports global stats + per-guest interactions)
     if (filter) {
