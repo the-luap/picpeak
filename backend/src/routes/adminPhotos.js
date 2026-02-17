@@ -5,7 +5,7 @@ const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const { generateThumbnail, ensureThumbnail } = require('../services/imageProcessor');
+const { generateThumbnail, ensureThumbnail, extractCaptureDate } = require('../services/imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
@@ -253,7 +253,16 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
             const finalPath = path.join(finalDestPath, newFilename);
             const storagePath = getStoragePath();
             const relativePath = path.relative(path.join(storagePath, 'events/active'), finalPath);
-            
+
+            // Extract capture date from EXIF metadata
+            let capturedAt = null;
+            try {
+              capturedAt = await extractCaptureDate(tempPath);
+            } catch (exifError) {
+              // Non-fatal - just log and continue without capture date
+              console.log(`Could not extract EXIF date for ${file.originalname}`);
+            }
+
             // Prepare photo data for batch insert
             const photoData = {
               event_id: parseInt(eventId),
@@ -263,7 +272,8 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
               category_id: parsedCategoryId, // Save the selected category
-              size_bytes: tempStats.size // Use actual file size from stat
+              size_bytes: tempStats.size, // Use actual file size from stat
+              captured_at: capturedAt // EXIF capture date (if available)
             };
             
             batchPhotos.push(photoData);
@@ -717,7 +727,8 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
 router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
+    const { category_id, type, search, sort = 'date' } = req.query;
+    const order = ['asc', 'desc'].includes(req.query.order) ? req.query.order : 'desc';
     
     let query = db('photos')
       .where({ 'photos.event_id': eventId })
@@ -781,6 +792,7 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
       photos: photos.map(photo => ({
         id: photo.id,
         filename: photo.filename,
+        original_filename: photo.original_filename || null,
         // Use the correct admin photos router base for serving images
         url: `/admin/photos/${eventId}/photo/${photo.id}`,
         // Always expose a thumbnail URL; backend will generate on demand if missing

@@ -81,6 +81,7 @@ export interface Photo {
   category_slug?: string;
   size: number;
   uploaded_at: string;
+  captured_at?: string; // EXIF capture date (if available)
   // Media type fields
   media_type?: 'photo' | 'video' | 'image';
   mime_type?: string;

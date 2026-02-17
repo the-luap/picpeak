@@ -3,6 +3,7 @@ import { api } from '../config/api';
 export interface AdminPhoto {
   id: number;
   filename: string;
+  original_filename?: string;
   path: string;
   url: string;
   thumbnail_url: string | null;

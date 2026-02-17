@@ -47,7 +47,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { setTheme, theme } = useTheme();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -397,6 +397,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           }
           // If ratings are equal, sort by comment count
           return (b.comment_count || 0) - (a.comment_count || 0);
+        case 'capture_date':
+          // Sort by capture date (from EXIF), fall back to upload date
+          const captureDateA = a.captured_at || a.uploaded_at;
+          const captureDateB = b.captured_at || b.uploaded_at;
+          return new Date(captureDateB).getTime() - new Date(captureDateA).getTime();
         case 'date':
         default:
           return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();

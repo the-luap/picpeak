@@ -287,6 +287,11 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                 <p className="text-white text-xs font-medium truncate mb-1">
                   {photo.filename}
                 </p>
+                {photo.original_filename && photo.original_filename !== photo.filename && (
+                  <p className="text-white/60 text-[10px] truncate mb-1">
+                    Original: {photo.original_filename}
+                  </p>
+                )}
                 <p className="text-white/80 text-xs mb-2">
                   {photosService.formatBytes(photo.size)}
                 </p>

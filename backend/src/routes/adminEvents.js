@@ -495,8 +495,9 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
     const status = req.query.status || 'all';
-    const sortBy = req.query.sortBy || 'created_at';
-    const sortOrder = req.query.sortOrder || 'desc';
+    const allowedSortBy = ['created_at', 'event_name', 'slug', 'updated_at', 'expires_at', 'capture_date'];
+    const sortBy = allowedSortBy.includes(req.query.sortBy) ? req.query.sortBy : 'created_at';
+    const sortOrder = ['asc', 'desc'].includes(req.query.sortOrder) ? req.query.sortOrder : 'desc';
 
     // Build query
     let query = db('events');

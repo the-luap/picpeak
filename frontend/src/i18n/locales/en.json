@@ -287,6 +287,7 @@
     "searchPlaceholder": "Search photos...",
     "sortBy": "Sort By",
     "sortByDate": "Sort by Date",
+    "sortByCaptureDate": "Sort by Capture Date",
     "sortByName": "Sort by Name",
     "sortBySize": "Sort by Size",
     "sortByRating": "Sort by Rating",
@@ -798,6 +799,25 @@
       "failed": "Failed",
       "lastUpdate": "Last update"
     },
+    "updateNotifications": {
+      "title": "Update Notifications",
+      "description": "Receive email notifications when new versions of PicPeak are available.",
+      "enableEmails": "Enable email notifications",
+      "enableEmailsDesc": "Send email to admins when a new version is available",
+      "recipients": "Email Recipients",
+      "recipientsPlaceholder": "admin@example.com, other@example.com",
+      "recipientsHelper": "Comma-separated email addresses. Leave empty to send to all admin users.",
+      "lastNotified": "Last notification sent for version: {{version}}",
+      "checkNow": "Check & Notify",
+      "sendTest": "Send Test Email",
+      "saved": "Settings saved",
+      "saveError": "Failed to save settings",
+      "emailSent": "Notification email sent to {{count}} recipients",
+      "emailFailed": "Failed to send notification",
+      "checkSuccess": "Notification sent for new version",
+      "checkNoAction": "No notification needed: {{reason}}",
+      "checkError": "Failed to check for updates"
+    },
     "events": {
       "title": "Event Creation",
       "requiredFields": "Required Fields",
@@ -1241,7 +1261,18 @@
       "updateAvailableShort": "v{{version}} available",
       "checkForUpdates": "Check for Updates",
       "upToDate": "You're up to date",
-      "lastChecked": "Last checked: {{time}}"
+      "lastChecked": "Last checked: {{time}}",
+      "updateNow": "Update Now",
+      "updateDialog": {
+        "title": "Update PicPeak",
+        "detectedEnv": "Detected Environment",
+        "beforeUpdating": "Before updating:",
+        "updateCommands": "Update Commands:",
+        "afterUpdating": "After updating:",
+        "copyAllCommands": "Copy All Commands",
+        "completeChecklist": "Complete the checklist before updating",
+        "error": "Failed to load update instructions"
+      }
     },
     "notifications": "Notifications",
     "viewAllNotifications": "View all notifications",

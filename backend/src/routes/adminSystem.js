@@ -8,6 +8,12 @@ const os = require('os');
 const { formatBoolean } = require('../utils/dbCompat');
 const logger = require('../utils/logger');
 const { checkForUpdates, getCurrentChannel } = require('../services/updateCheckService');
+const { detectEnvironment, generateUpdateInstructions } = require('../services/environmentService');
+const {
+  checkAndNotifyUpdates,
+  sendUpdateNotificationNow,
+  getUpdateNotificationSettings
+} = require('../services/updateNotificationService');
 const router = express.Router();
 
 // Get system version
@@ -62,6 +68,47 @@ router.get('/updates', adminAuth, requirePermission('settings.view'), async (req
   } catch (error) {
     logger.error('Error checking for updates:', error);
     res.status(500).json({ error: 'Failed to check for updates' });
+  }
+});
+
+// Get update instructions for current environment
+router.get('/updates/instructions', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
+    // Check if update checking is enabled
+    const updateCheckEnabled = process.env.UPDATE_CHECK_ENABLED !== 'false';
+
+    if (!updateCheckEnabled) {
+      return res.json({
+        enabled: false,
+        message: 'Update checking is disabled'
+      });
+    }
+
+    const env = await detectEnvironment();
+    const updateInfo = await checkForUpdates();
+
+    if (!updateInfo.updateAvailable) {
+      return res.json({
+        updateAvailable: false,
+        currentVersion: updateInfo.current,
+        message: 'You are running the latest version'
+      });
+    }
+
+    const instructions = generateUpdateInstructions(env, updateInfo.latest.forChannel);
+
+    res.json({
+      updateAvailable: true,
+      currentVersion: updateInfo.current,
+      targetVersion: updateInfo.latest.forChannel,
+      channel: updateInfo.channel,
+      environment: env,
+      instructions,
+      releaseNotesUrl: `https://github.com/the-luap/picpeak/releases/tag/v${updateInfo.latest.forChannel}`
+    });
+  } catch (error) {
+    logger.error('Error generating update instructions:', error);
+    res.status(500).json({ error: 'Failed to generate update instructions' });
   }
 });
 
@@ -259,6 +306,70 @@ router.get('/database', adminAuth, requirePermission('settings.view'), async (re
   } catch (error) {
     console.error('Error fetching database info:', error);
     res.status(500).json({ error: 'Failed to fetch database information' });
+  }
+});
+
+// Get update notification settings
+router.get('/updates/notifications', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
+    const settings = await getUpdateNotificationSettings();
+    res.json(settings);
+  } catch (error) {
+    logger.error('Error fetching update notification settings:', error);
+    res.status(500).json({ error: 'Failed to fetch update notification settings' });
+  }
+});
+
+// Update notification settings
+router.put('/updates/notifications', adminAuth, requirePermission('settings.edit'), async (req, res) => {
+  try {
+    const { enabled, recipients } = req.body;
+
+    if (typeof enabled !== 'undefined') {
+      await db('app_settings')
+        .where('setting_key', 'update_email_notifications_enabled')
+        .update({
+          setting_value: JSON.stringify(enabled === true),
+          updated_at: db.fn.now()
+        });
+    }
+
+    if (typeof recipients !== 'undefined') {
+      await db('app_settings')
+        .where('setting_key', 'update_email_recipients')
+        .update({
+          setting_value: JSON.stringify(recipients || ''),
+          updated_at: db.fn.now()
+        });
+    }
+
+    const updatedSettings = await getUpdateNotificationSettings();
+    res.json({ success: true, settings: updatedSettings });
+  } catch (error) {
+    logger.error('Error updating notification settings:', error);
+    res.status(500).json({ error: 'Failed to update notification settings' });
+  }
+});
+
+// Manually trigger update notification email
+router.post('/updates/notifications/send', adminAuth, requirePermission('settings.edit'), async (req, res) => {
+  try {
+    const result = await sendUpdateNotificationNow();
+    res.json(result);
+  } catch (error) {
+    logger.error('Error sending update notification:', error);
+    res.status(500).json({ error: 'Failed to send update notification' });
+  }
+});
+
+// Check and send update notifications (called on admin login or periodically)
+router.post('/updates/notifications/check', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
+    const result = await checkAndNotifyUpdates();
+    res.json(result);
+  } catch (error) {
+    logger.error('Error checking for update notifications:', error);
+    res.status(500).json({ error: 'Failed to check for update notifications' });
   }
 });
 

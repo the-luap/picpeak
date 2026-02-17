@@ -102,8 +102,10 @@ backup/
 
 # Local SQLite files in backend
 backend/*.sqlite*
+backend/*.db
 
 # Test files and artifacts
+test-images/
 test-logo*.jpg
 test-logo*.png
 test-results/
