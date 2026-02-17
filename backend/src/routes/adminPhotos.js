@@ -792,6 +792,7 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
       photos: photos.map(photo => ({
         id: photo.id,
         filename: photo.filename,
+        original_filename: photo.original_filename || null,
         // Use the correct admin photos router base for serving images
         url: `/admin/photos/${eventId}/photo/${photo.id}`,
         // Always expose a thumbnail URL; backend will generate on demand if missing

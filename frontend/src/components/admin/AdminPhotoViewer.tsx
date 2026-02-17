@@ -230,7 +230,11 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
 
         {/* Sidebar */}
         <div className="lg:w-80 bg-neutral-900 rounded-lg p-6 overflow-y-auto">
-          <h3 className="text-white font-medium text-lg mb-4">{currentPhoto.filename}</h3>
+          <h3 className="text-white font-medium text-lg">{currentPhoto.filename}</h3>
+          {currentPhoto.original_filename && currentPhoto.original_filename !== currentPhoto.filename && (
+            <p className="text-neutral-400 text-sm">Original: {currentPhoto.original_filename}</p>
+          )}
+          <div className="mb-4" />
 
           {/* Actions */}
           <div className="flex gap-2 mb-6">
