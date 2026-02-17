@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.13.1-beta.0...v3.14.0-beta.0) (2026-02-17)
+
+
+### Features
+
+* add update instructions dialog, email notifications, and capture date sorting ([50c0990](https://github.com/the-luap/picpeak/commit/50c09904a9434f988ab32a07da5d24db0e02065e)), closes [#181](https://github.com/the-luap/picpeak/issues/181)
+* original filename in admin UI, update dialog, and security hardening ([3ea9d5b](https://github.com/the-luap/picpeak/commit/3ea9d5b1219980032cbee7a2564c0004948923f5))
+* show original filename in admin UI ([#184](https://github.com/the-luap/picpeak/issues/184)) ([0891be1](https://github.com/the-luap/picpeak/commit/0891be197fdb7d92ade5a293b8db0bed26fa6e3a))
+
 ## [3.13.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.13.0-beta.0...v3.13.1-beta.0) (2026-02-15)
 
 
