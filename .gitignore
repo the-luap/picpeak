@@ -86,6 +86,14 @@ docs/*_PLAN.md
 docs/test-*.md
 docs/feature-*.md
 
+# Scaffolding documentation (local development reference)
+docs/DATABASE_SCHEMA.md
+docs/BACKEND_SERVICES.md
+docs/API_ROUTES.md
+docs/FRONTEND_ARCHITECTURE.md
+docs/DEVELOPER_ONBOARDING.md
+docs/ENVIRONMENT_VARIABLES.md
+
 # Local backup directory (from testing)
 backup/
 
@@ -94,3 +102,16 @@ backup/
 
 # Local SQLite files in backend
 backend/*.sqlite*
+backend/*.db
+
+# Test files and artifacts
+test-images/
+test-logo*.jpg
+test-logo*.png
+test-results/
+
+# Development docker compose
+docker-compose.dev.yml
+
+# New layout development files
+new-layouts/

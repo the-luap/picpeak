@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
@@ -24,11 +24,12 @@ import {
   SettingsPage,
   BackupManagement,
   CMSPage,
-  UserManagementPage
+  UserManagementPage,
+  EventTypesPage
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
-import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon } from './components/common';
+import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
 import { GlobalThemeProvider } from './components/GlobalThemeProvider';
 import { getApiBaseUrl } from './utils/url';
@@ -44,6 +45,17 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Track dark mode for toast theming
+  const [toastTheme, setToastTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setToastTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   // Initialize Umami Analytics based on settings
   useEffect(() => {
     const initializeAnalytics = async () => {
@@ -102,6 +114,7 @@ function App() {
           <ThemeProvider>
             <GlobalThemeProvider>
               <DynamicFavicon />
+              <RobotsMetaTags />
               <Router>
                 <MaintenanceWrapper>
                   <SkipLink />
@@ -128,6 +141,7 @@ function App() {
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="branding" element={<BrandingPage />} />
                       <Route path="settings" element={<SettingsPage />} />
+                      <Route path="event-types" element={<EventTypesPage />} />
                       <Route path="backup" element={<BackupManagement />} />
                       <Route path="cms" element={<CMSPage />} />
                       <Route path="users" element={<UserManagementPage />} />
@@ -163,7 +177,7 @@ function App() {
               pauseOnFocusLoss
               draggable
               pauseOnHover
-              theme="light"
+              theme={toastTheme}
             />
             </GlobalThemeProvider>
           </ThemeProvider>

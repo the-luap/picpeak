@@ -1,9 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Download, Maximize2, Check, MessageSquare, Star, Heart } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import {
+  calculateJustifiedLayout,
+  createJustifiedPhotos,
+  type JustifiedLayoutItem,
+} from '../../../utils/justifiedLayoutCalculator';
+// Flickr's justified-layout library
+import justifiedLayout from 'justified-layout';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -24,6 +31,8 @@ interface MasonryPhotoProps {
     requireNameEmail?: boolean;
   };
   onQuickComment?: () => void;
+  // Column width for calculating proper aspect-ratio-based height
+  columnWidth?: number;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -38,19 +47,29 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   feedbackEnabled = false,
   slug,
   feedbackOptions,
-  onQuickComment
+  onQuickComment,
+  columnWidth = 300
 }) => {
-  const [imageHeight, setImageHeight] = useState<number>(200);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
 
-  // Generate random heights for masonry effect
-  useEffect(() => {
-    const heights = [200, 250, 300, 350, 400];
-    const randomHeight = heights[Math.floor(Math.random() * heights.length)];
-    setImageHeight(randomHeight);
-  }, [photo.id]);
+  // Calculate height based on actual photo aspect ratio
+  // This preserves the photo's natural proportions in the masonry layout
+  const imageHeight = useMemo(() => {
+    const photoWidth = photo.width || 800;
+    const photoHeight = photo.height || 600;
+    const aspectRatio = photoWidth / photoHeight;
+
+    // Calculate height based on column width and aspect ratio
+    // Use dynamic constraints based on column width to preserve aspect ratio variation
+    // This allows panoramic images to be short and tall portraits to be tall
+    const calculatedHeight = columnWidth / aspectRatio;
+    const minHeight = Math.max(80, columnWidth * 0.25); // Allow wide panoramics (4:1)
+    const maxHeight = columnWidth * 2.5; // Allow tall portraits (1:2.5)
+
+    return Math.max(minHeight, Math.min(maxHeight, calculatedHeight));
+  }, [photo.width, photo.height, columnWidth]);
 
   return (
     <div
@@ -216,14 +235,20 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
+  const [containerWidth, setContainerWidth] = useState(0);
   const gallerySettings = theme.gallerySettings || {};
   const gutter = gallerySettings.masonryGutter || 16;
+  const mode = gallerySettings.masonryMode || 'columns';
+  const targetRowHeight = gallerySettings.masonryRowHeight || 250;
+  const lastRowBehavior = gallerySettings.masonryLastRowBehavior || 'left';
 
-  // Calculate number of columns based on container width
+
+  // Calculate number of columns based on container width (for columns mode)
   useEffect(() => {
-    const updateColumns = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const width = containerRef.current.offsetWidth;
+        setContainerWidth(width);
         if (width < 640) setColumns(2);
         else if (width < 1024) setColumns(3);
         else if (width < 1280) setColumns(4);
@@ -231,17 +256,499 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       }
     };
 
-    updateColumns();
-    window.addEventListener('resize', updateColumns);
-    return () => window.removeEventListener('resize', updateColumns);
+    updateDimensions();
+
+    // Use ResizeObserver for better performance
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width);
+          const width = entry.contentRect.width;
+          if (width < 640) setColumns(2);
+          else if (width < 1024) setColumns(3);
+          else if (width < 1280) setColumns(4);
+          else setColumns(5);
+        }
+      }
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
   }, []);
 
-  // Distribute photos across columns
-  const photoColumns: Photo[][] = Array.from({ length: columns }, () => []);
-  photos.forEach((photo, index) => {
-    photoColumns[index % columns].push(photo);
-  });
+  // Calculate justified layout for rows mode
+  const rowsLayout = useMemo(() => {
+    if (mode !== 'rows' || containerWidth <= 0 || photos.length === 0) {
+      return { items: [], containerHeight: 0, rowCount: 0 };
+    }
 
+    const justifiedPhotos = createJustifiedPhotos(
+      photos.map((p) => ({
+        id: p.id,
+        width: p.width,
+        height: p.height,
+      }))
+    );
+
+    return calculateJustifiedLayout(justifiedPhotos, {
+      containerWidth,
+      targetRowHeight,
+      spacing: gutter,
+      lastRowBehavior,
+    });
+  }, [mode, photos, containerWidth, targetRowHeight, gutter, lastRowBehavior]);
+
+  // Create a map for quick lookup of layout items by photo ID (rows mode)
+  const layoutItemMap = useMemo(() => {
+    const map = new Map<number, JustifiedLayoutItem>();
+    for (const item of rowsLayout.items) {
+      map.set(item.photoId, item);
+    }
+    return map;
+  }, [rowsLayout.items]);
+
+  // Calculate Flickr justified layout
+  const flickrLayout = useMemo(() => {
+    if (mode !== 'flickr' || containerWidth <= 0 || photos.length === 0) {
+      return { containerHeight: 0, boxes: [] };
+    }
+
+    // Convert photos to aspect ratios array
+    const aspectRatios = photos.map((p) => {
+      if (p.width && p.height && p.width > 0 && p.height > 0) {
+        return p.width / p.height;
+      }
+      return 1; // Default to square if no dimensions
+    });
+
+    const result = justifiedLayout(aspectRatios, {
+      containerWidth,
+      targetRowHeight,
+      boxSpacing: gutter,
+      containerPadding: 0,
+      targetRowHeightTolerance: 0.25,
+    });
+
+    return result;
+  }, [mode, photos, containerWidth, targetRowHeight, gutter]);
+
+  // Distribute photos across columns using greedy "shortest column" algorithm
+  // This creates a more balanced masonry layout instead of round-robin
+  const photoColumns: Photo[][] = useMemo(() => {
+    if (mode !== 'columns' || photos.length === 0) {
+      return Array.from({ length: columns }, () => []);
+    }
+
+    const cols: Photo[][] = Array.from({ length: columns }, () => []);
+    const colHeights: number[] = Array(columns).fill(0);
+
+    // Calculate approximate column width for height estimation
+    const approxColWidth = containerWidth > 0 ? (containerWidth - (columns - 1) * gutter) / columns : 300;
+
+    photos.forEach((photo) => {
+      // Find the shortest column
+      let shortestCol = 0;
+      let minHeight = colHeights[0];
+      for (let i = 1; i < columns; i++) {
+        if (colHeights[i] < minHeight) {
+          minHeight = colHeights[i];
+          shortestCol = i;
+        }
+      }
+
+      // Add photo to shortest column
+      cols[shortestCol].push(photo);
+
+      // Estimate height based on aspect ratio (using same constraints as MasonryPhoto)
+      const photoWidth = photo.width || 800;
+      const photoHeight = photo.height || 600;
+      const aspectRatio = photoWidth / photoHeight;
+      const minHeightConstraint = Math.max(80, approxColWidth * 0.25);
+      const maxHeightConstraint = approxColWidth * 2.5;
+      const estimatedHeight = Math.max(minHeightConstraint, Math.min(maxHeightConstraint, approxColWidth / aspectRatio));
+      colHeights[shortestCol] += estimatedHeight + gutter;
+    });
+
+    return cols;
+  }, [mode, photos, columns, containerWidth, gutter]);
+
+  // Calculate approximate column width for aspect ratio calculations
+  const columnWidth = useMemo(() => {
+    if (containerWidth <= 0 || columns <= 0) return 300;
+    // Account for gaps between columns
+    const totalGaps = (columns - 1) * gutter;
+    return (containerWidth - totalGaps) / columns;
+  }, [containerWidth, columns, gutter]);
+
+  // ROWS MODE - Google Photos style justified layout
+  if (mode === 'rows') {
+    // Show loading state while measuring container width
+    const isCalculating = containerWidth <= 0 || rowsLayout.items.length === 0;
+
+    return (
+      <div
+        ref={containerRef}
+        className="photo-grid relative"
+        style={{
+          height: isCalculating ? 'auto' : rowsLayout.containerHeight,
+          minHeight: isCalculating ? 200 : undefined
+        }}
+      >
+        {isCalculating ? (
+          // Render a simple grid while calculating to get container width
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.slice(0, 8).map((photo) => (
+              <div key={photo.id} className="aspect-square bg-neutral-200 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : photos.map((photo, index) => {
+          const layoutItem = layoutItemMap.get(photo.id);
+          if (!layoutItem) return null;
+
+          return (
+            <div
+              key={photo.id}
+              className="photo-card absolute group cursor-pointer transition-all duration-300 hover:z-10"
+              style={{
+                left: layoutItem.x,
+                top: layoutItem.y,
+                width: layoutItem.width,
+                height: layoutItem.height,
+              }}
+              onClick={() => onPhotoClick(index)}
+            >
+              <AuthenticatedImage
+                src={photo.thumbnail_url || photo.url}
+                alt={photo.filename}
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
+                isGallery={true}
+                protectFromDownload={!allowDownloads}
+              />
+
+              {/* Feedback Indicators */}
+              {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  {(photo.comment_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                    </div>
+                  )}
+                  {(photo.average_rating ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                    </div>
+                  )}
+                  {(photo.like_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+                {!isSelectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="View full size"
+                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onPhotoClick(index); }}
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
+                    </button>
+                    {allowDownloads && (
+                      <button
+                        type="button"
+                        aria-label="Download photo"
+                        className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDownload(photo, e); }}
+                      >
+                        <Download className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                aria-label={`Select ${photo.filename}`}
+                role="checkbox"
+                aria-checked={selectedPhotos.has(photo.id)}
+                className={`absolute top-2 right-2 z-20 transition-opacity ${
+                  selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                  {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
+                </div>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // FLICKR MODE - Flickr's justified-layout algorithm
+  if (mode === 'flickr') {
+    const isCalculating = containerWidth <= 0 || flickrLayout.boxes.length === 0;
+
+    return (
+      <div
+        ref={containerRef}
+        className="photo-grid relative"
+        style={{
+          height: isCalculating ? 'auto' : flickrLayout.containerHeight,
+          minHeight: isCalculating ? 200 : undefined
+        }}
+      >
+        {isCalculating ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.slice(0, 8).map((photo) => (
+              <div key={photo.id} className="aspect-square bg-neutral-200 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : photos.map((photo, index) => {
+          const box = flickrLayout.boxes[index];
+          if (!box) return null;
+
+          return (
+            <div
+              key={photo.id}
+              className="photo-card absolute group cursor-pointer transition-all duration-300 hover:z-10"
+              style={{
+                left: box.left,
+                top: box.top,
+                width: box.width,
+                height: box.height,
+              }}
+              onClick={() => onPhotoClick(index)}
+            >
+              <AuthenticatedImage
+                src={photo.thumbnail_url || photo.url}
+                alt={photo.filename}
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
+                isGallery={true}
+                protectFromDownload={!allowDownloads}
+              />
+
+              {/* Feedback Indicators */}
+              {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  {(photo.comment_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                    </div>
+                  )}
+                  {(photo.average_rating ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                    </div>
+                  )}
+                  {(photo.like_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center gap-2">
+                {!isSelectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="View full size"
+                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onPhotoClick(index); }}
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
+                    </button>
+                    {allowDownloads && (
+                      <button
+                        type="button"
+                        aria-label="Download photo"
+                        className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDownload(photo, e); }}
+                      >
+                        <Download className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                aria-label={`Select ${photo.filename}`}
+                role="checkbox"
+                aria-checked={selectedPhotos.has(photo.id)}
+                className={`absolute top-2 right-2 z-20 transition-opacity ${
+                  selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                  {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
+                </div>
+              </button>
+
+              {photo.type === 'collage' && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">Collage</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // QUILTED MODE - Mixed sizes based on aspect ratio
+  // Landscape photos span 2 columns, portrait photos span 2 rows
+  if (mode === 'quilted') {
+    // Determine grid span based on aspect ratio
+    const getSpanClasses = (photo: Photo): string => {
+      const width = photo.width || 800;
+      const height = photo.height || 600;
+      const ratio = width / height;
+
+      // Very wide landscape (panoramic) - span 2 columns
+      if (ratio > 1.5) return 'col-span-2';
+      // Very tall portrait - span 2 rows
+      if (ratio < 0.7) return 'row-span-2';
+      // Normal aspect ratio - single cell
+      return '';
+    };
+
+    return (
+      <div
+        ref={containerRef}
+        className="photo-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gridAutoRows: '200px',
+          gap: `${gutter}px`,
+          gridAutoFlow: 'dense', // Fill gaps automatically
+        }}
+      >
+        {photos.map((photo, index) => {
+          const spanClasses = getSpanClasses(photo);
+
+          return (
+            <div
+              key={photo.id}
+              className={`photo-card group cursor-pointer relative overflow-hidden rounded-lg bg-neutral-100 ${spanClasses}`}
+              onClick={() => onPhotoClick(index)}
+            >
+              <AuthenticatedImage
+                src={photo.thumbnail_url || photo.url}
+                alt={photo.filename}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+                isGallery={true}
+                protectFromDownload={!allowDownloads}
+              />
+
+              {/* Feedback Indicators */}
+              {feedbackEnabled && ((photo.comment_count ?? 0) > 0 || (photo.average_rating ?? 0) > 0 || (photo.like_count ?? 0) > 0) && (
+                <div className="absolute top-2 left-2 flex gap-1 z-10">
+                  {(photo.comment_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
+                    </div>
+                  )}
+                  {(photo.average_rating ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{Number(photo.average_rating ?? 0).toFixed(1)}</span>
+                    </div>
+                  )}
+                  {(photo.like_count ?? 0) > 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-red-500" fill="currentColor" />
+                      <span className="text-xs font-medium text-neutral-700">{photo.like_count ?? 0}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hover overlay with actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                {!isSelectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="View full size"
+                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); onPhotoClick(index); }}
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
+                    </button>
+                    {allowDownloads && (
+                      <button
+                        type="button"
+                        aria-label="Download photo"
+                        className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors"
+                        onClick={(e) => { e.stopPropagation(); onDownload(photo, e); }}
+                      >
+                        <Download className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                aria-label={`Select ${photo.filename}`}
+                role="checkbox"
+                aria-checked={selectedPhotos.has(photo.id)}
+                className={`absolute top-2 right-2 z-20 transition-opacity ${
+                  selectedPhotos.has(photo.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                  {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
+                </div>
+              </button>
+
+              {photo.type === 'collage' && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">Collage</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // COLUMNS MODE - Pinterest style masonry (default)
   return (
     <div
       ref={containerRef}
@@ -249,8 +756,8 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
       style={{ gap: `${gutter}px` }}
     >
       {photoColumns.map((column, columnIndex) => (
-        <div 
-          key={columnIndex} 
+        <div
+          key={columnIndex}
           className="flex-1 flex flex-col"
           style={{ gap: `${gutter}px` }}
         >
@@ -270,6 +777,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 slug={slug}
                 feedbackOptions={feedbackOptions}
                 onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(originalIndex)}
+                columnWidth={columnWidth}
               />
             );
           })}

@@ -23,6 +23,8 @@ const { clearShareLinkSettingsCache } = require('../services/shareLinkService');
 const { resetSecurityConfigCache } = require('../utils/authSecurity');
 const router = express.Router();
 const { clearMaxFilesPerUploadCache, MAX_ALLOWED_FILES_PER_UPLOAD } = require('../services/uploadSettings');
+const watermarkService = require('../services/watermarkService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
@@ -100,18 +102,30 @@ router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) 
     // Convert to object format
     const settingsObject = {};
     settings.forEach(setting => {
-      if (setting.setting_value) {
-        try {
-          // Try to parse as JSON first
-          settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
-        } catch (e) {
-          // If it's not valid JSON, use the raw value
+      // Check for null/undefined explicitly to handle boolean false and 0 values
+      // PostgreSQL json column returns parsed values (false as boolean, not string)
+      if (setting.setting_value !== null && setting.setting_value !== undefined) {
+        // If the value is already parsed (from json column), use it directly
+        if (typeof setting.setting_value !== 'string') {
           settingsObject[setting.setting_key] = setting.setting_value;
+        } else {
+          try {
+            // Try to parse as JSON first
+            settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
+          } catch (e) {
+            // If it's not valid JSON, use the raw value
+            settingsObject[setting.setting_key] = setting.setting_value;
+          }
         }
       } else {
         settingsObject[setting.setting_key] = null;
       }
     });
+
+    // Mask sensitive secrets before sending to client
+    if (settingsObject.security_recaptcha_secret_key) {
+      settingsObject.security_recaptcha_secret_key = '••••••••';
+    }
 
     res.json(settingsObject);
   } catch (error) {
@@ -127,22 +141,34 @@ router.get('/:type', adminAuth, requirePermission('settings.view'), async (req, 
     const settings = await db('app_settings')
       .where('setting_type', type)
       .select('*');
-    
+
     // Convert to object format
     const settingsObject = {};
     settings.forEach(setting => {
-      if (setting.setting_value) {
-        try {
-          // Try to parse as JSON first
-          settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
-        } catch (e) {
-          // If it's not valid JSON, use the raw value
+      // Check for null/undefined explicitly to handle boolean false and 0 values
+      // PostgreSQL json column returns parsed values (false as boolean, not string)
+      if (setting.setting_value !== null && setting.setting_value !== undefined) {
+        // If the value is already parsed (from json column), use it directly
+        if (typeof setting.setting_value !== 'string') {
           settingsObject[setting.setting_key] = setting.setting_value;
+        } else {
+          try {
+            // Try to parse as JSON first
+            settingsObject[setting.setting_key] = JSON.parse(setting.setting_value);
+          } catch (e) {
+            // If it's not valid JSON, use the raw value
+            settingsObject[setting.setting_key] = setting.setting_value;
+          }
         }
       } else {
         settingsObject[setting.setting_key] = null;
       }
     });
+
+    // Mask sensitive secrets before sending to client
+    if (settingsObject.security_recaptcha_secret_key) {
+      settingsObject.security_recaptcha_secret_key = '••••••••';
+    }
 
     res.json(settingsObject);
   } catch (error) {
@@ -195,6 +221,9 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_mode,
       hide_powered_by
     } = req.body;
+
+    // Get current watermark settings hash for change detection
+    const oldSettingsHash = await watermarkService.getSettingsHash();
 
     const brandingSettings = {
       company_name,
@@ -306,7 +335,40 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
 
     clearPublicSiteCache();
 
-    res.json({ message: 'Branding settings updated successfully' });
+    // Check if watermark settings changed and trigger regeneration
+    const newSettingsHash = await watermarkService.getSettingsHash();
+    let watermarkRegenerationStarted = false;
+
+    if (oldSettingsHash !== newSettingsHash) {
+      // Clear watermark cache
+      watermarkService.clearCache();
+
+      // Check if watermarking is now enabled or settings changed
+      const currentSettings = await watermarkService.getWatermarkSettings();
+
+      if (currentSettings && currentSettings.enabled) {
+        // Start background regeneration of all watermarks
+        console.log('Watermark settings changed, starting background regeneration');
+        watermarkGeneratorService.regenerateAll()
+          .then(result => {
+            console.log(`Watermark regeneration completed: ${result.success}/${result.total} successful`);
+          })
+          .catch(err => {
+            console.error('Watermark regeneration failed:', err);
+          });
+        watermarkRegenerationStarted = true;
+      } else {
+        // Watermarking was disabled, clear all pre-generated watermarks
+        console.log('Watermarking disabled, clearing pre-generated watermarks');
+        watermarkGeneratorService.clearAllWatermarks()
+          .catch(err => console.error('Failed to clear watermarks:', err));
+      }
+    }
+
+    res.json({
+      message: 'Branding settings updated successfully',
+      watermarkRegenerationStarted
+    });
   } catch (error) {
     console.error('Branding update error:', error);
     res.status(500).json({ error: 'Failed to update branding settings' });
@@ -441,9 +503,27 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
         updated_at: new Date()
       });
 
-    res.json({ 
+    // Trigger watermark regeneration since the logo changed
+    watermarkService.clearCache();
+    const currentSettings = await watermarkService.getWatermarkSettings();
+    let watermarkRegenerationStarted = false;
+
+    if (currentSettings && currentSettings.enabled) {
+      console.log('Watermark logo changed, starting background regeneration');
+      watermarkGeneratorService.regenerateAll()
+        .then(result => {
+          console.log(`Watermark regeneration completed: ${result.success}/${result.total} successful`);
+        })
+        .catch(err => {
+          console.error('Watermark regeneration failed:', err);
+        });
+      watermarkRegenerationStarted = true;
+    }
+
+    res.json({
       message: 'Watermark logo uploaded successfully',
-      watermarkLogoUrl: publicPath
+      watermarkLogoUrl: publicPath,
+      watermarkRegenerationStarted
     });
   } catch (error) {
     console.error('Watermark logo upload error:', error);
@@ -660,6 +740,70 @@ router.put('/analytics', adminAuth, requirePermission('settings.edit'), async (r
   } catch (error) {
     console.error('Analytics settings update error:', error);
     res.status(500).json({ error: 'Failed to update analytics settings' });
+  }
+});
+
+// Update SEO settings
+router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, res) => {
+  try {
+    const settings = req.body;
+
+    // Validate seo_blocked_ai_agents is an array of strings
+    if (settings.seo_blocked_ai_agents !== undefined) {
+      if (!Array.isArray(settings.seo_blocked_ai_agents) ||
+          !settings.seo_blocked_ai_agents.every(a => typeof a === 'string')) {
+        return res.status(400).json({ error: 'seo_blocked_ai_agents must be an array of strings' });
+      }
+    }
+
+    // Validate seo_custom_rules structure
+    if (settings.seo_custom_rules !== undefined) {
+      if (!Array.isArray(settings.seo_custom_rules)) {
+        return res.status(400).json({ error: 'seo_custom_rules must be an array' });
+      }
+      for (const rule of settings.seo_custom_rules) {
+        if (!rule.userAgent || typeof rule.userAgent !== 'string') {
+          return res.status(400).json({ error: 'Each custom rule must have a userAgent string' });
+        }
+        if (!Array.isArray(rule.disallow) || !rule.disallow.every(d => typeof d === 'string')) {
+          return res.status(400).json({ error: 'Each custom rule must have a disallow array of strings' });
+        }
+      }
+    }
+
+    // Update or insert each setting
+    for (const [key, value] of Object.entries(settings)) {
+      await db('app_settings')
+        .insert({
+          setting_key: key,
+          setting_value: JSON.stringify(value),
+          setting_type: 'seo',
+          updated_at: new Date()
+        })
+        .onConflict('setting_key')
+        .merge({
+          setting_value: JSON.stringify(value),
+          updated_at: new Date()
+        });
+    }
+
+    // Clear robots.txt cache
+    const { clearRobotsTxtCache } = require('../services/robotsTxtService');
+    clearRobotsTxtCache();
+
+    // Log activity
+    await db('activity_logs').insert({
+      activity_type: 'seo_settings_updated',
+      actor_type: 'admin',
+      actor_id: req.admin.id,
+      actor_name: req.admin.username,
+      metadata: JSON.stringify({ settings_count: Object.keys(settings).length })
+    });
+
+    res.json({ message: 'SEO settings updated successfully' });
+  } catch (error) {
+    console.error('SEO settings update error:', error);
+    res.status(500).json({ error: 'Failed to update SEO settings' });
   }
 });
 

@@ -2,9 +2,18 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { ReactNode } from 'react';
 import { ThemeConfig, EventTheme, GALLERY_THEME_PRESETS } from '../types/theme.types';
 
+function resolveColorMode(mode: 'light' | 'dark' | 'auto' | undefined): 'light' | 'dark' {
+  if (mode === 'dark') return 'dark';
+  if (mode === 'auto') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
 interface ThemeContextType {
   theme: ThemeConfig;
   themeName: string;
+  resolvedColorMode: 'light' | 'dark';
   setTheme: (theme: ThemeConfig) => void;
   setThemeByName: (themeName: string) => void;
   applyTheme: (theme: ThemeConfig) => void;
@@ -34,6 +43,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 }) => {
   const [theme, setTheme] = useState<ThemeConfig>(initialTheme);
   const [themeName, setThemeName] = useState(initialThemeName);
+  const [resolvedColorMode, setResolvedColorMode] = useState<'light' | 'dark'>(() => resolveColorMode(initialTheme.colorMode));
 
   const applyTheme = useCallback((themeConfig: ThemeConfig) => {
     const root = document.documentElement;
@@ -97,6 +107,53 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       root.style.setProperty('--shadow-default', shadowMap[themeConfig.shadowStyle]);
     }
     
+    // Apply surface colors
+    const effectiveMode = resolveColorMode(themeConfig.colorMode);
+    setResolvedColorMode(effectiveMode);
+
+    if (themeConfig.surfaceColor) {
+      root.style.setProperty('--color-surface', themeConfig.surfaceColor);
+    } else if (effectiveMode === 'dark') {
+      // Auto-derive dark surface if not explicitly set
+      root.style.setProperty('--color-surface', '#1a1a1a');
+    } else {
+      root.style.setProperty('--color-surface', '#ffffff');
+    }
+
+    if (themeConfig.surfaceBorderColor) {
+      root.style.setProperty('--color-surface-border', themeConfig.surfaceBorderColor);
+    } else if (effectiveMode === 'dark') {
+      root.style.setProperty('--color-surface-border', '#2e2e2e');
+    } else {
+      root.style.setProperty('--color-surface-border', '#e5e5e5');
+    }
+
+    if (themeConfig.mutedTextColor) {
+      root.style.setProperty('--color-muted-text', themeConfig.mutedTextColor);
+    } else if (effectiveMode === 'dark') {
+      root.style.setProperty('--color-muted-text', '#a3a3a3');
+    } else {
+      root.style.setProperty('--color-muted-text', '#737373');
+    }
+
+    // Adjust shadow intensity for dark mode
+    if (themeConfig.shadowStyle) {
+      const lightShadowMap = {
+        none: 'none',
+        subtle: '0 1px 3px rgba(0,0,0,0.12)',
+        normal: '0 4px 6px rgba(0,0,0,0.1)',
+        dramatic: '0 10px 25px rgba(0,0,0,0.15)',
+      };
+      const darkShadowMap = {
+        none: 'none',
+        subtle: '0 1px 3px rgba(0,0,0,0.4)',
+        normal: '0 4px 6px rgba(0,0,0,0.35)',
+        dramatic: '0 10px 25px rgba(0,0,0,0.5)',
+      };
+      const map = effectiveMode === 'dark' ? darkShadowMap : lightShadowMap;
+      root.style.setProperty('--shadow-default', map[themeConfig.shadowStyle]);
+    }
+
     // Apply background pattern
     if (themeConfig.backgroundPattern && themeConfig.backgroundPattern !== 'none') {
       const patternMap = {
@@ -184,14 +241,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }
   }, [theme, themeName]);
 
+  // Listen for system color scheme changes when colorMode is 'auto'
+  useEffect(() => {
+    if (theme.colorMode !== 'auto') return;
+
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => applyTheme(theme);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [theme, applyTheme]);
+
   const contextValue = useMemo(() => ({
     theme,
     themeName,
+    resolvedColorMode,
     setTheme: setThemeConfig,
     setThemeByName,
     applyTheme,
     resetTheme
-  }), [theme, themeName, setThemeConfig, setThemeByName, applyTheme, resetTheme]);
+  }), [theme, themeName, resolvedColorMode, setThemeConfig, setThemeByName, applyTheme, resetTheme]);
 
   return (
     <ThemeContext.Provider value={contextValue}>

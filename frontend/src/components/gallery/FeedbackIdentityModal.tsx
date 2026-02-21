@@ -47,18 +47,18 @@ export const FeedbackIdentityModal: React.FC<FeedbackIdentityModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <div className="relative bg-surface rounded-lg shadow-xl max-w-md w-full p-6">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 hover:bg-neutral-100 rounded-lg transition-colors"
+          className="absolute top-4 right-4 p-1 hover:bg-black/10 rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-neutral-600" />
+          <X className="w-5 h-5 text-muted-theme" />
         </button>
 
-        <h2 className="text-lg font-semibold text-neutral-900 mb-2">
+        <h2 className="text-lg font-semibold text-theme mb-2">
           {t('feedback.identityRequired', 'Your Information Required')}
         </h2>
-        <p className="text-sm text-neutral-600 mb-4">
+        <p className="text-sm text-muted-theme mb-4">
           {t('feedback.identityReason', 'Please provide your name and email to submit {{type}}.', { type: feedbackType })}
         </p>
 

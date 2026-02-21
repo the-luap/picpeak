@@ -25,14 +25,16 @@ import {
   Shield,
   Monitor,
   Droplets,
-  MousePointer
+  MousePointer,
+  Layout,
+  Trash2
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
 // Helper to safely parse dates that might be strings, Date objects, or timestamps
-const safeParseDate = (dateValue: unknown): Date => {
+const safeParseDate = (dateValue: unknown): Date | null => {
   if (!dateValue) {
-    return new Date();
+    return null;
   }
   if (dateValue instanceof Date) {
     return dateValue;
@@ -44,19 +46,22 @@ const safeParseDate = (dateValue: unknown): Date => {
     const parsed = parseISO(dateValue);
     return isValid(parsed) ? parsed : new Date(dateValue);
   }
-  return new Date();
+  return null;
 };
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { publicSettingsService } from '../../services/publicSettings.service';
+import { api } from '../../config/api';
+import { buildResourceUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
-import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters, type FilterSummary } from '../../services/photos.service';
+import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
@@ -85,6 +90,7 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(currentPath || ''); }, []);
 
   const navigateUp = () => {
@@ -95,23 +101,23 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
   };
 
   return (
-    <div className="mt-2 border rounded-lg p-3">
+    <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-neutral-600">/external-media/{entries?.path || ''}</div>
+        <div className="text-sm text-neutral-600 dark:text-neutral-400">/external-media/{entries?.path || ''}</div>
         <div className="flex gap-2">
-          <button className="text-sm underline" onClick={navigateUp} disabled={!entries?.canNavigateUp}>{t('common.up', 'Up')}</button>
-          <button className="text-sm underline" onClick={() => onChange(entries?.path || '')}>{t('common.select', 'Select')}</button>
+          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={navigateUp} disabled={!entries?.canNavigateUp}>{t('common.up', 'Up')}</button>
+          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={() => onChange(entries?.path || '')}>{t('common.select', 'Select')}</button>
         </div>
       </div>
       {loading ? (
-        <div className="text-sm text-neutral-500">{t('common.loading', 'Loading...')}</div>
+        <div className="text-sm text-neutral-500 dark:text-neutral-400">{t('common.loading', 'Loading...')}</div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {entries?.entries?.filter((e: any) => e.type === 'dir').map((e: any) => (
             <button
               key={e.name}
               onClick={() => load([entries?.path, e.name].filter(Boolean).join('/'))}
-              className="px-3 py-2 border rounded text-left hover:bg-neutral-50"
+              className="px-3 py-2 border border-neutral-200 dark:border-neutral-600 rounded text-left text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700"
             >
               📁 {e.name}
             </button>
@@ -119,7 +125,7 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
         </div>
       )}
       {value && (
-        <div className="mt-2 text-xs text-neutral-600">{t('common.selected', 'Selected')}: /external-media/{value}</div>
+        <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{t('common.selected', 'Selected')}: /external-media/{value}</div>
       )}
     </div>
   );
@@ -160,6 +166,12 @@ export const EventDetailsPage: React.FC = () => {
     watermark_downloads: boolean;
     enable_devtools_protection: boolean;
     use_canvas_rendering: boolean;
+    // Hero logo settings
+    hero_logo_visible: boolean;
+    hero_logo_size: 'small' | 'medium' | 'large' | 'xlarge';
+    hero_logo_position: 'top' | 'center' | 'bottom';
+    // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+    hero_image_anchor: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +196,12 @@ export const EventDetailsPage: React.FC = () => {
     watermark_downloads: false,
     enable_devtools_protection: true,
     use_canvas_rendering: false,
+    // Hero logo settings
+    hero_logo_visible: true,
+    hero_logo_size: 'medium',
+    hero_logo_position: 'top',
+    // Hero image anchor position (#162)
+    hero_image_anchor: 'center',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -208,6 +226,7 @@ export const EventDetailsPage: React.FC = () => {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig | null>(null);
   const [currentPresetName, setCurrentPresetName] = useState<string>('default');
   const [cssTemplates, setCssTemplates] = useState<EnabledTemplate[]>([]);
@@ -278,7 +297,7 @@ export const EventDetailsPage: React.FC = () => {
 
   const mediaTypes = useMemo(() => {
     const types = new Set<'photo' | 'video'>();
-    photos.forEach((p: any) => {
+    photos.forEach((p) => {
       const mediaType = (p.media_type as 'photo' | 'video' | undefined)
         || ((p.mime_type && String(p.mime_type).startsWith('video/')) || p.type === 'video' ? 'video' : 'photo');
       if (mediaType === 'video' || mediaType === 'photo') {
@@ -295,6 +314,13 @@ export const EventDetailsPage: React.FC = () => {
       setPhotoFilters(prev => ({ ...prev, media_type: undefined }));
     }
   }, [showMediaFilter, photoFilters.media_type]);
+
+  // Fetch public settings (for field requirement checks like expiration)
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => publicSettingsService.getPublicSettings(),
+  });
+  const requireExpiration = publicSettings?.event_require_expiration !== false;
 
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
@@ -322,28 +348,6 @@ export const EventDetailsPage: React.FC = () => {
         toast.error(error.response?.data?.error || t('toast.saveError'));
       }
     },
-  });
-
-  const applyThemeMutation = useMutation({
-    mutationFn: async ({ theme, presetName }: { theme: ThemeConfig; presetName: string }) => {
-      if (!id) {
-        throw new Error('Missing event identifier');
-      }
-
-      const colorThemeValue = presetName && presetName !== 'custom'
-        ? presetName
-        : JSON.stringify(theme);
-
-      return eventsService.updateEvent(parseInt(id), { color_theme: colorThemeValue });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
-      toast.success(t('branding.themeApplied', 'Theme updated'));
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error || t('branding.themeApplyError', 'Failed to apply theme');
-      toast.error(message);
-    }
   });
 
   // Archive mutation
@@ -380,16 +384,17 @@ export const EventDetailsPage: React.FC = () => {
     );
   }
 
-  const daysUntilExpiration = differenceInDays(safeParseDate(event.expires_at), new Date());
-  const isExpired = daysUntilExpiration <= 0;
-  const isExpiring = daysUntilExpiration > 0 && daysUntilExpiration <= 7;
+  const expiresAtDate = safeParseDate(event.expires_at);
+  const daysUntilExpiration = expiresAtDate ? differenceInDays(expiresAtDate, new Date()) : null;
+  const isExpired = daysUntilExpiration !== null && daysUntilExpiration <= 0;
+  const isExpiring = daysUntilExpiration !== null && daysUntilExpiration > 0 && daysUntilExpiration <= 7;
 
   const handleStartEdit = () => {
     setEditForm({
       welcome_message: event.welcome_message || '',
       color_theme: event.color_theme || '',
       css_template_id: event.css_template_id || null,
-      expires_at: format(safeParseDate(event.expires_at), 'yyyy-MM-dd'),
+      expires_at: expiresAtDate ? format(expiresAtDate, 'yyyy-MM-dd') : '',
       allow_user_uploads: event.allow_user_uploads || false,
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
@@ -406,6 +411,12 @@ export const EventDetailsPage: React.FC = () => {
       watermark_downloads: event.watermark_downloads ?? false,
       enable_devtools_protection: event.enable_devtools_protection ?? true,
       use_canvas_rendering: event.use_canvas_rendering ?? false,
+      // Load hero logo settings from event
+      hero_logo_visible: event.hero_logo_visible ?? true,
+      hero_logo_size: event.hero_logo_size || 'medium',
+      hero_logo_position: event.hero_logo_position || 'top',
+      // Hero image anchor position (#162)
+      hero_image_anchor: event.hero_image_anchor || 'center',
     });
 
     setShowNewPassword(false);
@@ -434,7 +445,7 @@ export const EventDetailsPage: React.FC = () => {
             setCurrentPresetName(event.color_theme);
           }
         }
-      } catch (e) {
+      } catch {
         setCurrentTheme(GALLERY_THEME_PRESETS.default.config);
         setCurrentPresetName('default');
       }
@@ -444,6 +455,38 @@ export const EventDetailsPage: React.FC = () => {
     }
     
     setIsEditing(true);
+  };
+
+  const handleEventLogoUpload = async (file: File) => {
+    if (!id) return;
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+      await api.post(`/admin/events/${id}/logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(t('events.eventLogoUploaded', 'Event logo uploaded successfully'));
+      queryClient.invalidateQueries({ queryKey: ['event', id] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || t('events.eventLogoUploadFailed', 'Failed to upload event logo'));
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleEventLogoRemove = async () => {
+    if (!id) return;
+    setLogoUploading(true);
+    try {
+      await api.delete(`/admin/events/${id}/logo`);
+      toast.success(t('events.eventLogoRemoved', 'Event logo removed successfully'));
+      queryClient.invalidateQueries({ queryKey: ['event', id] });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || t('events.eventLogoRemoveFailed', 'Failed to remove event logo'));
+    } finally {
+      setLogoUploading(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -482,10 +525,15 @@ export const EventDetailsPage: React.FC = () => {
       toast.error(t('events.externalFolderRequired', 'Please select an external folder before saving.'));
       return;
     }
-    
+
+    if (requireExpiration && !editForm.expires_at) {
+      toast.error(t('validation.expirationRequired', 'Expiration date is required.'));
+      return;
+    }
+
     // Clean up the data - remove undefined values
     const updateData: any = {
-      expires_at: editForm.expires_at,
+      expires_at: editForm.expires_at || null,
       allow_user_uploads: editForm.allow_user_uploads,
       require_password: editForm.require_password,
       css_template_id: editForm.css_template_id,
@@ -496,6 +544,15 @@ export const EventDetailsPage: React.FC = () => {
       watermark_downloads: editForm.watermark_downloads,
       enable_devtools_protection: editForm.enable_devtools_protection,
       use_canvas_rendering: editForm.use_canvas_rendering,
+      // Hero logo settings
+      hero_logo_visible: editForm.hero_logo_visible,
+      hero_logo_size: editForm.hero_logo_size,
+      hero_logo_position: editForm.hero_logo_position,
+      // Hero image anchor position (#162)
+      hero_image_anchor: editForm.hero_image_anchor,
+      // Header style settings (decoupled from layout, #158)
+      header_style: currentTheme?.headerStyle || 'standard',
+      hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
     };
     
     // Only include fields that have defined values
@@ -538,7 +595,7 @@ export const EventDetailsPage: React.FC = () => {
     // Update feedback settings separately
     try {
       await feedbackService.updateEventFeedbackSettings(id!, feedbackSettings);
-    } catch (error) {
+    } catch {
       // Error already handled by mutation
     }
   };
@@ -597,24 +654,26 @@ export const EventDetailsPage: React.FC = () => {
         
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">{event.event_name}</h1>
-            <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600">
-              <span className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1" />
-                {format(safeParseDate(event.event_date), 'PPP')}
-              </span>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{event.event_name}</h1>
+            <div className="flex items-center gap-4 mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+              {event.event_date && (
+                <span className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-1" />
+                  {format(safeParseDate(event.event_date)!, 'PPP')}
+                </span>
+              )}
               <span className="capitalize">{event.event_type}</span>
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                   isGalleryPublic(event.require_password)
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-neutral-100 text-neutral-700'
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
                 }`}
               >
                 {isGalleryPublic(event.require_password) ? t('events.publicAccess', 'Public access') : t('events.passwordProtected', 'Password protected')}
               </span>
               {event.is_archived ? (
-                <span className="text-neutral-500 flex items-center">
+                <span className="text-neutral-500 dark:text-neutral-400 flex items-center">
                   <Archive className="w-4 h-4 mr-1" />
                   {t('events.archived')}
                 </span>
@@ -728,14 +787,14 @@ export const EventDetailsPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className="mb-6 border-b border-neutral-200">
+      <div className="mb-6 border-b border-neutral-200 dark:border-neutral-700">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'overview'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
             {t('events.overview')}
@@ -744,14 +803,14 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('photos')}
             className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
               activeTab === 'photos'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
             <Image className="w-4 h-4" />
             <span>{t('events.photos')}</span>
             {event.photo_count !== undefined && event.photo_count > 0 && (
-              <span className="ml-1 px-2 py-0.5 text-xs font-medium bg-neutral-100 text-neutral-700 rounded-full">
+              <span className="ml-1 px-2 py-0.5 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-full">
                 {event.photo_count}
               </span>
             )}
@@ -760,8 +819,8 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('categories')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'categories'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
             {t('events.categories')}
@@ -776,25 +835,25 @@ export const EventDetailsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Event Information */}
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.eventInformation')}</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.eventInformation')}</h2>
             
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.welcomeMessageLabel')}
                   </label>
                   <textarea
                     value={editForm.welcome_message}
                     onChange={(e) => setEditForm(prev => ({ ...prev, welcome_message: e.target.value }))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     rows={3}
                     placeholder={t('events.welcomeMessage')}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.hostName')}
                   </label>
                   <Input
@@ -806,7 +865,7 @@ export const EventDetailsPage: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.expirationDate')}
                   </label>
                   <Input
@@ -825,11 +884,34 @@ export const EventDetailsPage: React.FC = () => {
                   isEditing={isEditing}
                 />
 
+                {/* Hero Image Focal Point Picker (#162) */}
+                {editForm.hero_photo_id && (() => {
+                  const heroPhoto = (photos || []).find((p) => p.id === editForm.hero_photo_id);
+                  const heroImageUrl = heroPhoto?.thumbnail_url || heroPhoto?.url;
+                  if (!heroImageUrl) return null;
+                  return (
+                    <div className="ml-6 mt-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        {t('events.heroImageAnchor', 'Hero Image Crop Position')}
+                      </label>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+                        {t('events.heroImageAnchorDescription', 'Click on the image to set the focal point for cropping.')}
+                      </p>
+                      <FocalPointPicker
+                        imageUrl={heroImageUrl}
+                        currentValue={editForm.hero_image_anchor}
+                        onChange={(value) => setEditForm(prev => ({ ...prev, hero_image_anchor: value }))}
+                        slug={event.slug}
+                      />
+                    </div>
+                  );
+                })()}
+
                 <div>
                   <label className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       checked={editForm.require_password}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -845,15 +927,15 @@ export const EventDetailsPage: React.FC = () => {
                       }}
                     />
                     <div>
-                      <span className="text-sm font-medium text-neutral-700">{t('events.requirePasswordToggle')}</span>
-                      <p className="text-xs text-neutral-500 mt-1">
+                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('events.requirePasswordToggle')}</span>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                         {t('events.requirePasswordToggleHelp', 'Disable this if you want to share the gallery without a password. Anyone with the link will be able to view the photos.')}
                       </p>
                     </div>
                   </label>
 
                   {!editForm.require_password && (
-                    <div className="mt-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+                    <div className="mt-2 rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 p-3 text-xs text-orange-800 dark:text-orange-300">
                       {t('events.publicGalleryWarning', 'Public galleries are accessible to anyone with the link. Consider enabling download watermarks and monitoring activity.')} 
                     </div>
                   )}
@@ -862,7 +944,7 @@ export const EventDetailsPage: React.FC = () => {
                 {editForm.require_password && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                         {t('events.newPasswordLabel', 'New gallery password')}
                       </label>
                       <div className="relative">
@@ -880,16 +962,16 @@ export const EventDetailsPage: React.FC = () => {
                           className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         >
                           {showNewPassword ? (
-                            <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                            <EyeOff className="w-5 h-5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300" />
                           ) : (
-                            <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600" />
+                            <Eye className="w-5 h-5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300" />
                           )}
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                         {t('events.confirmPassword')}
                       </label>
                       <Input
@@ -904,7 +986,7 @@ export const EventDetailsPage: React.FC = () => {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.sourceMode', 'Source Mode')}
                   </label>
                   <select
@@ -919,26 +1001,26 @@ export const EventDetailsPage: React.FC = () => {
                           : ''
                       }));
                     }}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="managed">{t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}</option>
                     <option value="reference">{t('events.sourceModeReference', 'Reference external folder')}</option>
                   </select>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     {t('events.sourceModeHelp', 'Use managed mode for direct uploads or reference an external folder that is mounted at /external-media in Docker.')}
                   </p>
                 </div>
 
                 {editForm.source_mode === 'reference' && (
                   <div className="mt-3">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                       {t('events.externalFolder', 'External Folder')}
                     </label>
                     <ExternalFolderPicker
                       value={editForm.external_path || ''}
                       onChange={(folder) => setEditForm(prev => ({ ...prev, external_path: folder }))}
                     />
-                    <p className="text-xs text-neutral-500 mt-1">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                       {t('events.externalFolderHint', 'These folders come from the /external-media mount inside the container. Ensure it is accessible to the backend process.')}
                     </p>
                   </div>
@@ -950,27 +1032,27 @@ export const EventDetailsPage: React.FC = () => {
                       type="checkbox"
                       checked={editForm.allow_user_uploads}
                       onChange={(e) => setEditForm(prev => ({ ...prev, allow_user_uploads: e.target.checked }))}
-                      className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                      className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                     />
-                    <span className="ml-2 text-sm text-neutral-700">{t('events.allowUserUploads')}</span>
+                    <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowUserUploads')}</span>
                   </label>
-                  <p className="text-xs text-neutral-500 mt-1 ml-6">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 ml-6">
                     {t('events.allowUserUploadsHelp')}
                   </p>
                 </div>
                 
                 {editForm.allow_user_uploads && (
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                       {t('events.uploadCategory')}
                     </label>
                     <select
                       value={editForm.upload_category_id || ''}
-                      onChange={(e) => setEditForm(prev => ({ 
-                        ...prev, 
-                        upload_category_id: e.target.value ? parseInt(e.target.value) : null 
+                      onChange={(e) => setEditForm(prev => ({
+                        ...prev,
+                        upload_category_id: e.target.value ? parseInt(e.target.value) : null
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="">{t('events.selectCategory')}</option>
                       {categories?.map(category => (
@@ -979,15 +1061,15 @@ export const EventDetailsPage: React.FC = () => {
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-neutral-500 mt-1">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                       {t('events.uploadCategoryHelp')}
                     </p>
                   </div>
                 )}
                 
                 {/* Feedback Settings */}
-                <div className="mt-4 pt-4 border-t border-neutral-200">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-3">{t('feedback.settings.title', 'Guest Feedback Settings')}</h3>
+                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">{t('feedback.settings.title', 'Guest Feedback Settings')}</h3>
                   <FeedbackSettings
                     settings={feedbackSettings}
                     onChange={setFeedbackSettings}
@@ -995,8 +1077,8 @@ export const EventDetailsPage: React.FC = () => {
                 </div>
 
                 {/* Download Protection Settings */}
-                <div className="mt-4 pt-4 border-t border-neutral-200">
-                  <h3 className="text-sm font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-primary-600" />
                     {t('events.downloadProtection', 'Download Protection')}
                   </h3>
@@ -1007,10 +1089,10 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.allow_downloads}
                         onChange={(e) => setEditForm(prev => ({ ...prev, allow_downloads: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
-                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
-                      <span className="text-sm text-neutral-700">{t('events.allowDownloads', 'Allow photo downloads')}</span>
+                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowDownloads', 'Allow photo downloads')}</span>
                     </label>
 
                     <label className="flex items-center">
@@ -1018,10 +1100,10 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.disable_right_click}
                         onChange={(e) => setEditForm(prev => ({ ...prev, disable_right_click: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
-                      <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
-                      <span className="text-sm text-neutral-700">{t('events.disableRightClick', 'Block right-click menu')}</span>
+                      <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.disableRightClick', 'Block right-click menu')}</span>
                     </label>
 
                     <label className="flex items-center">
@@ -1029,10 +1111,10 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.watermark_downloads}
                         onChange={(e) => setEditForm(prev => ({ ...prev, watermark_downloads: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
-                      <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
-                      <span className="text-sm text-neutral-700">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
+                      <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
                     </label>
 
                     <label className="flex items-center">
@@ -1040,10 +1122,10 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.enable_devtools_protection}
                         onChange={(e) => setEditForm(prev => ({ ...prev, enable_devtools_protection: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
-                      <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
-                      <span className="text-sm text-neutral-700">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
+                      <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
                     </label>
 
                     <label className="flex items-center">
@@ -1051,14 +1133,142 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.use_canvas_rendering}
                         onChange={(e) => setEditForm(prev => ({ ...prev, use_canvas_rendering: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
-                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500" />
-                      <span className="text-sm text-neutral-700">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
+                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
                     </label>
 
-                    <p className="text-xs text-neutral-500 mt-2">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
                       {t('events.protectionInfo', 'Protection features help prevent unauthorized downloads but cannot block all methods.')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Hero Logo Settings */}
+                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-primary-600" />
+                    {t('events.heroLogoSettings', 'Hero Logo Settings')}
+                  </h3>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={editForm.hero_logo_visible}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_visible: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      />
+                      <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.heroLogoVisible', 'Display logo in hero section')}</span>
+                    </label>
+
+                    {editForm.hero_logo_visible && (
+                      <>
+                        <div className="ml-6">
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                            {t('events.heroLogoSize', 'Logo Size')}
+                          </label>
+                          <select
+                            value={editForm.hero_logo_size}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_size: e.target.value as 'small' | 'medium' | 'large' | 'xlarge' }))}
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                          >
+                            <option value="small">{t('events.heroLogoSizeSmall', 'Small')}</option>
+                            <option value="medium">{t('events.heroLogoSizeMedium', 'Medium')}</option>
+                            <option value="large">{t('events.heroLogoSizeLarge', 'Large')}</option>
+                            <option value="xlarge">{t('events.heroLogoSizeXLarge', 'Extra Large')}</option>
+                          </select>
+                        </div>
+
+                        <div className="ml-6">
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                            {t('events.heroLogoPosition', 'Logo Position')}
+                          </label>
+                          <select
+                            value={editForm.hero_logo_position}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_position: e.target.value as 'top' | 'center' | 'bottom' }))}
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                          >
+                            <option value="top">{t('events.heroLogoPositionTop', 'Top (above title)')}</option>
+                            <option value="center">{t('events.heroLogoPositionCenter', 'Center (between title and dates)')}</option>
+                            <option value="bottom">{t('events.heroLogoPositionBottom', 'Bottom (below dates)')}</option>
+                          </select>
+                        </div>
+
+                        {/* Custom Event Logo Upload */}
+                        <div className="ml-6 mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-700">
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                            {t('events.eventCustomLogo', 'Custom Event Logo')}
+                          </label>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+                            {t('events.eventCustomLogoDescription', 'Upload a custom logo for this event. This overrides the global branding logo for this gallery only.')}
+                          </p>
+
+                          {event.hero_logo_url ? (
+                            <div className="flex items-center gap-3">
+                              <div className="w-16 h-16 border border-neutral-200 dark:border-neutral-600 rounded-md flex items-center justify-center bg-neutral-50 dark:bg-neutral-700 overflow-hidden">
+                                <img
+                                  src={buildResourceUrl(event.hero_logo_url)}
+                                  alt={t('events.eventCustomLogo', 'Custom Event Logo')}
+                                  className="max-w-full max-h-full object-contain"
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                                  <Upload className="w-3 h-3" />
+                                  {t('events.replaceLogo', 'Replace')}
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                                    disabled={logoUploading}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleEventLogoUpload(file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleEventLogoRemove}
+                                  disabled={logoUploading}
+                                  className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  {t('events.removeLogo', 'Remove')}
+                                </button>
+                              </div>
+                              {logoUploading && <Loading size="sm" />}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <label className={`cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium border border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700 ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <Upload className="w-3.5 h-3.5" />
+                                {t('events.uploadEventLogo', 'Upload Logo')}
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                                  disabled={logoUploading}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleEventLogoUpload(file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                              {logoUploading && <Loading size="sm" />}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                      {t('events.heroLogoInfo', 'These settings apply when the gallery uses the Hero layout. You can hide the logo or customize its size and position.')}
                     </p>
                   </div>
                 </div>
@@ -1066,88 +1276,94 @@ export const EventDetailsPage: React.FC = () => {
             ) : (
               <dl className="space-y-4">
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">{t('events.sourceMode', 'Source Mode')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.sourceMode', 'Source Mode')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.source_mode === 'reference' ? t('events.sourceModeReference', 'Reference external folder') : t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}
                     {event.source_mode === 'reference' && event.external_path ? (
-                      <span className="text-neutral-500 ml-2">/external-media/{event.external_path}</span>
+                      <span className="text-neutral-500 dark:text-neutral-400 ml-2">/external-media/{event.external_path}</span>
                     ) : null}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">{t('events.welcomeMessage')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.welcomeMessage')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.welcome_message || <span className="text-neutral-400">{t('events.noWelcomeMessageSet')}</span>}
                   </dd>
                 </div>
-                
+
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">{t('events.hostName')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.hostName')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.customer_name || <span className="text-neutral-400">{t('common.notSet')}</span>}
                   </dd>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <dt className="text-sm font-medium text-neutral-500">{t('events.hostEmail')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">{event.customer_email}</dd>
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.hostEmail')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{event.customer_email}</dd>
                   </div>
-                  
+
                   <div>
-                    <dt className="text-sm font-medium text-neutral-500">{t('events.adminEmail')}</dt>
-                    <dd className="mt-1 text-sm text-neutral-900">{event.admin_email}</dd>
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.adminEmail')}</dt>
+                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{event.admin_email}</dd>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <dt className="text-sm font-medium text-neutral-500">{t('events.created')}</dt>
-                    <dd className="mt-1 text-sm text-neutral-900">
-                      {format(safeParseDate(event.created_at), 'PP')}
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.created')}</dt>
+                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+                      {event.created_at && format(safeParseDate(event.created_at)!, 'PP')}
                     </dd>
                   </div>
-                  
+
                   <div>
-                    <dt className="text-sm font-medium text-neutral-500">{t('events.expires')}</dt>
-                    <dd className="mt-1 text-sm text-neutral-900">
-                      {format(safeParseDate(event.expires_at), 'PP')}
-                      {!event.is_archived && daysUntilExpiration > 0 && (
-                        <span className="text-neutral-500 ml-1">
-                          {t('events.daysLeft', { count: daysUntilExpiration })}
-                        </span>
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.expires')}</dt>
+                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+                      {event.expires_at ? (
+                        <>
+                          {format(safeParseDate(event.expires_at)!, 'PP')}
+                          {!event.is_archived && daysUntilExpiration !== null && daysUntilExpiration > 0 && (
+                            <span className="text-neutral-500 dark:text-neutral-400 ml-1">
+                              {t('events.daysLeft', { count: daysUntilExpiration })}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-neutral-500 dark:text-neutral-400">{t('events.neverExpires', 'Never')}</span>
                       )}
                     </dd>
                   </div>
                 </div>
-                
+
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">{t('events.heroPhoto')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.heroPhoto')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.hero_photo_id ? (
-                      <span className="text-primary-600">{t('events.heroPhotoSelected')}</span>
+                      <span className="text-primary-600 dark:text-primary-400">{t('events.heroPhotoSelected')}</span>
                     ) : (
                       <span className="text-neutral-400">{t('events.noHeroPhotoSelected')}</span>
                     )}
                   </dd>
                 </div>
-                
+
                 <div>
-                  <dt className="text-sm font-medium text-neutral-500">{t('events.userUploads')}</dt>
-                  <dd className="mt-1 text-sm text-neutral-900">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.userUploads')}</dt>
+                  <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.allow_user_uploads ? (
                       <div className="space-y-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40 rounded">
                           {t('common.yes')}
                         </span>
                         {event.upload_category_id && (
-                          <p className="text-xs text-neutral-600">
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">
                             {t('events.uploadCategory')}: {categories.find(c => c.id === event.upload_category_id)?.name || 'N/A'}
                           </p>
                         )}
                       </div>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-100 rounded">
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-700 rounded">
                         {t('common.no')}
                       </span>
                     )}
@@ -1155,43 +1371,74 @@ export const EventDetailsPage: React.FC = () => {
                 </div>
 
                 {/* Download Protection Display */}
-                <div className="pt-3 mt-3 border-t border-neutral-200">
-                  <dt className="text-sm font-medium text-neutral-500 flex items-center gap-2">
+                <div className="pt-3 mt-3 border-t border-neutral-200 dark:border-neutral-700">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
                     <Shield className="w-4 h-4" />
                     {t('events.downloadProtection', 'Download Protection')}
                   </dt>
-                  <dd className="mt-2 text-sm text-neutral-900">
+                  <dd className="mt-2 text-sm text-neutral-900 dark:text-neutral-100">
                     <div className="flex flex-wrap gap-2">
                       <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${
-                        event.protection_level === 'maximum' ? 'bg-red-100 text-red-700' :
-                        event.protection_level === 'enhanced' ? 'bg-orange-100 text-orange-700' :
-                        event.protection_level === 'standard' ? 'bg-blue-100 text-blue-700' :
-                        'bg-neutral-100 text-neutral-700'
+                        event.protection_level === 'maximum' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' :
+                        event.protection_level === 'enhanced' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' :
+                        event.protection_level === 'standard' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
+                        'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
                       }`}>
                         {event.protection_level || 'standard'}
                       </span>
                       {event.disable_right_click && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
                           <MousePointer className="w-3 h-3 mr-1" />
                           {t('events.rightClickBlocked', 'Right-click blocked')}
                         </span>
                       )}
                       {event.enable_devtools_protection && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
                           <Monitor className="w-3 h-3 mr-1" />
                           {t('events.devtoolsDetection', 'DevTools detection')}
                         </span>
                       )}
                       {!event.allow_downloads && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded">
                           <Download className="w-3 h-3 mr-1" />
                           {t('events.downloadsDisabled', 'Downloads disabled')}
                         </span>
                       )}
                       {event.watermark_downloads && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 text-neutral-700 rounded">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
                           <Droplets className="w-3 h-3 mr-1" />
                           {t('events.watermarked', 'Watermarked')}
+                        </span>
+                      )}
+                    </div>
+                  </dd>
+                </div>
+
+                {/* Hero Logo Settings Display */}
+                <div className="pt-3 mt-3 border-t border-neutral-200 dark:border-neutral-700">
+                  <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+                    <Layout className="w-4 h-4" />
+                    {t('events.heroLogoSettings', 'Hero Logo Settings')}
+                  </dt>
+                  <dd className="mt-2 text-sm text-neutral-900 dark:text-neutral-100">
+                    <div className="flex flex-wrap gap-2">
+                      {event.hero_logo_visible !== false ? (
+                        <>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded">
+                            <Image className="w-3 h-3 mr-1" />
+                            {t('events.heroLogoVisibleLabel', 'Logo visible')}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
+                            {t('events.heroLogoSizeLabel', 'Size')}: {event.hero_logo_size || 'medium'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
+                            {t('events.heroLogoPositionLabel', 'Position')}: {event.hero_logo_position || 'top'}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded">
+                          <Image className="w-3 h-3 mr-1" />
+                          {t('events.heroLogoHidden', 'Logo hidden')}
                         </span>
                       )}
                     </div>
@@ -1203,14 +1450,14 @@ export const EventDetailsPage: React.FC = () => {
 
           {/* Share Link */}
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.shareLink')}</h2>
-            
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.shareLink')}</h2>
+
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={event.share_link}
                 readOnly
-                className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm"
               />
               <Button
                 variant="outline"
@@ -1221,15 +1468,15 @@ export const EventDetailsPage: React.FC = () => {
                 {copiedLink ? t('events.copied') : t('events.copy')}
               </Button>
             </div>
-            
-            <p className="text-sm text-neutral-600 mt-2">
+
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
               {isGalleryPublic(event.require_password)
                 ? t('events.shareWithGuestsPublic', 'Anyone with this link can view the gallery. No password is required.')
                 : t('events.shareWithGuests')}
             </p>
-            
+
             {!event.is_archived && (
-              <div className="mt-4 pt-4 border-t border-neutral-200 space-y-2">
+              <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700 space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1247,7 +1494,7 @@ export const EventDetailsPage: React.FC = () => {
                     try {
                       await eventsService.resendCreationEmail(event.id);
                       toast.success(t('events.creationEmailResent'));
-                    } catch (error) {
+                    } catch {
                       toast.error(t('events.failedToResendEmail'));
                     }
                   }}
@@ -1264,8 +1511,8 @@ export const EventDetailsPage: React.FC = () => {
           {/* Actions */}
           {!event.is_archived && (
             <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.actions')}</h2>
-              
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.actions')}</h2>
+
               <div className="space-y-3">
                 <Button
                   variant="outline"
@@ -1280,8 +1527,8 @@ export const EventDetailsPage: React.FC = () => {
                 >
                   {t('events.archiveEvent')}
                 </Button>
-                
-                <p className="text-xs text-neutral-500 text-center">
+
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
                   {t('events.archivingInfo')}
                 </p>
               </div>
@@ -1293,44 +1540,44 @@ export const EventDetailsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Photo Statistics */}
           <Card padding="md">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.photoStatistics')}</h2>
-            
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.photoStatistics')}</h2>
+
             <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                <span className="text-sm text-neutral-600">{t('events.totalPhotos')}</span>
-                <span className="text-sm font-medium">{event.photo_count || 0}</span>
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.totalPhotos')}</span>
+                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{event.photo_count || 0}</span>
               </div>
-              
-              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                <span className="text-sm text-neutral-600">{t('events.totalSize')}</span>
-                <span className="text-sm font-medium">
+
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.totalSize')}</span>
+                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                   {event.total_size ? `${(event.total_size / (1024 * 1024)).toFixed(1)} MB` : '0 MB'}
                 </span>
               </div>
-              
-              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                <span className="text-sm text-neutral-600">{t('events.categories')}</span>
-                <span className="text-sm font-medium">{categories.length}</span>
+
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.categories')}</span>
+                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{categories.length}</span>
               </div>
-              
+
               {event.total_views !== undefined && (
-                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                  <span className="text-sm text-neutral-600">{t('events.totalViews')}</span>
-                  <span className="text-sm font-medium">{event.total_views || 0}</span>
+                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.totalViews')}</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{event.total_views || 0}</span>
                 </div>
               )}
-              
+
               {event.total_downloads !== undefined && (
-                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                  <span className="text-sm text-neutral-600">{t('events.totalDownloads')}</span>
-                  <span className="text-sm font-medium">{event.total_downloads || 0}</span>
+                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.totalDownloads')}</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{event.total_downloads || 0}</span>
                 </div>
               )}
-              
+
               {event.unique_visitors !== undefined && (
-                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
-                  <span className="text-sm text-neutral-600">{t('events.uniqueVisitors')}</span>
-                  <span className="text-sm font-medium">{event.unique_visitors || 0}</span>
+                <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.uniqueVisitors')}</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{event.unique_visitors || 0}</span>
                 </div>
               )}
             </div>
@@ -1351,7 +1598,7 @@ export const EventDetailsPage: React.FC = () => {
           {/* Theme & Style */}
           {isEditing && !event.is_archived && (
             <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('branding.themeAndStyle')}</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('branding.themeAndStyle')}</h2>
               <ThemeCustomizerEnhanced
                 value={currentTheme || GALLERY_THEME_PRESETS.default.config}
                 onChange={(theme) => {
@@ -1382,7 +1629,7 @@ export const EventDetailsPage: React.FC = () => {
           {/* Theme Display (when not editing) */}
           {!isEditing && !event.is_archived && (
             <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.galleryTheme')}</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.galleryTheme')}</h2>
               <ThemeDisplay 
                 theme={event.color_theme || GALLERY_THEME_PRESETS.default.config} 
                 presetName={event.color_theme && !event.color_theme.startsWith('{') ? event.color_theme : undefined}
@@ -1403,13 +1650,13 @@ export const EventDetailsPage: React.FC = () => {
           {/* Archive Status */}
           {event.is_archived ? (
             <Card padding="md">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-4">{t('events.archiveStatusTitle')}</h2>
-              
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.archiveStatusTitle')}</h2>
+
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-neutral-500">{t('events.archivedOn')}</p>
-                  <p className="text-sm text-neutral-900">
-                    {event.archived_at && format(safeParseDate(event.archived_at), 'PPp')}
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.archivedOn')}</p>
+                  <p className="text-sm text-neutral-900 dark:text-neutral-100">
+                    {event.archived_at && format(safeParseDate(event.archived_at)!, 'PPp')}
                   </p>
                 </div>
                 
@@ -1423,7 +1670,7 @@ export const EventDetailsPage: React.FC = () => {
                         toast.info(t('events.downloadingArchive', { name: event.event_name }));
                         await archiveService.downloadArchive(Number(id), `${event.slug}-archive.zip`);
                         toast.success(t('events.downloadStarted'));
-                      } catch (error) {
+                      } catch {
                         toast.error(t('events.failedToDownloadArchive'));
                       }
                     }}
@@ -1524,6 +1771,7 @@ export const EventDetailsPage: React.FC = () => {
                 queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
               }}
               onSelectionChange={setSelectedPhotoIds}
+              categories={categories}
             />
           )}
 
@@ -1550,18 +1798,18 @@ export const EventDetailsPage: React.FC = () => {
         <div>
           <Card padding="md">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-neutral-900 mb-2">{t('events.photoCategories')}</h2>
-              <p className="text-sm text-neutral-600">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('events.photoCategories')}</h2>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
                 {t('events.organizeCategoriesInfo')}
               </p>
             </div>
-            
-            <EventCategoryManager 
-              eventId={parseInt(id!)} 
+
+            <EventCategoryManager
+              eventId={parseInt(id!)}
             />
-            
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 {t('events.categoriesTip')}
               </p>
             </div>
@@ -1586,16 +1834,16 @@ export const EventDetailsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="max-w-2xl w-full">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-neutral-900">{t('events.importExternal', 'Import from External Folder')}</h2>
-              <button onClick={() => setShowExternalImport(false)} className="text-neutral-400 hover:text-neutral-600">
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{t('events.importExternal', 'Import from External Folder')}</h2>
+              <button onClick={() => setShowExternalImport(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mb-3 text-sm text-neutral-700">
+            <div className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
               {t('events.externalImportInfo', 'All pictures from the selected folder will be imported.')}
             </div>
-            <div className="mb-2 text-sm text-neutral-700">
+            <div className="mb-2 text-sm text-neutral-700 dark:text-neutral-300">
               {t('events.selectExternalFolder', 'Select external folder under /external-media')}
             </div>
             <ExternalFolderPicker value={externalPath || event.external_path || ''} onChange={setExternalPath} />

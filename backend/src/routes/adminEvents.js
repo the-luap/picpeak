@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, query, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
+const multer = require('multer');
 const { archiveEvent } = require('../services/archiveService');
 const { queueEmail } = require('../services/emailProcessor');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
@@ -16,7 +17,48 @@ const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
 const logger = require('../utils/logger');
 const { buildShareLinkVariants } = require('../services/shareLinkService');
-const { parseBooleanInput, parseStringInput, parseJsonInput } = require('../utils/parsers');
+const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
+const eventTypeService = require('../services/eventTypeService');
+const { validateFileType } = require('../utils/fileSecurityUtils');
+
+// Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
+const validateHeroImageAnchor = (value) => {
+  if (['top', 'center', 'bottom'].includes(value)) return true;
+  if (typeof value === 'string' && /^\d{1,3}%\s+\d{1,3}%$/.test(value)) {
+    const [x, y] = value.split(/\s+/).map(v => parseInt(v));
+    if (x >= 0 && x <= 100 && y >= 0 && y <= 100) return true;
+  }
+  throw new Error('Must be top, center, bottom, or "X% Y%" (0-100)');
+};
+
+// Get storage path from environment or default
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+
+// Configure multer for event logo uploads
+const eventLogoStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(getStoragePath(), 'uploads/logos/events');
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `event-${req.params.id}-logo-${Date.now()}${ext}`);
+  }
+});
+
+const eventLogoUpload = multer({
+  storage: eventLogoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
+    if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, GIF and SVG image files are allowed'));
+    }
+  }
+});
 
 // Helper to get event field requirements from settings
 const getEventFieldRequirements = async () => {
@@ -25,14 +67,18 @@ const getEventFieldRequirements = async () => {
       .whereIn('setting_key', [
         'event_require_customer_name',
         'event_require_customer_email',
-        'event_require_admin_email'
+        'event_require_admin_email',
+        'event_require_event_date',
+        'event_require_expiration'
       ])
       .select('setting_key', 'setting_value');
 
     const requirements = {
       require_customer_name: true,
       require_customer_email: true,
-      require_admin_email: true
+      require_admin_email: true,
+      require_event_date: true,
+      require_expiration: true
     };
 
     settings.forEach(s => {
@@ -47,6 +93,8 @@ const getEventFieldRequirements = async () => {
       if (s.setting_key === 'event_require_customer_name') requirements.require_customer_name = value;
       if (s.setting_key === 'event_require_customer_email') requirements.require_customer_email = value;
       if (s.setting_key === 'event_require_admin_email') requirements.require_admin_email = value;
+      if (s.setting_key === 'event_require_event_date') requirements.require_event_date = value;
+      if (s.setting_key === 'event_require_expiration') requirements.require_expiration = value;
     });
 
     return requirements;
@@ -55,7 +103,9 @@ const getEventFieldRequirements = async () => {
     return {
       require_customer_name: true,
       require_customer_email: true,
-      require_admin_email: true
+      require_admin_email: true,
+      require_event_date: true,
+      require_expiration: true
     };
   }
 };
@@ -104,9 +154,15 @@ const hasCustomerContactColumns = async () => {
 
 // Create new event
 router.post('/', adminAuth, requirePermission('events.create'), [
-  body('event_type').isIn(['wedding', 'birthday', 'corporate', 'other']),
+  body('event_type').notEmpty().trim().custom(async (value) => {
+    const isValid = await eventTypeService.isValidEventType(value);
+    if (!isValid) {
+      throw new Error('Invalid event type');
+    }
+    return true;
+  }),
   body('event_name').notEmpty().trim(),
-  body('event_date').isDate(),
+  body('event_date').optional().isDate(),
   body('customer_name').optional().trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
   body('admin_email').optional().isEmail().normalizeEmail(),
@@ -143,7 +199,16 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
+  // Header style settings (decoupled from layout)
+  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -182,7 +247,16 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       moderate_comments = true,
       show_feedback_to_guests = true,
       // CSS Template
-      css_template_id = null
+      css_template_id = null,
+      // Hero logo settings
+      hero_logo_visible = true,
+      hero_logo_size = 'medium',
+      hero_logo_position = 'top',
+      // Header style settings
+      header_style = 'standard',
+      hero_divider_style = 'wave',
+      // Hero image anchor position (#162)
+      hero_image_anchor = 'center'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -200,6 +274,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     }
     if (fieldRequirements.require_admin_email && !admin_email) {
       validationErrors.push({ path: 'admin_email', msg: 'Admin email is required' });
+    }
+    if (fieldRequirements.require_event_date && !event_date) {
+      validationErrors.push({ path: 'event_date', msg: 'Event date is required' });
     }
 
     if (validationErrors.length > 0) {
@@ -245,10 +322,13 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric with dash
       .replace(/-+/g, '-')         // Replace multiple dashes with single dash
       .replace(/^-|-$/g, '');      // Remove leading/trailing dashes
-    const baseSlug = `${event_type}-${processedEventName}-${event_date}`;
+
+    // Use event_date in slug if provided, otherwise use random suffix
+    const slugSuffix = event_date || crypto.randomBytes(3).toString('hex');
+    const baseSlug = `${event_type}-${processedEventName}-${slugSuffix}`;
     let slug = baseSlug;
     let counter = 1;
-    
+
     while (await db('events').where({ slug }).first()) {
       slug = `${baseSlug}-${counter}`;
       counter++;
@@ -256,7 +336,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     
     // Generate share link respecting configured format
     const shareToken = crypto.randomBytes(16).toString('hex');
-    const { sharePath, shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
+    const { shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
     
     // Hash password with configurable rounds (random placeholder when not required)
     const password_hash = requirePassword
@@ -264,15 +344,20 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     
     // Calculate expiration date (days after event date)
-    // Parse YYYY-MM-DD format as local date to avoid timezone issues
-    let expires_at;
-    if (event_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [year, month, day] = event_date.split('-').map(num => parseInt(num, 10));
-      expires_at = new Date(year, month - 1, day);
-    } else {
-      expires_at = new Date(event_date);
+    // If expiration is not required, expires_at will be null (never expires)
+    // If event_date is not provided, use current date as base for expiration
+    let expires_at = null;
+    if (fieldRequirements.require_expiration) {
+      const baseDate = event_date || new Date().toISOString().split('T')[0];
+      // Parse YYYY-MM-DD format as local date to avoid timezone issues
+      if (baseDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = baseDate.split('-').map(num => parseInt(num, 10));
+        expires_at = new Date(year, month - 1, day);
+      } else {
+        expires_at = new Date(baseDate);
+      }
+      expires_at.setDate(expires_at.getDate() + parseInt(expiration_days, 10));
     }
-    expires_at.setDate(expires_at.getDate() + parseInt(expiration_days, 10));
     
     // Create folder structure
     const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -280,12 +365,32 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     await fs.mkdir(path.join(eventPath, 'collages'), { recursive: true });
     await fs.mkdir(path.join(eventPath, 'individual'), { recursive: true });
     
+    // Sync header_style / hero_divider_style from color_theme JSON when not
+    // explicitly provided in the request body (#158).
+    let effectiveHeaderStyle = header_style;
+    let effectiveDividerStyle = hero_divider_style;
+    if (color_theme && (!req.body.header_style || !req.body.hero_divider_style)) {
+      try {
+        if (typeof color_theme === 'string' && color_theme.startsWith('{')) {
+          const parsed = JSON.parse(color_theme);
+          if (!req.body.header_style && parsed.headerStyle) {
+            effectiveHeaderStyle = parsed.headerStyle;
+          }
+          if (!req.body.hero_divider_style && parsed.heroDividerStyle) {
+            effectiveDividerStyle = parsed.heroDividerStyle;
+          }
+        }
+      } catch (_) {
+        // color_theme is not JSON – nothing to extract
+      }
+    }
+
     // Insert into database
     const insertResult = await db('events').insert({
       slug,
       event_type,
       event_name,
-      event_date,
+      event_date: event_date || null,
       ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
       host_name: customerName,
       host_email: customerEmail,
@@ -295,7 +400,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       color_theme,
       share_link: shareLinkToStore,
       share_token: shareToken,
-      expires_at: expires_at.toISOString(),
+      expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString(),
       created_by: req.admin.id,
       allow_user_uploads,
@@ -305,7 +410,13 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
       require_password: formatBoolean(requirePassword),
-      css_template_id: css_template_id || null
+      css_template_id: css_template_id || null,
+      hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
+      hero_logo_size: hero_logo_size || 'medium',
+      hero_logo_position: hero_logo_position || 'top',
+      header_style: effectiveHeaderStyle || 'standard',
+      hero_divider_style: effectiveDividerStyle || 'wave',
+      hero_image_anchor: hero_image_anchor || 'center'
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -350,7 +461,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
         event_date: event_date,  // Pass raw date - will be formatted by email processor
         gallery_link: shareUrl,
         gallery_password: requirePassword ? password : 'No password required',
-        expiry_date: expires_at.toISOString(),  // Pass ISO string - will be formatted by email processor
+        expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
         welcome_message: welcome_message || ''
       }),
       status: 'pending',
@@ -367,7 +478,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       customer_email: customerEmail,
       require_password: requirePassword,
       share_link: shareUrl,
-      expires_at: expires_at.toISOString(),
+      expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString()
     });
   } catch (error) {
@@ -384,8 +495,9 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
     const status = req.query.status || 'all';
-    const sortBy = req.query.sortBy || 'created_at';
-    const sortOrder = req.query.sortOrder || 'desc';
+    const allowedSortBy = ['created_at', 'event_name', 'slug', 'updated_at', 'expires_at', 'capture_date'];
+    const sortBy = allowedSortBy.includes(req.query.sortBy) ? req.query.sortBy : 'created_at';
+    const sortOrder = ['asc', 'desc'].includes(req.query.sortOrder) ? req.query.sortOrder : 'desc';
 
     // Build query
     let query = db('events');
@@ -541,7 +653,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
-  body('expires_at').optional().isISO8601(),
+  body('expires_at').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('welcome_message').optional({ nullable: true, checkFalsy: true }).trim(),
   body('color_theme').optional({ nullable: true }),
   body('allow_user_uploads').optional().isBoolean(),
@@ -573,7 +685,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('overlay_protection').optional().isBoolean(),
   body('image_quality').optional().isInt({ min: 1, max: 100 }),
   body('fragmentation_level').optional().isInt({ min: 1, max: 10 }),
-  body('password').optional().isString().custom((value, { req }) => {
+  body('password').optional().isString().custom((value) => {
     if (value === undefined || value === null || value === '') {
       return true;
     }
@@ -582,7 +694,16 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     }
     return true;
   }),
-  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt()
+  body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
+  // Hero logo settings
+  body('hero_logo_visible').optional().isBoolean(),
+  body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
+  body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
+  // Header style settings (decoupled from layout)
+  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
+  // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -694,6 +815,43 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
     }
 
+    // Enforce expires_at requirement based on app settings
+    if (Object.prototype.hasOwnProperty.call(updates, 'expires_at')) {
+      if (!updates.expires_at) {
+        const fieldReqs = await getEventFieldRequirements();
+        if (fieldReqs.require_expiration) {
+          return res.status(400).json({ error: 'Expiration date is required.' });
+        }
+        updates.expires_at = null;
+      }
+    }
+
+    // Format hero logo settings if provided
+    if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
+      updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
+    }
+
+    // Sync header_style / hero_divider_style from color_theme JSON when not
+    // explicitly provided in the request body (#158).  This ensures the
+    // database columns stay in sync even if the frontend only sends the
+    // serialised theme object.
+    if (updates.color_theme && !Object.prototype.hasOwnProperty.call(updates, 'header_style')) {
+      try {
+        const themeStr = typeof updates.color_theme === 'string' ? updates.color_theme : '';
+        if (themeStr.startsWith('{')) {
+          const parsed = JSON.parse(themeStr);
+          if (parsed.headerStyle) {
+            updates.header_style = parsed.headerStyle;
+          }
+          if (parsed.heroDividerStyle && !Object.prototype.hasOwnProperty.call(updates, 'hero_divider_style')) {
+            updates.hero_divider_style = parsed.heroDividerStyle;
+          }
+        }
+      } catch (_) {
+        // color_theme is not JSON (e.g. preset name) – nothing to extract
+      }
+    }
+
     // Update event
     await db('events')
       .where('id', id)
@@ -759,13 +917,23 @@ router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req,
       if (event.archive_path) {
         const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
         const archivePath = path.join(storagePath, event.archive_path);
-        
+
         try {
           const fsPromises = require('fs').promises;
           await fsPromises.unlink(archivePath);
         } catch (err) {
           console.error('Failed to delete archive file:', err);
           // Don't fail the transaction if file deletion fails
+        }
+      }
+
+      // Delete custom event logo if exists
+      if (event.hero_logo_path) {
+        try {
+          const fsPromises = require('fs').promises;
+          await fsPromises.unlink(event.hero_logo_path);
+        } catch (err) {
+          logger.warn('Failed to delete event logo file during event deletion', { path: event.hero_logo_path, error: err.message });
         }
       }
     });
@@ -927,7 +1095,8 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
     
     // For resending creation email, we need the actual password
     // First, try to get it from the request body if provided
-    let galleryPassword = req.body.password;
+    // Use optional chaining to handle cases where req.body might be undefined
+    let galleryPassword = req.body?.password;
     
     // If no password provided, we can't decrypt the existing one
     // So we'll show a security message
@@ -1091,6 +1260,105 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   } catch (error) {
     console.error('Error in bulk archive:', error);
     res.status(500).json({ error: 'Failed to perform bulk archive' });
+  }
+});
+
+// Upload event custom logo
+router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoUpload.single('logo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if event exists
+    let eventQuery = db('events').where('id', id);
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No logo file provided' });
+    }
+
+    // Delete old logo file if exists
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+        logger.debug('Deleted old event logo file', { path: event.hero_logo_path });
+      } catch (err) {
+        logger.warn('Failed to delete old event logo file', { path: event.hero_logo_path, error: err.message });
+      }
+    }
+
+    const logoUrl = `/uploads/logos/events/${req.file.filename}`;
+    const logoPath = req.file.path;
+
+    await db('events')
+      .where('id', id)
+      .update({
+        hero_logo_url: logoUrl,
+        hero_logo_path: logoPath
+      });
+
+    await logActivity('event_logo_uploaded',
+      { eventName: event.event_name, filename: req.file.filename },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({
+      message: 'Event logo uploaded successfully',
+      hero_logo_url: logoUrl
+    });
+  } catch (error) {
+    logger.error('Error uploading event logo:', { error: error.message, eventId: req.params.id });
+    res.status(500).json({ error: 'Failed to upload event logo' });
+  }
+});
+
+// Delete event custom logo
+router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let eventQuery = db('events').where('id', id);
+    if (req.admin.roleName === 'editor') {
+      eventQuery = eventQuery.where('created_by', req.admin.id);
+    }
+    const event = await eventQuery.first();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Delete logo file if exists
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+        logger.debug('Deleted event logo file', { path: event.hero_logo_path });
+      } catch (err) {
+        logger.warn('Failed to delete event logo file', { path: event.hero_logo_path, error: err.message });
+      }
+    }
+
+    await db('events')
+      .where('id', id)
+      .update({
+        hero_logo_url: null,
+        hero_logo_path: null
+      });
+
+    await logActivity('event_logo_removed',
+      { eventName: event.event_name },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({ message: 'Event logo removed successfully' });
+  } catch (error) {
+    logger.error('Error deleting event logo:', { error: error.message, eventId: req.params.id });
+    res.status(500).json({ error: 'Failed to delete event logo' });
   }
 });
 

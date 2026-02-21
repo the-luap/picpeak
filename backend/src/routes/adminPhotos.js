@@ -5,13 +5,14 @@ const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const { generateThumbnail, ensureThumbnail } = require('../services/imageProcessor');
+const { generateThumbnail, ensureThumbnail, extractCaptureDate } = require('../services/imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload } = require('../services/uploadSettings');
 const { processUploadedPhotos } = require('../services/photoProcessor');
 const chunkedUpload = require('../services/chunkedUploadService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -175,8 +176,9 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
       return res.status(400).json({ error: 'No files uploaded' });
     }
     
-    // Parse category_id to number if provided
-    const parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+    // Parse category_id to number if provided (handle string values like 'individual', 'collage')
+    const rawParsed = category_id ? parseInt(category_id, 10) : NaN;
+    const parsedCategoryId = !isNaN(rawParsed) ? rawParsed : null;
 
     // Determine photo type and category name
     let photoType = 'individual'; // default
@@ -251,16 +253,27 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
             const finalPath = path.join(finalDestPath, newFilename);
             const storagePath = getStoragePath();
             const relativePath = path.relative(path.join(storagePath, 'events/active'), finalPath);
-            
+
+            // Extract capture date from EXIF metadata
+            let capturedAt = null;
+            try {
+              capturedAt = await extractCaptureDate(tempPath);
+            } catch (exifError) {
+              // Non-fatal - just log and continue without capture date
+              console.log(`Could not extract EXIF date for ${file.originalname}`);
+            }
+
             // Prepare photo data for batch insert
             const photoData = {
               event_id: parseInt(eventId),
               filename: newFilename,
+              original_filename: file.originalname, // Preserve original filename for Lightroom export
               path: relativePath,
               thumbnail_path: null, // Will generate after successful commit
               type: photoType,
               category_id: parsedCategoryId, // Save the selected category
-              size_bytes: tempStats.size // Use actual file size from stat
+              size_bytes: tempStats.size, // Use actual file size from stat
+              captured_at: capturedAt // EXIF capture date (if available)
             };
             
             batchPhotos.push(photoData);
@@ -308,7 +321,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               let thumbnailPath = null;
               try {
                 thumbnailPath = await generateThumbnail(operation.finalPath);
-                
+
                 // Update the database with thumbnail path
                 if (thumbnailPath && insertedIds[idx]) {
                   const photoId = insertedIds[idx]?.id || insertedIds[idx];
@@ -318,6 +331,14 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
                 }
               } catch (thumbError) {
                 console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
+              }
+
+              // Queue watermark generation in background (non-blocking)
+              // This pre-generates watermarked versions for fast serving in lightbox
+              if (insertedIds[idx]) {
+                const photoId = insertedIds[idx]?.id || insertedIds[idx];
+                watermarkGeneratorService.generateForPhoto(photoId)
+                  .catch(err => console.warn(`Watermark generation queued failed for photo ${photoId}:`, err.message));
               }
               
               // Add to successful uploads
@@ -461,7 +482,12 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
         }
       }
     }
-    
+
+    // Delete pre-generated watermark if exists
+    if (photo.watermark_path) {
+      await watermarkGeneratorService.deleteForPhoto(photo.id);
+    }
+
     // Remove from database
     await db('photos').where({ id: photoId }).delete();
     
@@ -582,8 +608,13 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
           }
         }
       }
+
+      // Delete pre-generated watermark
+      if (photo.watermark_path) {
+        await watermarkGeneratorService.deleteForPhoto(photo.id);
+      }
     }
-    
+
     // Delete from database
     await db('photos')
       .whereIn('id', photoIds)
@@ -626,9 +657,7 @@ router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos
     }
     
     // Prepare update data
-    const updateData = {
-      updated_at: new Date()
-    };
+    const updateData = {};
 
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')
@@ -698,20 +727,28 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
 router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, search, sort = 'date', order = 'desc' } = req.query;
+    const { category_id, type, search, sort = 'date' } = req.query;
+    const order = ['asc', 'desc'].includes(req.query.order) ? req.query.order : 'desc';
     
     let query = db('photos')
       .where({ 'photos.event_id': eventId })
       .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .select('photos.*', 'photo_categories.name as pc_name', 'photo_categories.slug as pc_slug');
     
-    // Filter by type (individual/collage) - category_id maps to type
-    if (category_id !== undefined) {
-      if (category_id === '' || category_id === '0') {
-        // For backwards compatibility, empty category means no filter
-        // Don't filter anything
-      } else if (category_id === 'individual' || category_id === 'collage') {
+    // Filter by category_id
+    if (category_id !== undefined && category_id !== '' && category_id !== '0') {
+      if (category_id === 'individual' || category_id === 'collage') {
+        // Legacy type-based filtering
         query = query.where({ 'photos.type': category_id });
+      } else if (category_id === 'uncategorized') {
+        // Filter for photos with no category assigned
+        query = query.whereNull('photos.category_id');
+      } else {
+        // Numeric category ID from photo_categories table
+        const numericCategoryId = parseInt(category_id, 10);
+        if (!isNaN(numericCategoryId)) {
+          query = query.where({ 'photos.category_id': numericCategoryId });
+        }
       }
     }
     
@@ -755,6 +792,7 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
       photos: photos.map(photo => ({
         id: photo.id,
         filename: photo.filename,
+        original_filename: photo.original_filename || null,
         // Use the correct admin photos router base for serving images
         url: `/admin/photos/${eventId}/photo/${photo.id}`,
         // Always expose a thumbnail URL; backend will generate on demand if missing

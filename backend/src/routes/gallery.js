@@ -5,6 +5,7 @@ const archiver = require('archiver');
 const path = require('path');
 const router = express.Router();
 const watermarkService = require('../services/watermarkService');
+const watermarkGeneratorService = require('../services/watermarkGeneratorService');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
@@ -12,10 +13,10 @@ const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
-const { ensureThumbnail } = require('../services/imageProcessor');
+const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
 
 // Get storage path from environment or default
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../storage');
+const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 // Check for slug redirect (for renamed events)
 async function checkSlugRedirect(slug) {
@@ -107,13 +108,21 @@ router.get('/:slug/info', async (req, res) => {
         'share_link',
         'share_token',
         'allow_downloads',
+        'allow_user_uploads',
         'disable_right_click',
         'watermark_downloads',
         'watermark_text',
         'require_password',
         'color_theme',
         'enable_devtools_protection',
-        'use_canvas_rendering'
+        'use_canvas_rendering',
+        'hero_logo_visible',
+        'hero_logo_size',
+        'hero_logo_position',
+        'hero_logo_url',
+        'header_style',
+        'hero_divider_style',
+        'hero_image_anchor'
       )
       .first();
 
@@ -151,15 +160,23 @@ router.get('/:slug/info', async (req, res) => {
       event_date: event.event_date,
       expires_at: event.expires_at,
       is_active: event.is_active,
-      is_expired: !event.is_active || new Date(event.expires_at) < new Date(),
+      is_expired: !event.is_active || (event.expires_at && new Date(event.expires_at) < new Date()),
       requires_password: requiresPassword,
       color_theme: event.color_theme,
       allow_downloads: !(event.allow_downloads === false || event.allow_downloads === 0 || event.allow_downloads === '0'),
+      allow_user_uploads: event.allow_user_uploads === true || event.allow_user_uploads === 1 || event.allow_user_uploads === '1',
       disable_right_click: event.disable_right_click === true || event.disable_right_click === 1 || event.disable_right_click === '1',
       watermark_downloads: event.watermark_downloads === true || event.watermark_downloads === 1 || event.watermark_downloads === '1',
       watermark_text: event.watermark_text,
       enable_devtools_protection: event.enable_devtools_protection === true || event.enable_devtools_protection === 1 || event.enable_devtools_protection === '1',
-      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1'
+      use_canvas_rendering: event.use_canvas_rendering === true || event.use_canvas_rendering === 1 || event.use_canvas_rendering === '1',
+      hero_logo_visible: event.hero_logo_visible !== false && event.hero_logo_visible !== 0 && event.hero_logo_visible !== '0',
+      hero_logo_size: event.hero_logo_size || 'medium',
+      hero_logo_position: event.hero_logo_position || 'top',
+      hero_logo_url: event.hero_logo_url || null,
+      header_style: event.header_style || 'standard',
+      hero_divider_style: event.hero_divider_style || 'wave',
+      hero_image_anchor: event.hero_image_anchor || 'center'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -170,8 +187,8 @@ router.get('/:slug/info', async (req, res) => {
 // Get all photos
 router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   try {
-    // Get filter parameters from query
-    const { filter, guest_id } = req.query;
+    // Get filter and sort parameters from query
+    const { filter, guest_id, sort = 'upload_date', order = 'desc' } = req.query;
 
     // Get watermark settings to generate cache-busting version for URLs
     const watermarkSettings = await watermarkService.getWatermarkSettings();
@@ -179,11 +196,25 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       ? `wm=${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
       : '';
 
-    // First get all photos
-    let photos = await db('photos')
+    // Build the query with sorting
+    const sortOrder = order === 'asc' ? 'asc' : 'desc';
+    let photosQuery = db('photos')
       .where('photos.event_id', req.event.id)
-      .select('photos.*')
-      .orderBy('photos.uploaded_at', 'desc');
+      .select('photos.*');
+
+    // Apply sort option
+    if (sort === 'capture_date') {
+      // Sort by capture date, falling back to uploaded_at if capture date is null
+      photosQuery = photosQuery.orderByRaw('COALESCE(photos.captured_at, photos.uploaded_at) ' + sortOrder);
+    } else if (sort === 'filename') {
+      photosQuery = photosQuery.orderBy('photos.filename', sortOrder);
+    } else {
+      // Default: sort by upload date
+      photosQuery = photosQuery.orderBy('photos.uploaded_at', sortOrder);
+    }
+
+    // Execute the query
+    let photos = await photosQuery;
     
     // Apply filtering if requested (supports global stats + per-guest interactions)
     if (filter) {
@@ -279,20 +310,36 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       commentMap[c.photo_id] = parseInt(c.comment_count);
     });
     
-    // Get distinct photo types for this event
-    const categoryResults = await db('photos')
+    // Get actual categories used by photos in this event
+    // This includes both global categories and event-specific ones
+    const usedCategoryIds = await db('photos')
       .where('event_id', req.event.id)
-      .select('type')
-      .distinct('type')
-      .orderBy('type', 'asc');
-    
-    // Convert types to category-like objects
-    const categories = categoryResults.map(result => ({
-      id: result.type,
-      name: result.type === 'individual' ? 'Individual Photos' : 'Collages',
-      slug: result.type,
-      is_global: false
-    }));
+      .whereNotNull('category_id')
+      .distinct('category_id')
+      .pluck('category_id');
+
+    // Fetch category details from photo_categories table
+    let categories = [];
+    if (usedCategoryIds.length > 0) {
+      const categoryDetails = await db('photo_categories')
+        .whereIn('id', usedCategoryIds)
+        .select('id', 'name', 'slug', 'is_global', 'hero_photo_id')
+        .orderBy('name', 'asc');
+
+      categories = categoryDetails.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+        is_global: cat.is_global,
+        hero_photo_id: cat.hero_photo_id || null
+      }));
+    }
+
+    // Build a map for quick category lookup
+    const categoryMap = {};
+    categories.forEach(cat => {
+      categoryMap[cat.id] = cat;
+    });
     
     // Log view
     await db('access_logs').insert({
@@ -323,11 +370,19 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         expires_at: req.event.expires_at,
         hero_photo_id: req.event.hero_photo_id,
         allow_downloads: req.event.allow_downloads !== false,
+        allow_user_uploads: req.event.allow_user_uploads === true,
         disable_right_click: req.event.disable_right_click === true,
         watermark_downloads: req.event.watermark_downloads === true,
         watermark_text: req.event.watermark_text,
         enable_devtools_protection: req.event.enable_devtools_protection === true,
         use_canvas_rendering: req.event.use_canvas_rendering === true,
+        hero_logo_visible: req.event.hero_logo_visible !== false && req.event.hero_logo_visible !== 0 && req.event.hero_logo_visible !== '0',
+        hero_logo_size: req.event.hero_logo_size || 'medium',
+        hero_logo_position: req.event.hero_logo_position || 'top',
+        hero_logo_url: req.event.hero_logo_url || null,
+        header_style: req.event.header_style || 'standard',
+        hero_divider_style: req.event.hero_divider_style || 'wave',
+        hero_image_anchor: req.event.hero_image_anchor || 'center',
         ...protectionSettings
       },
       categories: categories,
@@ -344,14 +399,19 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           filename: photo.filename,
           url: photoUrl,
           thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}${wmQuery}` : null,
+          // Hero-optimized image URL (1920x1080) for full-width hero sections
+          hero_url: `/api/gallery/${req.params.slug}/hero/${photo.id}${wmQuery}`,
           secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
-          category_id: photo.type,
-          category_name: photo.type === 'individual' ? 'Individual Photos' : 'Collages',
-          category_slug: photo.type,
+          category_id: photo.category_id || null,
+          category_name: photo.category_id && categoryMap[photo.category_id] ? categoryMap[photo.category_id].name : null,
+          category_slug: photo.category_id && categoryMap[photo.category_id] ? categoryMap[photo.category_id].slug : null,
           size: photo.size_bytes,
           uploaded_at: photo.uploaded_at,
+          // Image dimensions for layout calculations
+          width: photo.width || null,
+          height: photo.height || null,
           // Fixed: Use the calculated useJwtUrl variable instead of recalculating
           requires_token: !useJwtUrl,
           // Feedback data
@@ -707,8 +767,34 @@ router.get('/:slug/photo/:photoId',
 
       // Resolve the absolute file path for this photo, supporting both managed and external reference modes
       const { resolvePhotoFilePath } = require('../services/photoResolver');
-      const filePath = resolvePhotoFilePath(req.event, photo);
+      const fs = require('fs');
 
+      let filePath;
+      try {
+        filePath = resolvePhotoFilePath(req.event, photo);
+      } catch (resolveError) {
+        logger.error('Failed to resolve photo path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          error: resolveError.message,
+          photoPath: photo.path,
+          photoFilename: photo.filename
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
+
+      // Verify file exists before attempting to serve
+      if (!fs.existsSync(filePath)) {
+        logger.error('Photo file does not exist at resolved path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          resolvedPath: filePath,
+          photoPath: photo.path
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
 
       // Log access - temporarily disabled for debugging
       // await secureImageService.logImageAccess(
@@ -720,14 +806,13 @@ router.get('/:slug/photo/:photoId',
 
       // Handle video streaming with range requests
       if (isVideo) {
-        const fs = require('fs');
         const stat = fs.statSync(filePath);
         const fileSize = stat.size;
         const range = req.headers.range;
 
         if (range) {
           // Parse range header
-          const parts = range.replace(/bytes=/, "").split("-");
+          const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
           const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
           const chunksize = (end - start) + 1;
@@ -764,7 +849,6 @@ router.get('/:slug/photo/:photoId',
 
       // Generate ETag based on photo id, modification time, and watermark settings
       // This ensures cache invalidation when watermark settings change
-      const fs = require('fs');
       const stat = fs.statSync(filePath);
       const watermarkHash = watermarkSettings?.enabled
         ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
@@ -777,8 +861,33 @@ router.get('/:slug/photo/:photoId',
       }
 
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Apply watermark and send
+        // Try to serve pre-generated watermarked file for instant loading
+        if (photo.watermark_path) {
+          const watermarkFilePath = path.join(getStoragePath(), photo.watermark_path);
+          try {
+            // Check if pre-generated watermark file exists
+            if (fs.existsSync(watermarkFilePath)) {
+              res.set({
+                'Content-Type': photo.mime_type || 'image/jpeg',
+                'Cache-Control': 'private, max-age=1800',
+                'ETag': etag,
+                'X-Protection-Level': 'basic'
+              });
+              return res.sendFile(watermarkFilePath);
+            }
+          } catch (err) {
+            // File doesn't exist or error, fall through to on-the-fly generation
+            logger.warn(`Pre-generated watermark not found for photo ${photoId}, falling back to on-the-fly`);
+          }
+        }
+
+        // Fallback: Apply watermark on-the-fly (slower, but ensures image is served)
+        // Also queue regeneration for next time
         const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+
+        // Queue watermark generation in background for next request
+        watermarkGeneratorService.generateForPhoto(photo.id)
+          .catch(err => logger.warn(`Background watermark generation failed for photo ${photo.id}:`, err.message));
 
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
@@ -885,6 +994,92 @@ router.get('/:slug/thumbnail/:photoId',
         eventId: req.event?.id
       });
       res.status(500).json({ error: 'Failed to serve thumbnail' });
+    }
+  }
+);
+
+// Serve hero-optimized image (1920x1080 for full-width hero sections)
+router.get('/:slug/hero/:photoId',
+  verifyGalleryAccess,
+  async (req, res) => {
+    try {
+      const { photoId } = req.params;
+
+      const photo = await db('photos')
+        .where({ id: photoId, event_id: req.event.id })
+        .first();
+
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Check if this is a video - videos don't get hero images
+      const isVideo = photo.media_type === 'video' || (photo.mime_type && photo.mime_type.startsWith('video/'));
+      if (isVideo) {
+        // For videos, redirect to the regular photo endpoint
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      // Ensure hero image exists and is valid, regenerate if needed
+      const heroPath = await ensureHeroImage(photo);
+
+      if (!heroPath) {
+        // If hero generation fails, fall back to original photo
+        logger.warn(`Failed to generate hero image for photo ${photoId}, falling back to original`);
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      const heroFullPath = path.join(getStoragePath(), heroPath);
+      const fs = require('fs');
+
+      // Verify file exists before attempting to serve
+      if (!fs.existsSync(heroFullPath)) {
+        logger.error('Hero image file does not exist at resolved path', {
+          slug: req.params.slug,
+          photoId,
+          eventId: req.event.id,
+          resolvedPath: heroFullPath
+        });
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      // Get file stats for ETag
+      const stat = fs.statSync(heroFullPath);
+      const etag = `"hero-${photoId}-${stat.mtime.getTime()}"`;
+
+      // Check if client has valid cached version
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
+      // Check if watermarks should be applied
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+
+      res.set({
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Hero-Image': 'true',
+        'ETag': etag
+      });
+
+      if (watermarkSettings && watermarkSettings.enabled) {
+        // Apply watermark to hero image
+        const watermarkedBuffer = await watermarkService.applyWatermark(heroFullPath, watermarkSettings);
+        res.send(watermarkedBuffer);
+      } else {
+        // Send hero image without watermark
+        res.sendFile(path.resolve(heroFullPath));
+      }
+    } catch (error) {
+      logger.error('Error serving hero image:', {
+        error: error.message,
+        photoId: req.params.photoId,
+        eventId: req.event?.id
+      });
+      // Fall back to original photo on any error
+      res.redirect(`/api/gallery/${req.params.slug}/photo/${req.params.photoId}`);
     }
   }
 );

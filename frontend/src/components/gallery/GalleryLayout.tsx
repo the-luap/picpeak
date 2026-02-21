@@ -8,13 +8,14 @@ import { Button } from '../common';
 import { DynamicFavicon } from '../common/DynamicFavicon';
 import { useTheme } from '../../contexts/ThemeContext';
 import { buildResourceUrl } from '../../utils/url';
+import type { HeaderStyleType } from '../../types/theme.types';
 
 interface GalleryLayoutProps {
   event: {
     event_name: string;
     event_type?: string;
-    event_date?: string;
-    expires_at?: string;
+    event_date?: string | null;
+    expires_at?: string | null;
   };
   brandingSettings?: {
     company_name?: string;
@@ -38,6 +39,7 @@ interface GalleryLayoutProps {
   isDownloading?: boolean;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
+  headerStyle?: HeaderStyleType;
   children: React.ReactNode;
 }
 
@@ -51,13 +53,21 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   isDownloading = false,
   headerExtra,
   menuButton,
+  headerStyle: headerStyleProp,
   children,
 }) => {
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
-  
-  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid' && theme.galleryLayout !== 'hero';
+
+  // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
+  const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
+  const isHeroHeader = headerStyle === 'hero';
+  const isMinimalHeader = headerStyle === 'minimal';
+  const isNoHeader = headerStyle === 'none';
+
+  // Non-grid layouts that need the sidebar (excluding layouts using hero header)
+  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid';
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   const headingFontFamily = theme.headingFontFamily || fontFamily;
   
@@ -118,15 +128,15 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const heroLogoSize = getLogoDimensions('hero');
   
   return (
-    <div className="gallery-page min-h-screen bg-neutral-50">
+    <div className="gallery-page min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
       {/* Dynamic Favicon */}
       <DynamicFavicon />
 
       {/* Header structure */}
-      <header className={`gallery-header bg-white border-b border-neutral-200 sticky top-0 z-40 ${isNonGridLayout || theme.galleryLayout === 'hero' ? 'shadow-sm' : ''}`}>
-        {/* For non-grid layouts (excluding hero) - keep the current structure */}
-        {isNonGridLayout && (
-          <div className="bg-neutral-50 border-b border-neutral-200">
+      <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isNonGridLayout || isHeroHeader ? 'shadow-sm' : ''}`}>
+        {/* For non-grid layouts - keep the current structure (standard and minimal/none) */}
+        {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
+          <div className="bg-surface border-b border-surface">
             <div className="container py-2">
               <div className="flex items-center justify-between">
                 {/* Left side - Menu button and other header extras */}
@@ -170,8 +180,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For grid layout - everything in one bar */}
-        {!isNonGridLayout && theme.galleryLayout !== 'hero' && (
+        {/* For grid layout - everything in one bar (standard header) */}
+        {!isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
           <div className="container py-3">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Left side - Menu button, Logo */}
@@ -196,7 +206,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                       style={headerLogoSize.style}
                     />
                     {shouldShowCompanyName() && brandingSettings?.company_name && (
-                      <span className="hidden sm:inline text-lg font-semibold text-neutral-900">
+                      <span className="hidden sm:inline text-lg font-semibold text-theme">
                         {brandingSettings.company_name}
                       </span>
                     )}
@@ -204,7 +214,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                 )}
                 {!shouldShowLogo('header') && shouldShowCompanyName() && brandingSettings?.company_name && (
                   <div className={`flex-shrink-0 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
-                    <span className="text-lg font-semibold text-neutral-900">
+                    <span className="text-lg font-semibold text-theme">
                       {brandingSettings.company_name || 'PicPeak'}
                     </span>
                   </div>
@@ -214,13 +224,13 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               {/* Center - Event info */}
               <div className="flex-1 min-w-0 text-center sm:text-left">
                 <h1 
-                  className="text-base sm:text-lg lg:text-xl font-bold text-neutral-900 leading-tight truncate"
+                  className="text-base sm:text-lg lg:text-xl font-bold text-theme leading-tight truncate"
                   style={{ fontFamily: headingFontFamily }}
                 >
                   {event.event_name}
                 </h1>
                 {(event.event_date || event.expires_at) && (
-                  <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-neutral-600">
+                  <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-muted-theme">
                     {event.event_date && (
                       <span className="flex items-center">
                         <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
@@ -240,11 +250,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               {/* Right side - Action buttons */}
               <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {/* Extra header items (upload button, etc.) */}
-                {headerExtra && (
-                  <div className="hidden sm:block">
-                    {headerExtra}
-                  </div>
-                )}
+                {headerExtra}
                 
                 {/* Download all button - hidden on mobile when sidebar is shown */}
                 {showDownloadAll && onDownloadAll && (
@@ -278,7 +284,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             
             {/* Mobile dates row */}
             {(event.event_date || event.expires_at) && (
-              <div className="flex sm:hidden justify-center gap-x-3 mt-2 text-xs text-neutral-600">
+              <div className="flex sm:hidden justify-center gap-x-3 mt-2 text-xs text-muted-theme">
                 {event.event_date && (
                   <span className="flex items-center">
                     <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -296,8 +302,136 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For hero layout - minimal header with just menu and logout */}
-        {theme.galleryLayout === 'hero' && (
+        {/* For minimal/none header + non-grid layouts - compact menu bar */}
+        {isNonGridLayout && (isMinimalHeader || isNoHeader) && (
+          <div className="bg-surface border-b border-surface">
+            <div className="container py-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {menuButton}
+                  {headerExtra}
+                  {isMinimalHeader && (
+                    <h1
+                      className="text-sm font-semibold text-theme truncate"
+                      style={{ fontFamily: headingFontFamily }}
+                    >
+                      {event.event_name}
+                    </h1>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {showDownloadAll && onDownloadAll && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<Download className="w-4 h-4" />}
+                      onClick={onDownloadAll}
+                      isLoading={isDownloading}
+                      className="gallery-btn gallery-btn-download"
+                    >
+                      <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
+                      <span className="sm:hidden">{t('common.download')}</span>
+                    </Button>
+                  )}
+                  {showLogout && onLogout && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<LogOut className="w-4 h-4" />}
+                      onClick={onLogout}
+                      className="gallery-btn gallery-btn-logout sm:min-w-0"
+                    >
+                      <span className="hidden sm:inline">{t('common.logout')}</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* For minimal header + grid layout - compact bar with event name */}
+        {!isNonGridLayout && isMinimalHeader && (
+          <div className="container py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {menuButton}
+                <h1
+                  className="text-sm font-semibold text-theme truncate"
+                  style={{ fontFamily: headingFontFamily }}
+                >
+                  {event.event_name}
+                </h1>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {headerExtra}
+                {showDownloadAll && onDownloadAll && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Download className="w-4 h-4" />}
+                    onClick={onDownloadAll}
+                    isLoading={isDownloading}
+                    className="gallery-btn gallery-btn-download hidden sm:flex"
+                  >
+                    <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
+                  </Button>
+                )}
+                {showLogout && onLogout && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<LogOut className="w-4 h-4" />}
+                    onClick={onLogout}
+                    className="gallery-btn gallery-btn-logout sm:min-w-0"
+                  >
+                    <span className="hidden sm:inline">{t('common.logout')}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* For none header + grid layout - just functional buttons, no event info */}
+        {!isNonGridLayout && isNoHeader && (
+          <div className="container py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {menuButton}
+                {headerExtra}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {showDownloadAll && onDownloadAll && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Download className="w-4 h-4" />}
+                    onClick={onDownloadAll}
+                    isLoading={isDownloading}
+                    className="gallery-btn gallery-btn-download hidden sm:flex"
+                  >
+                    <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
+                  </Button>
+                )}
+                {showLogout && onLogout && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<LogOut className="w-4 h-4" />}
+                    onClick={onLogout}
+                    className="gallery-btn gallery-btn-logout sm:min-w-0"
+                  >
+                    <span className="hidden sm:inline">{t('common.logout')}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* For hero header style - minimal header with just menu and logout */}
+        {isHeroHeader && (
           <div className="container py-3">
             <div className="flex items-center justify-between">
               {/* Left side - Menu button */}
@@ -341,8 +475,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
         )}
       </header>
 
-      {/* Hero Header for non-grid layouts (excluding hero layout which has its own) */}
-      {isNonGridLayout && (
+      {/* Colored banner for non-grid layouts when using standard header style */}
+      {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
         <div
           className="gallery-hero relative text-white overflow-hidden"
           style={{
@@ -430,10 +564,10 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <main className="container">{children}</main>
 
       {/* Footer */}
-      <footer className="gallery-footer mt-8 sm:mt-12 py-6 sm:py-8 border-t border-neutral-200">
+      <footer className="gallery-footer mt-8 sm:mt-12 py-6 sm:py-8 border-t border-surface">
         <div className="container text-center px-4">
           {brandingSettings?.support_email && (
-            <p className="text-xs sm:text-sm text-neutral-600 mb-2">
+            <p className="text-xs sm:text-sm text-muted-theme mb-2">
               {t('gallery.needHelp')}{' '}
               <a 
                 href={`mailto:${brandingSettings.support_email}`}
@@ -443,14 +577,14 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               </a>
             </p>
           )}
-          <p className="text-xs sm:text-sm text-neutral-500">
+          <p className="text-xs sm:text-sm text-muted-theme">
             {brandingSettings?.footer_text || `© ${new Date().getFullYear()}${brandingSettings?.company_name ? ` ${brandingSettings.company_name}` : ''}. All rights reserved.`}
             {!brandingSettings?.hide_powered_by && (
               <> | Powered by <span className="font-semibold">PicPeak</span></>
             )}
           </p>
           {brandingSettings?.company_name && brandingSettings?.company_tagline && (
-            <p className="text-xs text-neutral-400 mt-2">
+            <p className="text-xs text-muted-theme mt-2">
               {brandingSettings.company_name} - {brandingSettings.company_tagline}
             </p>
           )}
@@ -458,14 +592,14 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           <div className="mt-4 flex items-center justify-center gap-4">
             <Link 
               to="/impressum" 
-              className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+              className="text-xs text-muted-theme hover:text-theme transition-colors"
             >
               {t('legal.impressum')}
             </Link>
-            <span className="text-xs text-neutral-400">|</span>
+            <span className="text-xs text-muted-theme">|</span>
             <Link 
               to="/datenschutz" 
-              className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
+              className="text-xs text-muted-theme hover:text-theme transition-colors"
             >
               {t('legal.datenschutz')}
             </Link>

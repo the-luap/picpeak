@@ -252,10 +252,29 @@ function renderBrandFooter(branding) {
 </footer>`;
 }
 
+function buildSeoMetaTags(seoSettings) {
+  const tags = [];
+  const robotsDirectives = [];
+
+  if (seoSettings.seo_meta_noindex) robotsDirectives.push('noindex');
+  if (seoSettings.seo_meta_nofollow) robotsDirectives.push('nofollow');
+
+  if (robotsDirectives.length > 0) {
+    tags.push(`<meta name="robots" content="${robotsDirectives.join(', ')}" />`);
+  }
+
+  if (seoSettings.seo_meta_noai) {
+    tags.push('<meta name="robots" content="noai, noimageai" />');
+  }
+
+  return tags.join('\n  ');
+}
+
 function buildPublicSiteDocument(payload) {
   const inlineStyles = composeInlineStyles(payload);
   const header = renderBrandHeader(payload.branding);
   const footer = renderBrandFooter(payload.branding);
+  const seoMeta = payload.seoSettings ? buildSeoMetaTags(payload.seoSettings) : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -265,6 +284,7 @@ function buildPublicSiteDocument(payload) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${payload.title}</title>
   <meta name="description" content="Curated photo galleries and stories from unforgettable celebrations." />
+  ${seoMeta}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -296,6 +316,21 @@ async function handlePublicSiteRequest(req, res, next) {
       return;
     }
 
+    // Inject SEO meta settings into payload
+    try {
+      const seoRows = await db('app_settings')
+        .where('setting_type', 'seo')
+        .whereIn('setting_key', ['seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai'])
+        .select('setting_key', 'setting_value');
+      const seoSettings = {};
+      for (const row of seoRows) {
+        let val = row.setting_value;
+        if (typeof val === 'string') { try { val = JSON.parse(val); } catch {} }
+        seoSettings[row.setting_key] = val;
+      }
+      payload.seoSettings = seoSettings;
+    } catch {}
+
     const document = buildPublicSiteDocument(payload);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -324,8 +359,8 @@ async function initializeRateLimiters() {
 }
 
 // Note: Rate limiters will be initialized after database connection
-app.use(express.json({ limit: '10gb' }));
-app.use(express.urlencoded({ extended: true, limit: '10gb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Request logging for API routes (with timestamps)
 const apiRequestLogger = (req, res, next) => {
@@ -351,8 +386,23 @@ app.use('/api/admin', sessionTimeoutMiddleware);
 
 // Middleware to set CORS headers for static files
 const setCorsHeaders = (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  const origin = req.headers.origin;
+  const staticAllowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3005',
+    process.env.ADMIN_URL || 'http://localhost:3005'
+  ];
+  if (process.env.NODE_ENV === 'development') {
+    staticAllowedOrigins.push(
+      'http://localhost:5173',
+      'http://localhost:3002',
+      'http://localhost:3001',
+      'http://localhost:3000'
+    );
+  }
+  if (origin && staticAllowedOrigins.indexOf(origin) !== -1) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 };
@@ -395,24 +445,37 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+// robots.txt endpoint (dynamic, served from DB settings)
+const { generateRobotsTxt } = require('./src/services/robotsTxtService');
+app.get('/robots.txt', async (req, res) => {
+  try {
+    const robotsTxt = await generateRobotsTxt();
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.status(200).send(robotsTxt);
+  } catch (error) {
+    logger.error('Failed to generate robots.txt', { error: error.message });
+    // Safe default for a private photo platform
+    res.setHeader('Content-Type', 'text/plain');
+    res.status(200).send('User-agent: *\nDisallow: /\n');
+  }
+});
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
     // Check database connectivity
     await db.raw('SELECT 1');
-    
-    res.json({ 
-      status: 'ok', 
-      database: 'connected',
-      timestamp: new Date().toISOString() 
+
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     logger.error('Health check failed:', error);
-    res.status(503).json({ 
-      status: 'error', 
-      database: 'disconnected',
-      error: error.message,
-      timestamp: new Date().toISOString() 
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -437,6 +500,7 @@ app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
+app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/invite', require('./src/routes/acceptInvite'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));

@@ -20,7 +20,9 @@ import { eventsService } from '../../services/events.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
+import { publicSettingsService } from '../../services/publicSettings.service';
 import { cssTemplatesService } from '../../services/cssTemplates.service';
+import { eventTypesService } from '../../services/eventTypes.service';
 import { useTranslation } from 'react-i18next';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { Code } from 'lucide-react';
@@ -57,18 +59,12 @@ interface FormData {
   };
 }
 
-const EVENT_TYPE_PRESETS: Record<string, string> = {
-  wedding: 'elegantWedding',
-  birthday: 'birthdayFun',
-  corporate: 'corporateTimeline',
-  other: 'default'
-};
-
-const EVENT_TYPES = [
-  { value: 'wedding', labelKey: 'events.types.wedding', emoji: '💒' },
-  { value: 'birthday', labelKey: 'events.types.birthday', emoji: '🎂' },
-  { value: 'corporate', labelKey: 'events.types.corporate', emoji: '🏢' },
-  { value: 'other', labelKey: 'events.types.other', emoji: '📸' },
+// Fallback event types (used when API is unavailable)
+const FALLBACK_EVENT_TYPES = [
+  { value: 'wedding', name: 'Wedding', emoji: '💒', theme_preset: 'elegantWedding' },
+  { value: 'birthday', name: 'Birthday', emoji: '🎂', theme_preset: 'birthdayFun' },
+  { value: 'corporate', name: 'Corporate', emoji: '🏢', theme_preset: 'corporateTimeline' },
+  { value: 'other', name: 'Other', emoji: '📸', theme_preset: 'default' },
 ];
 
 export const CreateEventPage: React.FC = () => {
@@ -132,6 +128,22 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => cssTemplatesService.getEnabledTemplates()
   });
 
+  // Fetch event types
+  const { data: eventTypes } = useQuery({
+    queryKey: ['event-types', 'active'],
+    queryFn: () => eventTypesService.getActiveEventTypes()
+  });
+
+  // Compute event types to use (API data or fallback)
+  const availableEventTypes = eventTypes?.length
+    ? eventTypes.map(et => ({
+        value: et.slug_prefix,
+        name: et.name,
+        emoji: et.emoji,
+        theme_preset: et.theme_preset
+      }))
+    : FALLBACK_EVENT_TYPES;
+
   // Fetch default settings
   const { data: settings } = useQuery({
     queryKey: ['admin-settings'],
@@ -141,13 +153,15 @@ export const CreateEventPage: React.FC = () => {
   // Fetch public settings for field requirements
   const { data: publicSettings } = useQuery({
     queryKey: ['public-settings'],
-    queryFn: () => settingsService.getPublicSettings()
+    queryFn: () => publicSettingsService.getPublicSettings()
   });
 
   // Get field requirements (default to true if not set)
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
   const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
   const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
+  const requireEventDate = publicSettings?.event_require_event_date !== false;
+  const requireExpiration = publicSettings?.event_require_expiration !== false;
 
   // Update default expiration days when settings are loaded
   useEffect(() => {
@@ -161,7 +175,10 @@ export const CreateEventPage: React.FC = () => {
 
   // Update theme when event type changes
   useEffect(() => {
-    const recommendedPreset = EVENT_TYPE_PRESETS[formData.event_type];
+    // Find the selected event type's theme preset
+    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
+    const recommendedPreset = selectedType?.theme_preset || 'default';
+
     if (recommendedPreset && GALLERY_THEME_PRESETS[recommendedPreset]) {
       setFormData(prev => ({
         ...prev,
@@ -169,7 +186,7 @@ export const CreateEventPage: React.FC = () => {
         theme_config: GALLERY_THEME_PRESETS[recommendedPreset].config
       }));
     }
-  }, [formData.event_type]);
+  }, [formData.event_type, availableEventTypes]);
 
   const createMutation = useMutation({
     mutationFn: eventsService.createEvent,
@@ -201,7 +218,7 @@ export const CreateEventPage: React.FC = () => {
       newErrors.event_name = t('validation.eventNameRequired');
     }
 
-    if (!formData.event_date) {
+    if (requireEventDate && !formData.event_date) {
       newErrors.event_date = t('validation.eventDateRequired');
     }
 
@@ -247,7 +264,7 @@ export const CreateEventPage: React.FC = () => {
       }
     }
 
-    if (formData.expires_in_days < 1 || formData.expires_in_days > 365) {
+    if (requireExpiration && (formData.expires_in_days < 1 || formData.expires_in_days > 365)) {
       newErrors.expires_in_days = t('validation.expirationRange');
     }
 
@@ -267,7 +284,7 @@ export const CreateEventPage: React.FC = () => {
     const payload = {
       event_type: formData.event_type,
       event_name: formData.event_name,
-      event_date: formData.event_date,
+      event_date: formData.event_date || undefined,
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
       admin_email: formData.admin_email,
@@ -275,7 +292,9 @@ export const CreateEventPage: React.FC = () => {
       password: formData.require_password ? formData.password : undefined,
       welcome_message: formData.welcome_message || '',
       color_theme: JSON.stringify(formData.theme_config),
-      expiration_days: formData.expires_in_days,
+      header_style: formData.theme_config.headerStyle || 'standard',
+      hero_divider_style: formData.theme_config.heroDividerStyle || 'wave',
+      expiration_days: requireExpiration ? formData.expires_in_days : undefined,
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
       css_template_id: formData.css_template_id,
@@ -346,7 +365,7 @@ export const CreateEventPage: React.FC = () => {
           >
             {t('common.back')}
           </Button>
-          <h1 className="text-2xl font-bold text-neutral-900">{t('events.create')}</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('events.create')}</h1>
         </div>
       </div>
 
@@ -354,29 +373,29 @@ export const CreateEventPage: React.FC = () => {
         {/* Event Details */}
         <Card>
           <div className="p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
               <Calendar className="w-5 h-5" />
               {t('events.eventDetails')}
             </h2>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('events.eventType')}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {EVENT_TYPES.map((type) => (
+                {availableEventTypes.map((type) => (
                   <button
                     key={type.value}
                     type="button"
                     onClick={() => setFormData({ ...formData, event_type: type.value })}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       formData.event_type === type.value
-                        ? 'border-primary-600 bg-primary-50'
-                        : 'border-neutral-200 hover:border-neutral-300'
+                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
                     <div className="text-2xl mb-1">{type.emoji}</div>
-                    <div className="text-sm font-medium">{t(type.labelKey)}</div>
+                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{type.name}</div>
                   </button>
                 ))}
               </div>
@@ -394,7 +413,7 @@ export const CreateEventPage: React.FC = () => {
 
               <Input
                 type="date"
-                label={t('events.eventDate')}
+                label={requireEventDate ? t('events.eventDate') : `${t('events.eventDate')} (${t('common.optional')})`}
                 value={formData.event_date}
                 onChange={handleInputChange('event_date')}
                 error={errors.event_date}
@@ -403,7 +422,7 @@ export const CreateEventPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('events.welcomeMessage')}
               </label>
               <WelcomeMessageEditor
@@ -420,7 +439,7 @@ export const CreateEventPage: React.FC = () => {
         <Card>
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
                 <Palette className="w-5 h-5" />
                 {t('events.themeAndStyle')}
               </h2>
@@ -437,14 +456,9 @@ export const CreateEventPage: React.FC = () => {
 
             {/* Quick Theme Preview */}
             {!showThemeCustomizer && (
-              <div className="p-4 rounded-lg border border-neutral-200" 
-                style={{
-                  backgroundColor: formData.theme_config.backgroundColor,
-                  color: formData.theme_config.textColor
-                }}
-              >
+              <div className="p-4 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold" style={{ fontFamily: formData.theme_config.fontFamily }}>
+                  <h3 className="font-semibold text-neutral-900 dark:text-neutral-100" style={{ fontFamily: formData.theme_config.fontFamily }}>
                     {GALLERY_THEME_PRESETS[formData.theme_preset]?.name || 'Custom Theme'}
                   </h3>
                   <div className="flex gap-2">
@@ -458,7 +472,7 @@ export const CreateEventPage: React.FC = () => {
                     />
                   </div>
                 </div>
-                <p className="text-sm opacity-80">
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
                   Gallery Layout: <span className="font-medium capitalize">{formData.theme_config.galleryLayout || 'grid'}</span>
                 </p>
               </div>
@@ -492,12 +506,12 @@ export const CreateEventPage: React.FC = () => {
 
             {/* Custom CSS Template Selection */}
             {cssTemplates && cssTemplates.length > 0 && (
-              <div className="pt-6 border-t border-neutral-200">
-                <h3 className="text-md font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+              <div className="pt-6 border-t border-neutral-200 dark:border-neutral-700">
+                <h3 className="text-md font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   {t('events.customCssTemplate', 'Custom CSS Template')}
                 </h3>
-                <p className="text-sm text-neutral-600 mb-4">
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
                   {t('events.customCssTemplateDesc', 'Apply a custom CSS template to style the gallery with unique visual effects.')}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -507,12 +521,12 @@ export const CreateEventPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, css_template_id: null })}
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
                       formData.css_template_id === null
-                        ? 'border-primary-600 bg-primary-50'
-                        : 'border-neutral-200 hover:border-neutral-300'
+                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
-                    <div className="font-medium text-sm">{t('events.noTemplate', 'No Template')}</div>
-                    <div className="text-xs text-neutral-500 mt-1">
+                    <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{t('events.noTemplate', 'No Template')}</div>
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                       {t('events.useThemeOnly', 'Use theme preset only')}
                     </div>
                   </button>
@@ -525,12 +539,12 @@ export const CreateEventPage: React.FC = () => {
                       onClick={() => setFormData({ ...formData, css_template_id: template.id })}
                       className={`p-4 rounded-lg border-2 transition-all text-left ${
                         formData.css_template_id === template.id
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-neutral-200 hover:border-neutral-300'
+                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                          : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                       }`}
                     >
-                      <div className="font-medium text-sm">{template.name}</div>
-                      <div className="text-xs text-neutral-500 mt-1">
+                      <div className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{template.name}</div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                         {t('events.customTemplate', 'Custom Template')} {template.slot_number}
                       </div>
                     </button>
@@ -544,7 +558,7 @@ export const CreateEventPage: React.FC = () => {
         {/* Access & Security */}
         <Card>
           <div className="p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
               <Lock className="w-5 h-5" />
               {t('events.accessAndSecurity')}
             </h2>
@@ -586,7 +600,7 @@ export const CreateEventPage: React.FC = () => {
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   checked={formData.require_password}
                   onChange={(e) => {
                     const checked = e.target.checked;
@@ -602,17 +616,17 @@ export const CreateEventPage: React.FC = () => {
                   }}
                 />
                 <div>
-                  <span className="text-sm font-medium text-neutral-700">
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t('events.requirePasswordToggle')}
                   </span>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                     {t('events.requirePasswordToggleHelp', 'Disable this if you want to share the gallery without a password. Anyone with the link will be able to view the photos.')}
                   </p>
                 </div>
               </label>
 
               {!formData.require_password && (
-                <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-xs text-orange-800">
+                <div className="rounded-md border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/30 p-3 text-xs text-orange-800 dark:text-orange-300">
                   {t('events.publicGalleryWarning', 'Public galleries are accessible to anyone with the link. Consider enabling download watermarks and monitoring activity.')} 
                 </div>
               )}
@@ -666,45 +680,57 @@ export const CreateEventPage: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                {t('events.galleryExpiration')}
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="w-32">
-                  <Input
-                    type="number"
-                    value={formData.expires_in_days}
-                    onChange={handleInputChange('expires_in_days')}
-                    error={errors.expires_in_days}
-                    min={1}
-                    max={365}
-                    leftIcon={<Clock className="w-5 h-5" />}
-                  />
+            {requireExpiration ? (
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('events.galleryExpiration')}
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="w-32">
+                    <Input
+                      type="number"
+                      value={formData.expires_in_days}
+                      onChange={handleInputChange('expires_in_days')}
+                      error={errors.expires_in_days}
+                      min={1}
+                      max={365}
+                      leftIcon={<Clock className="w-5 h-5" />}
+                    />
+                  </div>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.daysAfterEvent')}</span>
                 </div>
-                <span className="text-sm text-neutral-600">{t('events.daysAfterEvent')}</span>
+                {formData.event_date && (
+                  <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+                  </p>
+                )}
               </div>
-              {formData.event_date && (
-                <p className="mt-2 text-sm text-neutral-500">
-                  {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+            ) : (
+              <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('events.noExpiration', 'No Expiration')}</span>
+                </div>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                  {t('events.noExpirationHelp', 'This gallery will remain active until manually archived.')}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* User Upload Settings */}
-            <div className="pt-4 border-t border-neutral-200">
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
               <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   checked={formData.allow_user_uploads}
                   onChange={(e) => setFormData({ ...formData, allow_user_uploads: e.target.checked })}
-                  className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
                 />
                 <div>
-                  <span className="text-sm font-medium text-neutral-700">
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t('events.allowUserUploads')}
                   </span>
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                     {t('events.allowUserUploadsDescription')}
                   </p>
                 </div>
@@ -712,16 +738,16 @@ export const CreateEventPage: React.FC = () => {
 
               {formData.allow_user_uploads && categories && categories.length > 0 && (
                 <div className="mt-4 ml-7">
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     {t('events.uploadCategory')}
                   </label>
                   <select
                     value={formData.upload_category_id || ''}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      upload_category_id: e.target.value ? Number(e.target.value) : null 
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      upload_category_id: e.target.value ? Number(e.target.value) : null
                     })}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
                   >
                     <option value="">{t('events.selectCategory')}</option>
                     {categories.map(category => (
@@ -730,7 +756,7 @@ export const CreateEventPage: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {t('events.uploadCategoryHelp')}
                   </p>
                 </div>

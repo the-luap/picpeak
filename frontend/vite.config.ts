@@ -17,7 +17,7 @@ const config: VitestUserConfig = {
         },
       },
     },
-    sourcemap: true,
+    sourcemap: false,
   },
   test: {
     environment: 'jsdom',

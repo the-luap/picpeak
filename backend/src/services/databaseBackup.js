@@ -1,9 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
 const crypto = require('crypto');
+const { spawnAsync, spawnToFile } = require('../utils/safeExec');
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
 const { createReadStream, createWriteStream } = require('fs');
@@ -163,10 +161,10 @@ class DatabaseBackupService {
     
     try {
       // Use SQLite's backup API for consistency
-      await execAsync(`sqlite3 "${dbPath}" ".backup '${tempPath}'"`);
-      
+      await spawnAsync('sqlite3', [dbPath, `.backup '${tempPath}'`]);
+
       // Verify the backup
-      const verifyResult = await execAsync(`sqlite3 "${tempPath}" "PRAGMA integrity_check"`);
+      const verifyResult = await spawnAsync('sqlite3', [tempPath, 'PRAGMA integrity_check']);
       if (!verifyResult.stdout.includes('ok')) {
         throw new Error('Backup integrity check failed');
       }
@@ -191,14 +189,6 @@ class DatabaseBackupService {
    */
   async createPostgreSQLBackup(outputPath, options = {}) {
     const { host, port, user, password, database } = knexConfig.connection;
-    
-    // Build connection string with proper escaping
-    const connectionParts = [
-      `host=${host}`,
-      `port=${port}`,
-      `dbname=${database}`,
-      `user=${user}`
-    ];
     
     // Set PGPASSWORD environment variable for security
     const env = { ...process.env };
@@ -227,14 +217,17 @@ class DatabaseBackupService {
       pgDumpOptions.push('--compress=6');
     }
     
-    const command = `pg_dump "${connectionParts.join(' ')}" ${pgDumpOptions.join(' ')} > "${outputPath}"`;
-    
+    const pgDumpArgs = [
+      ...pgDumpOptions,
+      '-h', host,
+      '-p', String(port),
+      '-U', user,
+      '-d', database
+    ];
+
     try {
-      const { stderr } = await execAsync(command, { 
-        env, 
-        maxBuffer: 1024 * 1024 * 100 // 100MB buffer
-      });
-      
+      const { stderr } = await spawnToFile('pg_dump', pgDumpArgs, outputPath, { env });
+
       // pg_dump writes progress to stderr, not an error
       if (stderr && !stderr.includes('dump complete')) {
         logger.warn('pg_dump warnings:', stderr);
@@ -261,7 +254,7 @@ class DatabaseBackupService {
     try {
       if (this.dbType === 'sqlite') {
         // For SQLite, we can directly check integrity
-        const result = await execAsync(`sqlite3 "${backupPath}" "PRAGMA integrity_check"`);
+        const result = await spawnAsync('sqlite3', [backupPath, 'PRAGMA integrity_check']);
         if (!result.stdout.includes('ok')) {
           throw new Error('Backup integrity check failed');
         }

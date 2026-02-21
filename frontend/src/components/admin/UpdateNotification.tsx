@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowUpCircle, X, ExternalLink } from 'lucide-react';
+import { ArrowUpCircle, X, ExternalLink, Wrench } from 'lucide-react';
 import { api } from '../../config/api';
+import { UpdateInstructionsDialog } from './UpdateInstructionsDialog';
 
 interface UpdateInfo {
   enabled: boolean;
@@ -32,6 +33,7 @@ interface UpdateNotificationProps {
 export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onDismiss }) => {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const { data: updateInfo } = useQuery({
     queryKey: ['update-check'],
@@ -56,48 +58,64 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onDismis
     : t('admin.updates.channelStable', 'Stable');
 
   return (
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r-lg">
+    <div className="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 mb-4 rounded-r-lg">
       <div className="flex items-start justify-between">
         <div className="flex items-start">
           <ArrowUpCircle className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
           <div>
-            <h4 className="text-sm font-semibold text-blue-800">
+            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-200">
               {t('admin.updates.available', 'Update Available')}
             </h4>
-            <p className="text-sm text-blue-700 mt-1">
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
               {t('admin.updates.newVersion', 'Version {{version}} is available', {
                 version: updateInfo.latest.forChannel
               })}
-              <span className="text-blue-500 ml-2">
+              <span className="text-blue-500 dark:text-blue-400 ml-2">
                 ({t('admin.updates.currentVersion', 'Current: {{version}}', {
                   version: updateInfo.current
                 })})
               </span>
             </p>
-            <p className="text-xs text-blue-600 mt-1">
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
               {t('admin.updates.channel', 'Channel: {{channel}}', {
                 channel: channelLabel
               })}
             </p>
-            <a
-              href="https://github.com/the-luap/picpeak/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 mt-2"
-            >
-              {t('admin.updates.viewReleaseNotes', 'View Release Notes')}
-              <ExternalLink className="w-3 h-3 ml-1" />
-            </a>
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                onClick={() => setShowInstructions(true)}
+                className="inline-flex items-center text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md transition-colors"
+              >
+                <Wrench className="w-3 h-3 mr-1.5" />
+                {t('admin.updates.updateNow', 'Update Now')}
+              </button>
+              <a
+                href="https://github.com/the-luap/picpeak/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+              >
+                {t('admin.updates.viewReleaseNotes', 'View Release Notes')}
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            </div>
           </div>
         </div>
         <button
           onClick={handleDismiss}
-          className="text-blue-400 hover:text-blue-600 p-1"
+          className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 p-1"
           aria-label={t('common.close', 'Close')}
         >
           <X className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Update Instructions Dialog */}
+      <UpdateInstructionsDialog
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        targetVersion={updateInfo?.latest?.forChannel}
+      />
     </div>
   );
 };

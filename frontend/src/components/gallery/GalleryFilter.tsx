@@ -39,7 +39,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
     return (
       <div className={`${className}`}>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-neutral-700 whitespace-nowrap">
+          <span className="text-sm text-muted-theme whitespace-nowrap">
             {t('gallery.feedbackFilter', 'Feedback Filter')}
           </span>
           <div className="flex items-center gap-1">
@@ -99,7 +99,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
       {/* Mobile-optimized vertical layout */}
       {isMobile ? (
         <div className="space-y-2">
-          <div className="text-xs text-neutral-600 font-medium">
+          <div className="text-xs text-muted-theme font-medium">
             {t('gallery.feedbackFilter', 'Feedback Filter')}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -146,7 +146,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
       ) : (
         /* Desktop layout - inline with categories */
         <div className="flex items-center gap-3">
-          <span className="text-sm text-neutral-600 font-medium whitespace-nowrap">
+          <span className="text-sm text-muted-theme font-medium whitespace-nowrap">
             {t('gallery.feedbackFilter', 'Feedback Filter')}:
           </span>
           <div className="flex gap-2">

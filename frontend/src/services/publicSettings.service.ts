@@ -23,6 +23,12 @@ export interface PublicSettings {
   umami_url: string | null;
   umami_website_id: string | null;
   umami_share_url: string | null;
+  // Event field requirements
+  event_require_customer_name?: boolean;
+  event_require_customer_email?: boolean;
+  event_require_admin_email?: boolean;
+  event_require_event_date?: boolean;
+  event_require_expiration?: boolean;
 }
 
 export const publicSettingsService = {

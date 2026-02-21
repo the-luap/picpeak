@@ -46,6 +46,7 @@ services:
       - NODE_ENV=production
       - DB_HOST=${DB_HOST:-postgres}
       - REDIS_HOST=redis
+      - STORAGE_PATH=/app/storage
       - PHOTOS_DIR=/app/storage/events
       - PICPEAK_RELEASE_CHANNEL=${PICPEAK_CHANNEL:-stable}
     volumes:

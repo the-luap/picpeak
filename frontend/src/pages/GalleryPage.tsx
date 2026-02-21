@@ -122,11 +122,11 @@ export const GalleryPage: React.FC = () => {
     }
   }, [settingsData, isAuthenticated, i18n]);
 
-  // Apply theme for login page
+  // Apply theme for gallery (both login page and authenticated view)
   React.useEffect(() => {
-    if (!isAuthenticated && galleryInfo && settingsData) {
+    if (galleryInfo && settingsData) {
       let themeToApply = null;
-      
+
       if (galleryInfo.color_theme) {
         try {
           // Check if it's a valid JSON string
@@ -155,13 +155,13 @@ export const GalleryPage: React.FC = () => {
         // No event theme, use global theme
         themeToApply = settingsData.theme_config;
       }
-      
+
       // Apply theme
       if (themeToApply) {
         setTheme(themeToApply);
       }
     }
-  }, [galleryInfo, settingsData, isAuthenticated, setTheme]);
+  }, [galleryInfo, settingsData, setTheme]);
 
   React.useEffect(() => {
     if (!resolvedSlug || isResolvingIdentifier) {
@@ -187,8 +187,8 @@ export const GalleryPage: React.FC = () => {
     }
   }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier]);
 
-  // Calculate days until expiration
-  const daysUntilExpiration = galleryInfo
+  // Calculate days until expiration (null if no expiration set)
+  const daysUntilExpiration = galleryInfo?.expires_at
     ? differenceInDays(parseISO(galleryInfo.expires_at), new Date())
     : null;
 
@@ -394,9 +394,11 @@ export const GalleryPage: React.FC = () => {
               <CardContent className="text-center py-12">
                 <Clock className="w-16 h-16 text-amber-500 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold mb-2">{t('gallery.expired')}</h2>
-                <p className="text-neutral-600 mb-4">
-                  {t('gallery.expiredOn', { date: format(parseISO(galleryInfo.expires_at), 'PP') })}
-                </p>
+                {galleryInfo.expires_at && (
+                  <p className="text-neutral-600 mb-4">
+                    {t('gallery.expiredOn', { date: format(parseISO(galleryInfo.expires_at), 'PP') })}
+                  </p>
+                )}
                 <p className="text-sm text-neutral-500">
                   {t('gallery.contactOrganizer')}
                 </p>

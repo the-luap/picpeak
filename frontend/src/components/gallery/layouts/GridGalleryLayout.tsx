@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
@@ -59,6 +60,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   liked = false,
   onLikeSuccess
 }) => {
+  const { t } = useTranslation();
   const [overlayVisible, setOverlayVisible] = React.useState(false);
   const [isTouchDevice, setIsTouchDevice] = React.useState(false);
   const overlayTimeoutRef = React.useRef<number | null>(null);

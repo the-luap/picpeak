@@ -21,9 +21,11 @@ async function checkExpirations() {
     const warningDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
     
     // Check for events needing warning emails
+    // Skip events with null expires_at (they never expire)
     const eventsNeedingWarning = await db('events')
       .where('is_active', formatBoolean(true))
       .where('is_archived', formatBoolean(false))
+      .whereNotNull('expires_at')
       .where('expires_at', '<=', warningDate)
       .where('expires_at', '>', now);
     
@@ -40,9 +42,11 @@ async function checkExpirations() {
     }
     
     // Check for expired events
+    // Skip events with null expires_at (they never expire)
     const expiredEvents = await db('events')
       .where('is_active', formatBoolean(true))
       .where('is_archived', formatBoolean(false))
+      .whereNotNull('expires_at')
       .where('expires_at', '<=', now);
     
     for (const event of expiredEvents) {

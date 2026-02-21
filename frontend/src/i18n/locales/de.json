@@ -154,12 +154,61 @@
     "events": "Veranstaltungen",
     "archives": "Archive",
     "settings": "Einstellungen",
+    "eventTypes": "Veranstaltungsarten",
     "branding": "Branding",
     "analytics": "Analytik",
     "emailSettings": "E-Mail-Einstellungen",
     "backup": "Backup & Wiederherstellung",
     "cmsPages": "CMS-Seiten",
     "users": "Benutzer"
+  },
+  "eventTypes": {
+    "title": "Veranstaltungsarten",
+    "subtitle": "Veranstaltungsarten und deren Standard-Themes anpassen",
+    "loading": "Lade Veranstaltungsarten...",
+    "loadError": "Fehler beim Laden der Veranstaltungsarten",
+    "createNew": "Neue Veranstaltungsart",
+    "edit": "Veranstaltungsart bearbeiten",
+    "created": "Veranstaltungsart erfolgreich erstellt",
+    "updated": "Veranstaltungsart erfolgreich aktualisiert",
+    "deleted": "Veranstaltungsart erfolgreich gelöscht",
+    "createError": "Fehler beim Erstellen der Veranstaltungsart",
+    "updateError": "Fehler beim Aktualisieren der Veranstaltungsart",
+    "deleteError": "Fehler beim Löschen der Veranstaltungsart",
+    "searchPlaceholder": "Veranstaltungsarten suchen...",
+    "showInactive": "Inaktive anzeigen",
+    "noResults": "Keine Veranstaltungsarten gefunden",
+    "empty": "Noch keine Veranstaltungsarten",
+    "system": "System",
+    "table": {
+      "type": "Typ",
+      "slugPrefix": "URL-Präfix",
+      "theme": "Standard-Theme",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "form": {
+      "name": "Anzeigename",
+      "namePlaceholder": "z.B. Familienshooting",
+      "slugPrefix": "URL-Präfix",
+      "slugPrefixPlaceholder": "z.B. familie",
+      "slugPreview": "Beispiel-URL:",
+      "emoji": "Symbol",
+      "themePreset": "Standard-Theme",
+      "isActive": "Aktiv (sichtbar bei Veranstaltungserstellung)"
+    },
+    "validation": {
+      "slugFormat": "Nur Buchstaben, Zahlen und Bindestriche erlaubt"
+    },
+    "slugInfo": {
+      "title": "URL-Präfix Info:",
+      "description": "Das URL-Präfix wird zur Generierung von Galerie-URLs verwendet. Zum Beispiel erstellt eine Veranstaltungsart mit Präfix \"familie\" URLs wie: familie-mueller-familie-2025-01-22"
+    },
+    "deleteConfirm": {
+      "title": "Veranstaltungsart löschen",
+      "message": "Sind Sie sicher, dass Sie löschen möchten",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Stellen Sie sicher, dass keine Veranstaltungen diesen Typ verwenden."
+    }
   },
   "backup": {
     "external": {
@@ -625,9 +674,28 @@
     "searchPlaceholder": "Fotos suchen...",
     "sortBy": "Sortieren nach",
     "sortByDate": "Nach Datum sortieren",
+    "sortByCaptureDate": "Nach Aufnahmedatum sortieren",
     "sortByName": "Nach Name sortieren",
     "sortBySize": "Nach Größe sortieren",
-    "sortByRating": "Nach Bewertung sortieren"
+    "sortByRating": "Nach Bewertung sortieren",
+    "photoGallery": "Fotogalerie",
+    "photos": "Fotos",
+    "allRightsReserved": "Alle Rechte vorbehalten",
+    "searchMemories": "Erinnerungen suchen...",
+    "thankYou": "Vielen Dank",
+    "thankYouMessage": "Dass Sie Teil unserer Geschichte waren und unseren besonderen Tag unvergesslich gemacht haben.",
+    "feedback": {
+      "title": "Feedback",
+      "shareThoughts": "Teilen Sie Ihre Gedanken zu \"{{name}}\"",
+      "rateThisMoment": "Bewerten Sie diesen Moment",
+      "comments": "Kommentare",
+      "noComments": "Noch keine Kommentare. Seien Sie der Erste!",
+      "yourName": "Ihr Name",
+      "yourEmail": "Ihre E-Mail",
+      "writeLovelyNote": "Schreiben Sie eine nette Nachricht...",
+      "postComment": "Kommentar posten",
+      "anonymous": "Anonym"
+    }
   },
   "categories": {
     "title": "Fotokategorien",
@@ -647,7 +715,13 @@
     "noCategory": "Keine Kategorie",
     "noCategoriesYet": "Noch keine Kategorien. Erstellen Sie Ihre erste Kategorie, um Fotos zu organisieren.",
     "deleteConfirm": "Sind Sie sicher, dass Sie \"{{name}}\" löschen möchten?",
-    "cannotDelete": "Kategorie mit Fotos kann nicht gelöscht werden. Bitte weisen Sie die Fotos zuerst neu zu."
+    "cannotDelete": "Kategorie mit Fotos kann nicht gelöscht werden. Bitte weisen Sie die Fotos zuerst neu zu.",
+    "setCoverPhoto": "Titelbild festlegen",
+    "removeCoverPhoto": "Titelbild entfernen",
+    "coverPhotoSet": "Titelbild erfolgreich festgelegt",
+    "coverPhotoRemoved": "Titelbild entfernt",
+    "failedToSetCoverPhoto": "Titelbild konnte nicht festgelegt werden",
+    "categoryHeroHint": "Wenn kein Titelbild für eine Kategorie festgelegt ist, wird das Standard-Hero-Foto verwendet."
   },
   "events": {
     "noStatisticsAvailableYet": "Noch keine Statistiken verfügbar",
@@ -759,6 +833,8 @@
     "themeAndStyle": "Design & Stil",
     "galleryWillExpireOn": "Galerie läuft ab am {{date}}",
     "expirationWarning": "Gäste erhalten 7 Tage vor Ablauf eine Warn-E-Mail.",
+    "noExpiration": "Kein Ablaufdatum",
+    "noExpirationHelp": "Diese Galerie bleibt aktiv, bis sie manuell archiviert wird.",
     "userUploads": "Benutzer-Upload-Einstellungen",
     "allowUserUploads": "Gästen erlauben, Fotos hochzuladen",
     "allowUserUploadsHelp": "Ermöglichen Sie Gästen, ihre eigenen Fotos in diese Galerie hochzuladen",
@@ -782,11 +858,42 @@
     "protectionLevelStandard": "Standard - Tastenkombinationen blockiert",
     "protectionLevelEnhanced": "Erweitert - Bildschirmfoto-Erkennung",
     "protectionLevelMaximum": "Maximum - DevTools-Erkennung & Canvas-Rendering",
+    "heroLogoSettings": "Hero-Logo-Einstellungen",
+    "heroLogoVisible": "Logo im Hero-Bereich anzeigen",
+    "heroLogoSize": "Logo-Größe",
+    "heroLogoSizeSmall": "Klein",
+    "heroLogoSizeMedium": "Mittel",
+    "heroLogoSizeLarge": "Groß",
+    "heroLogoSizeXLarge": "Extra Groß",
+    "heroLogoPosition": "Logo-Position",
+    "heroLogoPositionTop": "Oben (über dem Titel)",
+    "heroLogoPositionCenter": "Mitte (zwischen Titel und Datum)",
+    "heroLogoPositionBottom": "Unten (unter dem Datum)",
+    "heroLogoInfo": "Diese Einstellungen gelten für das Hero-Layout der Galerie. Sie können das Logo ausblenden oder Größe und Position anpassen.",
+    "eventCustomLogo": "Individuelles Event-Logo",
+    "eventCustomLogoDescription": "Laden Sie ein individuelles Logo für dieses Event hoch. Dies überschreibt das globale Branding-Logo nur für diese Galerie.",
+    "uploadEventLogo": "Logo hochladen",
+    "replaceLogo": "Ersetzen",
+    "removeLogo": "Entfernen",
+    "eventLogoUploaded": "Event-Logo erfolgreich hochgeladen",
+    "eventLogoUploadFailed": "Event-Logo konnte nicht hochgeladen werden",
+    "eventLogoRemoved": "Event-Logo erfolgreich entfernt",
+    "eventLogoRemoveFailed": "Event-Logo konnte nicht entfernt werden",
+    "heroLogoVisibleLabel": "Logo sichtbar",
+    "heroLogoSizeLabel": "Größe",
+    "heroLogoPositionLabel": "Position",
+    "heroLogoHidden": "Logo ausgeblendet",
     "heroPhoto": "Hero-Foto",
-    "heroPhotoHelp": "Wählen Sie ein hervorgehobenes Foto für das Hero-Galerie-Layout",
+    "heroPhotoHelp": "Wählen Sie ein Standard-Hero-Foto für die Galerie. Sie können dies pro Kategorie überschreiben.",
     "selectHeroPhoto": "Hero-Foto auswählen",
     "noHeroPhotoSelected": "Kein Hero-Foto ausgewählt",
     "heroPhotoSelected": "Hero-Foto ausgewählt",
+    "heroImageAnchor": "Hero-Bild Zuschneideposition",
+    "heroImageAnchorDescription": "Klicken Sie auf das Bild, um den Fokuspunkt für den Zuschnitt festzulegen.",
+    "heroImageAnchorTop": "Oben",
+    "heroImageAnchorCenter": "Mitte",
+    "heroImageAnchorBottom": "Unten",
+    "heroPreview": "Hero-Vorschau",
     "noPhotosAvailable": "Keine Fotos verfügbar",
     "processingRequest": "Ihre Anfrage wird verarbeitet...",
     "eventTypeWedding": "Hochzeit",
@@ -908,7 +1015,6 @@
       "allowedFileTypes": "Erlaubte Dateitypen",
       "allowedFileTypesHelp": "Kommagetrennte Liste von Dateierweiterungen",
       "featureToggles": "Funktionsschalter",
-      "enableWatermark": "Wasserzeichen auf Fotos aktivieren",
       "enableAnalytics": "Analytics-Tracking aktivieren",
       "enableRegistration": "Selbstregistrierung für Admins erlauben",
       "enableShortGalleryUrls": "Kurze Galerie-Links verwenden",
@@ -1048,6 +1154,12 @@
       "requireAdminEmail": "Admin-E-Mail erforderlich",
       "requireAdminEmailHelp": "Admin-E-Mail muss für neue Veranstaltungen angegeben werden",
       "adminEmailWarning": "Erforderlich für den Erhalt von Veranstaltungsbenachrichtigungen",
+      "requireEventDate": "Veranstaltungsdatum erforderlich",
+      "requireEventDateHelp": "Veranstaltungsdatum muss beim Erstellen angegeben werden",
+      "eventDateWarning": "Galerie-URLs verwenden zufällige Kennungen anstelle von Daten",
+      "requireExpiration": "Ablaufdatum erforderlich",
+      "requireExpirationHelp": "Galerien müssen ein Ablaufdatum haben",
+      "expirationWarning": "Galerien ohne Ablaufdatum bleiben aktiv, bis sie manuell archiviert werden",
       "saveSettings": "Veranstaltungseinstellungen speichern",
       "noteTitle": "Hinweis",
       "noteText": "Diese Einstellungen betreffen nur die Erstellung neuer Veranstaltungen. Bestehende Veranstaltungen sind nicht betroffen. Standardmäßig sind alle Felder erforderlich."
@@ -1077,6 +1189,34 @@
       "logEvents": "Sicherheitsereignisse in Datenbank protokollieren",
       "infoTitle": "Über Bildschutz",
       "infoText": "Diese Schutzfunktionen helfen, gelegentliches Herunterladen und Kopieren zu verhindern, können aber nicht alle Methoden blockieren. Entschlossene Benutzer finden möglicherweise trotzdem Wege, Bilder zu erfassen. Erwägen Sie die Verwendung von Wasserzeichen und rechtlichen Vereinbarungen für umfassenden Schutz."
+    },
+    "seo": {
+      "title": "SEO & Robots",
+      "indexingTitle": "Suchmaschinen-Indexierung",
+      "allowIndexing": "Suchmaschinen-Indexierung erlauben",
+      "allowIndexingHelp": "Wenn deaktiviert, werden alle Crawler über robots.txt blockiert. Für private Foto-Plattformen empfohlen auszuschalten.",
+      "sitemapUrl": "Sitemap-URL",
+      "sitemapUrlHelp": "Optional. Wird zur robots.txt hinzugefügt, falls angegeben.",
+      "aiBlockingTitle": "KI- & Bot-Blockierung",
+      "blockAiCrawlers": "KI-/LLM-Crawler blockieren",
+      "blockAiCrawlersHelp": "Verhindert, dass KI-Trainings-Bots auf Ihre Inhalte zugreifen.",
+      "blockedAgents": "Blockierte KI-Agenten",
+      "addAgentPlaceholder": "Agentenname eingeben...",
+      "blockSocialBots": "Social-Media-Vorschau-Bots blockieren",
+      "blockSocialBotsHelp": "Verhindert Link-Vorschauen auf Twitter, Facebook, LinkedIn usw.",
+      "metaTagsTitle": "Meta-Tags & Benutzerdefinierte Regeln",
+      "metaNoindex": "noindex-Meta-Tag hinzufügen",
+      "metaNoindexHelp": "Teilt Suchmaschinen mit, Seiten nicht zu indexieren (HTML-Ebene, ergänzt robots.txt).",
+      "metaNofollow": "nofollow-Meta-Tag hinzufügen",
+      "metaNofollowHelp": "Teilt Suchmaschinen mit, Links auf Seiten nicht zu folgen.",
+      "metaNoai": "noai/noimageai-Meta-Tag hinzufügen",
+      "metaNoaiHelp": "Signalisiert, dass Inhalte nicht für KI-Training verwendet werden sollen.",
+      "customRules": "Benutzerdefinierte robots.txt-Regeln",
+      "ruleAgentPlaceholder": "User-Agent",
+      "rulePathPlaceholder": "Disallow-Pfad",
+      "showPreview": "robots.txt-Vorschau anzeigen",
+      "hidePreview": "robots.txt-Vorschau ausblenden",
+      "saveSettings": "SEO-Einstellungen speichern"
     },
     "categories": {
       "title": "Kategorien",
@@ -1109,6 +1249,25 @@
       "sent": "Gesendet",
       "failed": "Fehlgeschlagen",
       "lastUpdate": "Letzte Aktualisierung"
+    },
+    "updateNotifications": {
+      "title": "Update-Benachrichtigungen",
+      "description": "Erhalten Sie E-Mail-Benachrichtigungen, wenn neue Versionen von PicPeak verfügbar sind.",
+      "enableEmails": "E-Mail-Benachrichtigungen aktivieren",
+      "enableEmailsDesc": "E-Mail an Admins senden, wenn eine neue Version verfügbar ist",
+      "recipients": "E-Mail-Empfänger",
+      "recipientsPlaceholder": "admin@beispiel.de, andere@beispiel.de",
+      "recipientsHelper": "Kommagetrennte E-Mail-Adressen. Leer lassen, um an alle Admin-Benutzer zu senden.",
+      "lastNotified": "Letzte Benachrichtigung gesendet für Version: {{version}}",
+      "checkNow": "Prüfen & Benachrichtigen",
+      "sendTest": "Test-E-Mail senden",
+      "saved": "Einstellungen gespeichert",
+      "saveError": "Fehler beim Speichern der Einstellungen",
+      "emailSent": "Benachrichtigungs-E-Mail an {{count}} Empfänger gesendet",
+      "emailFailed": "Fehler beim Senden der Benachrichtigung",
+      "checkSuccess": "Benachrichtigung für neue Version gesendet",
+      "checkNoAction": "Keine Benachrichtigung erforderlich: {{reason}}",
+      "checkError": "Fehler beim Prüfen auf Updates"
     }
   },
   "branding": {
@@ -1138,7 +1297,6 @@
     "faviconHelp": "PNG- oder ICO-Format, empfohlene Größe: 32x32px",
     "watermark": "Wasserzeichen",
     "watermarkSettings": "Wasserzeichen-Einstellungen",
-    "enableWatermark": "Wasserzeichen auf Fotos aktivieren",
     "enableWatermarks": "Wasserzeichen aktivieren",
     "watermarkHelp": "Fügen Sie Ihren Firmennamen als Wasserzeichen auf heruntergeladenen Fotos hinzu",
     "watermarkLogo": "Wasserzeichen-Logo",
@@ -1162,6 +1320,11 @@
     "accentColor": "Akzentfarbe",
     "backgroundColor": "Hintergrundfarbe",
     "textColor": "Textfarbe",
+    "colorMode": "Farbmodus",
+    "colorModeLight": "Hell",
+    "colorModeDark": "Dunkel",
+    "colorModeAuto": "Auto",
+    "colorModeHelp": "Auto folgt der Systemeinstellung des Besuchers.",
     "customCSS": "Benutzerdefiniertes CSS",
     "preview": "Vorschau",
     "previewInNewTab": "Vorschau in neuem Tab",
@@ -1178,7 +1341,10 @@
       "carousel": "Vollbild-Diashow mit Navigation",
       "timeline": "Nach Datum organisierte Fotos",
       "hero": "Hervorgehobenes Bild mit Raster darunter",
-      "mosaic": "Künstlerisches Layout mit gemischten Größen"
+      "mosaic": "Künstlerisches Layout mit gemischten Größen",
+      "justified": "Zeilenbasiertes Layout mit Seitenverhältnis-Erhaltung",
+      "gallery-premium": "Elegantes helles Theme mit Hero und Masonry (Beta)",
+      "gallery-story": "Filmisches dunkles Theme mit Szenen-Abschnitten (Beta)"
     },
     "layoutSettings": "Layout-Einstellungen",
     "photoSpacing": "Foto-Abstand",
@@ -1206,6 +1372,37 @@
       "week": "Woche",
       "month": "Monat"
     },
+    "masonryMode": "Layout-Modus",
+    "masonryModeOptions": {
+      "columns": "Spalten (Pinterest-Stil)",
+      "rows": "Zeilen (Eigenes Layout)",
+      "flickr": "Flickr (Bewährtes Layout)",
+      "justified": "Google Fotos (Knuth-Plass Algorithmus)"
+    },
+    "masonryModeHint": {
+      "columns": "Pinterest-ähnliche vertikale Spalten mit variierenden Höhen",
+      "rows": "Eigenes zeilenbasiertes Layout",
+      "flickr": "Flickrs Open-Source Justified-Layout Algorithmus",
+      "justified": "Google Fotos-ähnliche Zeilen mit Knuth-Plass Algorithmus für optimale Umbrüche"
+    },
+    "targetRowHeight": "Ziel-Zeilenhöhe",
+    "targetRowHeightHint": "Höhe in Pixeln (150-400). Fotos werden skaliert, um in Zeilen zu passen.",
+    "lastRowBehavior": "Letzte Zeile Ausrichtung",
+    "lastRowOptions": {
+      "left": "Linksbündig",
+      "center": "Zentriert",
+      "justify": "Blocksatz (gestreckt)"
+    },
+    "showHeroSection": "Hero-Bereich anzeigen",
+    "showHeroSectionHint": "Zeigt ein hervorgehobenes Titelbild über der Galerie an",
+    "heroHeight": "Hero-Bereich Höhe",
+    "heroHeightOptions": {
+      "small": "Klein (40-50%)",
+      "medium": "Mittel (50-70%)",
+      "large": "Groß (60-80%)"
+    },
+    "heroOverlayOpacity": "Hero-Overlay Deckkraft",
+    "heroOverlayHint": "Verdunkelt das Titelbild für bessere Lesbarkeit",
     "typographyAndStyle": "Typografie & Stil",
     "bodyFont": "Fließtext-Schriftart",
     "headingFont": "Überschriften-Schriftart",
@@ -1256,6 +1453,7 @@
     "saveTheme": "Design speichern",
     "previewLayout": "Vorschau-Layout",
     "livePreview": "Live-Vorschau",
+    "heroPlaceholderText": "Das Hero-Foto Ihrer Veranstaltung wird hier angezeigt",
     "whiteLabel": "White Label",
     "hidePoweredBy": "\"Powered by PicPeak\" Branding ausblenden",
     "hidePoweredByHelp": "Entfernen Sie die PicPeak-Kennzeichnung aus Galerie-Fußzeilen für ein vollständig personalisiertes Erscheinungsbild",
@@ -1279,7 +1477,41 @@
     "showLogoInHeader": "Logo im Galerie-Header anzeigen",
     "showLogoInHeaderHelp": "Logo in der Hauptkopfzeile anzeigen",
     "showLogoInHero": "Logo im Hero-Bereich anzeigen",
-    "showLogoInHeroHelp": "Logo in Hero-Bereichen anzeigen (für Nicht-Raster-Layouts)"
+    "showLogoInHeroHelp": "Logo in Hero-Bereichen anzeigen (für Nicht-Raster-Layouts)",
+    "headerStyle": "Kopfzeilen-Stil",
+    "headerStyleDescription": "Wählen Sie, wie die Galerie-Kopfzeile aussieht. Der Kopfzeilen-Stil ist unabhängig vom Foto-Layout.",
+    "headerStyleOptions": {
+      "hero": "Hero-Bild",
+      "standard": "Standard-Banner",
+      "minimal": "Minimal",
+      "none": "Keine Kopfzeile"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Bild in voller Höhe mit Event-Info-Overlay",
+      "standard": "Klassisches Banner mit Veranstaltungsdetails",
+      "minimal": "Kompakte Kopfzeile mit wesentlichen Infos",
+      "none": "Kopfzeile komplett ausblenden"
+    },
+    "heroDividerStyle": "Trennlinie-Stil",
+    "heroDividerDescription": "Wählen Sie, wie der Übergang zwischen dem Hero-Bild und dem Galerie-Inhalt aussieht.",
+    "dividerOptions": {
+      "wave": "Welle",
+      "straight": "Gerade",
+      "angle": "Winkel",
+      "curve": "Kurve",
+      "none": "Keine"
+    },
+    "controlsStyle": "Steuerelemente-Stil",
+    "controlsStyleDescription": "Wählen Sie, wie Galerie-Filter und Steuerelemente angezeigt werden.",
+    "controlsStyleOptions": {
+      "classic": "Klassisch",
+      "sidebar": "Seitenleiste"
+    },
+    "controlsStyleDescriptions": {
+      "classic": "Inline-Filterleiste unter der Kopfzeile",
+      "sidebar": "Menü-Schaltfläche öffnet Seitenleiste mit Filtern"
+    },
+    "controlsStyleHeroWarning": "Für Hero-Kopfzeilen wird die Seitenleiste empfohlen, um zu verhindern, dass Steuerelemente über dem Hero-Bild erscheinen."
   },
   "admin": {
     "title": "Admin-Panel",
@@ -1291,6 +1523,8 @@
     "storageUsed": "Speicher verwendet",
     "totalPhotos": "Gesamte Fotos",
     "storagePercent": "{{percent}}% des Limits {{limit}}",
+    "darkMode": "Zum Dunkelmodus wechseln",
+    "lightMode": "Zum Hellmodus wechseln",
     "storageSoftLimitConfigured": "Konfiguriertes Limit: {{limit}}",
     "storageSoftLimitRecommended": "Empfohlenes Limit: {{limit}}",
     "version": "Version",
@@ -1314,7 +1548,18 @@
       "updateAvailableShort": "v{{version}} verfügbar",
       "checkForUpdates": "Nach Updates suchen",
       "upToDate": "Alles aktuell",
-      "lastChecked": "Zuletzt geprüft: {{time}}"
+      "lastChecked": "Zuletzt geprüft: {{time}}",
+      "updateNow": "Jetzt aktualisieren",
+      "updateDialog": {
+        "title": "PicPeak aktualisieren",
+        "detectedEnv": "Erkannte Umgebung",
+        "beforeUpdating": "Vor dem Update:",
+        "updateCommands": "Update-Befehle:",
+        "afterUpdating": "Nach dem Update:",
+        "copyAllCommands": "Alle Befehle kopieren",
+        "completeChecklist": "Checkliste vor dem Update ausfüllen",
+        "error": "Fehler beim Laden der Update-Anweisungen"
+      }
     },
     "notifications": "Benachrichtigungen",
     "viewAllNotifications": "Alle Benachrichtigungen anzeigen",
@@ -1515,6 +1760,10 @@
     "successMessage": "Ihr Konto wurde erfolgreich erstellt. Sie können sich jetzt mit Ihren Zugangsdaten anmelden.",
     "redirecting": "Weiterleitung zur Anmeldung in {{seconds}}...",
     "goToLogin": "Zur Anmeldung",
+    "contactAdminMessage": "Bitte kontaktieren Sie Ihren Administrator, um eine neue Einladung anzufordern.",
+    "passwordsMatch": "Passwörter stimmen überein",
+    "alreadyHaveAccount": "Bereits ein Konto?",
+    "signIn": "Anmelden",
     "errors": {
       "usernameRequired": "Benutzername ist erforderlich",
       "usernameTooShort": "Benutzername muss mindestens 3 Zeichen lang sein",

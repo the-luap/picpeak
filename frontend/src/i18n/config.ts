@@ -27,8 +27,8 @@ i18n
       escapeValue: false,
     },
 
-    // Use v3 format for pluralization (_plural suffix instead of _one/_other)
-    compatibilityJSON: 'v3',
+    // Use v4 format for pluralization (_one/_other instead of _plural suffix)
+    compatibilityJSON: 'v4',
     
     detection: {
       order: ['localStorage', 'cookie', 'navigator', 'htmlTag'],

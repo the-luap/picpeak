@@ -1,6 +1,6 @@
 // Hooks
 export { useSettingsState, MAX_FILES_PER_UPLOAD_LIMIT } from './hooks/useSettingsState';
-export type { GeneralSettings, SecuritySettings, AnalyticsSettings, EventSettings } from './hooks/useSettingsState';
+export type { GeneralSettings, SecuritySettings, AnalyticsSettings, EventSettings, SeoSettings } from './hooks/useSettingsState';
 export { useStatusTab } from './hooks/useStatusTab';
 
 // Tab components
@@ -13,3 +13,4 @@ export { CategoriesTab } from './tabs/CategoriesTab';
 export { AnalyticsTab } from './tabs/AnalyticsTab';
 export { ModerationTab } from './tabs/ModerationTab';
 export { StylingTab } from './tabs/StylingTab';
+export { SEOTab } from './tabs/SEOTab';

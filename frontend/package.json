@@ -1,7 +1,7 @@
 {
   "name": "picpeak-frontend",
   "private": true,
-  "version": "2.4.0",
+  "version": "3.15.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,13 +28,16 @@
     "clsx": "^2.0.0",
     "date-fns": "4.1.0",
     "dompurify": "^3.2.6",
+    "framer-motion": "^12.33.0",
     "i18next": "^25.3.1",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
+    "justified-layout": "^4.1.0",
     "linkifyjs": "^4.3.2",
     "lodash": "^4.17.21",
     "lowlight": "^2.9.0",
     "lucide-react": "0.525.0",
+    "photoswipe": "^5.4.4",
     "react": "^18.3.1",
     "react-countdown": "^2.3.5",
     "react-dom": "^18.3.1",
@@ -42,9 +45,12 @@
     "react-i18next": "^15.6.0",
     "react-image-gallery": "^1.2.11",
     "react-intersection-observer": "^9.4.3",
+    "react-photo-album": "^3.4.0",
     "react-router-dom": "^6.8.0",
     "react-toastify": "11.0.5",
-    "tailwind-merge": "^3.3.1"
+    "swiper": "^12.1.0",
+    "tailwind-merge": "^3.3.1",
+    "yet-another-react-lightbox": "^3.28.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

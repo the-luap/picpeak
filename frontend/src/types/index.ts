@@ -4,7 +4,7 @@ export interface Event {
   slug: string;
   event_type: string;
   event_name: string;
-  event_date: string;
+  event_date: string | null;
   customer_name?: string;
   customer_email: string;
   admin_email: string;
@@ -12,7 +12,7 @@ export interface Event {
   color_theme?: string;
   share_link: string;
   created_at: string;
-  expires_at: string;
+  expires_at: string | null;
   is_active: boolean;
   is_archived: boolean;
   archive_path?: string;
@@ -41,13 +41,25 @@ export interface Event {
   watermark_downloads?: boolean;
   enable_devtools_protection?: boolean;
   use_canvas_rendering?: boolean;
+  // Hero logo customization fields
+  hero_logo_visible?: boolean;
+  hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
+  hero_logo_position?: 'top' | 'center' | 'bottom';
+  hero_logo_url?: string | null;
+  // Header style settings (decoupled from layout)
+  header_style?: 'hero' | 'standard' | 'minimal' | 'none';
+  hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  hero_image_anchor?: string;
+  // CSS Template
+  css_template_id?: number | null;
 }
 
 export interface GalleryInfo {
   event_name: string;
   event_type: string;
-  event_date: string;
-  expires_at: string;
+  event_date: string | null;
+  expires_at: string | null;
   is_active: boolean;
   is_expired: boolean;
   requires_password?: boolean;
@@ -59,6 +71,7 @@ export interface Photo {
   filename: string;
   url: string;
   thumbnail_url?: string;
+  hero_url?: string; // Hero-optimized image URL (1920x1080) for full-width hero sections
   secure_url_template?: string;
   download_url_template?: string;
   requires_token?: boolean;
@@ -68,6 +81,7 @@ export interface Photo {
   category_slug?: string;
   size: number;
   uploaded_at: string;
+  captured_at?: string; // EXIF capture date (if available)
   // Media type fields
   media_type?: 'photo' | 'video' | 'image';
   mime_type?: string;
@@ -90,6 +104,7 @@ export interface PhotoCategory {
   name: string;
   slug: string;
   is_global: boolean;
+  hero_photo_id?: number | null;
 }
 
 export interface GalleryData {
@@ -97,10 +112,10 @@ export interface GalleryData {
     id: number;
     event_name: string;
     event_type: string;
-    event_date: string;
+    event_date: string | null;
     welcome_message?: string;
     color_theme?: string;
-    expires_at: string;
+    expires_at: string | null;
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;
@@ -115,6 +130,16 @@ export interface GalleryData {
     enable_devtools_protection?: boolean;
     fragmentation_level?: number;
     overlay_protection?: boolean;
+    // Hero logo customization fields
+    hero_logo_visible?: boolean;
+    hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
+    hero_logo_position?: 'top' | 'center' | 'bottom';
+    hero_logo_url?: string | null;
+    // Header style settings (decoupled from layout)
+    header_style?: 'hero' | 'standard' | 'minimal' | 'none';
+    hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
+    // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+    hero_image_anchor?: string;
   };
   categories?: PhotoCategory[];
   photos: Photo[];
@@ -155,6 +180,7 @@ export interface AdminUser {
   lastLogin?: string | null;
   lastLoginIp?: string | null;
   createdAt?: string;
+  updatedAt?: string;
   createdByUsername?: string;
 }
 

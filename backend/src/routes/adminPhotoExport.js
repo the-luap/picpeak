@@ -71,12 +71,12 @@ router.get('/:eventId/filtered', adminAuth, requirePermission('photos.view'), [
     // Build filtered query
     const filterBuilder = new PhotoFilterBuilder(
       db('photos')
-        .leftJoin('categories', 'photos.category_id', 'categories.id')
+        .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
         .select(
           'photos.id',
           'photos.filename',
           'photos.original_filename',
-          'photos.file_path',
+          'photos.path',
           'photos.average_rating',
           'photos.feedback_count',
           'photos.like_count',
@@ -84,8 +84,8 @@ router.get('/:eventId/filtered', adminAuth, requirePermission('photos.view'), [
           'photos.comment_count',
           'photos.width',
           'photos.height',
-          'photos.created_at',
-          'categories.name as category_name'
+          'photos.uploaded_at',
+          'photo_categories.name as category_name'
         ),
       eventId
     );

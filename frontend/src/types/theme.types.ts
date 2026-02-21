@@ -1,5 +1,11 @@
 // Gallery Layout Types
-export type GalleryLayoutType = 'grid' | 'masonry' | 'carousel' | 'timeline' | 'hero' | 'mosaic';
+export type GalleryLayoutType = 'grid' | 'masonry' | 'carousel' | 'timeline' | 'mosaic' | 'gallery-premium' | 'gallery-story';
+
+// Header Style Types (decoupled from layout)
+export type HeaderStyleType = 'hero' | 'standard' | 'minimal' | 'none';
+
+// Hero Divider Styles
+export type HeroDividerStyle = 'wave' | 'straight' | 'angle' | 'curve' | 'none';
 
 export interface GalleryLayoutSettings {
   // Common settings
@@ -15,7 +21,16 @@ export interface GalleryLayoutSettings {
   };
   
   // Masonry specific
+  masonryMode?: 'columns' | 'rows' | 'flickr' | 'quilted' | 'justified'; // columns = Pinterest-style, rows = justified rows, flickr = Flickr justified-layout, quilted = mixed sizes, justified = Knuth-Plass
   masonryGutter?: number;
+  masonryRowHeight?: number; // Target row height for rows mode (150-400)
+  masonryLastRowBehavior?: 'justify' | 'left' | 'center'; // How to align incomplete last row
+
+  // Justified layout specific
+  justifiedRowHeight?: number;
+  justifiedLastRowBehavior?: 'justify' | 'left' | 'center';
+  justifiedShowHero?: boolean;
+  justifiedHeroHeight?: 'small' | 'medium' | 'large';
   
   // Carousel specific
   carouselAutoplay?: boolean;
@@ -28,7 +43,6 @@ export interface GalleryLayoutSettings {
   
   // Hero specific
   heroImageId?: number;
-  heroImagePosition?: 'top' | 'center' | 'bottom';
   heroOverlayOpacity?: number;
   
   // Mosaic specific
@@ -41,23 +55,36 @@ export interface ThemeConfig {
   accentColor?: string;
   backgroundColor?: string;
   textColor?: string;
-  
+  surfaceColor?: string;
+  surfaceBorderColor?: string;
+  mutedTextColor?: string;
+
+  // Color Mode
+  colorMode?: 'light' | 'dark' | 'auto';
+
   // Typography
   fontFamily?: string;
   headingFontFamily?: string;
   fontSize?: 'small' | 'normal' | 'large';
-  
+
   // Styling
   borderRadius?: 'none' | 'sm' | 'md' | 'lg';
   buttonStyle?: 'solid' | 'outline' | 'ghost';
   shadowStyle?: 'none' | 'subtle' | 'normal' | 'dramatic';
-  
+
   // Gallery Layout
   galleryLayout?: GalleryLayoutType;
   gallerySettings?: GalleryLayoutSettings;
-  
-  // Header/Footer
-  headerStyle?: 'minimal' | 'standard' | 'full';
+
+  // Header Style (decoupled from layout)
+  headerStyle?: HeaderStyleType;
+  heroDividerStyle?: HeroDividerStyle;
+
+  // Controls Style - sidebar (menu button) vs classic (inline filter bar)
+  controlsStyle?: 'sidebar' | 'classic';
+
+  // Legacy Header/Footer (kept for backward compatibility)
+  legacyHeaderStyle?: 'minimal' | 'standard' | 'full';
   footerStyle?: 'minimal' | 'standard' | 'full';
   showEventInfo?: boolean;
   showBranding?: boolean;
@@ -112,14 +139,16 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       headingFontFamily: 'Playfair Display, serif',
       borderRadius: 'lg',
       shadowStyle: 'subtle',
-      galleryLayout: 'hero',
+      galleryLayout: 'grid',
+      headerStyle: 'hero',
+      heroDividerStyle: 'wave',
       gallerySettings: {
         spacing: 'relaxed',
         photoAnimation: 'scale',
         photoShape: 'rounded',
         heroOverlayOpacity: 0.3
       },
-      headerStyle: 'full',
+      legacyHeaderStyle: 'full',
       footerStyle: 'minimal'
     },
     isPreset: true
@@ -127,7 +156,7 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
   
   modernMasonry: {
     name: 'Modern Masonry',
-    description: 'Pinterest-style dynamic layout',
+    description: 'Pinterest-style columns or Google Photos-style rows',
     config: {
       primaryColor: '#3b82f6',
       accentColor: '#1e40af',
@@ -139,7 +168,10 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       gallerySettings: {
         spacing: 'tight',
         photoAnimation: 'fade',
-        masonryGutter: 16
+        masonryMode: 'columns',
+        masonryGutter: 16,
+        masonryRowHeight: 250,
+        masonryLastRowBehavior: 'left'
       },
       headerStyle: 'minimal',
       footerStyle: 'minimal',
@@ -166,13 +198,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
         carouselInterval: 5000,
         carouselShowThumbnails: true
       },
-      headerStyle: 'full',
+      headerStyle: 'standard',
       footerStyle: 'standard',
       backgroundPattern: 'dots'
     },
     isPreset: true
   },
-  
+
   corporateTimeline: {
     name: 'Corporate Timeline',
     description: 'Professional chronological layout',
@@ -216,6 +248,144 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       headerStyle: 'minimal',
       footerStyle: 'minimal',
       shadowStyle: 'dramatic'
+    },
+    isPreset: true
+  },
+
+  darkClassic: {
+    name: 'Dark Classic',
+    description: 'Dark theme with green accents',
+    config: {
+      primaryColor: '#5C8762',
+      accentColor: '#22c55e',
+      backgroundColor: '#0f0f0f',
+      textColor: '#e5e5e5',
+      surfaceColor: '#1a1a1a',
+      surfaceBorderColor: '#2e2e2e',
+      mutedTextColor: '#a3a3a3',
+      colorMode: 'dark',
+      borderRadius: 'md',
+      galleryLayout: 'grid',
+      gallerySettings: {
+        spacing: 'normal',
+        photoAnimation: 'fade',
+        gridColumns: { mobile: 2, tablet: 3, desktop: 4 }
+      },
+      headerStyle: 'standard',
+      footerStyle: 'standard',
+      shadowStyle: 'subtle'
+    },
+    isPreset: true
+  },
+
+  darkElegant: {
+    name: 'Dark Elegant',
+    description: 'Dark theme with gold accents',
+    config: {
+      primaryColor: '#c9a961',
+      accentColor: '#e6ddd4',
+      backgroundColor: '#121212',
+      textColor: '#f0ebe5',
+      surfaceColor: '#1e1e1e',
+      surfaceBorderColor: '#333333',
+      mutedTextColor: '#a3a3a3',
+      colorMode: 'dark',
+      fontFamily: 'Playfair Display, serif',
+      headingFontFamily: 'Playfair Display, serif',
+      borderRadius: 'lg',
+      galleryLayout: 'grid',
+      headerStyle: 'hero',
+      heroDividerStyle: 'wave',
+      gallerySettings: {
+        spacing: 'relaxed',
+        photoAnimation: 'scale',
+        photoShape: 'rounded',
+        heroOverlayOpacity: 0.4
+      },
+      footerStyle: 'minimal',
+      shadowStyle: 'subtle'
+    },
+    isPreset: true
+  },
+
+  darkModern: {
+    name: 'Dark Modern',
+    description: 'Dark theme with blue accents',
+    config: {
+      primaryColor: '#3b82f6',
+      accentColor: '#1e40af',
+      backgroundColor: '#0a0a0a',
+      textColor: '#f5f5f5',
+      surfaceColor: '#171717',
+      surfaceBorderColor: '#262626',
+      mutedTextColor: '#a3a3a3',
+      colorMode: 'dark',
+      fontFamily: 'Inter, sans-serif',
+      borderRadius: 'sm',
+      galleryLayout: 'masonry',
+      gallerySettings: {
+        spacing: 'tight',
+        photoAnimation: 'fade',
+        masonryMode: 'columns',
+        masonryGutter: 16
+      },
+      headerStyle: 'minimal',
+      footerStyle: 'minimal',
+      shadowStyle: 'normal'
+    },
+    isPreset: true
+  },
+
+  galleryPremium: {
+    name: 'Gallery Premium (Beta)',
+    description: 'Clean light theme with elegant serif typography and masonry grid',
+    config: {
+      primaryColor: '#18181b',
+      accentColor: '#ef4444',
+      backgroundColor: '#ffffff',
+      textColor: '#18181b',
+      surfaceColor: '#ffffff',
+      surfaceBorderColor: '#f4f4f5',
+      mutedTextColor: '#71717a',
+      colorMode: 'light',
+      fontFamily: 'Inter, sans-serif',
+      headingFontFamily: "'Playfair Display', serif",
+      borderRadius: 'sm',
+      galleryLayout: 'gallery-premium',
+      gallerySettings: {
+        spacing: 'normal',
+        photoAnimation: 'fade'
+      },
+      headerStyle: 'none',
+      footerStyle: 'minimal',
+      shadowStyle: 'subtle'
+    },
+    isPreset: true
+  },
+
+  galleryStory: {
+    name: 'Gallery Story (Beta)',
+    description: 'Dark cinematic theme with gold accents and scene-based sections',
+    config: {
+      primaryColor: '#c9a961',
+      accentColor: '#c9a961',
+      backgroundColor: '#0d0d0d',
+      textColor: '#f2f2f2',
+      surfaceColor: '#1a1a1a',
+      surfaceBorderColor: '#262626',
+      mutedTextColor: '#a3a3a3',
+      colorMode: 'dark',
+      fontFamily: 'Inter, sans-serif',
+      headingFontFamily: "'Playfair Display', serif",
+      borderRadius: 'sm',
+      galleryLayout: 'gallery-story',
+      gallerySettings: {
+        spacing: 'normal',
+        photoAnimation: 'fade'
+      },
+      headerStyle: 'none',
+      footerStyle: 'minimal',
+      shadowStyle: 'subtle'
     },
     isPreset: true
   }

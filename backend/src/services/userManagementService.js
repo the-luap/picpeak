@@ -60,7 +60,7 @@ async function createInvitation({ email, roleId, invitedById }) {
   // Queue invitation email
   const frontendUrl = process.env.FRONTEND_URL || process.env.ADMIN_URL || 'http://localhost:3005';
   await queueEmail(null, email, 'admin_invitation', {
-    invite_link: `${frontendUrl}/admin/accept-invite/${token}`,
+    invite_link: `${frontendUrl}/invite/${token}`,
     role_name: role.display_name,
     expires_at: expiresAt.toISOString()
   });

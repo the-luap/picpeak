@@ -123,7 +123,7 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
                 className={`w-6 h-6 transition-colors ${
                   star <= (hoveredRating || currentRating)
                     ? 'fill-yellow-500 text-yellow-500'
-                    : 'text-neutral-300 hover:text-yellow-400'
+                    : 'text-black/30 hover:text-yellow-400'
                 }`}
               />
             </button>
@@ -132,9 +132,9 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
 
         {/* Average Rating Display */}
         {totalRatings > 0 && (
-          <div className="text-sm text-neutral-600">
+          <div className="text-sm text-muted-theme">
             <span className="font-medium">{safeAverageRating.toFixed(1)}</span>
-            <span className="text-neutral-400 ml-1">
+            <span className="text-muted-theme ml-1">
               ({t('feedback.ratingsCount', '{{count}} ratings', { count: totalRatings })})
             </span>
           </div>

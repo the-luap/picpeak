@@ -12,9 +12,10 @@ import {
   AnalyticsTab,
   ModerationTab,
   StylingTab,
+  SEOTab,
 } from '../../features/settings';
 
-type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'categories' | 'analytics' | 'moderation' | 'styling';
+type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'categories' | 'seo' | 'analytics' | 'moderation' | 'styling';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -54,6 +55,9 @@ export const SettingsPage: React.FC = () => {
     saveSecurityMutation,
     saveAnalyticsMutation,
     saveEventSettingsMutation,
+    seoSettings,
+    setSeoSettings,
+    saveSeoMutation,
   } = useSettingsState();
 
   if (isLoading) {
@@ -70,6 +74,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'status', label: t('settings.systemStatus.title') },
     { key: 'security', label: t('settings.security.title') },
     { key: 'imageSecurity', label: t('settings.imageSecurity.title', 'Image Protection') },
+    { key: 'seo', label: t('settings.seo.title', 'SEO & Robots') },
     { key: 'categories', label: t('settings.categories.title') },
     { key: 'analytics', label: t('settings.analytics.title') },
     { key: 'moderation', label: t('settings.moderation.title', 'Moderation') },
@@ -79,12 +84,12 @@ export const SettingsPage: React.FC = () => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">{t('settings.title')}</h1>
-        <p className="text-neutral-600 mt-1">{t('settings.subtitle')}</p>
+        <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{t('settings.title')}</h1>
+        <p className="text-neutral-600 dark:text-neutral-400 mt-1">{t('settings.subtitle')}</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-neutral-200 mb-6">
+      <div className="border-b border-neutral-200 dark:border-neutral-700 mb-6">
         <nav className="-mb-px flex gap-6">
           {tabs.map((tab) => (
             <button
@@ -92,8 +97,8 @@ export const SettingsPage: React.FC = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab.key
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'
               }`}
             >
               {tab.label}
@@ -150,6 +155,14 @@ export const SettingsPage: React.FC = () => {
           securitySettings={securitySettings}
           setSecuritySettings={setSecuritySettings}
           saveSecurityMutation={saveSecurityMutation}
+        />
+      )}
+
+      {activeTab === 'seo' && (
+        <SEOTab
+          seoSettings={seoSettings}
+          setSeoSettings={setSeoSettings}
+          saveSeoMutation={saveSeoMutation}
         />
       )}
 

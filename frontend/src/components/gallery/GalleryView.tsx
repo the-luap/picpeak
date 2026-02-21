@@ -30,10 +30,10 @@ interface GalleryViewProps {
     id: number;
     event_name: string;
     event_type: string;
-    event_date: string;
+    event_date: string | null;
     welcome_message?: string;
     color_theme?: string;
-    expires_at: string;
+    expires_at: string | null;
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     hero_photo_id?: number | null;
@@ -47,7 +47,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { setTheme, theme } = useTheme();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating'>('date');
+  const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -236,9 +236,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
   }, [showMediaFilter, mediaFilter]);
 
-  // Determine a stable hero photo from the initial (unfiltered) load
+  // Determine the default hero photo from the initial (unfiltered) load
+  const [defaultHeroPhoto, setDefaultHeroPhoto] = useState<Photo | null>(null);
+
   useEffect(() => {
-    if (!staticHeroPhoto && data?.photos && filterType === 'all') {
+    if (!defaultHeroPhoto && data?.photos && filterType === 'all') {
       let hero: Photo | null = null;
       const heroId = data?.event?.hero_photo_id || null;
       if (heroId) {
@@ -249,10 +251,29 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         hero = firstPhoto || data.photos[0];
       }
       if (hero) {
+        setDefaultHeroPhoto(hero);
         setStaticHeroPhoto(hero);
       }
     }
-  }, [data?.photos, data?.event?.hero_photo_id, filterType, staticHeroPhoto]);
+  }, [data?.photos, data?.event?.hero_photo_id, filterType, defaultHeroPhoto]);
+
+  // Switch hero photo when a category with its own hero image is selected
+  useEffect(() => {
+    if (!data?.photos || !defaultHeroPhoto) return;
+
+    if (selectedCategoryId) {
+      const category = (data.categories || []).find(c => c.id === selectedCategoryId);
+      if (category?.hero_photo_id) {
+        const categoryHero = data.photos.find(p => p.id === category.hero_photo_id);
+        if (categoryHero) {
+          setStaticHeroPhoto(categoryHero);
+          return;
+        }
+      }
+    }
+    // No category selected or category has no hero — revert to default
+    setStaticHeroPhoto(defaultHeroPhoto);
+  }, [selectedCategoryId, data?.categories, data?.photos, defaultHeroPhoto]);
 
   // Apply theme when settings are loaded
   useEffect(() => {
@@ -310,10 +331,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
   }, [settingsData, data, setTheme]); // Use data instead of event prop
 
-  // Calculate days until expiration
-  const daysUntilExpiration = differenceInDays(parseISO(event.expires_at), new Date());
-  const showUrgentWarning = daysUntilExpiration <= 7;
-  const isExpired = daysUntilExpiration < 0;
+  // Calculate days until expiration (null means never expires)
+  const daysUntilExpiration = event.expires_at
+    ? differenceInDays(parseISO(event.expires_at), new Date())
+    : null;
+  const showUrgentWarning = daysUntilExpiration !== null && daysUntilExpiration <= 7;
+  const isExpired = daysUntilExpiration !== null && daysUntilExpiration < 0;
 
   // Filter and sort photos
   const filteredPhotos = useMemo(() => {
@@ -374,6 +397,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           }
           // If ratings are equal, sort by comment count
           return (b.comment_count || 0) - (a.comment_count || 0);
+        case 'capture_date':
+          // Sort by capture date (from EXIF), fall back to upload date
+          const captureDateA = a.captured_at || a.uploaded_at;
+          const captureDateB = b.captured_at || b.uploaded_at;
+          return new Date(captureDateB).getTime() - new Date(captureDateA).getTime();
         case 'date':
         default:
           return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
@@ -490,9 +518,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-neutral-50">
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
         {/* Header Skeleton */}
-        <header className="bg-white border-b border-neutral-200 sticky top-0 z-40">
+        <header className="bg-surface border-b border-surface sticky top-0 z-40">
           <div className="container py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -527,9 +555,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-neutral-600">{t('gallery.failedToLoad')}</p>
+          <p className="text-lg text-muted-theme">{t('gallery.failedToLoad')}</p>
           <Button onClick={() => refetch()} className="mt-4">
             {t('gallery.tryAgain')}
           </Button>
@@ -538,7 +566,77 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
-  const showSidebar = theme.galleryLayout !== 'grid';
+  // Determine controls style (sidebar vs classic inline filter bar)
+  // If controlsStyle is explicitly set in theme, use that
+  // Otherwise: use sidebar for non-grid layouts OR hero headers (prevents filter bar above hero)
+  const headerStyle = data?.event?.header_style || theme.headerStyle || 'standard';
+  const isHeroHeader = headerStyle === 'hero';
+  const controlsStyle = theme.controlsStyle;
+  const showSidebar = controlsStyle
+    ? controlsStyle === 'sidebar'
+    : (theme.galleryLayout !== 'grid' || isHeroHeader);
+
+  // Full-page layouts (gallery-premium, gallery-story) have their own integrated UI
+  // Skip all wrapper elements (header, footer, sidebar, filters) for these layouts
+  const isFullPageLayout = theme.galleryLayout === 'gallery-premium' || theme.galleryLayout === 'gallery-story';
+
+  // For full-page layouts, render just the PhotoGridWithLayouts without any wrappers
+  if (isFullPageLayout) {
+    return (
+      <>
+        <PhotoGridWithLayouts
+          photos={filteredPhotos}
+          slug={slug}
+          categoryId={selectedCategoryId}
+          onFeedbackChange={() => refetch()}
+          heroPhotoOverride={staticHeroPhoto}
+          feedbackEnabled={feedbackEnabled}
+          feedbackOptions={{
+            allowLikes: !!feedbackSettings?.allow_likes,
+            allowFavorites: !!feedbackSettings?.allow_favorites,
+            allowRatings: !!feedbackSettings?.allow_ratings,
+            allowComments: !!feedbackSettings?.allow_comments,
+            requireNameEmail: !!feedbackSettings?.require_name_email,
+          }}
+          isSelectionMode={isSelectionMode}
+          selectedPhotos={selectedPhotos}
+          onSelectionChange={setSelectedPhotos}
+          onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
+          showSelectionControls={false}
+          eventName={event.event_name}
+          eventLogo={data?.event?.hero_logo_url || brandingSettings?.logo_url}
+          eventDate={event.event_date}
+          expiresAt={event.expires_at}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={protectionLevel !== 'basic'}
+          disableRightClick={disableRightClick}
+          enableDevtoolsProtection={enableDevtoolsProtection}
+          useCanvasRendering={useCanvasRendering}
+          heroLogoVisible={data?.event?.hero_logo_visible !== false}
+          heroLogoSize={data?.event?.hero_logo_size || 'medium'}
+          heroLogoPosition={data?.event?.hero_logo_position || 'top'}
+          headerStyle={data?.event?.header_style || theme.headerStyle}
+          heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
+          heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+          onLogout={logout}
+        />
+
+        {/* Upload Modal for full-page layouts */}
+        {showUploadModal && (data?.event?.allow_user_uploads || event?.allow_user_uploads) && (
+          <UserPhotoUpload
+            eventId={data?.event?.id || event?.id}
+            categoryId={data?.event?.upload_category_id || event?.upload_category_id}
+            onUploadComplete={() => {
+              setShowUploadModal(false);
+              window.location.reload();
+            }}
+            onClose={() => setShowUploadModal(false)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -582,6 +680,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       <GalleryLayout
         event={event}
         brandingSettings={brandingSettings}
+        headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}
         onLogout={logout}
         showDownloadAll={!showSidebar && allowDownloads}
@@ -602,15 +701,15 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         headerExtra={(() => {
           const items = [];
           
-          if (daysUntilExpiration <= 1 && daysUntilExpiration > 0) {
+          if (daysUntilExpiration !== null && daysUntilExpiration <= 1 && daysUntilExpiration > 0 && event.expires_at) {
             items.push(
               <CountdownTimer key="countdown" expiresAt={event.expires_at} className="mr-2" />
             );
           }
           
-          // Upload button only on desktop when sidebar is shown
+          // Upload button - always show when uploads are allowed (regardless of layout/theme loading state)
           const allowUploads = data?.event?.allow_user_uploads || event?.allow_user_uploads;
-          if (allowUploads && showSidebar && !isMobile) {
+          if (allowUploads) {
             items.push(
               <Button
                 key="upload-button"
@@ -618,22 +717,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
                 size="sm"
                 leftIcon={<Upload className="w-4 h-4" />}
                 onClick={() => setShowUploadModal(true)}
-              >
-                {t('upload.uploadPhotos')}
-              </Button>
-            );
-          }
-          
-          // Upload button for non-sidebar layouts
-          if (allowUploads && !showSidebar) {
-            items.push(
-              <Button
-                key="upload-button"
-                variant="outline"
-                size="sm"
-                leftIcon={<Upload className="w-4 h-4" />}
-                onClick={() => setShowUploadModal(true)}
-                className="flex-1 sm:flex-initial"
+                className={!showSidebar ? 'flex-1 sm:flex-initial' : ''}
               >
                 <span className="hidden sm:inline">{t('upload.uploadPhotos')}</span>
                 <span className="sm:hidden">{t('common.upload')}</span>
@@ -645,7 +729,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         })()}
       >
         {/* Expiration Banner */}
-        {showUrgentWarning && (
+        {showUrgentWarning && event.expires_at && (
           <ExpirationBanner daysRemaining={daysUntilExpiration} expiresAt={event.expires_at} />
         )}
 
@@ -695,7 +779,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             onToggleSelectionMode={() => setIsSelectionMode(!isSelectionMode)}
             showSelectionControls={!showSidebar}
             eventName={event.event_name}
-            eventLogo={brandingSettings?.logo_url}
+            eventLogo={data?.event?.hero_logo_url || brandingSettings?.logo_url}
             eventDate={event.event_date}
             expiresAt={event.expires_at}
             allowDownloads={allowDownloads}
@@ -704,6 +788,12 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             disableRightClick={disableRightClick}
             enableDevtoolsProtection={enableDevtoolsProtection}
             useCanvasRendering={useCanvasRendering}
+            heroLogoVisible={data?.event?.hero_logo_visible !== false}
+            heroLogoSize={data?.event?.hero_logo_size || 'medium'}
+            heroLogoPosition={data?.event?.hero_logo_position || 'top'}
+            headerStyle={data?.event?.header_style || theme.headerStyle}
+            heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
+            heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
           />
         </div>
 

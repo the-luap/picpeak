@@ -76,7 +76,7 @@ class XmpGenerator {
    * @returns {string} Description XML
    */
   generateDescription(photo) {
-    const rating = photo.average_rating ? photo.average_rating.toFixed(1) : '0';
+    const rating = photo.average_rating ? parseFloat(photo.average_rating).toFixed(1) : '0';
     const likes = photo.like_count || 0;
     const favorites = photo.favorite_count || 0;
 

@@ -25,14 +25,14 @@ const StatCard = ({ icon: Icon, label, value, color = 'blue', subtext }) => (
   <Card className="p-6">
     <div className="flex items-center justify-between">
       <div className="flex-1">
-        <p className="text-sm font-medium text-gray-600">{label}</p>
-        <p className="mt-2 text-3xl font-semibold text-gray-900">{value}</p>
+        <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+        <p className="mt-2 text-3xl font-semibold text-neutral-900 dark:text-neutral-100">{value}</p>
         {subtext && (
-          <p className="mt-1 text-sm text-gray-500">{subtext}</p>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{subtext}</p>
         )}
       </div>
-      <div className={`p-3 bg-${color}-100 rounded-lg`}>
-        <Icon className={`h-6 w-6 text-${color}-600`} />
+      <div className={`p-3 bg-${color}-100 dark:bg-${color}-900/40 rounded-lg`}>
+        <Icon className={`h-6 w-6 text-${color}-600 dark:text-${color}-400`} />
       </div>
     </div>
   </Card>
@@ -86,14 +86,14 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
     <div className="space-y-6">
       {/* Configuration Alert */}
       {!isConfigured && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
           <div className="flex">
             <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800">
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
                 {t('backup.dashboard.notConfigured.title')}
               </h3>
-              <p className="mt-1 text-sm text-amber-700">
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                 {t('backup.dashboard.notConfigured.message')}
               </p>
             </div>
@@ -104,8 +104,8 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       {/* Health Score Card */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">{t('backup.dashboard.health.title')}</h3>
-          <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${healthColors[health.status]}-100 text-${healthColors[health.status]}-700`}>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('backup.dashboard.health.title')}</h3>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${healthColors[health.status]}-100 dark:bg-${healthColors[health.status]}-900/40 text-${healthColors[health.status]}-700 dark:text-${healthColors[health.status]}-300`}>
             {health.status.charAt(0).toUpperCase() + health.status.slice(1)}
           </span>
         </div>
@@ -120,7 +120,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                 stroke="currentColor"
                 strokeWidth="8"
                 fill="none"
-                className="text-gray-200"
+                className="text-neutral-200 dark:text-neutral-700"
               />
               <circle
                 cx="48"
@@ -134,14 +134,14 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl font-bold text-gray-900">{health.score}%</span>
+              <span className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{health.score}%</span>
             </div>
           </div>
           
           <div className="flex-1">
-            <p className="text-gray-700 font-medium">{health.message}</p>
+            <p className="text-neutral-700 dark:text-neutral-300 font-medium">{health.message}</p>
             {lastBackup && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                 Last successful backup: {formatDistanceToNow(new Date(lastBackup.created_at), { addSuffix: true })}
               </p>
             )}
@@ -206,10 +206,10 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       {/* Recent Activity */}
       {status?.recentBackups && status.recentBackups.length > 0 && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.recentActivity.title')}</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('backup.dashboard.recentActivity.title')}</h3>
           <div className="space-y-3">
             {status.recentBackups.slice(0, 5).map((backup) => (
-              <div key={backup.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+              <div key={backup.id} className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                 <div className="flex items-center space-x-3">
                   {backup.status === 'completed' ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -219,19 +219,19 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                     <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                   )}
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-neutral-900 dark:text-neutral-100">
                       {t('backup.dashboard.backupType', { type: backup.backup_type })}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
                       {format(new Date(backup.created_at), 'PPp')}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                     {formatBytes(backup.statistics?.total_size || 0)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">
                     {backup.statistics?.files_processed || 0} files
                   </p>
                 </div>
@@ -244,36 +244,36 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
       {/* Storage Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.coverage.title')}</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('backup.dashboard.coverage.title')}</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Database className="h-5 w-5 text-gray-400" />
-                <span className="text-gray-700">Database</span>
+                <Database className="h-5 w-5 text-neutral-400" />
+                <span className="text-neutral-700 dark:text-neutral-300">Database</span>
               </div>
               <span className={`px-2 py-1 rounded text-xs font-medium ${
-                statistics.database_backed_up ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                statistics.database_backed_up ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
               }`}>
                 {statistics.database_backed_up ? t('backup.dashboard.coverage.included') : t('backup.dashboard.coverage.excluded')}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Image className="h-5 w-5 text-gray-400" />
-                <span className="text-gray-700">{t('backup.configuration.whatToBackup.photos')}</span>
+                <Image className="h-5 w-5 text-neutral-400" />
+                <span className="text-neutral-700 dark:text-neutral-300">{t('backup.configuration.whatToBackup.photos')}</span>
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 {statistics.photos_backed_up || 0} {t('common.of')} {statistics.total_photos || 0}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <FileArchive className="h-5 w-5 text-gray-400" />
-                <span className="text-gray-700">{t('backup.configuration.whatToBackup.archives')}</span>
+                <FileArchive className="h-5 w-5 text-neutral-400" />
+                <span className="text-neutral-700 dark:text-neutral-300">{t('backup.configuration.whatToBackup.archives')}</span>
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 {statistics.archives_backed_up || 0} {t('backup.dashboard.stats.files')}
               </span>
             </div>
@@ -281,7 +281,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
         </Card>
 
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('backup.dashboard.storageDestination')}</h3>
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('backup.dashboard.storageDestination')}</h3>
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               {config?.backup_destination_type === 's3' ? (
@@ -289,15 +289,15 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
               ) : config?.backup_destination_type === 'rsync' ? (
                 <Server className="h-5 w-5 text-purple-500" />
               ) : (
-                <HardDrive className="h-5 w-5 text-gray-500" />
+                <HardDrive className="h-5 w-5 text-neutral-500" />
               )}
               <div>
-                <p className="font-medium text-gray-900">
-                  {config?.backup_destination_type 
-                    ? t(`backup.configuration.destinationTypes.${config.backup_destination_type}.name`) 
+                <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {config?.backup_destination_type
+                    ? t(`backup.configuration.destinationTypes.${config.backup_destination_type}.name`)
                     : t('backup.dashboard.notConfigured.title')}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   {config?.backup_destination_type === 's3' && config?.backup_s3_bucket
                     ? `Bucket: ${config.backup_s3_bucket}`
                     : config?.backup_destination_type === 'local' && config?.backup_destination_path
@@ -308,12 +308,12 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
                 </p>
               </div>
             </div>
-            
+
             {config?.backup_retention_days && (
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="mt-4 p-3 bg-neutral-50 dark:bg-neutral-700 rounded-lg">
                 <div className="flex items-center space-x-2">
-                  <Info className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">
+                  <Info className="h-4 w-4 text-neutral-400" />
+                  <span className="text-sm text-neutral-600 dark:text-neutral-300">
                     {t('backup.configuration.schedule.retentionDays')} {config.backup_retention_days} {t('backup.configuration.schedule.retentionHelp').replace('days (older backups will be automatically deleted)', '')}
                   </span>
                 </div>

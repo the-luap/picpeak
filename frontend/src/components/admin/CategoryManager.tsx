@@ -101,7 +101,7 @@ export const CategoryManager: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-neutral-900">{t('categories.title')}</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('categories.title')}</h3>
         {!isAdding && (
           <Button
             variant="primary"
@@ -116,14 +116,14 @@ export const CategoryManager: React.FC = () => {
 
       {/* Add new category form */}
       {isAdding && (
-        <div className="flex gap-2 p-3 bg-neutral-50 rounded-lg">
+        <div className="flex gap-2 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
           <input
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
             placeholder={t('categories.categoryName')}
-            className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500"
+            className="flex-1 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500"
             autoFocus
           />
           <Button
@@ -154,14 +154,14 @@ export const CategoryManager: React.FC = () => {
       {/* Categories list */}
       <div className="space-y-2">
         {categories.length === 0 ? (
-          <p className="text-neutral-500 text-center py-8">
+          <p className="text-neutral-500 dark:text-neutral-400 text-center py-8">
             {t('categories.noCategoriesYet')}
           </p>
         ) : (
           categories.map((category) => (
             <div
               key={category.id}
-              className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors"
+              className="flex items-center justify-between p-3 bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
             >
               {editingId === category.id ? (
                 <div className="flex gap-2 flex-1">
@@ -173,7 +173,7 @@ export const CategoryManager: React.FC = () => {
                       if (e.key === 'Enter') handleUpdate(category.id);
                       if (e.key === 'Escape') cancelEdit();
                     }}
-                    className="flex-1 px-3 py-1 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 px-3 py-1 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500"
                     autoFocus
                   />
                   <Button
@@ -199,20 +199,20 @@ export const CategoryManager: React.FC = () => {
               ) : (
                 <>
                   <div>
-                    <p className="font-medium text-neutral-900">{category.name}</p>
-                    <p className="text-sm text-neutral-500">/{category.slug}</p>
+                    <p className="font-medium text-neutral-900 dark:text-neutral-100">{category.name}</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">/{category.slug}</p>
                   </div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => startEdit(category)}
-                      className="p-1.5 text-neutral-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                      className="p-1.5 text-neutral-600 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded transition-colors"
                       title={t('common.edit')}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(category)}
-                      className="p-1.5 text-neutral-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      className="p-1.5 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                       title={t('common.delete')}
                       disabled={deleteMutation.isPending}
                     >

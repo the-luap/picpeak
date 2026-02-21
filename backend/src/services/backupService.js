@@ -437,7 +437,7 @@ async function performLocalBackup(config, files) {
   };
 }
 
-function buildRsyncCommand(config) {
+function buildRsyncArgs(config) {
   const storagePath = getStoragePath();
   const host = config.backup_rsync_host;
   const remotePath = config.backup_rsync_path;
@@ -446,20 +446,21 @@ function buildRsyncCommand(config) {
     throw new Error('Rsync configuration incomplete');
   }
 
-  const options = ['-avz', '--delete', '--stats'];
+  const args = ['-avz', '--delete', '--stats'];
   if (config.backup_rsync_ssh_key) {
-    options.push(`-e "ssh -i ${config.backup_rsync_ssh_key} -o StrictHostKeyChecking=no"`);
+    args.push('-e', `ssh -i ${config.backup_rsync_ssh_key} -o StrictHostKeyChecking=no`);
   }
 
   const excludePatterns = config.backup_exclude_patterns || [];
-  excludePatterns.forEach(pattern => options.push(`--exclude="${pattern}"`));
+  excludePatterns.forEach(pattern => args.push('--exclude', pattern));
 
   const source = `${storagePath}/`;
   const destination = config.backup_rsync_user
     ? `${config.backup_rsync_user}@${host}:${remotePath}`
     : `${host}:${remotePath}`;
 
-  return `rsync ${options.join(' ')} "${source}" "${destination}"`;
+  args.push(source, destination);
+  return args;
 }
 
 function parseRsyncStats(output) {
@@ -479,9 +480,9 @@ function parseRsyncStats(output) {
 }
 
 async function performRsyncBackup(config, files) {
-  const command = buildRsyncCommand(config);
-  const execAsync = getExecAsync();
-  const { stdout } = await execAsync(command);
+  const { spawnAsync } = require('../utils/safeExec');
+  const rsyncArgs = buildRsyncArgs(config);
+  const { stdout } = await spawnAsync('rsync', rsyncArgs);
   const stats = parseRsyncStats(stdout);
 
   const backedUpFiles = files.map(file => file.relativePath);
@@ -503,8 +504,7 @@ async function performRsyncBackup(config, files) {
     backedUpCount: typeof stats.filesTransferred === 'number' ? stats.filesTransferred : backedUpFiles.length,
     backedUpSize: totalSize,
     backedUpFiles,
-    backupPath: `${config.backup_rsync_host}:${config.backup_rsync_path}`,
-    rsyncCommand: command
+    backupPath: `${config.backup_rsync_host}:${config.backup_rsync_path}`
   };
 }
 

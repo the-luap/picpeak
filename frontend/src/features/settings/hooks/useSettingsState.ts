@@ -16,7 +16,6 @@ export interface GeneralSettings {
   max_file_size_mb: number;
   max_files_per_upload: number;
   allowed_file_types: string;
-  enable_watermark: boolean;
   enable_analytics: boolean;
   enable_registration: boolean;
   maintenance_mode: boolean;
@@ -49,6 +48,20 @@ export interface EventSettings {
   event_require_customer_name: boolean;
   event_require_customer_email: boolean;
   event_require_admin_email: boolean;
+  event_require_event_date: boolean;
+  event_require_expiration: boolean;
+}
+
+export interface SeoSettings {
+  allow_indexing: boolean;
+  block_ai_crawlers: boolean;
+  block_social_bots: boolean;
+  blocked_ai_agents: string[];
+  custom_rules: Array<{ userAgent: string; disallow: string[] }>;
+  meta_noindex: boolean;
+  meta_nofollow: boolean;
+  meta_noai: boolean;
+  sitemap_url: string;
 }
 
 export function useSettingsState() {
@@ -74,7 +87,6 @@ export function useSettingsState() {
     max_file_size_mb: 50,
     max_files_per_upload: 500,
     allowed_file_types: 'jpg,jpeg,png,gif,webp',
-    enable_watermark: false,
     enable_analytics: true,
     enable_registration: false,
     maintenance_mode: false,
@@ -109,7 +121,22 @@ export function useSettingsState() {
   const [eventSettings, setEventSettings] = useState<EventSettings>({
     event_require_customer_name: true,
     event_require_customer_email: true,
-    event_require_admin_email: true
+    event_require_admin_email: true,
+    event_require_event_date: true,
+    event_require_expiration: true
+  });
+
+  // SEO settings state
+  const [seoSettings, setSeoSettings] = useState<SeoSettings>({
+    allow_indexing: false,
+    block_ai_crawlers: true,
+    block_social_bots: false,
+    blocked_ai_agents: [],
+    custom_rules: [],
+    meta_noindex: true,
+    meta_nofollow: false,
+    meta_noai: true,
+    sitemap_url: ''
   });
 
   // Account form state
@@ -142,7 +169,6 @@ export function useSettingsState() {
           Math.max(1, toNumber(settings.general_max_files_per_upload, 500))
         ),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
-        enable_watermark: toBoolean(settings.general_enable_watermark, false),
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),
@@ -178,7 +204,21 @@ export function useSettingsState() {
       setEventSettings({
         event_require_customer_name: toBoolean(settings.event_require_customer_name, true),
         event_require_customer_email: toBoolean(settings.event_require_customer_email, true),
-        event_require_admin_email: toBoolean(settings.event_require_admin_email, true)
+        event_require_admin_email: toBoolean(settings.event_require_admin_email, true),
+        event_require_event_date: toBoolean(settings.event_require_event_date, true),
+        event_require_expiration: toBoolean(settings.event_require_expiration, true)
+      });
+
+      setSeoSettings({
+        allow_indexing: toBoolean(settings.seo_allow_indexing, false),
+        block_ai_crawlers: toBoolean(settings.seo_block_ai_crawlers, true),
+        block_social_bots: toBoolean(settings.seo_block_social_bots, false),
+        blocked_ai_agents: Array.isArray(settings.seo_blocked_ai_agents) ? settings.seo_blocked_ai_agents : [],
+        custom_rules: Array.isArray(settings.seo_custom_rules) ? settings.seo_custom_rules : [],
+        meta_noindex: toBoolean(settings.seo_meta_noindex, true),
+        meta_nofollow: toBoolean(settings.seo_meta_nofollow, false),
+        meta_noai: toBoolean(settings.seo_meta_noai, true),
+        sitemap_url: settings.seo_sitemap_url || ''
       });
     }
   }, [settings, i18n]);
@@ -261,6 +301,24 @@ export function useSettingsState() {
     onSuccess: () => {
       toast.success(t('toast.settingsSaved'));
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const saveSeoMutation = useMutation({
+    mutationFn: async () => {
+      const settingsData: Record<string, unknown> = {};
+      Object.entries(seoSettings).forEach(([key, value]) => {
+        settingsData[`seo_${key}`] = value;
+      });
+      return settingsService.updateSettings(settingsData);
+    },
+    onSuccess: () => {
+      toast.success(t('toast.settingsSaved'));
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['public-settings'] });
     },
     onError: () => {
       toast.error(t('toast.saveError'));
@@ -469,6 +527,8 @@ export function useSettingsState() {
     setAnalyticsSettings,
     eventSettings,
     setEventSettings,
+    seoSettings,
+    setSeoSettings,
 
     // Account form
     accountForm,
@@ -498,6 +558,7 @@ export function useSettingsState() {
     saveSecurityMutation,
     saveAnalyticsMutation,
     saveEventSettingsMutation,
+    saveSeoMutation,
 
     // Translation
     t,

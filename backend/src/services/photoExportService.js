@@ -23,13 +23,13 @@ class PhotoExportService {
    */
   async getPhotosWithFeedback(eventId, photoIds = null) {
     let query = db('photos')
-      .leftJoin('categories', 'photos.category_id', 'categories.id')
+      .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .where('photos.event_id', eventId)
       .select(
         'photos.id',
         'photos.filename',
         'photos.original_filename',
-        'photos.file_path',
+        'photos.path',
         'photos.average_rating',
         'photos.feedback_count',
         'photos.like_count',
@@ -37,9 +37,9 @@ class PhotoExportService {
         'photos.comment_count',
         'photos.width',
         'photos.height',
-        'photos.file_size',
-        'photos.created_at',
-        'categories.name as category_name'
+        'photos.size_bytes',
+        'photos.uploaded_at',
+        'photo_categories.name as category_name'
       )
       .orderBy('photos.filename', 'asc');
 
@@ -86,7 +86,7 @@ class PhotoExportService {
     const { filename_format = 'original', separator = 'newline' } = options;
 
     const filenames = photos.map(photo =>
-      filename_format === 'original' ? photo.original_filename : photo.filename
+      filename_format === 'original' ? (photo.original_filename || photo.filename) : photo.filename
     );
 
     let content;
@@ -126,14 +126,14 @@ class PhotoExportService {
       'category',
       'width',
       'height',
-      'file_size',
-      'created_at'
+      'size_bytes',
+      'uploaded_at'
     ];
 
     const rows = photos.map(photo => [
-      filename_format === 'original' ? photo.original_filename : photo.filename,
+      filename_format === 'original' ? (photo.original_filename || photo.filename) : photo.filename,
       photo.original_filename || '',
-      photo.average_rating ? photo.average_rating.toFixed(2) : '0.00',
+      photo.average_rating ? parseFloat(photo.average_rating).toFixed(2) : '0.00',
       photo.feedback_count || 0,
       photo.like_count || 0,
       photo.favorite_count || 0,
@@ -141,8 +141,8 @@ class PhotoExportService {
       photo.category_name || '',
       photo.width || '',
       photo.height || '',
-      photo.file_size || '',
-      photo.created_at ? new Date(photo.created_at).toISOString() : ''
+      photo.size_bytes || '',
+      photo.uploaded_at ? new Date(photo.uploaded_at).toISOString() : ''
     ]);
 
     const csvContent = [
@@ -170,7 +170,7 @@ class PhotoExportService {
 
     for (const photo of photos) {
       const baseFilename = filename_format === 'original'
-        ? photo.original_filename
+        ? (photo.original_filename || photo.filename)
         : photo.filename;
       const xmpFilename = this.xmpGenerator.getXmpFilename(baseFilename);
       const xmpContent = this.xmpGenerator.generateXmp(photo, options);
@@ -209,21 +209,21 @@ class PhotoExportService {
       photos: photos.map(photo => ({
         id: photo.id,
         filename: photo.filename,
-        original_filename: photo.original_filename,
+        original_filename: photo.original_filename || null,
         category: photo.category_name || null,
         rating: {
-          average: photo.average_rating ? parseFloat(photo.average_rating.toFixed(2)) : 0,
+          average: photo.average_rating ? parseFloat(parseFloat(photo.average_rating).toFixed(2)) : 0,
           count: photo.feedback_count || 0
         },
         likes: photo.like_count || 0,
         favorites: photo.favorite_count || 0,
         comments: photo.comment_count || 0,
         dimensions: {
-          width: photo.width,
-          height: photo.height
+          width: photo.width || null,
+          height: photo.height || null
         },
-        file_size: photo.file_size,
-        created_at: photo.created_at
+        size_bytes: photo.size_bytes || null,
+        uploaded_at: photo.uploaded_at || null
       }))
     };
 

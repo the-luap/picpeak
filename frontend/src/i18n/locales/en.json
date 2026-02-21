@@ -154,6 +154,7 @@
     "events": "Events",
     "archives": "Archives",
     "settings": "Settings",
+    "eventTypes": "Event Types",
     "branding": "Branding",
     "analytics": "Analytics",
     "emailSettings": "Email Settings",
@@ -286,9 +287,28 @@
     "searchPlaceholder": "Search photos...",
     "sortBy": "Sort By",
     "sortByDate": "Sort by Date",
+    "sortByCaptureDate": "Sort by Capture Date",
     "sortByName": "Sort by Name",
     "sortBySize": "Sort by Size",
-    "sortByRating": "Sort by Rating"
+    "sortByRating": "Sort by Rating",
+    "photoGallery": "Photo Gallery",
+    "photos": "Photos",
+    "allRightsReserved": "All rights reserved",
+    "searchMemories": "Search memories...",
+    "thankYou": "Thank You",
+    "thankYouMessage": "For being part of our story and making our special day unforgettable.",
+    "feedback": {
+      "title": "Feedback",
+      "shareThoughts": "Share your thoughts on \"{{name}}\"",
+      "rateThisMoment": "Rate this moment",
+      "comments": "Comments",
+      "noComments": "No comments yet. Be the first!",
+      "yourName": "Your name",
+      "yourEmail": "Your email",
+      "writeLovelyNote": "Write a lovely note...",
+      "postComment": "Post Comment",
+      "anonymous": "Anonymous"
+    }
   },
   "categories": {
     "title": "Photo Categories",
@@ -308,7 +328,13 @@
     "noCategory": "No category",
     "noCategoriesYet": "No categories yet. Create your first category to organize photos.",
     "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
-    "cannotDelete": "Cannot delete category with photos. Please reassign photos first."
+    "cannotDelete": "Cannot delete category with photos. Please reassign photos first.",
+    "setCoverPhoto": "Set Cover Photo",
+    "removeCoverPhoto": "Remove Cover Photo",
+    "coverPhotoSet": "Cover photo set successfully",
+    "coverPhotoRemoved": "Cover photo removed",
+    "failedToSetCoverPhoto": "Failed to set cover photo",
+    "categoryHeroHint": "If no cover photo is set for a category, the default hero photo will be used."
   },
   "events": {
     "title": "Events",
@@ -433,6 +459,8 @@
     "expiresOn": "Expires on",
     "galleryWillExpireOn": "Gallery will expire on {{date}}",
     "expirationWarning": "Guests will receive a warning email 7 days before expiration.",
+    "noExpiration": "No Expiration",
+    "noExpirationHelp": "This gallery will remain active until manually archived.",
     "userUploads": "User Upload Settings",
     "allowUserUploads": "Allow guests to upload photos",
     "allowUserUploadsHelp": "Enable guests to upload their own photos to this gallery",
@@ -456,11 +484,42 @@
     "protectionLevelStandard": "Standard - Keyboard shortcuts blocked",
     "protectionLevelEnhanced": "Enhanced - Print screen detection",
     "protectionLevelMaximum": "Maximum - DevTools detection & canvas rendering",
+    "heroLogoSettings": "Hero Logo Settings",
+    "heroLogoVisible": "Display logo in hero section",
+    "heroLogoSize": "Logo Size",
+    "heroLogoSizeSmall": "Small",
+    "heroLogoSizeMedium": "Medium",
+    "heroLogoSizeLarge": "Large",
+    "heroLogoSizeXLarge": "Extra Large",
+    "heroLogoPosition": "Logo Position",
+    "heroLogoPositionTop": "Top (above title)",
+    "heroLogoPositionCenter": "Center (between title and dates)",
+    "heroLogoPositionBottom": "Bottom (below dates)",
+    "heroLogoInfo": "These settings apply when the gallery uses the Hero layout. You can hide the logo or customize its size and position.",
+    "eventCustomLogo": "Custom Event Logo",
+    "eventCustomLogoDescription": "Upload a custom logo for this event. This overrides the global branding logo for this gallery only.",
+    "uploadEventLogo": "Upload Logo",
+    "replaceLogo": "Replace",
+    "removeLogo": "Remove",
+    "eventLogoUploaded": "Event logo uploaded successfully",
+    "eventLogoUploadFailed": "Failed to upload event logo",
+    "eventLogoRemoved": "Event logo removed successfully",
+    "eventLogoRemoveFailed": "Failed to remove event logo",
+    "heroLogoVisibleLabel": "Logo visible",
+    "heroLogoSizeLabel": "Size",
+    "heroLogoPositionLabel": "Position",
+    "heroLogoHidden": "Logo hidden",
     "heroPhoto": "Hero Photo",
-    "heroPhotoHelp": "Select a featured photo for the hero gallery layout",
+    "heroPhotoHelp": "Select a default hero photo for the gallery. You can override this per category.",
     "selectHeroPhoto": "Select Hero Photo",
     "noHeroPhotoSelected": "No hero photo selected",
     "heroPhotoSelected": "Hero photo selected",
+    "heroImageAnchor": "Hero Image Crop Position",
+    "heroImageAnchorDescription": "Click on the image to set the focal point for cropping.",
+    "heroImageAnchorTop": "Top",
+    "heroImageAnchorCenter": "Center",
+    "heroImageAnchorBottom": "Bottom",
+    "heroPreview": "Hero preview",
     "noPhotosAvailable": "No photos available",
     "processingRequest": "Processing your request...",
     "eventTypeWedding": "Wedding",
@@ -581,7 +640,6 @@
       "allowedFileTypes": "Allowed File Types",
       "allowedFileTypesHelp": "Comma-separated list of file extensions",
       "featureToggles": "Feature Toggles",
-      "enableWatermark": "Enable watermark on photos",
       "enableAnalytics": "Enable analytics tracking",
       "enableRegistration": "Allow self-registration for admins",
       "enableShortGalleryUrls": "Use short gallery URLs",
@@ -741,6 +799,25 @@
       "failed": "Failed",
       "lastUpdate": "Last update"
     },
+    "updateNotifications": {
+      "title": "Update Notifications",
+      "description": "Receive email notifications when new versions of PicPeak are available.",
+      "enableEmails": "Enable email notifications",
+      "enableEmailsDesc": "Send email to admins when a new version is available",
+      "recipients": "Email Recipients",
+      "recipientsPlaceholder": "admin@example.com, other@example.com",
+      "recipientsHelper": "Comma-separated email addresses. Leave empty to send to all admin users.",
+      "lastNotified": "Last notification sent for version: {{version}}",
+      "checkNow": "Check & Notify",
+      "sendTest": "Send Test Email",
+      "saved": "Settings saved",
+      "saveError": "Failed to save settings",
+      "emailSent": "Notification email sent to {{count}} recipients",
+      "emailFailed": "Failed to send notification",
+      "checkSuccess": "Notification sent for new version",
+      "checkNoAction": "No notification needed: {{reason}}",
+      "checkError": "Failed to check for updates"
+    },
     "events": {
       "title": "Event Creation",
       "requiredFields": "Required Fields",
@@ -753,6 +830,12 @@
       "requireAdminEmail": "Require admin email",
       "requireAdminEmailHelp": "Admin email must be provided for new events",
       "adminEmailWarning": "Required for receiving event notifications",
+      "requireEventDate": "Require event date",
+      "requireEventDateHelp": "Event date must be provided when creating events",
+      "eventDateWarning": "Gallery URLs will use random identifiers instead of dates",
+      "requireExpiration": "Require expiration date",
+      "requireExpirationHelp": "Galleries must have an expiration date",
+      "expirationWarning": "Galleries without expiration will remain active until manually archived",
       "saveSettings": "Save Event Settings",
       "noteTitle": "Note",
       "noteText": "These settings only affect new event creation. Existing events are not affected. Default behavior requires all fields."
@@ -814,6 +897,34 @@
     },
     "styling": {
       "title": "Custom CSS"
+    },
+    "seo": {
+      "title": "SEO & Robots",
+      "indexingTitle": "Search Engine Indexing",
+      "allowIndexing": "Allow search engine indexing",
+      "allowIndexingHelp": "When disabled, all crawlers are blocked via robots.txt. Recommended off for private photo platforms.",
+      "sitemapUrl": "Sitemap URL",
+      "sitemapUrlHelp": "Optional. Added to robots.txt if provided.",
+      "aiBlockingTitle": "AI & Bot Blocking",
+      "blockAiCrawlers": "Block AI/LLM crawlers",
+      "blockAiCrawlersHelp": "Prevent AI training bots from accessing your content.",
+      "blockedAgents": "Blocked AI agents",
+      "addAgentPlaceholder": "Enter agent name...",
+      "blockSocialBots": "Block social media preview bots",
+      "blockSocialBotsHelp": "Prevent link previews on Twitter, Facebook, LinkedIn, etc.",
+      "metaTagsTitle": "Meta Tags & Custom Rules",
+      "metaNoindex": "Add noindex meta tag",
+      "metaNoindexHelp": "Tells search engines not to index pages (HTML-level, complements robots.txt).",
+      "metaNofollow": "Add nofollow meta tag",
+      "metaNofollowHelp": "Tells search engines not to follow links on pages.",
+      "metaNoai": "Add noai/noimageai meta tag",
+      "metaNoaiHelp": "Signals that content should not be used for AI training.",
+      "customRules": "Custom robots.txt rules",
+      "ruleAgentPlaceholder": "User-agent",
+      "rulePathPlaceholder": "Disallow path",
+      "showPreview": "Show robots.txt preview",
+      "hidePreview": "Hide robots.txt preview",
+      "saveSettings": "Save SEO Settings"
     },
     "analytics": {
       "title": "Analytics",
@@ -901,7 +1012,6 @@
     "faviconHelp": "PNG or ICO format, recommended size: 32x32px",
     "watermark": "Watermark",
     "watermarkSettings": "Watermark Settings",
-    "enableWatermark": "Enable watermark on photos",
     "enableWatermarks": "Enable Watermarks",
     "watermarkHelp": "Add your company name as a watermark on downloaded photos",
     "watermarkLogo": "Watermark Logo",
@@ -925,6 +1035,11 @@
     "accentColor": "Accent Color",
     "backgroundColor": "Background Color",
     "textColor": "Text Color",
+    "colorMode": "Color Mode",
+    "colorModeLight": "Light",
+    "colorModeDark": "Dark",
+    "colorModeAuto": "Auto",
+    "colorModeHelp": "Auto follows the visitor's system preference.",
     "customCSS": "Custom CSS",
     "preview": "Preview",
     "previewInNewTab": "Preview in New Tab",
@@ -941,7 +1056,10 @@
       "carousel": "Full-screen slideshow with navigation",
       "timeline": "Photos organized by date",
       "hero": "Featured image with grid below",
-      "mosaic": "Artistic layout with mixed sizes"
+      "mosaic": "Artistic layout with mixed sizes",
+      "justified": "Row-based layout preserving aspect ratios",
+      "gallery-premium": "Elegant light theme with hero and masonry (Beta)",
+      "gallery-story": "Cinematic dark theme with scene sections (Beta)"
     },
     "layoutSettings": "Layout Settings",
     "photoSpacing": "Photo Spacing",
@@ -969,6 +1087,37 @@
       "week": "Week",
       "month": "Month"
     },
+    "masonryMode": "Layout Mode",
+    "masonryModeOptions": {
+      "columns": "Columns (Pinterest-style)",
+      "rows": "Rows (Custom justified)",
+      "flickr": "Flickr (Battle-tested justified)",
+      "justified": "Google Photos (Knuth-Plass algorithm)"
+    },
+    "masonryModeHint": {
+      "columns": "Pinterest-style vertical columns with varied heights",
+      "rows": "Custom row-based justified layout",
+      "flickr": "Flickr's open-source justified layout algorithm",
+      "justified": "Google Photos-style rows using Knuth-Plass algorithm for optimal breaks"
+    },
+    "targetRowHeight": "Target Row Height",
+    "targetRowHeightHint": "Height in pixels (150-400). Photos will scale to fit rows.",
+    "lastRowBehavior": "Last Row Alignment",
+    "lastRowOptions": {
+      "left": "Left aligned",
+      "center": "Centered",
+      "justify": "Justified (stretch)"
+    },
+    "showHeroSection": "Show Hero Section",
+    "showHeroSectionHint": "Display a featured hero image above the justified gallery",
+    "heroHeight": "Hero Section Height",
+    "heroHeightOptions": {
+      "small": "Small (40-50%)",
+      "medium": "Medium (50-70%)",
+      "large": "Large (60-80%)"
+    },
+    "heroOverlayOpacity": "Hero Overlay Opacity",
+    "heroOverlayHint": "Darken the hero image to improve text readability",
     "typographyAndStyle": "Typography & Style",
     "bodyFont": "Body Font",
     "headingFont": "Heading Font",
@@ -1019,6 +1168,7 @@
     "saveTheme": "Save Theme",
     "previewLayout": "Preview Layout",
     "livePreview": "Live Preview",
+    "heroPlaceholderText": "Your event's hero photo will appear here",
     "whiteLabel": "White Label",
     "hidePoweredBy": "Hide \"Powered by PicPeak\" branding",
     "hidePoweredByHelp": "Remove the PicPeak attribution from gallery footers for a fully white-labeled experience",
@@ -1042,7 +1192,41 @@
     "showLogoInHeader": "Show logo in gallery header",
     "showLogoInHeaderHelp": "Display the logo in the main header bar",
     "showLogoInHero": "Show logo in hero section",
-    "showLogoInHeroHelp": "Display the logo in hero sections (for non-grid layouts)"
+    "showLogoInHeroHelp": "Display the logo in hero sections (for non-grid layouts)",
+    "headerStyle": "Header Style",
+    "headerStyleDescription": "Choose how the gallery header appears. The header style is independent of the photo layout.",
+    "headerStyleOptions": {
+      "hero": "Hero Image",
+      "standard": "Standard Banner",
+      "minimal": "Minimal",
+      "none": "No Header"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Full-height image with event info overlay",
+      "standard": "Classic banner with event details",
+      "minimal": "Compact header with essential info",
+      "none": "Hide header completely"
+    },
+    "heroDividerStyle": "Divider Style",
+    "heroDividerDescription": "Choose how the transition between the hero image and gallery content looks.",
+    "dividerOptions": {
+      "wave": "Wave",
+      "straight": "Straight",
+      "angle": "Angle",
+      "curve": "Curve",
+      "none": "None"
+    },
+    "controlsStyle": "Controls Style",
+    "controlsStyleDescription": "Choose how gallery filters and controls are displayed.",
+    "controlsStyleOptions": {
+      "classic": "Classic",
+      "sidebar": "Sidebar"
+    },
+    "controlsStyleDescriptions": {
+      "classic": "Inline filter bar below header",
+      "sidebar": "Menu button opens sidebar with filters"
+    },
+    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image."
   },
   "admin": {
     "title": "Admin Panel",
@@ -1077,7 +1261,18 @@
       "updateAvailableShort": "v{{version}} available",
       "checkForUpdates": "Check for Updates",
       "upToDate": "You're up to date",
-      "lastChecked": "Last checked: {{time}}"
+      "lastChecked": "Last checked: {{time}}",
+      "updateNow": "Update Now",
+      "updateDialog": {
+        "title": "Update PicPeak",
+        "detectedEnv": "Detected Environment",
+        "beforeUpdating": "Before updating:",
+        "updateCommands": "Update Commands:",
+        "afterUpdating": "After updating:",
+        "copyAllCommands": "Copy All Commands",
+        "completeChecklist": "Complete the checklist before updating",
+        "error": "Failed to load update instructions"
+      }
     },
     "notifications": "Notifications",
     "viewAllNotifications": "View all notifications",
@@ -1128,6 +1323,8 @@
     "markAllAsRead": "Mark all as read",
     "notificationSettings": "Notification Settings",
     "changePassword": "Change Password",
+    "darkMode": "Switch to dark mode",
+    "lightMode": "Switch to light mode",
     "accountSettings": {
       "title": "Admin account",
       "description": "Update the credentials used to sign in to PicPeak.",
@@ -1276,6 +1473,10 @@
     "successMessage": "Your account has been created successfully. You can now log in with your credentials.",
     "redirecting": "Redirecting to login in {{seconds}}...",
     "goToLogin": "Go to Login",
+    "contactAdminMessage": "Please contact your administrator to request a new invitation.",
+    "passwordsMatch": "Passwords match",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
     "errors": {
       "usernameRequired": "Username is required",
       "usernameTooShort": "Username must be at least 3 characters",
@@ -1432,6 +1633,54 @@
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
     "pageUpdated": "Page updated successfully"
+  },
+  "eventTypes": {
+    "title": "Event Types",
+    "subtitle": "Customize event types and their default themes",
+    "loading": "Loading event types...",
+    "loadError": "Failed to load event types",
+    "createNew": "New Event Type",
+    "edit": "Edit Event Type",
+    "created": "Event type created successfully",
+    "updated": "Event type updated successfully",
+    "deleted": "Event type deleted successfully",
+    "createError": "Failed to create event type",
+    "updateError": "Failed to update event type",
+    "deleteError": "Failed to delete event type",
+    "searchPlaceholder": "Search event types...",
+    "showInactive": "Show inactive",
+    "noResults": "No event types found",
+    "empty": "No event types yet",
+    "system": "System",
+    "table": {
+      "type": "Type",
+      "slugPrefix": "URL Prefix",
+      "theme": "Default Theme",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "form": {
+      "name": "Display Name",
+      "namePlaceholder": "e.g., Family Shoot",
+      "slugPrefix": "URL Prefix",
+      "slugPrefixPlaceholder": "e.g., family",
+      "slugPreview": "Example URL:",
+      "emoji": "Icon",
+      "themePreset": "Default Theme",
+      "isActive": "Active (visible in event creation)"
+    },
+    "validation": {
+      "slugFormat": "Only letters, numbers, and hyphens allowed"
+    },
+    "slugInfo": {
+      "title": "URL Prefix Info:",
+      "description": "The URL prefix is used to generate gallery URLs. For example, an event type with prefix \"family\" will create URLs like: family-smith-family-2025-01-22"
+    },
+    "deleteConfirm": {
+      "title": "Delete Event Type",
+      "message": "Are you sure you want to delete",
+      "warning": "This action cannot be undone. Make sure no events are using this type."
+    }
   },
   "backup": {
     "external": {

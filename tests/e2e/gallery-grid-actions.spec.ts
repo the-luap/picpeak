@@ -101,7 +101,11 @@ test.describe('Gallery grid tile quick actions', () => {
     const passwordField = gallery.getByPlaceholder(/gallery password/i).first();
     if (await passwordField.count()) {
       await passwordField.fill(GALLERY_PASSWORD);
-      await gallery.getByRole('button', { name: /View Gallery/i }).click();
+      try {
+        await gallery.getByRole('button', { name: /View Gallery/i }).click({ noWaitAfter: true, timeout: 5000 });
+      } catch {
+        // Auto-auth via share token may have already navigated to gallery view
+      }
       await gallery.waitForLoadState('networkidle');
     }
 

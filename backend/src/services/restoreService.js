@@ -4,9 +4,7 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
 const { createReadStream, createWriteStream } = require('fs');
-const { exec } = require('child_process');
-const { promisify } = require('util');
-const execAsync = promisify(exec);
+const { spawnAsync, spawnToFile, spawnFromFile } = require('../utils/safeExec');
 const { db } = require('../database/db');
 const knexConfig = require('../../knexfile');
 const logger = require('../utils/logger');
@@ -418,12 +416,14 @@ class RestoreService {
       let availableBytes = 0;
       let diskCheckSucceeded = false;
       try {
-        const { exec } = require('child_process');
-        const execAsync = promisify(exec);
         // Use root path as fallback if storage path doesn't exist yet
         const checkPath = await fs.access(storagePath).then(() => storagePath).catch(() => '/');
-        const { stdout } = await execAsync(`df -k "${checkPath}" | tail -1 | awk '{print $4}'`);
-        const parsed = parseInt(stdout.trim());
+        const { stdout } = await spawnAsync('df', ['-k', checkPath]);
+        // Parse df output: last line, 4th column is available KB
+        const lines = stdout.trim().split('\n');
+        const lastLine = lines[lines.length - 1];
+        const columns = lastLine.trim().split(/\s+/);
+        const parsed = parseInt(columns[3]);
         if (!isNaN(parsed) && parsed > 0) {
           availableBytes = parsed * 1024; // Convert from KB to bytes
           diskCheckSucceeded = true;
@@ -492,15 +492,12 @@ class RestoreService {
         
         if (this.dbType === 'sqlite') {
           const dbPath = knexConfig.connection.filename;
-          await execAsync(`sqlite3 "${dbPath}" ".backup '${dbBackupPath}'"`);
+          await spawnAsync('sqlite3', [dbPath, `.backup '${dbBackupPath}'`]);
         } else {
           // PostgreSQL backup
           const { host, port, user, password, database } = knexConfig.connection;
           const env = { ...process.env, PGPASSWORD: password };
-          await execAsync(
-            `pg_dump -h ${host} -p ${port} -U ${user} -d ${database} > "${dbBackupPath}"`,
-            { env }
-          );
+          await spawnToFile('pg_dump', ['-h', host, '-p', String(port), '-U', user, '-d', database], dbBackupPath, { env });
         }
 
         // Compress database backup
@@ -513,8 +510,8 @@ class RestoreService {
         this.log('info', 'Backing up current files...');
         const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
         const filesBackupPath = path.join(backupPath, 'files.tar.gz');
-        
-        await execAsync(`tar -czf "${filesBackupPath}" -C "${path.dirname(storagePath)}" "${path.basename(storagePath)}"`);
+
+        await spawnAsync('tar', ['-czf', filesBackupPath, '-C', path.dirname(storagePath), path.basename(storagePath)]);
       }
 
       // Create backup manifest
@@ -696,10 +693,10 @@ class RestoreService {
         
         try {
           // Restore from backup
-          await execAsync(`sqlite3 "${dbPath}" ".restore '${restoreFile}'"`);
-          
+          await spawnAsync('sqlite3', [dbPath, `.restore '${restoreFile}'`]);
+
           // Verify integrity
-          const integrityCheck = await execAsync(`sqlite3 "${dbPath}" "PRAGMA integrity_check"`);
+          const integrityCheck = await spawnAsync('sqlite3', [dbPath, 'PRAGMA integrity_check']);
           if (!integrityCheck.stdout.includes('ok')) {
             throw new Error('Database integrity check failed after restore');
           }
@@ -722,21 +719,12 @@ class RestoreService {
         // Drop and recreate database (extremely dangerous!)
         this.log('warn', 'Dropping and recreating PostgreSQL database...');
         
-        await execAsync(
-          `psql -h ${host} -p ${port} -U ${user} -c "DROP DATABASE IF EXISTS ${database}"`,
-          { env }
-        );
-        
-        await execAsync(
-          `psql -h ${host} -p ${port} -U ${user} -c "CREATE DATABASE ${database}"`,
-          { env }
-        );
-        
+        await spawnAsync('psql', ['-h', host, '-p', String(port), '-U', user, '-c', `DROP DATABASE IF EXISTS ${database}`], { env });
+
+        await spawnAsync('psql', ['-h', host, '-p', String(port), '-U', user, '-c', `CREATE DATABASE ${database}`], { env });
+
         // Restore from backup
-        await execAsync(
-          `psql -h ${host} -p ${port} -U ${user} -d ${database} < "${restoreFile}"`,
-          { env, maxBuffer: 1024 * 1024 * 100 } // 100MB buffer
-        );
+        await spawnFromFile('psql', ['-h', host, '-p', String(port), '-U', user, '-d', database], restoreFile, { env });
       }
 
       // Re-initialize database connection
@@ -987,14 +975,11 @@ class RestoreService {
 
         if (this.dbType === 'sqlite') {
           const dbPath = knexConfig.connection.filename;
-          await execAsync(`sqlite3 "${dbPath}" ".restore '${decompressedPath}'"`);
+          await spawnAsync('sqlite3', [dbPath, `.restore '${decompressedPath}'`]);
         } else {
           const { host, port, user, password, database } = knexConfig.connection;
           const env = { ...process.env, PGPASSWORD: password };
-          await execAsync(
-            `psql -h ${host} -p ${port} -U ${user} -d ${database} < "${decompressedPath}"`,
-            { env }
-          );
+          await spawnFromFile('psql', ['-h', host, '-p', String(port), '-U', user, '-d', database], decompressedPath, { env });
         }
 
         await fs.unlink(decompressedPath);
@@ -1004,7 +989,7 @@ class RestoreService {
       const filesBackupPath = path.join(preRestoreBackupPath, 'files.tar.gz');
       if (await fs.access(filesBackupPath).then(() => true).catch(() => false)) {
         const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-        await execAsync(`tar -xzf "${filesBackupPath}" -C "${path.dirname(storagePath)}"`);
+        await spawnAsync('tar', ['-xzf', filesBackupPath, '-C', path.dirname(storagePath)]);
       }
 
       this.log('info', 'Rollback completed successfully');

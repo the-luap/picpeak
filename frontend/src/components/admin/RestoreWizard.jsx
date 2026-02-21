@@ -38,7 +38,7 @@ export const RestoreWizard = () => {
     { id: 'backup', title: t('backup.restore.steps.chooseBackup') },
     { id: 'options', title: t('backup.restore.steps.restoreOptions') },
     { id: 'confirm', title: t('backup.restore.steps.reviewConfirm') },
-    { id: 'progress', title: t('backup.restore.steps.restoreProgress') }
+    { id: 'progress', title: t('backup.restore.steps.progress') }
   ];
 
   const restoreTypes = [
@@ -187,8 +187,8 @@ export const RestoreWizard = () => {
   const renderSourceSelection = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.source.title')}</h3>
-        <p className="text-sm text-gray-600">{t('backup.restore.source.subtitle')}</p>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('backup.restore.source.title')}</h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.source.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -196,52 +196,52 @@ export const RestoreWizard = () => {
           onClick={() => setRestoreData(prev => ({ ...prev, source: 'local' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 'local'
-              ? 'border-primary bg-primary-50'
-              : 'border-gray-200 hover:border-gray-300'
+              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
           <HardDrive className={`h-12 w-12 mb-3 mx-auto ${
-            restoreData.source === 'local' ? 'text-primary' : 'text-gray-400'
+            restoreData.source === 'local' ? 'text-primary' : 'text-neutral-400'
           }`} />
-          <h4 className="font-medium text-gray-900">{t('backup.restore.source.local.name')}</h4>
-          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.local.description')}</p>
+          <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{t('backup.restore.source.local.name')}</h4>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t('backup.restore.source.local.description')}</p>
         </button>
 
         <button
           onClick={() => setRestoreData(prev => ({ ...prev, source: 's3' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 's3'
-              ? 'border-primary bg-primary-50'
-              : 'border-gray-200 hover:border-gray-300'
+              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
           <Cloud className={`h-12 w-12 mb-3 mx-auto ${
-            restoreData.source === 's3' ? 'text-primary' : 'text-gray-400'
+            restoreData.source === 's3' ? 'text-primary' : 'text-neutral-400'
           }`} />
-          <h4 className="font-medium text-gray-900">{t('backup.restore.source.s3.name')}</h4>
-          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.s3.description')}</p>
+          <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{t('backup.restore.source.s3.name')}</h4>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t('backup.restore.source.s3.description')}</p>
         </button>
 
         <button
           onClick={() => setRestoreData(prev => ({ ...prev, source: 'upload' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 'upload'
-              ? 'border-primary bg-primary-50'
-              : 'border-gray-200 hover:border-gray-300'
+              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
           <Upload className={`h-12 w-12 mb-3 mx-auto ${
-            restoreData.source === 'upload' ? 'text-primary' : 'text-gray-400'
+            restoreData.source === 'upload' ? 'text-primary' : 'text-neutral-400'
           }`} />
-          <h4 className="font-medium text-gray-900">{t('backup.restore.source.upload.name')}</h4>
-          <p className="text-xs text-gray-500 mt-1">{t('backup.restore.source.upload.description')}</p>
+          <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{t('backup.restore.source.upload.name')}</h4>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t('backup.restore.source.upload.description')}</p>
         </button>
       </div>
 
       {/* Source-specific configuration */}
       {restoreData.source === 's3' && (
         <Card className="p-4 space-y-4">
-          <h4 className="font-medium text-gray-900">{t('backup.restore.source.configuration.s3')}</h4>
+          <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{t('backup.restore.source.configuration.s3')}</h4>
           <div className="grid grid-cols-2 gap-4">
             <Input
               placeholder={t('backup.restore.source.configuration.endpoint')}
@@ -283,8 +283,8 @@ export const RestoreWizard = () => {
       {restoreData.source === 'upload' && (
         <Card className="p-4">
           <div className="text-center py-8">
-            <Upload className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-            <p className="text-sm text-gray-600">{t('backup.restore.source.upload.comingSoon')}</p>
+            <Upload className="h-12 w-12 mx-auto mb-3 text-neutral-400" />
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.source.upload.comingSoon')}</p>
           </div>
         </Card>
       )}
@@ -294,16 +294,16 @@ export const RestoreWizard = () => {
   const renderBackupSelection = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.backup.title')}</h3>
-        <p className="text-sm text-gray-600">{t('backup.restore.backup.subtitle')}</p>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('backup.restore.backup.title')}</h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.backup.subtitle')}</p>
       </div>
 
       {loadingBackups ? (
         <Loading />
       ) : availableBackups?.length === 0 ? (
         <Card className="p-8 text-center">
-          <FileArchive className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-gray-500">{t('backup.restore.backup.noBackupsFound')}</p>
+          <FileArchive className="h-12 w-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-neutral-500 dark:text-neutral-400">{t('backup.restore.backup.noBackupsFound')}</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -312,7 +312,7 @@ export const RestoreWizard = () => {
               key={backup.id}
               className={`p-4 cursor-pointer transition-all ${
                 restoreData.selectedBackup?.id === backup.id
-                  ? 'ring-2 ring-primary bg-primary-50'
+                  ? 'ring-2 ring-primary bg-primary-50 dark:bg-primary-900/30'
                   : 'hover:shadow-md'
               }`}
               onClick={() => setRestoreData(prev => ({ ...prev, selectedBackup: backup }))}
@@ -320,25 +320,25 @@ export const RestoreWizard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className={`p-2 rounded-lg ${
-                    backup.status === 'completed' ? 'bg-green-100' : 'bg-amber-100'
+                    backup.status === 'completed' ? 'bg-green-100 dark:bg-green-900/40' : 'bg-amber-100 dark:bg-amber-900/40'
                   }`}>
                     {backup.status === 'completed' ? (
-                      <CheckCircle className="h-6 w-6 text-green-600" />
+                      <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                     ) : (
-                      <AlertCircle className="h-6 w-6 text-amber-600" />
+                      <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                     )}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-neutral-900 dark:text-neutral-100">
                       {format(new Date(backup.created_at), 'PPP')} {t('backup.restore.backup.at')} {format(new Date(backup.created_at), 'p')}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
                       {t('backup.dashboard.backupType', { type: backup.backup_type })} • {formatBytes(backup.total_size || 0)}
                     </p>
                   </div>
                 </div>
                 {backup.encrypted && (
-                  <Shield className="h-5 w-5 text-gray-400" />
+                  <Shield className="h-5 w-5 text-neutral-400" />
                 )}
               </div>
             </Card>
@@ -347,12 +347,12 @@ export const RestoreWizard = () => {
       )}
 
       {restoreData.selectedBackup?.encrypted && (
-        <Card className="p-4 bg-amber-50 border-amber-200">
+        <Card className="p-4 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800">
           <div className="flex items-start space-x-3">
-            <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+            <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-amber-900">{t('backup.restore.backup.encrypted')}</p>
-              <p className="text-sm text-amber-700 mt-1">
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-200">{t('backup.restore.backup.encrypted')}</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 {t('backup.restore.backup.encryptedMessage')}
               </p>
               <Input
@@ -375,8 +375,8 @@ export const RestoreWizard = () => {
   const renderRestoreOptions = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.options.title')}</h3>
-        <p className="text-sm text-gray-600">{t('backup.restore.options.subtitle')}</p>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('backup.restore.options.title')}</h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.options.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -388,18 +388,18 @@ export const RestoreWizard = () => {
               onClick={() => setRestoreData(prev => ({ ...prev, restoreType: type.id }))}
               className={`p-4 rounded-lg border-2 text-left transition-all ${
                 restoreData.restoreType === type.id
-                  ? 'border-primary bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+                  : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
               }`}
             >
               <div className="flex items-start space-x-3">
                 <Icon className={`h-6 w-6 mt-1 ${
-                  restoreData.restoreType === type.id ? 'text-primary' : 'text-gray-400'
+                  restoreData.restoreType === type.id ? 'text-primary' : 'text-neutral-400'
                 }`} />
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{type.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{type.description}</p>
-                  <p className="text-xs text-amber-600 mt-2">
+                  <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{type.name}</h4>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{type.description}</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
                     <AlertTriangle className="inline h-3 w-3 mr-1" />
                     {type.warning}
                   </p>
@@ -412,8 +412,8 @@ export const RestoreWizard = () => {
 
       {/* Additional Options */}
       <Card className="p-4 space-y-4">
-        <h4 className="font-medium text-gray-900">{t('backup.restore.options.additionalOptions.title')}</h4>
-        
+        <h4 className="font-medium text-neutral-900 dark:text-neutral-100">{t('backup.restore.options.additionalOptions.title')}</h4>
+
         <label className="flex items-start space-x-3">
           <input
             type="checkbox"
@@ -422,11 +422,11 @@ export const RestoreWizard = () => {
               ...prev,
               skipPreBackup: e.target.checked
             }))}
-            className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            className="mt-1 h-4 w-4 text-primary focus:ring-primary border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700"
           />
           <div>
-            <p className="text-sm font-medium text-gray-700">{t('backup.restore.options.additionalOptions.skipPreBackup')}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('backup.restore.options.additionalOptions.skipPreBackup')}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {t('backup.restore.options.additionalOptions.skipPreBackupHelp')}
             </p>
           </div>
@@ -440,11 +440,11 @@ export const RestoreWizard = () => {
               ...prev,
               force: e.target.checked
             }))}
-            className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            className="mt-1 h-4 w-4 text-primary focus:ring-primary border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700"
           />
           <div>
-            <p className="text-sm font-medium text-gray-700">{t('backup.restore.options.additionalOptions.force')}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('backup.restore.options.additionalOptions.force')}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {t('backup.restore.options.additionalOptions.forceHelp')}
             </p>
           </div>
@@ -456,17 +456,17 @@ export const RestoreWizard = () => {
   const renderConfirmation = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.confirmation.title')}</h3>
-        <p className="text-sm text-gray-600">{t('backup.restore.confirmation.subtitle')}</p>
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('backup.restore.confirmation.title')}</h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.subtitle')}</p>
       </div>
 
       {validationResult ? (
         <>
           {/* Validation Results */}
           <Card className={`p-4 ${
-            validationResult.validation?.isValid 
-              ? 'bg-green-50 border-green-200' 
-              : 'bg-red-50 border-red-200'
+            validationResult.validation?.isValid
+              ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
           }`}>
             <div className="flex items-start space-x-3">
               {validationResult.validation?.isValid ? (
@@ -476,14 +476,14 @@ export const RestoreWizard = () => {
               )}
               <div className="flex-1">
                 <p className={`text-sm font-medium ${
-                  validationResult.validation?.isValid ? 'text-green-900' : 'text-red-900'
+                  validationResult.validation?.isValid ? 'text-green-900 dark:text-green-200' : 'text-red-900 dark:text-red-200'
                 }`}>
                   {validationResult.validation?.isValid 
                     ? t('backup.restore.confirmation.validation.passed') 
                     : t('backup.restore.confirmation.validation.failed')}
                 </p>
                 {validationResult.validation?.errors?.length > 0 && (
-                  <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
+                  <ul className="mt-2 text-sm text-red-700 dark:text-red-300 list-disc list-inside">
                     {validationResult.validation.errors.map((error, idx) => (
                       <li key={idx}>{error}</li>
                     ))}
@@ -496,17 +496,17 @@ export const RestoreWizard = () => {
           {/* Space Check */}
           {validationResult.spaceCheck && (
             <Card className="p-4">
-              <h4 className="font-medium text-gray-900 mb-3">{t('backup.restore.confirmation.spaceCheck.title')}</h4>
+              <h4 className="font-medium text-neutral-900 dark:text-neutral-100 mb-3">{t('backup.restore.confirmation.spaceCheck.title')}</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.required')}:</span>
-                  <span className="font-medium">
+                  <span className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.spaceCheck.required')}:</span>
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
                     {validationResult.spaceCheck.requiredFormatted || formatBytes(validationResult.spaceCheck.required || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('backup.restore.confirmation.spaceCheck.available')}:</span>
-                  <span className="font-medium">
+                  <span className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.spaceCheck.available')}:</span>
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
                     {validationResult.spaceCheck.availableFormatted ||
                      (validationResult.spaceCheck.available != null ? formatBytes(validationResult.spaceCheck.available) : t('common.unknown', 'Unknown'))}
                   </span>
@@ -523,38 +523,38 @@ export const RestoreWizard = () => {
 
           {/* Summary */}
           <Card className="p-4">
-            <h4 className="font-medium text-gray-900 mb-3">{t('backup.restore.confirmation.summary.title')}</h4>
+            <h4 className="font-medium text-neutral-900 dark:text-neutral-100 mb-3">{t('backup.restore.confirmation.summary.title')}</h4>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.source')}:</dt>
-                <dd className="font-medium capitalize">{restoreData.source}</dd>
+                <dt className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.summary.source')}:</dt>
+                <dd className="font-medium text-neutral-900 dark:text-neutral-100 capitalize">{restoreData.source}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.backupDate')}:</dt>
-                <dd className="font-medium">
+                <dt className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.summary.backupDate')}:</dt>
+                <dd className="font-medium text-neutral-900 dark:text-neutral-100">
                   {format(new Date(restoreData.selectedBackup.created_at), 'PPp')}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.restoreType')}:</dt>
-                <dd className="font-medium capitalize">{restoreData.restoreType}</dd>
+                <dt className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.summary.restoreType')}:</dt>
+                <dd className="font-medium text-neutral-900 dark:text-neutral-100 capitalize">{restoreData.restoreType}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-600">{t('backup.restore.confirmation.summary.preBackup')}:</dt>
-                <dd className="font-medium">{restoreData.skipPreBackup ? t('backup.restore.confirmation.summary.skipped') : t('backup.restore.confirmation.summary.enabled')}</dd>
+                <dt className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.summary.preBackup')}:</dt>
+                <dd className="font-medium text-neutral-900 dark:text-neutral-100">{restoreData.skipPreBackup ? t('backup.restore.confirmation.summary.skipped') : t('backup.restore.confirmation.summary.enabled')}</dd>
               </div>
             </dl>
           </Card>
 
           {/* Warning */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex">
               <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5" />
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-amber-800">
+                <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
                   {t('backup.restore.confirmation.warning.title')}
                 </h3>
-                <p className="mt-1 text-sm text-amber-700">
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                   {t('backup.restore.confirmation.warning.message')}
                 </p>
               </div>
@@ -564,7 +564,7 @@ export const RestoreWizard = () => {
       ) : (
         <div className="text-center py-8">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="mt-2 text-sm text-gray-600">{t('backup.restore.confirmation.validation.checking')}</p>
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">{t('backup.restore.confirmation.validation.checking')}</p>
         </div>
       )}
     </div>
@@ -577,8 +577,8 @@ export const RestoreWizard = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('backup.restore.progress.title')}</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">{t('backup.restore.progress.title')}</h3>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
             {isRunning ? t('backup.restore.progress.inProgress') : t('backup.restore.progress.completed')}
           </p>
         </div>
@@ -587,17 +587,17 @@ export const RestoreWizard = () => {
         <Card className="p-6">
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">{t('backup.restore.progress.overallProgress')}</span>
-              <span className="font-medium">{progress.percentage || 0}%</span>
+              <span className="text-neutral-600 dark:text-neutral-400">{t('backup.restore.progress.overallProgress')}</span>
+              <span className="font-medium text-neutral-900 dark:text-neutral-100">{progress.percentage || 0}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-3">
               <div
                 className="bg-primary h-3 rounded-full transition-all duration-500"
                 style={{ width: `${progress.percentage || 0}%` }}
               />
             </div>
             {progress.currentFile && (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
                 {t('backup.restore.progress.current')}: {progress.currentFile}
               </p>
             )}
@@ -606,7 +606,7 @@ export const RestoreWizard = () => {
 
         {/* Status Details */}
         <Card className="p-6">
-          <h4 className="font-medium text-gray-900 mb-4">{t('backup.restore.progress.statusDetails')}</h4>
+          <h4 className="font-medium text-neutral-900 dark:text-neutral-100 mb-4">{t('backup.restore.progress.statusDetails')}</h4>
           <div className="space-y-3">
             {progress.steps?.map((step, idx) => (
               <div key={idx} className="flex items-center space-x-3">
@@ -617,16 +617,16 @@ export const RestoreWizard = () => {
                 ) : step.status === 'failed' ? (
                   <XCircle className="h-5 w-5 text-red-500" />
                 ) : (
-                  <Clock className="h-5 w-5 text-gray-300" />
+                  <Clock className="h-5 w-5 text-neutral-300 dark:text-neutral-600" />
                 )}
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{step.name}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{step.name}</p>
                   {step.message && (
-                    <p className="text-xs text-gray-500">{step.message}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{step.message}</p>
                   )}
                 </div>
                 {step.duration && (
-                  <span className="text-xs text-gray-500">{step.duration}</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{step.duration}</span>
                 )}
               </div>
             ))}
@@ -636,9 +636,9 @@ export const RestoreWizard = () => {
         {/* Logs */}
         {progress.logs && progress.logs.length > 0 && (
           <Card className="p-6">
-            <h4 className="font-medium text-gray-900 mb-4">{t('backup.restore.progress.restoreLogs')}</h4>
-            <div className="bg-gray-900 rounded-lg p-4 max-h-64 overflow-y-auto">
-              <pre className="text-xs text-gray-300 font-mono">
+            <h4 className="font-medium text-neutral-900 dark:text-neutral-100 mb-4">{t('backup.restore.progress.restoreLogs')}</h4>
+            <div className="bg-neutral-900 rounded-lg p-4 max-h-64 overflow-y-auto">
+              <pre className="text-xs text-neutral-300 font-mono">
                 {progress.logs.join('\n')}
               </pre>
             </div>
@@ -647,14 +647,14 @@ export const RestoreWizard = () => {
 
         {/* Completion Actions */}
         {!isRunning && progress.status === 'completed' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <div className="flex">
               <CheckCircle className="h-5 w-5 text-green-400 mt-0.5" />
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-green-800">
+                <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
                   {t('backup.restore.progress.success.title')}
                 </h3>
-                <p className="mt-1 text-sm text-green-700">
+                <p className="mt-1 text-sm text-green-700 dark:text-green-300">
                   {t('backup.restore.progress.success.message')}
                 </p>
               </div>
@@ -684,11 +684,11 @@ export const RestoreWizard = () => {
                 <div className="flex items-center">
                   <div className={`
                     relative flex h-8 w-8 items-center justify-center rounded-full
-                    ${currentStep > stepIdx 
-                      ? 'bg-primary' 
-                      : currentStep === stepIdx 
-                      ? 'bg-primary' 
-                      : 'bg-gray-300'
+                    ${currentStep > stepIdx
+                      ? 'bg-primary'
+                      : currentStep === stepIdx
+                      ? 'bg-primary'
+                      : 'bg-neutral-300 dark:bg-neutral-600'
                     }
                   `}>
                     {currentStep > stepIdx ? (
@@ -699,14 +699,14 @@ export const RestoreWizard = () => {
                   </div>
                   {stepIdx !== steps.length - 1 && (
                     <div className={`
-                      absolute top-4 w-full h-0.5 
-                      ${currentStep > stepIdx ? 'bg-primary' : 'bg-gray-300'}
+                      absolute top-4 w-full h-0.5
+                      ${currentStep > stepIdx ? 'bg-primary' : 'bg-neutral-300 dark:bg-neutral-600'}
                     `} style={{ left: '2rem', right: '-2rem' }} />
                   )}
                 </div>
                 <span className={`
                   mt-2 text-xs font-medium
-                  ${currentStep >= stepIdx ? 'text-gray-900' : 'text-gray-500'}
+                  ${currentStep >= stepIdx ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-500 dark:text-neutral-400'}
                 `}>
                   {step.title}
                 </span>

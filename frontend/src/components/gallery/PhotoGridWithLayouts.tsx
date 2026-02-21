@@ -17,14 +17,17 @@ import {
   MasonryGalleryLayout,
   CarouselGalleryLayout,
   TimelineGalleryLayout,
-  HeroGalleryLayout,
   MosaicGalleryLayout,
+  GalleryPremiumLayout,
+  GalleryStoryLayout,
 } from './layouts';
+import { HeroHeader } from './HeroHeader';
+import type { HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 
 interface PhotoGridWithLayoutsProps {
   photos: Photo[];
   slug: string;
-  categoryId?: number | null;
+  categoryId?: number | string | null;
   // When provided, the hero layout will use this photo
   // instead of deriving from the filtered photo list.
   heroPhotoOverride?: Photo | null;
@@ -35,8 +38,8 @@ interface PhotoGridWithLayoutsProps {
   showSelectionControls?: boolean;
   eventName?: string;
   eventLogo?: string | null;
-  eventDate?: string;
-  expiresAt?: string;
+  eventDate?: string | null;
+  expiresAt?: string | null;
   feedbackEnabled?: boolean;
   allowDownloads?: boolean;
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
@@ -52,6 +55,17 @@ interface PhotoGridWithLayoutsProps {
     requireNameEmail?: boolean;
   };
   onFeedbackChange?: () => void;
+  // Hero logo customization options
+  heroLogoVisible?: boolean;
+  heroLogoSize?: 'small' | 'medium' | 'large' | 'xlarge';
+  heroLogoPosition?: 'top' | 'center' | 'bottom';
+  // Header style (decoupled from layout)
+  headerStyle?: HeaderStyleType;
+  heroDividerStyle?: HeroDividerStyle;
+  // Hero image anchor position (#162) – keyword or "X% Y%" focal point
+  heroImageAnchor?: string;
+  // Logout callback for full-page layouts
+  onLogout?: () => void;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -76,7 +90,14 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   eventName,
   eventLogo,
   eventDate,
-  expiresAt
+  expiresAt,
+  heroLogoVisible = true,
+  heroLogoSize = 'medium',
+  heroLogoPosition = 'top',
+  headerStyle,
+  heroDividerStyle = 'wave',
+  heroImageAnchor = 'center',
+  onLogout
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -95,7 +116,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   // Clear selection when category changes
   useEffect(() => {
     setSelectedPhotos(new Set());
-  }, [categoryId]);
+  }, [categoryId, setSelectedPhotos]);
 
   const handlePhotoClick = (index: number) => {
     setOpenFeedbackInitially(false);
@@ -155,7 +176,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     try {
       await galleryService.downloadSelectedPhotos(slug, ids);
       analyticsService.trackGalleryEvent('bulk_download', { gallery: slug, photo_count: ids.length });
-    } catch (error) {
+    } catch {
       toastify.error(t('gallery.downloadError'));
     } finally {
       setSelectedPhotos(new Set());
@@ -170,7 +191,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   if (photos.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-neutral-600">{t('gallery.noPhotosFound')}</p>
+        <p className="text-muted-theme">{t('gallery.noPhotosFound')}</p>
       </div>
     );
   }
@@ -200,7 +221,15 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     expiresAt,
     feedbackEnabled,
     feedbackOptions,
+    heroLogoVisible,
+    heroLogoSize,
+    heroLogoPosition,
+    onLogout,
   };
+
+  // Determine if we should show hero header (decoupled from layout)
+  const effectiveHeaderStyle = headerStyle || theme.headerStyle;
+  const showHeroHeader = effectiveHeaderStyle === 'hero';
 
   let LayoutComponent;
   switch (galleryLayout) {
@@ -213,20 +242,48 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     case 'timeline':
       LayoutComponent = TimelineGalleryLayout;
       break;
-    case 'hero':
-      LayoutComponent = HeroGalleryLayout;
-      break;
     case 'mosaic':
       LayoutComponent = MosaicGalleryLayout;
+      break;
+    case 'gallery-premium':
+      LayoutComponent = GalleryPremiumLayout;
+      break;
+    case 'gallery-story':
+      LayoutComponent = GalleryStoryLayout;
       break;
     default:
       LayoutComponent = GridGalleryLayout;
   }
 
+  // Gallery Premium and Gallery Story layouts have their own integrated hero/header
+  const isFullPageLayout = galleryLayout === 'gallery-premium' || galleryLayout === 'gallery-story';
+
   return (
     <>
-      {/* Selection Mode Controls - Not shown for carousel layout or when controls are hidden */}
-      {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && (
+      {/* Hero Header - shown when headerStyle is 'hero' (skip for full-page layouts with integrated hero) */}
+      {showHeroHeader && !isFullPageLayout && (
+        <HeroHeader
+          photos={photos}
+          slug={slug}
+          eventName={eventName}
+          eventLogo={eventLogo}
+          eventDate={eventDate}
+          expiresAt={expiresAt}
+          heroPhotoOverride={heroPhotoOverride}
+          heroLogoVisible={heroLogoVisible}
+          heroLogoSize={heroLogoSize}
+          heroLogoPosition={heroLogoPosition}
+          dividerStyle={heroDividerStyle}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering}
+          heroImageAnchor={heroImageAnchor}
+        />
+      )}
+
+      {/* Selection Mode Controls - Not shown for carousel, full-page layouts, or when controls are hidden */}
+      {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && !isFullPageLayout && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button
@@ -255,7 +312,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           
           {isSelectionMode && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <span className="text-xs sm:text-sm text-neutral-600">
+              <span className="text-xs sm:text-sm text-muted-theme">
                 {t('gallery.photosSelected', { count: selectedPhotos.size })}
               </span>
               <div className="flex items-center gap-2 flex-wrap">
@@ -286,8 +343,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
       {/* Render the selected layout */}
       <LayoutComponent {...layoutProps} />
 
-      {/* Lightbox */}
-      {selectedPhotoIndex !== null && (
+      {/* Lightbox - skip for full-page layouts which have their own lightbox */}
+      {selectedPhotoIndex !== null && !isFullPageLayout && (
         <PhotoLightbox
           photos={photos}
           initialIndex={selectedPhotoIndex}

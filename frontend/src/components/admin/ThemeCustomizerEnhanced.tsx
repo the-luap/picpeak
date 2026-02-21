@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film } from 'lucide-react';
 import { Button, Card, Input } from '../common';
-import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType } from '../../types/theme.types';
+import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
 // import { settingsService } from '../../services/settings.service';
 // import { toast } from 'react-toastify';
@@ -28,8 +28,45 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   masonry: <Layers className="w-5 h-5" />,
   carousel: <Play className="w-5 h-5" />,
   timeline: <Clock className="w-5 h-5" />,
+  mosaic: <LayoutGrid className="w-5 h-5" />,
+  'gallery-premium': <Columns className="w-5 h-5" />,
+  'gallery-story': <Film className="w-5 h-5" />
+};
+
+const headerStyleIcons: Record<HeaderStyleType, React.ReactNode> = {
   hero: <Image className="w-5 h-5" />,
-  mosaic: <LayoutGrid className="w-5 h-5" />
+  standard: <Layout className="w-5 h-5" />,
+  minimal: <Minimize2 className="w-5 h-5" />,
+  none: <EyeOff className="w-5 h-5" />
+};
+
+const dividerStylePreviews: Record<HeroDividerStyle, React.ReactNode> = {
+  wave: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,12 C12,18 37,6 50,12 C63,18 88,6 100,12 L100,24 L0,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  straight: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <rect x="0" y="12" width="100" height="12" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  angle: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,24 L100,8 L100,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  curve: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <path d="M0,16 Q50,0 100,16 L100,24 L0,24 Z" fill="currentColor" className="text-neutral-300" />
+    </svg>
+  ),
+  none: (
+    <svg className="w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+      <rect x="0" y="0" width="100" height="24" fill="currentColor" className="text-neutral-100" />
+      <text x="50" y="16" textAnchor="middle" fontSize="10" fill="currentColor" className="text-neutral-400">No divider</text>
+    </svg>
+  )
 };
 
 // Layout descriptions will use translation keys
@@ -67,15 +104,16 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   const handleChange = (key: keyof ThemeConfig, newValue: any) => {
     const updated = { ...localTheme, [key]: newValue };
     setLocalTheme(updated);
-    
+
     // When any change is made, mark it as custom
     if (selectedPreset !== 'custom' && onPresetChange) {
       setSelectedPreset('custom');
       onPresetChange('custom');
     }
-    
+
     if (isPreviewMode) {
-      onChange(updated);
+      // Include customCss in the propagated theme
+      onChange({ ...updated, customCss });
     }
   };
 
@@ -84,6 +122,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     if (preset) {
       setSelectedPreset(presetKey);
       setLocalTheme(preset.config);
+      setCustomCss(''); // Clear custom CSS when selecting a preset
       if (onPresetChange) {
         onPresetChange(presetKey);
       }
@@ -141,7 +180,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     <div className="space-y-6">
       {/* Preset Themes */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5" />
           {t('branding.themePresets')}
         </h3>
@@ -152,15 +191,15 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 selectedPreset === key
-                  ? 'border-primary-600 bg-primary-50'
-                  : 'border-neutral-200 hover:border-neutral-300'
+                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <span className="font-medium text-sm block">{theme.name}</span>
+                  <span className="font-medium text-sm block text-neutral-900 dark:text-neutral-100">{theme.name}</span>
                   {theme.description && (
-                    <span className="text-xs text-neutral-600 mt-1 block">{theme.description}</span>
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">{theme.description}</span>
                   )}
                 </div>
                 {selectedPreset === key && (
@@ -170,15 +209,15 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               <div className="flex items-center gap-2 mt-3">
                 <div className="flex gap-1">
                   <div
-                    className="w-5 h-5 rounded-full border border-neutral-200"
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
                     style={{ backgroundColor: theme.config.primaryColor }}
                   />
                   <div
-                    className="w-5 h-5 rounded-full border border-neutral-200"
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
                     style={{ backgroundColor: theme.config.accentColor }}
                   />
                   <div
-                    className="w-5 h-5 rounded-full border border-neutral-200"
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
                     style={{ backgroundColor: theme.config.backgroundColor }}
                   />
                 </div>
@@ -196,7 +235,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       {/* Gallery Layout */}
       {showGalleryLayouts && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
             <Layout className="w-5 h-5" />
             {t('branding.galleryLayout')}
           </h3>
@@ -207,16 +246,21 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   localTheme.galleryLayout === layout
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-neutral-200 hover:border-neutral-300'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
                 <div className="flex flex-col items-center text-center">
-                  <div className="mb-2 text-neutral-700">
+                  <div className="mb-2 text-neutral-700 dark:text-neutral-300">
                     {layoutIcons[layout]}
                   </div>
-                  <span className="font-medium text-sm capitalize">{layout}</span>
-                  <span className="text-xs text-neutral-600 mt-1">
+                  <span className="font-medium text-sm capitalize text-neutral-900 dark:text-neutral-100">
+                    {layout}
+                    {(layout === 'gallery-premium' || layout === 'gallery-story') && (
+                      <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">(Beta)</span>
+                    )}
+                  </span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
                     {t(`branding.layoutDescriptions.${layout}`)}
                   </span>
                 </div>
@@ -229,19 +273,19 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
           {/* Layout-specific settings */}
           {localTheme.galleryLayout && (
-            <div className="mt-6 space-y-4 pt-6 border-t border-neutral-200">
-              <h4 className="font-medium text-sm text-neutral-700">{t('branding.layoutSettings')}</h4>
+            <div className="mt-6 space-y-4 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+              <h4 className="font-medium text-sm text-neutral-700 dark:text-neutral-300">{t('branding.layoutSettings')}</h4>
               
               {/* Common settings */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     {t('branding.photoSpacing')}
                   </label>
                   <select
                     value={localTheme.gallerySettings?.spacing || 'normal'}
                     onChange={(e) => updateGallerySettings('spacing', e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
                   >
                     <option value="tight">{t('branding.spacing.tight')}</option>
                     <option value="normal">{t('branding.spacing.normal')}</option>
@@ -250,13 +294,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     {t('branding.photoAnimation')}
                   </label>
                   <select
                     value={localTheme.gallerySettings?.photoAnimation || 'fade'}
                     onChange={(e) => updateGallerySettings('photoAnimation', e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
                   >
                     <option value="none">{t('branding.animation.none')}</option>
                     <option value="fade">{t('branding.animation.fade')}</option>
@@ -269,12 +313,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               {/* Grid specific */}
               {localTheme.galleryLayout === 'grid' && (
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     {t('branding.columns')}
                   </label>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="text-xs text-neutral-600">{t('branding.mobile')}</label>
+                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.mobile')}</label>
                       <Input
                         type="number"
                         min="1"
@@ -287,7 +331,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-neutral-600">{t('branding.tablet')}</label>
+                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.tablet')}</label>
                       <Input
                         type="number"
                         min="2"
@@ -300,7 +344,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-neutral-600">{t('branding.desktop')}</label>
+                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.desktop')}</label>
                       <Input
                         type="number"
                         min="3"
@@ -327,12 +371,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                         onChange={(e) => updateGallerySettings('carouselAutoplay', e.target.checked)}
                         className="rounded"
                       />
-                      <span className="text-sm font-medium text-neutral-700">{t('branding.enableAutoplay')}</span>
+                      <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{t('branding.enableAutoplay')}</span>
                     </label>
                   </div>
                   {localTheme.gallerySettings?.carouselAutoplay && (
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                         {t('branding.autoplayInterval')}
                       </label>
                       <Input
@@ -350,13 +394,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               {/* Timeline specific */}
               {localTheme.galleryLayout === 'timeline' && (
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     {t('branding.groupPhotosBy')}
                   </label>
                   <select
                     value={localTheme.gallerySettings?.timelineGrouping || 'day'}
                     onChange={(e) => updateGallerySettings('timelineGrouping', e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
                   >
                     <option value="day">{t('branding.grouping.day')}</option>
                     <option value="week">{t('branding.grouping.week')}</option>
@@ -364,6 +408,223 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </select>
                 </div>
               )}
+
+              {/* Masonry specific */}
+              {localTheme.galleryLayout === 'masonry' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      {t('branding.masonryMode', 'Layout Mode')}
+                    </label>
+                    <select
+                      value={localTheme.gallerySettings?.masonryMode || 'columns'}
+                      onChange={(e) => updateGallerySettings('masonryMode', e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                    >
+                      <option value="columns">{t('branding.masonryModeOptions.columns', 'Columns (Pinterest-style)')}</option>
+                      <option value="rows">{t('branding.masonryModeOptions.rows', 'Rows (Custom justified)')}</option>
+                      <option value="flickr">{t('branding.masonryModeOptions.flickr', 'Flickr (Battle-tested justified)')}</option>
+                      <option value="justified">{t('branding.masonryModeOptions.justified', 'Google Photos (Knuth-Plass algorithm)')}</option>
+                    </select>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {localTheme.gallerySettings?.masonryMode === 'columns'
+                        ? t('branding.masonryModeHint.columns', 'Pinterest-style vertical columns with varied heights')
+                        : localTheme.gallerySettings?.masonryMode === 'flickr'
+                        ? t('branding.masonryModeHint.flickr', 'Flickr\'s open-source justified layout algorithm')
+                        : localTheme.gallerySettings?.masonryMode === 'justified'
+                        ? t('branding.masonryModeHint.justified', 'Google Photos-style rows using Knuth-Plass algorithm for optimal breaks')
+                        : t('branding.masonryModeHint.rows', 'Custom row-based justified layout')}
+                    </p>
+                  </div>
+
+                  {/* Row-specific settings - show for all row-based modes */}
+                  {['rows', 'flickr', 'justified'].includes(localTheme.gallerySettings?.masonryMode || '') && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                          {t('branding.targetRowHeight', 'Target Row Height')}
+                        </label>
+                        <Input
+                          type="number"
+                          min="150"
+                          max="400"
+                          value={localTheme.gallerySettings?.masonryRowHeight || 250}
+                          onChange={(e) => updateGallerySettings('masonryRowHeight', parseInt(e.target.value))}
+                        />
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                          {t('branding.targetRowHeightHint', 'Height in pixels (150-400). Photos will scale to fit rows.')}
+                        </p>
+                      </div>
+                      {/* Last row behavior - only for rows and flickr modes */}
+                      {['rows', 'flickr'].includes(localTheme.gallerySettings?.masonryMode || '') && (
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                            {t('branding.lastRowBehavior', 'Last Row Alignment')}
+                          </label>
+                          <select
+                            value={localTheme.gallerySettings?.masonryLastRowBehavior || 'left'}
+                            onChange={(e) => updateGallerySettings('masonryLastRowBehavior', e.target.value)}
+                            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                          >
+                            <option value="left">{t('branding.lastRowOptions.left', 'Left aligned')}</option>
+                            <option value="center">{t('branding.lastRowOptions.center', 'Centered')}</option>
+                            <option value="justify">{t('branding.lastRowOptions.justify', 'Justified (stretch)')}</option>
+                          </select>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Header Style - Decoupled from Layout */}
+      {showGalleryLayouts && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
+            <ImageIcon className="w-5 h-5" />
+            {t('branding.headerStyle', 'Header Style')}
+          </h3>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+            {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
+              <button
+                key={style}
+                onClick={() => handleChange('headerStyle', style)}
+                className={`relative p-4 rounded-lg border-2 transition-all ${
+                  (localTheme.headerStyle || 'standard') === style
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                }`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-2 text-neutral-700 dark:text-neutral-300">
+                    {headerStyleIcons[style]}
+                  </div>
+                  <span className="font-medium text-sm capitalize text-neutral-900 dark:text-neutral-100">
+                    {t(`branding.headerStyleOptions.${style}`, style)}
+                  </span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                    {t(`branding.headerStyleDescriptions.${style}`, '')}
+                  </span>
+                </div>
+                {(localTheme.headerStyle || 'standard') === style && (
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Divider Style - Only show when hero header is selected */}
+          {localTheme.headerStyle === 'hero' && (
+            <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+              <h4 className="font-medium text-sm text-neutral-700 dark:text-neutral-300 mb-3">
+                {t('branding.heroDividerStyle', 'Divider Style')}
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4">
+                {t('branding.heroDividerDescription', 'Choose how the transition between the hero image and gallery content looks.')}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
+                  <button
+                    key={divider}
+                    onClick={() => handleChange('heroDividerStyle', divider)}
+                    className={`relative p-3 rounded-lg border-2 transition-all ${
+                      (localTheme.heroDividerStyle || 'wave') === divider
+                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="w-full mb-2 bg-neutral-800 rounded-t overflow-hidden">
+                        <div className="h-8"></div>
+                        {dividerStylePreviews[divider]}
+                      </div>
+                      <span className="text-xs font-medium capitalize text-neutral-900 dark:text-neutral-100">
+                        {t(`branding.dividerOptions.${divider}`, divider)}
+                      </span>
+                    </div>
+                    {(localTheme.heroDividerStyle || 'wave') === divider && (
+                      <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Controls Style */}
+      {showGalleryLayouts && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
+            <SlidersHorizontal className="w-5 h-5" />
+            {t('branding.controlsStyle', 'Controls Style')}
+          </h3>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+            {t('branding.controlsStyleDescription', 'Choose how gallery filters and controls are displayed.')}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => handleChange('controlsStyle', 'classic')}
+              className={`relative p-4 rounded-lg border-2 transition-all ${
+                (localTheme.controlsStyle || 'classic') === 'classic'
+                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+              }`}
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-2 text-neutral-700 dark:text-neutral-300">
+                  <SlidersHorizontal className="w-6 h-6" />
+                </div>
+                <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                  {t('branding.controlsStyleOptions.classic', 'Classic')}
+                </span>
+                <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                  {t('branding.controlsStyleDescriptions.classic', 'Inline filter bar below header')}
+                </span>
+              </div>
+              {(localTheme.controlsStyle || 'classic') === 'classic' && (
+                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+              )}
+            </button>
+            <button
+              onClick={() => handleChange('controlsStyle', 'sidebar')}
+              className={`relative p-4 rounded-lg border-2 transition-all ${
+                localTheme.controlsStyle === 'sidebar'
+                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+              }`}
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-2 text-neutral-700 dark:text-neutral-300">
+                  <Menu className="w-6 h-6" />
+                </div>
+                <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">
+                  {t('branding.controlsStyleOptions.sidebar', 'Sidebar')}
+                </span>
+                <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                  {t('branding.controlsStyleDescriptions.sidebar', 'Menu button opens sidebar with filters')}
+                </span>
+              </div>
+              {localTheme.controlsStyle === 'sidebar' && (
+                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+              )}
+            </button>
+          </div>
+          {/* Info about hero header */}
+          {localTheme.headerStyle === 'hero' && localTheme.controlsStyle !== 'sidebar' && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                <Info className="w-4 h-4 flex-shrink-0" />
+                {t('branding.controlsStyleHeroWarning', 'Sidebar is recommended for hero headers to prevent controls appearing above the hero image.')}
+              </p>
             </div>
           )}
         </Card>
@@ -371,13 +632,69 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Color Customization */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
           <Palette className="w-5 h-5" />
           {t('branding.colors')}
         </h3>
+
+        {/* Color Mode Selector */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+            {t('branding.colorMode', 'Color Mode')}
+          </label>
+          <div className="flex gap-2">
+            {(['light', 'dark', 'auto'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  handleChange('colorMode', mode);
+                  // When switching to dark, auto-populate dark defaults if colors are still light
+                  if (mode === 'dark' && (!localTheme.backgroundColor || localTheme.backgroundColor === '#fafafa' || localTheme.backgroundColor === '#ffffff')) {
+                    const updated = {
+                      ...localTheme,
+                      colorMode: mode,
+                      backgroundColor: '#0f0f0f',
+                      textColor: '#e5e5e5',
+                      surfaceColor: '#1a1a1a',
+                      surfaceBorderColor: '#2e2e2e',
+                      mutedTextColor: '#a3a3a3',
+                    };
+                    setLocalTheme(updated);
+                    if (isPreviewMode) onChange({ ...updated, customCss });
+                  } else if (mode === 'light' && localTheme.colorMode === 'dark') {
+                    const updated = {
+                      ...localTheme,
+                      colorMode: mode,
+                      backgroundColor: '#fafafa',
+                      textColor: '#171717',
+                      surfaceColor: '#ffffff',
+                      surfaceBorderColor: '#e5e5e5',
+                      mutedTextColor: '#737373',
+                    };
+                    setLocalTheme(updated);
+                    if (isPreviewMode) onChange({ ...updated, customCss });
+                  }
+                }}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  (localTheme.colorMode || 'light') === mode
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                }`}
+              >
+                {mode === 'light' ? t('branding.colorModeLight', 'Light') :
+                 mode === 'dark' ? t('branding.colorModeDark', 'Dark') :
+                 t('branding.colorModeAuto', 'Auto')}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+            {t('branding.colorModeHelp', 'Auto follows the visitor\'s system preference.')}
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t('branding.primaryColor')}
             </label>
             <div className="flex gap-2">
@@ -385,7 +702,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 type="color"
                 value={localTheme.primaryColor || '#5C8762'}
                 onChange={(e) => handleChange('primaryColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 cursor-pointer"
+                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
               />
               <Input
                 value={localTheme.primaryColor || '#5C8762'}
@@ -397,7 +714,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t('branding.accentColor')}
             </label>
             <div className="flex gap-2">
@@ -405,7 +722,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 type="color"
                 value={localTheme.accentColor || '#22c55e'}
                 onChange={(e) => handleChange('accentColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 cursor-pointer"
+                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
               />
               <Input
                 value={localTheme.accentColor || '#22c55e'}
@@ -417,7 +734,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t('branding.backgroundColor')}
             </label>
             <div className="flex gap-2">
@@ -425,7 +742,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 type="color"
                 value={localTheme.backgroundColor || '#fafafa'}
                 onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 cursor-pointer"
+                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
               />
               <Input
                 value={localTheme.backgroundColor || '#fafafa'}
@@ -437,7 +754,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
               {t('branding.textColor')}
             </label>
             <div className="flex gap-2">
@@ -445,7 +762,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 type="color"
                 value={localTheme.textColor || '#171717'}
                 onChange={(e) => handleChange('textColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 cursor-pointer"
+                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
               />
               <Input
                 value={localTheme.textColor || '#171717'}
@@ -460,20 +777,20 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Typography & Style */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
           <Type className="w-5 h-5" />
           {t('branding.typographyAndStyle')}
         </h3>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.bodyFont')}
               </label>
               <select
                 value={localTheme.fontFamily || 'Inter, sans-serif'}
                 onChange={(e) => handleChange('fontFamily', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="Inter, sans-serif">Inter</option>
                 <option value="system-ui, sans-serif">System UI</option>
@@ -486,13 +803,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.headingFont')}
               </label>
               <select
                 value={localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'}
                 onChange={(e) => handleChange('headingFontFamily', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="">{t('branding.sameAsBody')}</option>
                 <option value="'Playfair Display', serif">Playfair Display</option>
@@ -506,13 +823,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           {/* Row 1: Font Size & Border Radius */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.fontSize')}
               </label>
               <select
                 value={localTheme.fontSize || 'normal'}
                 onChange={(e) => handleChange('fontSize', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="small">{t('branding.fontSizes.small')}</option>
                 <option value="normal">{t('branding.fontSizes.normal')}</option>
@@ -521,13 +838,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.borderRadius')}
               </label>
               <select
                 value={localTheme.borderRadius || 'md'}
                 onChange={(e) => handleChange('borderRadius', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="none">{t('branding.borderRadiusOptions.none')}</option>
                 <option value="sm">{t('branding.borderRadiusOptions.small')}</option>
@@ -540,13 +857,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           {/* Row 2: Shadow Style & Background Pattern */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.shadowStyle')}
               </label>
               <select
                 value={localTheme.shadowStyle || 'normal'}
                 onChange={(e) => handleChange('shadowStyle', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="none">{t('branding.shadowOptions.none')}</option>
                 <option value="subtle">{t('branding.shadowOptions.subtle')}</option>
@@ -556,13 +873,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                 {t('branding.backgroundPattern')}
               </label>
               <select
                 value={localTheme.backgroundPattern || 'none'}
                 onChange={(e) => handleChange('backgroundPattern', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="none">{t('branding.backgroundOptions.none')}</option>
                 <option value="dots">{t('branding.backgroundOptions.dots')}</option>
@@ -577,11 +894,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       {/* CSS Template Selector - only show if templates are provided */}
       {cssTemplates && cssTemplates.length > 0 && onCssTemplateChange && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
             <FileCode className="w-5 h-5" />
             {t('branding.cssTemplate', 'CSS Template')}
           </h3>
-          <p className="text-sm text-neutral-600 mb-4">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
             {t('branding.cssTemplateDescription', 'Select a pre-built CSS template to apply application-wide styling to this gallery. Templates can be managed in Settings > CSS Templates.')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -590,17 +907,17 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
-                  ? 'border-primary-600 bg-primary-50'
-                  : 'border-neutral-200 hover:border-neutral-300'
+                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{t('branding.noTemplate', 'No Template')}</span>
+                <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{t('branding.noTemplate', 'No Template')}</span>
                 {!cssTemplateId && (
                   <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
                 )}
               </div>
-              <span className="text-xs text-neutral-600 mt-1 block">
+              <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
                 {t('branding.noTemplateDescription', 'Use only theme settings without a CSS template')}
               </span>
             </button>
@@ -611,17 +928,17 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                   cssTemplateId === template.id
-                    ? 'border-primary-600 bg-primary-50'
-                    : 'border-neutral-200 hover:border-neutral-300'
+                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{template.name}</span>
+                  <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{template.name}</span>
                   {cssTemplateId === template.id && (
                     <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
                   )}
                 </div>
-                <span className="text-xs text-neutral-600 mt-1 block">
+                <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
                   {t('branding.templateSlot', 'Slot {{slot}}', { slot: template.slot_number })}
                 </span>
               </button>
@@ -632,7 +949,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Event-specific Custom CSS */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
           <Code className="w-5 h-5" />
           {t('branding.eventCustomCSS', 'Event-specific Custom CSS')}
         </h3>
@@ -650,13 +967,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </button>
 
           {showCssInstructions && (
-            <div className="mt-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200 text-sm space-y-4">
+            <div className="mt-3 p-4 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm space-y-4">
               {/* Available CSS Variables */}
               <div>
-                <h4 className="font-semibold text-neutral-900 mb-2">
+                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                   {t('branding.cssInstructions.variables', 'Theme CSS Variables')}
                 </h4>
-                <p className="text-neutral-600 mb-2">
+                <p className="text-neutral-600 dark:text-neutral-400 mb-2">
                   {t('branding.cssInstructions.variablesDesc', 'Use these CSS variables to match your theme presets:')}
                 </p>
                 <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
@@ -671,10 +988,10 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
               {/* Custom Gallery Layouts */}
               <div>
-                <h4 className="font-semibold text-neutral-900 mb-2">
+                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                   {t('branding.cssInstructions.layouts', 'Custom Gallery Layouts')}
                 </h4>
-                <p className="text-neutral-600 mb-2">
+                <p className="text-neutral-600 dark:text-neutral-400 mb-2">
                   {t('branding.cssInstructions.layoutsDesc', 'Target gallery elements with these selectors:')}
                 </p>
                 <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
@@ -690,10 +1007,10 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
               {/* Glassmorphism Example */}
               <div>
-                <h4 className="font-semibold text-neutral-900 mb-2">
+                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                   {t('branding.cssInstructions.glassEffect', 'Glassmorphism Effect')}
                 </h4>
-                <p className="text-neutral-600 mb-2">
+                <p className="text-neutral-600 dark:text-neutral-400 mb-2">
                   {t('branding.cssInstructions.glassEffectDesc', 'Create modern glass effects:')}
                 </p>
                 <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
@@ -708,9 +1025,9 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               </div>
 
               {/* Tips */}
-              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-blue-800 text-xs">
+                <div className="text-blue-800 dark:text-blue-200 text-xs">
                   <strong>{t('branding.cssInstructions.tip', 'Tip')}:</strong>{' '}
                   {t('branding.cssInstructions.tipText', 'Use CSS Templates from Settings > CSS Templates for pre-built designs like Apple Liquid Glass.')}
                 </div>
@@ -722,17 +1039,22 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <textarea
           value={customCss}
           onChange={(e) => {
-            setCustomCss(e.target.value);
+            const newCss = e.target.value;
+            setCustomCss(newCss);
             // Mark as custom when CSS is added
-            if (e.target.value && selectedPreset !== 'custom' && onPresetChange) {
+            if (newCss && selectedPreset !== 'custom' && onPresetChange) {
               setSelectedPreset('custom');
               onPresetChange('custom');
             }
+            // Propagate customCss changes to parent in preview mode
+            if (isPreviewMode) {
+              onChange({ ...localTheme, customCss: newCss });
+            }
           }}
           placeholder="/* Add custom CSS here */"
-          className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 rounded-lg bg-neutral-50"
+          className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"
         />
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
           {t('branding.customCSSHelp')}
         </p>
       </Card>

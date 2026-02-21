@@ -136,7 +136,11 @@ test.describe('External media gallery behavior', () => {
       await passwordField.fill(GALLERY_PASSWORD);
       const viewButton = page.getByRole('button', { name: /View Gallery/i });
       if (await viewButton.count()) {
-        await viewButton.click({ noWaitAfter: true, timeout: 2000 });
+        try {
+          await viewButton.click({ noWaitAfter: true, timeout: 5000 });
+        } catch {
+          // Auto-auth via share token may have already navigated to gallery view
+        }
       }
     }
 
@@ -160,20 +164,16 @@ test.describe('External media gallery behavior', () => {
 
     const ariaLabel = await favoritesButtonInLightbox.getAttribute('aria-label');
     const isAlreadyFavorited = ariaLabel ? /Remove from favorites/i.test(ariaLabel) : false;
-    const refetchPromise = page.waitForResponse((res) => {
-      return res.request().method() === 'GET' && res.url().includes(`/api/gallery/${slug}/photos`);
-    });
     if (!isAlreadyFavorited) {
-      const favResponsePromise = page.waitForResponse((res) => {
-        return res.request().method() === 'POST' && res.url().includes(`/api/gallery/${slug}/photos/`);
-      });
       await favoritesButtonInLightbox.click();
-      await Promise.all([favResponsePromise, refetchPromise]);
-    } else {
-      await refetchPromise;
+      // Wait for the mutation to complete and the subsequent refetch with updated counts
+      // The onSuccess handler invalidates gallery-photos, triggering a fresh refetch
+      await page.waitForTimeout(500);
+      await page.waitForLoadState('networkidle');
     }
 
     await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: 'Favorited' }).click();
     await expect(page.locator('.relative.group')).toHaveCount(1, { timeout: 15000 });

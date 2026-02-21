@@ -1,12 +1,15 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { AdminAuthProvider, PermissionsProvider } from '../../contexts';
+import { AdminDarkModeProvider } from '../../contexts/AdminDarkModeContext';
 
 export const AdminAuthWrapper: React.FC = () => {
   return (
     <AdminAuthProvider>
       <PermissionsProvider>
-        <Outlet />
+        <AdminDarkModeProvider>
+          <Outlet />
+        </AdminDarkModeProvider>
       </PermissionsProvider>
     </AdminAuthProvider>
   );

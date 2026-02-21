@@ -1,4 +1,5 @@
 const sharp = require('sharp');
+const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
@@ -119,6 +120,9 @@ async function generateThumbnail(imagePath, options = {}) {
       failOnError: false // Don't fail on minor issues
     });
     
+    // Strip EXIF/metadata from thumbnails (privacy: prevent GPS leak etc.)
+    sharpInstance = sharpInstance.withMetadata(false);
+
     // Apply resize with configured settings
     // For square thumbnails with 'cover' fit, we crop to center
     sharpInstance = sharpInstance.resize(settings.width, settings.height, {
@@ -287,4 +291,220 @@ async function generateVideoPlaceholder(originalFilename, options = {}) {
   }
 }
 
-module.exports = { generateThumbnail, isThumbnailValid, ensureThumbnail, generateVideoPlaceholder };
+// Hero image settings - optimized for large displays
+const DEFAULT_HERO_WIDTH = 1920;
+const DEFAULT_HERO_HEIGHT = 1080;
+const DEFAULT_HERO_QUALITY = 85;
+const DEFAULT_HERO_FORMAT = 'jpeg';
+
+const getHeroPath = () => path.join(getStoragePath(), 'heroes');
+
+/**
+ * Generate a hero-optimized image for gallery headers
+ * Outputs a 1920x1080 image suitable for full-width hero sections
+ */
+async function generateHeroImage(imagePath, options = {}) {
+  const filename = path.basename(imagePath);
+  const heroFilename = `hero_${filename}`;
+  const heroDir = getHeroPath();
+  const heroPath = path.join(heroDir, heroFilename);
+
+  // Ensure hero directory exists
+  await fs.mkdir(heroDir, { recursive: true });
+
+  // Check if we need to regenerate
+  if (options.regenerate) {
+    try {
+      await fs.unlink(heroPath);
+      logger.info(`Deleted existing hero image: ${heroPath}`);
+    } catch (err) {
+      // File might not exist, that's okay
+    }
+  }
+
+  try {
+    // First, verify the source image is complete and valid
+    const metadata = await sharp(imagePath).metadata();
+
+    if (!metadata.width || !metadata.height) {
+      throw new Error('Invalid image metadata - file may be incomplete');
+    }
+
+    // Calculate dimensions to maintain aspect ratio while fitting within hero bounds
+    const heroWidth = options.width || DEFAULT_HERO_WIDTH;
+    const heroHeight = options.height || DEFAULT_HERO_HEIGHT;
+    const quality = options.quality || DEFAULT_HERO_QUALITY;
+
+    // Create sharp instance with memory-efficient settings
+    let sharpInstance = sharp(imagePath, {
+      limitInputPixels: 268402689,
+      sequentialRead: true,
+      failOnError: false
+    });
+
+    // Strip EXIF/metadata from hero images (privacy: prevent GPS leak etc.)
+    sharpInstance = sharpInstance.withMetadata(false);
+
+    // Resize to fit hero dimensions while maintaining aspect ratio
+    // Use 'cover' to fill the hero area (crops if needed)
+    sharpInstance = sharpInstance.resize(heroWidth, heroHeight, {
+      withoutEnlargement: false, // Allow upscaling for small images
+      fit: 'cover',
+      position: 'center'
+    });
+
+    // Apply JPEG format with high quality
+    sharpInstance = sharpInstance.jpeg({
+      quality: quality,
+      progressive: true,
+      mozjpeg: true
+    });
+
+    // Save the hero image
+    await sharpInstance.toFile(heroPath);
+
+    // Verify the hero image was created successfully
+    const stats = await fs.stat(heroPath);
+    if (stats.size === 0) {
+      throw new Error('Generated hero image is empty');
+    }
+
+    logger.info(`Generated hero image for ${filename}: ${heroPath}`);
+    return path.relative(getStoragePath(), heroPath);
+  } catch (error) {
+    const msg = (error && error.message) ? error.message : String(error);
+    logger.error(`Failed to generate hero image for ${filename}: ${msg}`);
+
+    // Clean up any partially created file
+    try {
+      await fs.unlink(heroPath);
+    } catch (unlinkErr) {
+      // Ignore unlink errors
+    }
+
+    return null;
+  }
+}
+
+/**
+ * Check if a hero image exists and is valid
+ */
+async function isHeroValid(heroPath) {
+  try {
+    const fullPath = path.join(getStoragePath(), heroPath);
+    const stats = await fs.stat(fullPath);
+
+    if (stats.size === 0) {
+      return false;
+    }
+
+    // Try to read metadata to ensure it's a valid image
+    await sharp(fullPath).metadata();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Ensure a hero image exists for a photo, regenerate if needed
+ */
+async function ensureHeroImage(photo) {
+  const { db } = require('../database/db');
+  const { resolvePhotoFilePath } = require('./photoResolver');
+
+  let originalPath;
+  try {
+    const event = await db('events').where('id', photo.event_id).first();
+    originalPath = resolvePhotoFilePath(event, photo);
+    logger.info(`Ensuring hero image for photo ${photo.id} from source: ${originalPath}`);
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    logger.error(`Failed to resolve original path for hero image (photo ${photo.id}): ${msg}`);
+    return null;
+  }
+
+  // Check if hero image exists and is valid
+  if (photo.hero_path) {
+    const isValid = await isHeroValid(photo.hero_path);
+    if (isValid) {
+      return photo.hero_path;
+    }
+    logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
+  }
+
+  // Generate new hero image
+  const newHeroPath = await generateHeroImage(originalPath, { regenerate: true });
+
+  if (newHeroPath) {
+    // Update database with new hero path
+    await db('photos')
+      .where({ id: photo.id })
+      .update({ hero_path: newHeroPath });
+
+    logger.info(`Regenerated hero image for photo ${photo.id}`);
+    return newHeroPath;
+  }
+
+  return null;
+}
+
+/**
+ * Extract capture date from EXIF metadata
+ * @param {string} imagePath - Path to the image file
+ * @returns {Date|null} - The capture date or null if not available
+ */
+async function extractCaptureDate(imagePath) {
+  try {
+    // Parse EXIF data, looking for common date fields
+    const exif = await exifr.parse(imagePath, {
+      pick: ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized', 'ModifyDate']
+    });
+
+    if (!exif) {
+      return null;
+    }
+
+    // Priority order: DateTimeOriginal > CreateDate > DateTimeDigitized > ModifyDate
+    const captureDate = exif.DateTimeOriginal ||
+                        exif.CreateDate ||
+                        exif.DateTimeDigitized ||
+                        exif.ModifyDate;
+
+    if (captureDate) {
+      // exifr returns Date objects directly when parsing dates
+      if (captureDate instanceof Date) {
+        // Validate the date is reasonable (not in the future, not before 1990)
+        const now = new Date();
+        const minDate = new Date('1990-01-01');
+        if (captureDate > minDate && captureDate <= now) {
+          return captureDate;
+        }
+      }
+      // Handle string dates if necessary
+      if (typeof captureDate === 'string') {
+        const parsed = new Date(captureDate);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    // Log only as debug - many images don't have EXIF data
+    logger.debug(`Could not extract EXIF date from ${path.basename(imagePath)}:`, error.message);
+    return null;
+  }
+}
+
+module.exports = {
+  generateThumbnail,
+  isThumbnailValid,
+  ensureThumbnail,
+  generateVideoPlaceholder,
+  generateHeroImage,
+  isHeroValid,
+  ensureHeroImage,
+  extractCaptureDate
+};
