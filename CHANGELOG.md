@@ -272,6 +272,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 * CI workflow fixes for protected branches ([cb01218](https://github.com/the-luap/picpeak/commit/cb012186d93403a1ac4e2d2f5283319603b290d6))
+* lightbox watermark loading, white label translations, and dynamic footer year ([3b720ed](https://github.com/the-luap/picpeak/commit/3b720ed56ecd2ded6aec57309f8c408c63a617ef))
+* lightbox watermark loading, white label translations, and dynamic footer year ([ce8587b](https://github.com/the-luap/picpeak/commit/ce8587b24df3f53a11a74348eff8b5c5b96c5488))
+* lightbox watermark loading, white label translations, and dynamic footer year ([#108](https://github.com/the-luap/picpeak/issues/108)) ([3b720ed](https://github.com/the-luap/picpeak/commit/3b720ed56ecd2ded6aec57309f8c408c63a617ef))
+
+## [2.3.2](https://github.com/the-luap/picpeak/compare/v2.3.1...v2.3.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* watermark thumbnails, custom logo display, and German translations ([f843e4c](https://github.com/the-luap/picpeak/commit/f843e4c25cef02eef354fd3ee25824e20e4f8fc8))
+* watermark thumbnails, custom logo display, and German translations ([ea20446](https://github.com/the-luap/picpeak/commit/ea20446a797a00cf45dbe7bf6f06574a79c4d8a6))
+
+## [2.3.1](https://github.com/the-luap/picpeak/compare/v2.3.0...v2.3.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* CI workflow fixes for protected branches ([657c205](https://github.com/the-luap/picpeak/commit/657c205a4d8ca49070b69973f4c7a3d1418633af))
 * use Release Please extra-files instead of sync-versions job ([fe7d45d](https://github.com/the-luap/picpeak/commit/fe7d45dd122b2dca1b2a21ba5c86d32b9a193074))
 
 ## [3.0.0-beta.0](https://github.com/the-luap/picpeak/compare/v2.3.0-beta.0...v3.0.0-beta.0) (2026-01-15)
