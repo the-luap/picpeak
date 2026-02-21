@@ -83,7 +83,7 @@ cp .env.example .env
 nano .env
 
 # Start with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # Access at http://localhost:3005
 ```
@@ -128,8 +128,8 @@ PICPEAK_CHANNEL=v2.3.0
 Then update your containers:
 
 ```bash
-docker-compose -f docker-compose.production.yml pull
-docker-compose -f docker-compose.production.yml up -d
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
 ```
 
 ### Update Notifications
