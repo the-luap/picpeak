@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.0-beta.0...v3.15.1-beta.0) (2026-02-21)
+
+
+### Bug Fixes
+
+* docker compose v2 syntax and add missing ADMIN_PASSWORD to .env.example ([#189](https://github.com/the-luap/picpeak/issues/189)) ([0817443](https://github.com/the-luap/picpeak/commit/0817443e793e37c770c6a1968ecae4b9464107b0))
+* update docker-compose to docker compose and add ADMIN_PASSWORD to .env.example ([#189](https://github.com/the-luap/picpeak/issues/189)) ([a4c6248](https://github.com/the-luap/picpeak/commit/a4c624802b2926a16adcf0472a3041562f9b2f48))
+
 ## [3.15.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.14.0-beta.0...v3.15.0-beta.0) (2026-02-17)
 
 
