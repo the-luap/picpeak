@@ -75,7 +75,20 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
     if (selectedPhotoIds.length > 0) {
       options.photo_ids = selectedPhotoIds;
     } else if (filters) {
-      options.filter = filters;
+      // Convert camelCase filter keys to snake_case for backend
+      options.filter = {
+        min_rating: filters.minRating,
+        max_rating: filters.maxRating,
+        has_likes: filters.hasLikes,
+        min_likes: filters.minLikes,
+        has_favorites: filters.hasFavorites,
+        min_favorites: filters.minFavorites,
+        has_comments: filters.hasComments,
+        category_id: filters.categoryId,
+        logic: filters.logic,
+        sort: filters.sort,
+        order: filters.order,
+      };
     }
 
     exportMutation.mutate(options);
