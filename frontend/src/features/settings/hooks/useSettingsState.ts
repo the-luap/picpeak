@@ -256,11 +256,7 @@ export function useSettingsState() {
     mutationFn: async () => {
       const settingsData: Record<string, unknown> = {};
       Object.entries(generalSettings).forEach(([key, value]) => {
-        if (key === 'date_format' && typeof value === 'object' && value.format) {
-          settingsData[`general_${key}`] = value.format;
-        } else {
-          settingsData[`general_${key}`] = value;
-        }
+        settingsData[`general_${key}`] = value;
       });
       return settingsService.updateSettings(settingsData);
     },

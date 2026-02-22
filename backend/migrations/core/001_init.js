@@ -14,8 +14,8 @@ exports.up = async function(knex) {
     // Create default admin user if none exists
     const adminExists = await knex('admin_users').first();
     if (!adminExists) {
-      // Generate a secure random password
-      const generatedPassword = generateReadablePassword();
+      // Use ADMIN_PASSWORD from environment if set, otherwise generate a random one
+      const generatedPassword = process.env.ADMIN_PASSWORD || generateReadablePassword();
       const passwordHash = await bcrypt.hash(generatedPassword, 12); // Increased rounds for better security
       
       // Get admin credentials from environment or use defaults
