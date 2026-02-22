@@ -85,7 +85,7 @@ nano .env
 # Start with Docker Compose
 docker compose up -d
 
-# Access at http://localhost:3005
+# Access at http://localhost:3000
 ```
 
 Note on Docker file permissions (PUID/PGID)

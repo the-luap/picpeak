@@ -44,28 +44,39 @@ async function createAdmin() {
       .orWhere('username', username)
       .first();
 
-    if (existingUser) {
-      console.error(`Error: User with email "${email}" or username "${username}" already exists`);
-      process.exit(1);
-    }
-
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create admin user
-    await db('admin_users').insert({
-      username,
-      email,
-      password_hash: passwordHash,
-      is_active: true,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
+    if (existingUser) {
+      // Update existing user's password
+      await db('admin_users')
+        .where('id', existingUser.id)
+        .update({
+          password_hash: passwordHash,
+          updated_at: new Date()
+        });
 
-    console.log(`✅ Admin user created successfully!`);
-    console.log(`   Email: ${email}`);
-    console.log(`   Username: ${username}`);
-    console.log(`   Login URL: ${process.env.ADMIN_URL || 'http://localhost:3000'}/admin/login`);
+      console.log(`✅ Admin user updated successfully!`);
+      console.log(`   Email: ${existingUser.email}`);
+      console.log(`   Username: ${existingUser.username}`);
+      console.log(`   Password has been reset to the provided value`);
+      console.log(`   Login URL: ${process.env.ADMIN_URL || 'http://localhost:3000'}/admin/login`);
+    } else {
+      // Create new admin user
+      await db('admin_users').insert({
+        username,
+        email,
+        password_hash: passwordHash,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      console.log(`✅ Admin user created successfully!`);
+      console.log(`   Email: ${email}`);
+      console.log(`   Username: ${username}`);
+      console.log(`   Login URL: ${process.env.ADMIN_URL || 'http://localhost:3000'}/admin/login`);
+    }
     
     process.exit(0);
   } catch (error) {
