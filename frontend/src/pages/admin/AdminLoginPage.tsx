@@ -200,7 +200,7 @@ export const AdminLoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
+            {/* Remember Me */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
@@ -209,9 +209,6 @@ export const AdminLoginPage: React.FC = () => {
                 />
                 <span className="ml-2 text-sm text-neutral-700">{t('adminLogin.rememberMe')}</span>
               </label>
-              <a href="#" className="text-sm text-primary-600 hover:text-primary-700">
-                {t('adminLogin.forgotPassword')}
-              </a>
             </div>
 
             {/* reCAPTCHA */}
