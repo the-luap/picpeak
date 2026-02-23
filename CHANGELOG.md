@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1](https://github.com/the-luap/picpeak/compare/v2.5.0...v2.5.1) (2026-02-22)
+
+
+### Bug Fixes
+
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([33af088](https://github.com/the-luap/picpeak/commit/33af0885607799e0071e2e74a582c7eb396c9b83))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([33483cf](https://github.com/the-luap/picpeak/commit/33483cf32dfae57f8da51c0765353792239135f9))
+
 ## [2.5.0](https://github.com/the-luap/picpeak/compare/v2.4.0...v2.5.0) (2026-02-21)
 
 
