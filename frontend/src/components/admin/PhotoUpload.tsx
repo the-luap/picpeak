@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Upload, X, Image, Loader2 } from 'lucide-react';
 import { Button } from '../common';
 import { clsx } from 'clsx';
@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
+import { extensionsToMimeTypes, extensionsToAcceptString } from '../../utils/fileTypes';
 
 interface PhotoUploadProps {
   eventId: number;
@@ -47,12 +48,22 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     return Math.min(MAX_FILES_PER_UPLOAD_LIMIT, Math.max(1, Math.floor(parsed)));
   }, [settings]);
 
+  const allowedMimeTypes = useMemo(
+    () => extensionsToMimeTypes(settings?.general_allowed_file_types),
+    [settings?.general_allowed_file_types]
+  );
+
+  const acceptString = useMemo(
+    () => extensionsToAcceptString(settings?.general_allowed_file_types),
+    [settings?.general_allowed_file_types]
+  );
+
   const remainingSlots = Math.max(maxFilesPerUpload - selectedFiles.length, 0);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const imageFiles = files.filter(file => 
-      ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+    const imageFiles = files.filter(file =>
+      allowedMimeTypes.includes(file.type)
     );
     
     // Check total file count with existing files
@@ -254,7 +265,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo"
+          accept={acceptString}
           onChange={handleFileSelect}
           className="hidden"
         />

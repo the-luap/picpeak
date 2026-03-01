@@ -9,7 +9,7 @@ const { generateThumbnail, ensureThumbnail, extractCaptureDate } = require('../s
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
-const { getMaxFilesPerUpload } = require('../services/uploadSettings');
+const { getMaxFilesPerUpload, getAllowedMimeTypes } = require('../services/uploadSettings');
 const { processUploadedPhotos } = require('../services/photoProcessor');
 const chunkedUpload = require('../services/chunkedUploadService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
@@ -47,47 +47,55 @@ const storage = multer.diskStorage({
   }
 });
 
-const { validateFileType } = require('../utils/fileSecurityUtils');
+const { validateFileType, createFileUploadValidator } = require('../utils/fileSecurityUtils');
 
+// Create a multer instance that uses dynamically resolved allowed MIME types.
+// The allowed types are fetched from the database once per request (before multer
+// processes files) and attached to req.allowedMimeTypes so that the fileFilter
+// callback can read them synchronously.
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024 * 1024, // 10GB limit per file to support large videos
     files: 2000, // Hard safety ceiling; actual limit enforced dynamically
-    // Set a reasonable field size limit to prevent memory issues
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
-    // Add part size limits to prevent incomplete uploads
-    parts: 10000, // Maximum number of parts (fields + files)
-    headerPairs: 2000 // Maximum number of header key-value pairs
+    parts: 10000,
+    headerPairs: 2000
   },
   fileFilter: (req, file, cb) => {
-    // Accept images and videos with proper validation
-    const allowedMimeTypes = [
-      'image/jpeg', 'image/png', 'image/webp',
-      'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
-    ];
+    // req.allowedMimeTypes is populated by the middleware that runs before multer
+    const allowedMimeTypes = req.allowedMimeTypes || ['image/jpeg', 'image/png', 'image/webp'];
 
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG, WebP images and MP4, WebM, MOV, AVI videos are allowed'));
+      cb(new Error('Invalid file type. Check allowed file types in system settings.'));
     }
   },
-  // Add abort on limit to stop processing when limits are exceeded
   abortOnLimit: true
 });
 
-const { createFileUploadValidator } = require('../utils/fileSecurityUtils');
+// Middleware to resolve allowed MIME types from settings before multer runs
+const resolveAllowedTypes = async (req, res, next) => {
+  try {
+    req.allowedMimeTypes = await getAllowedMimeTypes();
+  } catch (error) {
+    console.error('Failed to resolve allowed MIME types:', error);
+    req.allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  }
+  next();
+};
 
-// Create content validator middleware
-const validateUploadContent = createFileUploadValidator({
-  allowedTypes: [
-    'image/jpeg', 'image/png', 'image/webp',
-    'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'
-  ],
-  maxFileSize: 10 * 1024 * 1024 * 1024, // 10GB to support large videos
-  validateContent: true
-});
+// Dynamic content validator middleware that reads allowed types from req
+const validateUploadContent = async (req, res, next) => {
+  const allowedTypes = req.allowedMimeTypes || ['image/jpeg', 'image/png', 'image/webp'];
+  const validator = createFileUploadValidator({
+    allowedTypes,
+    maxFileSize: 10 * 1024 * 1024 * 1024, // 10GB to support large videos
+    validateContent: true
+  });
+  return validator(req, res, next);
+};
 
 // Request timeout middleware for uploads
 const uploadTimeout = (timeout = 300000) => { // 5 minutes default
@@ -111,7 +119,7 @@ const uploadTimeout = (timeout = 300000) => { // 5 minutes default
 
 // Upload photos for an event
 // Max file count is configurable via general settings
-router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), uploadTimeout(600000), async (req, res, next) => { // 10 minute timeout
+router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), uploadTimeout(600000), resolveAllowedTypes, async (req, res, next) => { // 10 minute timeout
   let maxFilesPerUpload;
   try {
     maxFilesPerUpload = await getMaxFilesPerUpload();
