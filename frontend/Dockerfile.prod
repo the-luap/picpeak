@@ -22,10 +22,10 @@ ENV VITE_API_URL=$VITE_API_URL
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
+# Production stage (use pinned nginx version for reproducibility)
+FROM nginx:1.27-alpine
 
-# Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
+# Upgrade all packages to fix security vulnerabilities (OpenSSL, libexpat, BusyBox CVEs)
 RUN apk upgrade --no-cache
 
 # Install runtime dependencies
