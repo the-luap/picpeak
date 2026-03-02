@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * pre-generate watermarks for instant lightbox loading ([1be974a](https://github.com/the-luap/picpeak/commit/1be974afbb0b7a1bdbdd140327771907a5d3c2ae)), closes [#112](https://github.com/the-luap/picpeak/issues/112)
 * pre-generated watermarks and mobile upload button improvements ([c6fdd38](https://github.com/the-luap/picpeak/commit/c6fdd38e842e1a8c0aa9cbab9fc791e6669e402d))
 * show original filename in admin UI ([#184](https://github.com/the-luap/picpeak/issues/184)) ([0891be1](https://github.com/the-luap/picpeak/commit/0891be197fdb7d92ade5a293b8db0bed26fa6e3a))
+## [3.15.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.1-beta.0...v3.15.2-beta.0) (2026-02-22)
 
 
 ### Bug Fixes
@@ -88,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * add API_URL environment variable to .env.example files ([3e69579](https://github.com/the-luap/picpeak/commit/3e69579f5a171b31a253b2a42bb033bf1b97387d))
 * emphasize importance of STORAGE_PATH in env example ([3397807](https://github.com/the-luap/picpeak/commit/3397807670784e02cbe34a7a60db43c95d64f19c))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([5ea4ef3](https://github.com/the-luap/picpeak/commit/5ea4ef3cf36b06f9e6c9108f80bfe2e9a6470898))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([cd00bc1](https://github.com/the-luap/picpeak/commit/cd00bc13d4e02a86a0f1742ed1f11f064614b8da))
 
 ## [3.15.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.0-beta.0...v3.15.1-beta.0) (2026-02-21)
 
