@@ -1169,6 +1169,17 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
 
     // Import multer and photo processing
     const multer = require('multer');
+    const { getAllowedMimeTypes } = require('../services/uploadSettings');
+    const { validateFileType } = require('../utils/fileSecurityUtils');
+
+    // Resolve allowed MIME types from settings
+    let allowedMimeTypes;
+    try {
+      allowedMimeTypes = await getAllowedMimeTypes();
+    } catch {
+      allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    }
+
     const upload = multer({
       dest: tempUploadDir,
       limits: {
@@ -1176,8 +1187,7 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
         files: 10 // Max 10 files at once
       },
       fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (allowedTypes.includes(file.mimetype)) {
+        if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {
           cb(null, true);
         } else {
           cb(new Error('Invalid file type'));
