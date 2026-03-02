@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.2-beta.0...v3.15.3-beta.0) (2026-03-02)
+
+
+### Bug Fixes
+
+* issue [#203](https://github.com/the-luap/picpeak/issues/203) file type validation + security CVE fixes ([8017171](https://github.com/the-luap/picpeak/commit/80171713e0ffedda56f7cffb403b25a8d55634d1))
+* respect allowed_file_types setting for upload validation ([#203](https://github.com/the-luap/picpeak/issues/203)) ([fe07a14](https://github.com/the-luap/picpeak/commit/fe07a148f1d998c0be00377c1f8b4eca3908305c))
+* **security:** resolve all npm audit vulnerabilities ([4272618](https://github.com/the-luap/picpeak/commit/4272618b3f7fcb06aaca14fb724a6a7733251f24))
+* **security:** resolve Docker image CVEs for code scanning alerts ([cbecb93](https://github.com/the-luap/picpeak/commit/cbecb9323cf4b80c800326de14f6df73f60147c1))
+
 ## [2.5.0](https://github.com/the-luap/picpeak/compare/v2.4.0...v2.5.0) (2026-02-21)
 
 
