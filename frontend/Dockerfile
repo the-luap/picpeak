@@ -12,9 +12,6 @@ LABEL org.opencontainers.image.source="https://github.com/the-luap/picpeak"
 LABEL org.opencontainers.image.description="PicPeak Frontend Application"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# Upgrade npm to fix glob CVE-2025-64756 vulnerability
-RUN npm install -g npm@latest
-
 # Set working directory
 WORKDIR /app
 
@@ -30,12 +27,10 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage (use Alpine with patched libpng/c-ares)
-FROM nginx:1.27-alpine
+# Production stage (Alpine 3.23 with OpenSSL 3.5.5, patched libexpat)
+FROM nginx:1.28-alpine
 
-# Upgrade all packages to fix security vulnerabilities
-# This ensures libpng >= 1.6.51 (fixes CVE-2025-64720, CVE-2025-65018, CVE-2025-64505, CVE-2025-64506)
-# and c-ares >= 1.34.5 (fixes CVE-2025-31498)
+# Upgrade all packages to fix security vulnerabilities (OpenSSL, libexpat, BusyBox CVEs)
 RUN apk upgrade --no-cache
 
 # Install runtime dependencies

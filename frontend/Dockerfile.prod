@@ -22,8 +22,8 @@ ENV VITE_API_URL=$VITE_API_URL
 # Build the application
 RUN npm run build
 
-# Production stage (use pinned nginx version for reproducibility)
-FROM nginx:1.27-alpine
+# Production stage (Alpine 3.23 with OpenSSL 3.5.5, patched libexpat)
+FROM nginx:1.28-alpine
 
 # Upgrade all packages to fix security vulnerabilities (OpenSSL, libexpat, BusyBox CVEs)
 RUN apk upgrade --no-cache
