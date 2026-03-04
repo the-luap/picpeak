@@ -14,3 +14,4 @@ export { AnalyticsTab } from './tabs/AnalyticsTab';
 export { ModerationTab } from './tabs/ModerationTab';
 export { StylingTab } from './tabs/StylingTab';
 export { SEOTab } from './tabs/SEOTab';
+export { ThumbnailsTab } from './tabs/ThumbnailsTab';

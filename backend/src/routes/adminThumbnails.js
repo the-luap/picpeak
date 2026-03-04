@@ -10,27 +10,33 @@ const logger = require('../utils/logger');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
+// Parse JSON-encoded setting values
+function parseSettingValue(value) {
+  if (value === null || value === undefined) return null;
+  try { return JSON.parse(value); } catch (e) { return value; }
+}
+
 // Get thumbnail settings
 router.get('/settings', adminAuth, requirePermission('photos.view'), async (req, res) => {
   try {
     const settings = await db('app_settings')
-      .whereIn('key', [
+      .whereIn('setting_key', [
         'thumbnail_width',
         'thumbnail_height',
         'thumbnail_fit',
         'thumbnail_quality',
         'thumbnail_format'
       ])
-      .select('key', 'value', 'description');
-    
+      .select('setting_key', 'setting_value');
+
     const settingsMap = {};
     settings.forEach(s => {
-      settingsMap[s.key] = {
-        value: s.value,
-        description: s.description
+      const parsed = parseSettingValue(s.setting_value);
+      settingsMap[s.setting_key] = {
+        value: String(parsed ?? '')
       };
     });
-    
+
     res.json({
       settings: settingsMap,
       fitOptions: ['cover', 'contain', 'fill', 'inside', 'outside'],
@@ -66,17 +72,17 @@ router.put('/settings', adminAuth, requirePermission('photos.edit'), async (req,
     
     // Update settings
     const updates = [];
-    if (width) updates.push({ key: 'thumbnail_width', value: width.toString() });
-    if (height) updates.push({ key: 'thumbnail_height', value: height.toString() });
-    if (fit) updates.push({ key: 'thumbnail_fit', value: fit });
-    if (quality) updates.push({ key: 'thumbnail_quality', value: quality.toString() });
-    if (format) updates.push({ key: 'thumbnail_format', value: format });
-    
+    if (width) updates.push({ setting_key: 'thumbnail_width', setting_value: width });
+    if (height) updates.push({ setting_key: 'thumbnail_height', setting_value: height });
+    if (fit) updates.push({ setting_key: 'thumbnail_fit', setting_value: JSON.stringify(fit) });
+    if (quality) updates.push({ setting_key: 'thumbnail_quality', setting_value: quality });
+    if (format) updates.push({ setting_key: 'thumbnail_format', setting_value: JSON.stringify(format) });
+
     for (const update of updates) {
       await db('app_settings')
-        .where('key', update.key)
+        .where('setting_key', update.setting_key)
         .update({
-          value: update.value,
+          setting_value: update.setting_value,
           updated_at: db.fn.now()
         });
     }
