@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.16.0-beta.0...v3.17.0-beta.0) (2026-03-05)
+
+
+### Features
+
+* configurable upload batch size for reverse proxy compatibility ([9b7495e](https://github.com/the-luap/picpeak/commit/9b7495e0054975e66c9b5006c24a9fae63969de4))
+
 ## [3.16.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.3-beta.0...v3.16.0-beta.0) (2026-03-05)
 
 
