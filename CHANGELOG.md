@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0](https://github.com/the-luap/picpeak/compare/v2.5.1...v2.6.0) (2026-03-05)
+
+
+### Features
+
+* add configurable upload batch size for reverse proxy compatibility ([#208](https://github.com/the-luap/picpeak/issues/208)) ([02a46e0](https://github.com/the-luap/picpeak/commit/02a46e083d68cfdb355b5a4fe4a8da7d667050b9))
+* configurable upload batch size for reverse proxy compatibility ([4243363](https://github.com/the-luap/picpeak/commit/424336340bef8e1629490ade154f0ceebb2a71e1))
+
 ## [2.5.1](https://github.com/the-luap/picpeak/compare/v2.5.0...v2.5.1) (2026-02-22)
 
 
