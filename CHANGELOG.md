@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.3-beta.0...v3.16.0-beta.0) (2026-03-05)
+
+
+### Features
+
+* add thumbnail settings UI to admin panel ([3a30fea](https://github.com/the-luap/picpeak/commit/3a30fea862034d64fbc7188fc25292594a9319e2))
+* add thumbnail settings UI to admin settings page ([#206](https://github.com/the-luap/picpeak/issues/206)) ([7d6d2f5](https://github.com/the-luap/picpeak/commit/7d6d2f56883a4402f0d97c95b0432a8a783c8024))
+
 ## [3.15.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.2-beta.0...v3.15.3-beta.0) (2026-03-02)
 
 
