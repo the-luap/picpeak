@@ -161,28 +161,6 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                 {t('settings.general.maxFilesPerUploadHelp', { max: MAX_FILES_PER_UPLOAD_LIMIT })}
               </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                {t('settings.general.maxUploadBatchSize')}
-              </label>
-              <Input
-                type="number"
-                value={generalSettings.max_upload_batch_size_mb}
-                onChange={(e) => {
-                  const parsed = parseInt(e.target.value, 10);
-                  setGeneralSettings(prev => ({
-                    ...prev,
-                    max_upload_batch_size_mb: Number.isFinite(parsed)
-                      ? Math.max(1, parsed)
-                      : prev.max_upload_batch_size_mb
-                  }));
-                }}
-                min="1"
-              />
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                {t('settings.general.maxUploadBatchSizeHelp')}
-              </p>
-            </div>
           </div>
 
           <div>
