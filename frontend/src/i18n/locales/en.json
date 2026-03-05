@@ -637,6 +637,8 @@
       "maxFileSizeHelp": "Maximum size per uploaded photo",
       "maxFilesPerUpload": "Max Files per Upload",
       "maxFilesPerUploadHelp": "Maximum number of photos allowed in a single upload batch (1-{{max}}).",
+      "maxUploadBatchSize": "Max Upload Batch Size (MB)",
+      "maxUploadBatchSizeHelp": "Maximum size per upload request. Lower this if behind a reverse proxy with request size limits (e.g. Cloudflare: 100MB).",
       "allowedFileTypes": "Allowed File Types",
       "allowedFileTypesHelp": "Comma-separated list of file extensions",
       "featureToggles": "Feature Toggles",
