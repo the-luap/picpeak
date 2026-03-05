@@ -1012,6 +1012,8 @@
       "maxFileSizeHelp": "Maximale Größe pro hochgeladenem Foto",
       "maxFilesPerUpload": "Max. Dateien pro Upload",
       "maxFilesPerUploadHelp": "Maximale Anzahl an Fotos pro Upload-Vorgang (1-{{max}}).",
+      "maxUploadBatchSize": "Max. Upload-Paketgröße (MB)",
+      "maxUploadBatchSizeHelp": "Maximale Größe pro Upload-Anfrage. Reduzieren Sie diesen Wert bei Nutzung eines Reverse-Proxys mit Größenbeschränkung (z.B. Cloudflare: 100MB).",
       "allowedFileTypes": "Erlaubte Dateitypen",
       "allowedFileTypesHelp": "Kommagetrennte Liste von Dateierweiterungen",
       "featureToggles": "Funktionsschalter",
