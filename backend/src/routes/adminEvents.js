@@ -162,10 +162,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     return true;
   }),
   body('event_name').notEmpty().trim(),
-  body('event_date').optional().isDate(),
+  body('event_date').optional({ values: 'falsy' }).isDate(),
   body('customer_name').optional().trim(),
-  body('customer_email').optional().isEmail().normalizeEmail(),
-  body('admin_email').optional().isEmail().normalizeEmail(),
+  body('customer_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
+  body('admin_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
     const input = req.body.require_password;
@@ -392,9 +392,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       event_name,
       event_date: event_date || null,
       ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
-      host_name: customerName,
-      host_email: customerEmail,
-      admin_email,
+      host_name: customerName || null,
+      host_email: customerEmail || null,
+      admin_email: admin_email || null,
       password_hash,
       welcome_message,
       color_theme,
@@ -446,28 +446,30 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
-    // Queue creation email
+    // Queue creation email (only if there is a recipient)
     // Language detection is handled by email processor
-    
-    await db('email_queue').insert({
-      event_id: eventId,
-      recipient_email: customerEmail,
-      email_type: 'gallery_created',
-      email_data: JSON.stringify({
-        customer_name: customerName,
-        customer_email: customerEmail,
-        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
-        event_name,
-        event_date: event_date,  // Pass raw date - will be formatted by email processor
-        gallery_link: shareUrl,
-        gallery_password: requirePassword ? password : 'No password required',
-        expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
-        welcome_message: welcome_message || ''
-      }),
-      status: 'pending',
-      created_at: new Date()
-      // scheduled_at will use default value
-    });
+
+    if (customerEmail) {
+      await db('email_queue').insert({
+        event_id: eventId,
+        recipient_email: customerEmail,
+        email_type: 'gallery_created',
+        email_data: JSON.stringify({
+          customer_name: customerName,
+          customer_email: customerEmail,
+          host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
+          event_name,
+          event_date: event_date,  // Pass raw date - will be formatted by email processor
+          gallery_link: shareUrl,
+          gallery_password: requirePassword ? password : 'No password required',
+          expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
+          welcome_message: welcome_message || ''
+        }),
+        status: 'pending',
+        created_at: new Date()
+        // scheduled_at will use default value
+      });
+    }
     
     res.json({
       id: eventId,
