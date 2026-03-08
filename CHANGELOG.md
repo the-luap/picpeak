@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.0-beta.0...v3.17.1-beta.0) (2026-03-08)
+
+
+### Bug Fixes
+
+* respect optional email settings in event creation ([831ea6a](https://github.com/the-luap/picpeak/commit/831ea6a3bccfae4ec00ce1f619967b91b85150ce))
+* respect optional email settings in event creation ([#217](https://github.com/the-luap/picpeak/issues/217)) ([9c44a0e](https://github.com/the-luap/picpeak/commit/9c44a0ebfa527fa133512eb7f2f03335a2377aaa))
+
 ## [3.17.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.16.0-beta.0...v3.17.0-beta.0) (2026-03-05)
 
 
