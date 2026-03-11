@@ -165,6 +165,8 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
   selectedPhotos = new Set(),
   isSelectionMode = false,
   onPhotoSelect,
+  onSelectAll,
+  onDeselectAll,
   eventName,
   eventDate,
   allowDownloads = true,
@@ -287,17 +289,11 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
 
   const handleSelectAll = useCallback(() => {
     if (selectedPhotos.size === filteredPhotos.length) {
-      // Deselect all
-      filteredPhotos.forEach(p => onPhotoSelect?.(p.id));
+      onDeselectAll?.();
     } else {
-      // Select all
-      filteredPhotos.forEach(p => {
-        if (!selectedPhotos.has(p.id)) {
-          onPhotoSelect?.(p.id);
-        }
-      });
+      onSelectAll?.();
     }
-  }, [selectedPhotos, filteredPhotos, onPhotoSelect]);
+  }, [selectedPhotos, filteredPhotos, onSelectAll, onDeselectAll]);
 
   const handleDownloadSelected = useCallback(async () => {
     if (selectedPhotos.size === 0) return;

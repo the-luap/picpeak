@@ -109,8 +109,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
     // For large uploads, chunk the files by both count AND size to prevent memory/network issues
     const MAX_FILES_PER_CHUNK = Math.max(1, Math.min(50, maxFilesPerUpload)); // Max 50 files per chunk
-    const maxBatchSizeMb = Number(settings?.general_max_upload_batch_size_mb) || 95;
-    const MAX_BYTES_PER_CHUNK = maxBatchSizeMb * 1024 * 1024;
+    const MAX_BYTES_PER_CHUNK = 500 * 1024 * 1024; // Max 500MB per chunk (nginx limit is 1GB)
     const chunks: File[][] = [];
 
     let currentChunk: File[] = [];

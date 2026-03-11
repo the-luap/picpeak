@@ -1012,8 +1012,6 @@
       "maxFileSizeHelp": "Maximale Größe pro hochgeladenem Foto",
       "maxFilesPerUpload": "Max. Dateien pro Upload",
       "maxFilesPerUploadHelp": "Maximale Anzahl an Fotos pro Upload-Vorgang (1-{{max}}).",
-      "maxUploadBatchSize": "Max. Upload-Paketgröße (MB)",
-      "maxUploadBatchSizeHelp": "Maximale Größe pro Upload-Anfrage. Reduzieren Sie diesen Wert bei Nutzung eines Reverse-Proxys mit Größenbeschränkung (z.B. Cloudflare: 100MB).",
       "allowedFileTypes": "Erlaubte Dateitypen",
       "allowedFileTypesHelp": "Kommagetrennte Liste von Dateierweiterungen",
       "featureToggles": "Funktionsschalter",
@@ -1280,6 +1278,19 @@
       "sent": "Gesendet",
       "failed": "Fehlgeschlagen",
       "lastUpdate": "Letzte Aktualisierung"
+    },
+    "photoDimensions": {
+      "title": "Foto-Abmessungen",
+      "totalPhotos": "Fotos gesamt",
+      "withDimensions": "Mit Abmessungen",
+      "missingDimensions": "Fehlende Abmessungen",
+      "repairButton": "Abmessungen reparieren",
+      "repairing": "Repariere...",
+      "alreadyRunning": "Reparatur läuft bereits",
+      "started": "Reparatur von {{count}} Fotos gestartet",
+      "noneToRepair": "Alle Fotos haben bereits Abmessungen",
+      "resultSuccess": "Letzte Reparatur: {{success}} aktualisiert, {{failed}} fehlgeschlagen",
+      "description": "Fehlende Breite/Höhe für Fotos ergänzen, die vor der Dimensionsverfolgung hochgeladen wurden. Erforderlich für Masonry- und Mosaik-Layouts."
     },
     "updateNotifications": {
       "title": "Update-Benachrichtigungen",

@@ -6,6 +6,7 @@ const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const { generateThumbnail, ensureThumbnail, extractCaptureDate } = require('../services/imageProcessor');
+const { processUploadedVideo, isVideoMimeType } = require('../services/videoProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
@@ -271,6 +272,10 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               console.log(`Could not extract EXIF date for ${file.originalname}`);
             }
 
+            // Determine media type
+            const isVideo = isVideoMimeType(file.mimetype);
+            const mediaType = isVideo ? 'video' : 'image';
+
             // Prepare photo data for batch insert
             const photoData = {
               event_id: parseInt(eventId),
@@ -281,7 +286,9 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
               type: photoType,
               category_id: parsedCategoryId, // Save the selected category
               size_bytes: tempStats.size, // Use actual file size from stat
-              captured_at: capturedAt // EXIF capture date (if available)
+              captured_at: capturedAt, // EXIF capture date (if available)
+              media_type: mediaType,
+              mime_type: file.mimetype
             };
             
             batchPhotos.push(photoData);
@@ -325,26 +332,65 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
                 throw new Error(`File size mismatch after move: expected ${operation.photoData.size_bytes}, got ${finalStats.size}`);
               }
               
-              // Generate thumbnail with final path
+              // Generate thumbnail and extract metadata
+              const photoId = insertedIds[idx]?.id || insertedIds[idx];
+              const isVideoFile = isVideoMimeType(operation.photoData.mime_type);
               let thumbnailPath = null;
-              try {
-                thumbnailPath = await generateThumbnail(operation.finalPath);
 
-                // Update the database with thumbnail path
-                if (thumbnailPath && insertedIds[idx]) {
-                  const photoId = insertedIds[idx]?.id || insertedIds[idx];
-                  await db('photos')
-                    .where({ id: photoId })
-                    .update({ thumbnail_path: thumbnailPath });
+              try {
+                if (isVideoFile) {
+                  // Process video: extract metadata and generate thumbnail
+                  const thumbnailDir = path.join(getStoragePath(), 'thumbnails');
+                  await fs.mkdir(thumbnailDir, { recursive: true });
+                  const videoThumbnailPath = path.join(thumbnailDir, `thumb_${operation.filename.replace(/\.[^.]+$/, '.jpg')}`);
+
+                  const result = await processUploadedVideo(operation.finalPath, videoThumbnailPath);
+                  thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
+
+                  if (photoId && result.metadata) {
+                    await db('photos')
+                      .where({ id: photoId })
+                      .update({
+                        thumbnail_path: thumbnailPath,
+                        duration: result.metadata.duration,
+                        video_codec: result.metadata.videoCodec,
+                        audio_codec: result.metadata.audioCodec,
+                        width: result.metadata.width,
+                        height: result.metadata.height
+                      });
+                  }
+                } else {
+                  thumbnailPath = await generateThumbnail(operation.finalPath);
+
+                  // Update the database with thumbnail path and image dimensions
+                  if (photoId) {
+                    const updateData = {};
+                    if (thumbnailPath) updateData.thumbnail_path = thumbnailPath;
+
+                    try {
+                      const sharp = require('sharp');
+                      const metadata = await sharp(operation.finalPath).metadata();
+                      if (metadata.width && metadata.height) {
+                        updateData.width = metadata.width;
+                        updateData.height = metadata.height;
+                      }
+                    } catch (metadataError) {
+                      console.warn(`Could not extract image dimensions for ${operation.filename}:`, metadataError.message);
+                    }
+
+                    if (Object.keys(updateData).length > 0) {
+                      await db('photos')
+                        .where({ id: photoId })
+                        .update(updateData);
+                    }
+                  }
                 }
               } catch (thumbError) {
-                console.error(`Thumbnail generation failed for ${operation.filename}:`, thumbError.message);
+                console.error(`Thumbnail/metadata processing failed for ${operation.filename}:`, thumbError.message);
               }
 
-              // Queue watermark generation in background (non-blocking)
-              // This pre-generates watermarked versions for fast serving in lightbox
-              if (insertedIds[idx]) {
-                const photoId = insertedIds[idx]?.id || insertedIds[idx];
+              // Queue watermark generation in background (non-blocking, images only)
+              if (photoId && !isVideoFile) {
                 watermarkGeneratorService.generateForPhoto(photoId)
                   .catch(err => console.warn(`Watermark generation queued failed for photo ${photoId}:`, err.message));
               }
@@ -809,6 +855,11 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
         category_id: photo.category_id || photo.type,
         category_name: photo.pc_name || (photo.type === 'individual' ? 'Individual Photos' : 'Collages'),
         category_slug: photo.pc_slug || photo.type,
+        media_type: photo.media_type || 'image',
+        mime_type: photo.mime_type || null,
+        width: photo.width || null,
+        height: photo.height || null,
+        duration: photo.duration || null,
         size: photo.size_bytes,
         uploaded_at: photo.uploaded_at,
         // Feedback data
