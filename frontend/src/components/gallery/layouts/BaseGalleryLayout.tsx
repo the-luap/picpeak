@@ -13,6 +13,8 @@ export interface BaseGalleryLayoutProps {
   selectedPhotos?: Set<number>;
   isSelectionMode?: boolean;
   onPhotoSelect?: (photoId: number) => void;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
   eventName?: string;
   eventLogo?: string | null;
   eventDate?: string | null;

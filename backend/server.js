@@ -495,6 +495,7 @@ app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
 app.use('/api/admin/image-security', require('./src/routes/adminImageSecurity'));
 app.use('/api/admin/thumbnails', require('./src/routes/adminThumbnails'));
+app.use('/api/admin/photos', require('./src/routes/adminPhotoDimensions'));
 app.use('/api/admin/photos', require('./src/routes/adminPhotos'));
 app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
