@@ -13,9 +13,10 @@ import {
   ModerationTab,
   StylingTab,
   SEOTab,
+  ThumbnailsTab,
 } from '../../features/settings';
 
-type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'categories' | 'seo' | 'analytics' | 'moderation' | 'styling';
+type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'thumbnails' | 'categories' | 'seo' | 'analytics' | 'moderation' | 'styling';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -74,6 +75,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'status', label: t('settings.systemStatus.title') },
     { key: 'security', label: t('settings.security.title') },
     { key: 'imageSecurity', label: t('settings.imageSecurity.title', 'Image Protection') },
+    { key: 'thumbnails', label: t('settings.thumbnails.title', 'Thumbnails') },
     { key: 'seo', label: t('settings.seo.title', 'SEO & Robots') },
     { key: 'categories', label: t('settings.categories.title') },
     { key: 'analytics', label: t('settings.analytics.title') },
@@ -167,6 +169,8 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {activeTab === 'imageSecurity' && <ImageSecurityTab />}
+
+      {activeTab === 'thumbnails' && <ThumbnailsTab />}
 
       {activeTab === 'categories' && <CategoriesTab />}
 

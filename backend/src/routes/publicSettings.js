@@ -78,6 +78,8 @@ router.get('/', async (req, res) => {
       event_require_admin_email: settingsObject.event_require_admin_email !== false,
       event_require_event_date: settingsObject.event_require_event_date !== false,
       event_require_expiration: settingsObject.event_require_expiration !== false,
+      // Upload settings (safe to expose - needed for client-side validation)
+      allowed_file_types: settingsObject.general_allowed_file_types || 'jpg,jpeg,png,webp',
       // SEO meta tag flags (safe to expose - these are intended for crawlers)
       seo_meta_noindex: settingsObject.seo_meta_noindex === true,
       seo_meta_nofollow: settingsObject.seo_meta_nofollow === true,

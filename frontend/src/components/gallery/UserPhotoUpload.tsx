@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Upload, X, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { Button } from '../common';
 import { api } from '../../config/api';
+import { publicSettingsService } from '../../services/publicSettings.service';
+import { extensionsToMimeTypes, extensionsToAcceptString } from '../../utils/fileTypes';
 
 interface UserPhotoUploadProps {
   eventId: number;
@@ -23,13 +26,28 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
+  const { data: publicSettings } = useQuery({
+    queryKey: ['public-settings'],
+    queryFn: () => publicSettingsService.getPublicSettings(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allowedMimeTypes = useMemo(
+    () => extensionsToMimeTypes(publicSettings?.allowed_file_types),
+    [publicSettings?.allowed_file_types]
+  );
+
+  const acceptString = useMemo(
+    () => extensionsToAcceptString(publicSettings?.allowed_file_types),
+    [publicSettings?.allowed_file_types]
+  );
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    
+
     // Validate file types
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     const validFiles = selectedFiles.filter(file => {
-      if (!allowedTypes.includes(file.type)) {
+      if (!allowedMimeTypes.includes(file.type)) {
         toast.error(`Invalid file type: ${file.name}`);
         return false;
       }
@@ -143,7 +161,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                     type="file"
                     className="hidden"
                     multiple
-                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                    accept={acceptString}
                     onChange={handleFileSelect}
                     disabled={uploading}
                   />

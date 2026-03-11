@@ -5,6 +5,39 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.0-beta.0...v3.17.1-beta.0) (2026-03-08)
+
+
+### Bug Fixes
+
+* respect optional email settings in event creation ([831ea6a](https://github.com/the-luap/picpeak/commit/831ea6a3bccfae4ec00ce1f619967b91b85150ce))
+* respect optional email settings in event creation ([#217](https://github.com/the-luap/picpeak/issues/217)) ([9c44a0e](https://github.com/the-luap/picpeak/commit/9c44a0ebfa527fa133512eb7f2f03335a2377aaa))
+
+## [3.17.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.16.0-beta.0...v3.17.0-beta.0) (2026-03-05)
+
+
+### Features
+
+* configurable upload batch size for reverse proxy compatibility ([9b7495e](https://github.com/the-luap/picpeak/commit/9b7495e0054975e66c9b5006c24a9fae63969de4))
+
+## [3.16.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.3-beta.0...v3.16.0-beta.0) (2026-03-05)
+
+
+### Features
+
+* add thumbnail settings UI to admin panel ([3a30fea](https://github.com/the-luap/picpeak/commit/3a30fea862034d64fbc7188fc25292594a9319e2))
+* add thumbnail settings UI to admin settings page ([#206](https://github.com/the-luap/picpeak/issues/206)) ([7d6d2f5](https://github.com/the-luap/picpeak/commit/7d6d2f56883a4402f0d97c95b0432a8a783c8024))
+
+## [3.15.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.2-beta.0...v3.15.3-beta.0) (2026-03-02)
+
+
+### Bug Fixes
+
+* issue [#203](https://github.com/the-luap/picpeak/issues/203) file type validation + security CVE fixes ([8017171](https://github.com/the-luap/picpeak/commit/80171713e0ffedda56f7cffb403b25a8d55634d1))
+* respect allowed_file_types setting for upload validation ([#203](https://github.com/the-luap/picpeak/issues/203)) ([fe07a14](https://github.com/the-luap/picpeak/commit/fe07a148f1d998c0be00377c1f8b4eca3908305c))
+* **security:** resolve all npm audit vulnerabilities ([4272618](https://github.com/the-luap/picpeak/commit/4272618b3f7fcb06aaca14fb724a6a7733251f24))
+* **security:** resolve Docker image CVEs for code scanning alerts ([cbecb93](https://github.com/the-luap/picpeak/commit/cbecb9323cf4b80c800326de14f6df73f60147c1))
+
 ## [2.6.0](https://github.com/the-luap/picpeak/compare/v2.5.1...v2.6.0) (2026-03-11)
 
 
@@ -63,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * pre-generate watermarks for instant lightbox loading ([1be974a](https://github.com/the-luap/picpeak/commit/1be974afbb0b7a1bdbdd140327771907a5d3c2ae)), closes [#112](https://github.com/the-luap/picpeak/issues/112)
 * pre-generated watermarks and mobile upload button improvements ([c6fdd38](https://github.com/the-luap/picpeak/commit/c6fdd38e842e1a8c0aa9cbab9fc791e6669e402d))
 * show original filename in admin UI ([#184](https://github.com/the-luap/picpeak/issues/184)) ([0891be1](https://github.com/the-luap/picpeak/commit/0891be197fdb7d92ade5a293b8db0bed26fa6e3a))
+## [3.15.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.1-beta.0...v3.15.2-beta.0) (2026-02-22)
 
 
 ### Bug Fixes
@@ -110,6 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * add API_URL environment variable to .env.example files ([3e69579](https://github.com/the-luap/picpeak/commit/3e69579f5a171b31a253b2a42bb033bf1b97387d))
 * emphasize importance of STORAGE_PATH in env example ([3397807](https://github.com/the-luap/picpeak/commit/3397807670784e02cbe34a7a60db43c95d64f19c))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([5ea4ef3](https://github.com/the-luap/picpeak/commit/5ea4ef3cf36b06f9e6c9108f80bfe2e9a6470898))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([cd00bc1](https://github.com/the-luap/picpeak/commit/cd00bc13d4e02a86a0f1742ed1f11f064614b8da))
 
 ## [3.15.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.15.0-beta.0...v3.15.1-beta.0) (2026-02-21)
 

@@ -23,6 +23,8 @@ export interface PublicSettings {
   umami_url: string | null;
   umami_website_id: string | null;
   umami_share_url: string | null;
+  // Upload settings
+  allowed_file_types?: string;
   // Event field requirements
   event_require_customer_name?: boolean;
   event_require_customer_email?: boolean;

@@ -1,6 +1,6 @@
 {
   "name": "picpeak-backend",
-  "version": "2.6.0",
+  "version": "3.17.1-beta.0",
   "description": "Backend for PicPeak event photo sharing platform",
   "main": "server.js",
   "scripts": {
@@ -66,7 +66,11 @@
       "tar-fs": "2.1.4"
     },
     "glob": "^11.1.0",
-    "body-parser": "^2.2.1",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "fast-xml-parser": ">=5.3.8",
+    "qs": ">=6.14.2",
+    "tar": ">=7.5.8",
+    "brace-expansion": ">=5.0.0",
+    "minimatch": ">=9.0.7"
   }
 }
