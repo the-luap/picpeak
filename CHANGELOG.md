@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1](https://github.com/the-luap/picpeak/compare/v2.6.0...v2.6.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* update security policy with private reporting channels ([7f77362](https://github.com/the-luap/picpeak/commit/7f7736282f534adf4b9d5331d841a1f0bff7341c))
+* update security policy with proper contact email and private reporting ([67b0f32](https://github.com/the-luap/picpeak/commit/67b0f32456d0216e4c685a104c680fa5a5fd578f)), closes [#223](https://github.com/the-luap/picpeak/issues/223)
+
 ## [3.17.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.0-beta.0...v3.17.1-beta.0) (2026-03-08)
 
 
