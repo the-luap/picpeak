@@ -7,9 +7,12 @@ import {
   Clock,
   HardDrive,
   Activity,
+  Ruler,
 } from 'lucide-react';
 import { Button, Card, Input } from '../../../components/common';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../../../config/api';
 import { settingsService } from '../../../services/settings.service';
 import { useStatusTab } from '../hooks/useStatusTab';
 import { UpdateNotificationSettings } from '../components/UpdateNotificationSettings';
@@ -53,6 +56,27 @@ export const StatusTab: React.FC<StatusTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const { storageInfo, systemStatus } = useStatusTab(isActive);
+  const queryClient = useQueryClient();
+
+  const { data: dimensionStatus } = useQuery({
+    queryKey: ['photo-dimension-status'],
+    queryFn: async () => {
+      const res = await api.get('/admin/photos/repair-dimensions/status');
+      return res.data;
+    },
+    enabled: isActive,
+    refetchInterval: 10000,
+  });
+
+  const repairMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/admin/photos/repair-dimensions');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['photo-dimension-status'] });
+    },
+  });
 
   // Sync soft limit from storage info
   useEffect(() => {
@@ -526,6 +550,61 @@ export const StatusTab: React.FC<StatusTabProps> = ({
             </div>
           </Card>
         </>
+      )}
+
+      {/* Photo Dimensions */}
+      {dimensionStatus && (
+        <Card padding="md">
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
+            <Ruler className="w-5 h-5" />
+            {t('settings.photoDimensions.title')}
+          </h2>
+
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+            {t('settings.photoDimensions.description')}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{dimensionStatus.total}</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">{t('settings.photoDimensions.totalPhotos')}</p>
+            </div>
+            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-lg p-3 text-center">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{dimensionStatus.withDimensions}</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">{t('settings.photoDimensions.withDimensions')}</p>
+            </div>
+            <div className={`rounded-lg p-3 text-center ${Number(dimensionStatus.withoutDimensions) > 0 ? 'bg-amber-50 dark:bg-amber-900/30' : 'bg-neutral-50 dark:bg-neutral-800'}`}>
+              <p className={`text-2xl font-bold ${Number(dimensionStatus.withoutDimensions) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-neutral-900 dark:text-neutral-100'}`}>{dimensionStatus.withoutDimensions}</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">{t('settings.photoDimensions.missingDimensions')}</p>
+            </div>
+          </div>
+
+          {dimensionStatus.lastResult && (
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+              {t('settings.photoDimensions.resultSuccess', {
+                success: dimensionStatus.lastResult.success,
+                failed: dimensionStatus.lastResult.failed,
+              })}
+            </p>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => repairMutation.mutate()}
+              isLoading={repairMutation.isPending || dimensionStatus.isRunning}
+              disabled={Number(dimensionStatus.withoutDimensions) === 0 || dimensionStatus.isRunning}
+              leftIcon={<Ruler className="w-4 h-4" />}
+            >
+              {dimensionStatus.isRunning
+                ? t('settings.photoDimensions.repairing')
+                : Number(dimensionStatus.withoutDimensions) === 0
+                  ? t('settings.photoDimensions.noneToRepair')
+                  : t('settings.photoDimensions.repairButton')}
+            </Button>
+          </div>
+        </Card>
       )}
 
       {/* Update Notification Settings */}

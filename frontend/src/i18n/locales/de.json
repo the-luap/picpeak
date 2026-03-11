@@ -1250,6 +1250,19 @@
       "failed": "Fehlgeschlagen",
       "lastUpdate": "Letzte Aktualisierung"
     },
+    "photoDimensions": {
+      "title": "Foto-Abmessungen",
+      "totalPhotos": "Fotos gesamt",
+      "withDimensions": "Mit Abmessungen",
+      "missingDimensions": "Fehlende Abmessungen",
+      "repairButton": "Abmessungen reparieren",
+      "repairing": "Repariere...",
+      "alreadyRunning": "Reparatur läuft bereits",
+      "started": "Reparatur von {{count}} Fotos gestartet",
+      "noneToRepair": "Alle Fotos haben bereits Abmessungen",
+      "resultSuccess": "Letzte Reparatur: {{success}} aktualisiert, {{failed}} fehlgeschlagen",
+      "description": "Fehlende Breite/Höhe für Fotos ergänzen, die vor der Dimensionsverfolgung hochgeladen wurden. Erforderlich für Masonry- und Mosaik-Layouts."
+    },
     "updateNotifications": {
       "title": "Update-Benachrichtigungen",
       "description": "Erhalten Sie E-Mail-Benachrichtigungen, wenn neue Versionen von PicPeak verfügbar sind.",

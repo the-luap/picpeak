@@ -215,6 +215,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     useCanvasRendering,
     isSelectionMode,
     onPhotoSelect: handlePhotoSelect,
+    onSelectAll: selectAll,
+    onDeselectAll: deselectAll,
     eventName,
     eventLogo,
     eventDate,
