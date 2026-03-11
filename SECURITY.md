@@ -6,8 +6,8 @@ We release patches for security vulnerabilities. Currently supported versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 2.x.x   | :white_check_mark: |
+| < 2.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -15,9 +15,9 @@ We take the security of PicPeak seriously. If you have discovered a security vul
 
 ### 1. **Do NOT create a public GitHub issue**
 
-### 2. Report the vulnerability by:
-- Opening a [security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
-- Mark it clearly as "SECURITY" in the title
+### 2. Report the vulnerability privately by:
+- **Preferred:** Use [GitHub Private Vulnerability Reporting](https://github.com/the-luap/picpeak/security/advisories/new)
+- **Alternative:** Email us at **info@picpeak.app** with the details
 - Include:
   - Description of the vulnerability
   - Steps to reproduce
@@ -82,7 +82,7 @@ We believe in responsible disclosure. Once a vulnerability is fixed:
 
 ## Contact
 
-- Security issues: [Create a security issue](https://github.com/the-luap/picpeak/issues/new?labels=security) on GitHub
+- Security issues: Email **info@picpeak.app** or use [GitHub Private Vulnerability Reporting](https://github.com/the-luap/picpeak/security/advisories/new)
 - General support: [GitHub Issues](https://github.com/the-luap/picpeak/issues)
 
 Thank you for helping keep PicPeak and its users safe!

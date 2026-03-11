@@ -637,8 +637,6 @@
       "maxFileSizeHelp": "Maximum size per uploaded photo",
       "maxFilesPerUpload": "Max Files per Upload",
       "maxFilesPerUploadHelp": "Maximum number of photos allowed in a single upload batch (1-{{max}}).",
-      "maxUploadBatchSize": "Max Upload Batch Size (MB)",
-      "maxUploadBatchSizeHelp": "Maximum size per upload request. Lower this if behind a reverse proxy with request size limits (e.g. Cloudflare: 100MB).",
       "allowedFileTypes": "Allowed File Types",
       "allowedFileTypesHelp": "Comma-separated list of file extensions",
       "featureToggles": "Feature Toggles",
@@ -800,6 +798,19 @@
       "sent": "Sent",
       "failed": "Failed",
       "lastUpdate": "Last update"
+    },
+    "photoDimensions": {
+      "title": "Photo Dimensions",
+      "totalPhotos": "Total Photos",
+      "withDimensions": "With Dimensions",
+      "missingDimensions": "Missing Dimensions",
+      "repairButton": "Repair Dimensions",
+      "repairing": "Repairing...",
+      "alreadyRunning": "Repair is already running",
+      "started": "Started repairing {{count}} photos",
+      "noneToRepair": "All photos already have dimensions",
+      "resultSuccess": "Last repair: {{success}} updated, {{failed}} failed",
+      "description": "Backfill missing width/height for photos uploaded before dimension tracking was added. Required for Masonry and Mosaic layouts."
     },
     "updateNotifications": {
       "title": "Update Notifications",

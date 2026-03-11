@@ -38,6 +38,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **security:** resolve all npm audit vulnerabilities ([4272618](https://github.com/the-luap/picpeak/commit/4272618b3f7fcb06aaca14fb724a6a7733251f24))
 * **security:** resolve Docker image CVEs for code scanning alerts ([cbecb93](https://github.com/the-luap/picpeak/commit/cbecb9323cf4b80c800326de14f6df73f60147c1))
 
+## [2.6.0](https://github.com/the-luap/picpeak/compare/v2.5.1...v2.6.0) (2026-03-11)
+
+
+### Features
+
+* add configurable upload batch size for reverse proxy compatibility ([#208](https://github.com/the-luap/picpeak/issues/208)) ([02a46e0](https://github.com/the-luap/picpeak/commit/02a46e083d68cfdb355b5a4fe4a8da7d667050b9))
+* configurable upload batch size for reverse proxy compatibility ([4243363](https://github.com/the-luap/picpeak/commit/424336340bef8e1629490ade154f0ceebb2a71e1))
+
+
+### Bug Fixes
+
+* video upload media type, select all, and dimension repair ([#203](https://github.com/the-luap/picpeak/issues/203), [#220](https://github.com/the-luap/picpeak/issues/220), [#180](https://github.com/the-luap/picpeak/issues/180)) ([fc75bcd](https://github.com/the-luap/picpeak/commit/fc75bcdfc38673d6e4dd1cd943cfb4638d3a306c))
+* video upload, select all, and dimension repair ([#203](https://github.com/the-luap/picpeak/issues/203), [#220](https://github.com/the-luap/picpeak/issues/220), [#180](https://github.com/the-luap/picpeak/issues/180)) ([a0bb080](https://github.com/the-luap/picpeak/commit/a0bb0805868e742f323b64312c3c5ef8ec408f68))
+
+## [2.5.1](https://github.com/the-luap/picpeak/compare/v2.5.0...v2.5.1) (2026-02-22)
+
+
+### Bug Fixes
+
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([33af088](https://github.com/the-luap/picpeak/commit/33af0885607799e0071e2e74a582c7eb396c9b83))
+* resolve issues [#194](https://github.com/the-luap/picpeak/issues/194), [#195](https://github.com/the-luap/picpeak/issues/195), [#196](https://github.com/the-luap/picpeak/issues/196), [#197](https://github.com/the-luap/picpeak/issues/197) ([33483cf](https://github.com/the-luap/picpeak/commit/33483cf32dfae57f8da51c0765353792239135f9))
+
 ## [2.5.0](https://github.com/the-luap/picpeak/compare/v2.4.0...v2.5.0) (2026-02-21)
 
 
