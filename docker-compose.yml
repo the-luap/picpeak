@@ -98,6 +98,16 @@ services:
     networks:
       - picpeak-network
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: picpeak-mailhog
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    networks:
+      - picpeak-network
+
   frontend:
     build:
       context: ./frontend

@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 
 import { Button, Input, Card, Loading } from '../../components/common';
 import { EmailPreviewModal } from '../../components/admin/EmailPreviewModal';
+import { EmailTemplateEditor } from '../../components/admin/EmailTemplateEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emailService, type EmailConfig, type EmailTemplate } from '../../services/email.service';
 import { useTranslation } from 'react-i18next';
@@ -251,25 +252,6 @@ export const EmailConfigPage: React.FC = () => {
     } catch (error) {
       toast.error(t('toast.saveError'));
     }
-  };
-
-  const renderVariableHelp = () => {
-    const variables = editedTemplate.variables || [];
-    return (
-      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">{t('email.templateVariables')}</h4>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          {variables.map(variable => (
-            <code key={variable} className="text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded">
-              {`{{${variable}}}`}
-            </code>
-          ))}
-        </div>
-        <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-          {t('email.variableHelp')}
-        </p>
-      </div>
-    );
   };
 
   if (configLoading || templatesLoading) {
@@ -632,22 +614,19 @@ export const EmailConfigPage: React.FC = () => {
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('email.emailBody')} ({editingLang === 'en' ? 'English' : 'German'})
                   </label>
-                  <textarea
-                    value={
+                  <EmailTemplateEditor
+                    content={
                       editingLang === 'en'
                         ? (editedTemplate.body_html_en || editedTemplate.body_html || '')
                         : (editedTemplate.body_html_de || '')
                     }
-                    onChange={(e) => setEditedTemplate(prev => ({
+                    onChange={(value) => setEditedTemplate(prev => ({
                       ...prev,
-                      [editingLang === 'en' ? 'body_html_en' : 'body_html_de']: e.target.value
+                      [editingLang === 'en' ? 'body_html_en' : 'body_html_de']: value
                     }))}
-                    rows={15}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                    variables={editedTemplate.variables || []}
                   />
                 </div>
-
-                {renderVariableHelp()}
               </div>
             </Card>
           </div>

@@ -1656,7 +1656,28 @@
     "fromName": "From Name",
     "required": "required",
     "ignoreSslErrors": "Ignore SSL/TLS certificate errors",
-    "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications."
+    "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications.",
+    "editor": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bullet List",
+      "numberedList": "Numbered List",
+      "blockquote": "Blockquote",
+      "link": "Add Link",
+      "horizontalRule": "Horizontal Rule",
+      "alignLeft": "Align Left",
+      "alignCenter": "Align Center",
+      "alignRight": "Align Right",
+      "clearFormatting": "Clear Formatting",
+      "undo": "Undo",
+      "redo": "Redo",
+      "insertVariable": "Insert Variable",
+      "sourceMode": "Source",
+      "visualMode": "Visual",
+      "enterUrl": "Enter URL...",
+      "addLink": "Add",
+      "cancel": "Cancel"
+    }
   },
   "cms": {
     "title": "CMS Pages",
