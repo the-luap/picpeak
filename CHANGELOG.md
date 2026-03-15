@@ -5,13 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.6.1](https://github.com/the-luap/picpeak/compare/v2.6.0...v2.6.1) (2026-03-11)
+## [3.17.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.1-beta.0...v3.17.2-beta.0) (2026-03-11)
 
 
 ### Bug Fixes
 
-* update security policy with private reporting channels ([7f77362](https://github.com/the-luap/picpeak/commit/7f7736282f534adf4b9d5331d841a1f0bff7341c))
+* update security policy with private reporting channels ([308e086](https://github.com/the-luap/picpeak/commit/308e08626383bab213ce3eb5563608dff6168ef4))
 * update security policy with proper contact email and private reporting ([67b0f32](https://github.com/the-luap/picpeak/commit/67b0f32456d0216e4c685a104c680fa5a5fd578f)), closes [#223](https://github.com/the-luap/picpeak/issues/223)
+* video upload media type, select all, and dimension repair ([#203](https://github.com/the-luap/picpeak/issues/203), [#220](https://github.com/the-luap/picpeak/issues/220), [#180](https://github.com/the-luap/picpeak/issues/180)) ([fc75bcd](https://github.com/the-luap/picpeak/commit/fc75bcdfc38673d6e4dd1cd943cfb4638d3a306c))
+* video upload, select all, and dimension repair ([#203](https://github.com/the-luap/picpeak/issues/203), [#220](https://github.com/the-luap/picpeak/issues/220), [#180](https://github.com/the-luap/picpeak/issues/180)) ([a0bb080](https://github.com/the-luap/picpeak/commit/a0bb0805868e742f323b64312c3c5ef8ec408f68))
 
 ## [3.17.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.0-beta.0...v3.17.1-beta.0) (2026-03-08)
 
