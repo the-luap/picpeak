@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.19.1-beta.0...v3.19.2-beta.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* **security:** invalidate tokens on password change, enforce session timeout, fix role update ([f362239](https://github.com/the-luap/picpeak/commit/f3622396e77ce5d0b0741e439fc554a1dccaca50))
+* **security:** token invalidation on password change, session timeout enforcement ([7ca9631](https://github.com/the-luap/picpeak/commit/7ca96315e254eef58d8ecc505f95a5186d2fa2da))
+
 ## [3.19.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.19.0-beta.0...v3.19.1-beta.0) (2026-03-16)
 
 
