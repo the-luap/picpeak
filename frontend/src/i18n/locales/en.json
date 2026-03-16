@@ -1644,6 +1644,7 @@
     "subjectLine": "Subject Line",
     "emailBody": "Email Body",
     "preview": "Preview",
+    "save": "Save",
     "saveChanges": "Save Changes",
     "templates": "Templates",
     "variableHelp": "Use these variables in your template. They will be replaced with actual values when emails are sent.",

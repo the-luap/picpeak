@@ -573,7 +573,7 @@ export const EmailConfigPage: React.FC = () => {
                     isLoading={saveTemplateMutation.isPending}
                     leftIcon={<Save className="w-4 h-4" />}
                   >
-                    {t('email.saveChanges')}
+                    {t('email.save')}
                   </Button>
                 </div>
               </div>

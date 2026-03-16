@@ -1949,6 +1949,7 @@
     "subjectLine": "Betreffzeile",
     "emailBody": "E-Mail-Text",
     "preview": "Vorschau",
+    "save": "Speichern",
     "saveChanges": "Änderungen speichern",
     "templates": "Vorlagen",
     "variableHelp": "Verwenden Sie diese Variablen in Ihrer Vorlage. Sie werden beim Senden durch tatsächliche Werte ersetzt.",
