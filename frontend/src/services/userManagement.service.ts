@@ -149,7 +149,11 @@ export const userManagementService = {
    * Update an admin user
    */
   async updateUser(id: number, data: UpdateUserData): Promise<AdminUser> {
-    const response = await api.put<UpdateUserResponse>(`/admin/users/${id}`, data);
+    // Convert camelCase to snake_case for backend API
+    const payload: Record<string, unknown> = {};
+    if (data.roleId !== undefined) payload.role_id = data.roleId;
+    if (data.isActive !== undefined) payload.is_active = data.isActive;
+    const response = await api.put<UpdateUserResponse>(`/admin/users/${id}`, payload);
     return transformUser(response.data.user);
   },
 
