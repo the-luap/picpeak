@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.19.0-beta.0...v3.19.1-beta.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* external media dimensions, theme race condition, email color customization ([dfae2c2](https://github.com/the-luap/picpeak/commit/dfae2c2bc6d86378c553cd847b439f7cb53a4f2a))
+* resolve external media dimensions, gallery theme race condition, and add email color customization ([bbeedd1](https://github.com/the-luap/picpeak/commit/bbeedd1888561b6c57586b5f42bbfee3ffc69fd7))
+
 ## [3.19.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.18.2-beta.0...v3.19.0-beta.0) (2026-03-16)
 
 
