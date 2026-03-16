@@ -21,9 +21,18 @@ const DEFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => 
   </svg>
 );
 
+const RUFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#FFF" d="M0 0h640v160H0z"/>
+    <path fill="#0039A6" d="M0 160h640v160H0z"/>
+    <path fill="#D52B1E" d="M0 320h640v160H0z"/>
+  </svg>
+);
+
 const languages = [
   { code: 'en', name: 'English', Flag: GBFlag },
   { code: 'de', name: 'Deutsch', Flag: DEFlag },
+  { code: 'ru', name: 'Русский', Flag: RUFlag },
 ];
 
 export const LanguageSelector: React.FC = () => {
