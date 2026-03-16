@@ -122,13 +122,15 @@ router.post('/change-password', [
   // Hash new password with more rounds
   const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
-  // Update password and clear must_change_password flag
+  // Update password, set password_changed_at to invalidate existing tokens, and clear must_change_password flag
+  const now = new Date();
   await db('admin_users')
     .where('id', userId)
     .update({
       password_hash: newPasswordHash,
+      password_changed_at: now,
       must_change_password: false,
-      updated_at: new Date()
+      updated_at: now
     });
 
   // Log activity
