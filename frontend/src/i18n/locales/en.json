@@ -1660,6 +1660,13 @@
     "required": "required",
     "ignoreSslErrors": "Ignore SSL/TLS certificate errors",
     "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications.",
+    "brandingTitle": "Email Branding",
+    "brandingDescription": "Customize the colors used in email templates. Changes apply to the header bar, buttons, links, and footer background.",
+    "primaryColor": "Primary Color",
+    "primaryColorHint": "Used for header, buttons, and links",
+    "secondaryColor": "Footer Background",
+    "secondaryColorHint": "Used for footer section background",
+    "saveEmailColors": "Save Email Colors",
     "editor": {
       "bold": "Bold",
       "italic": "Italic",

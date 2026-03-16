@@ -3,11 +3,10 @@ const router = express.Router();
 const { db } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
 
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+const { resolvePhotoFilePath } = require('../services/photoResolver');
 
 // Module-level progress state
 let repairProgress = {
@@ -23,13 +22,18 @@ router.post('/repair-dimensions', adminAuth, requirePermission('photos.edit'), a
     }
 
     const photos = await db('photos')
+      .join('events', 'photos.event_id', 'events.id')
       .where(function () {
-        this.whereNull('width').orWhereNull('height');
+        this.whereNull('photos.width').orWhereNull('photos.height');
       })
       .where(function () {
-        this.where('media_type', '!=', 'video').orWhereNull('media_type');
+        this.where('photos.media_type', '!=', 'video').orWhereNull('photos.media_type');
       })
-      .select('id', 'path', 'filename');
+      .select(
+        'photos.id', 'photos.path', 'photos.filename',
+        'photos.source_origin', 'photos.external_relpath', 'photos.event_id',
+        'events.source_mode', 'events.external_path', 'events.slug'
+      );
 
     if (photos.length === 0) {
       return res.json({ message: 'No photos need dimension repair', count: 0 });
@@ -61,14 +65,15 @@ router.post('/repair-dimensions', adminAuth, requirePermission('photos.edit'), a
 
       for (const photo of photos) {
         try {
-          if (!photo.path) {
-            logger.warn(`Photo ${photo.id} has no path, skipping dimension repair`);
+          const event = { source_mode: photo.source_mode, external_path: photo.external_path, slug: photo.slug };
+          let fullPath;
+          try {
+            fullPath = resolvePhotoFilePath(event, photo);
+          } catch (err) {
+            logger.warn(`Photo ${photo.id} has no resolvable path, skipping dimension repair: ${err.message}`);
             errorCount++;
             continue;
           }
-
-          const storagePath = getStoragePath();
-          const fullPath = path.join(storagePath, 'events/active', photo.path);
 
           try {
             await fs.access(fullPath);
@@ -85,8 +90,7 @@ router.post('/repair-dimensions', adminAuth, requirePermission('photos.edit'), a
               .where({ id: photo.id })
               .update({
                 width: metadata.width,
-                height: metadata.height,
-                updated_at: db.fn.now()
+                height: metadata.height
               });
             successCount++;
 

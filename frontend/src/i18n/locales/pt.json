@@ -1636,6 +1636,13 @@
     "required": "obrigatorio",
     "ignoreSslErrors": "Ignorar erros de certificado SSL/TLS",
     "ignoreSslWarning": "Aviso: Desabilitar verificacao de certificado torna a conexao vulneravel a ataques man-in-the-middle. Ative somente se voce confia no servidor SMTP e entende as implicacoes de seguranca.",
+    "brandingTitle": "Identidade Visual do E-mail",
+    "brandingDescription": "Personalize as cores dos modelos de e-mail. As alteracoes se aplicam ao cabecalho, botoes, links e fundo do rodape.",
+    "primaryColor": "Cor Primaria",
+    "primaryColorHint": "Usada no cabecalho, botoes e links",
+    "secondaryColor": "Fundo do Rodape",
+    "secondaryColorHint": "Usada no fundo da secao de rodape",
+    "saveEmailColors": "Salvar Cores do E-mail",
     "editor": {
       "bold": "Negrito",
       "italic": "Italico",

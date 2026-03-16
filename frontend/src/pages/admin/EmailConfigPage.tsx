@@ -17,8 +17,10 @@ import { toast } from 'react-toastify';
 import { Button, Input, Card, Loading } from '../../components/common';
 import { EmailPreviewModal } from '../../components/admin/EmailPreviewModal';
 import { EmailTemplateEditor } from '../../components/admin/EmailTemplateEditor';
+import { Palette } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emailService, type EmailConfig, type EmailTemplate } from '../../services/email.service';
+import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 
 const defaultTemplateKeys = [
@@ -99,6 +101,8 @@ export const EmailConfigPage: React.FC = () => {
     htmlContent: '',
     textContent: ''
   });
+  const [emailPrimaryColor, setEmailPrimaryColor] = useState('#5C8762');
+  const [emailSecondaryColor, setEmailSecondaryColor] = useState('#f9f9f9');
   const queryClient = useQueryClient();
   
   // SMTP Configuration state
@@ -118,6 +122,19 @@ export const EmailConfigPage: React.FC = () => {
     queryKey: ['email-config'],
     queryFn: () => emailService.getConfig(),
   });
+
+  // Fetch email branding colors from app settings
+  const { data: allSettings } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => settingsService.getAllSettings(),
+  });
+
+  React.useEffect(() => {
+    if (allSettings) {
+      if (allSettings.email_primary_color) setEmailPrimaryColor(allSettings.email_primary_color);
+      if (allSettings.email_secondary_color) setEmailSecondaryColor(allSettings.email_secondary_color);
+    }
+  }, [allSettings]);
 
   // Fetch email templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
@@ -185,6 +202,25 @@ export const EmailConfigPage: React.FC = () => {
       toast.error(t('toast.saveError'));
     }
   });
+
+  const saveEmailColorsMutation = useMutation({
+    mutationFn: (colors: { email_primary_color: string; email_secondary_color: string }) =>
+      settingsService.updateSettings(colors),
+    onSuccess: () => {
+      toast.success(t('toast.saveSuccess'));
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+    },
+    onError: () => {
+      toast.error(t('toast.saveError'));
+    }
+  });
+
+  const handleSaveEmailColors = () => {
+    saveEmailColorsMutation.mutate({
+      email_primary_color: emailPrimaryColor,
+      email_secondary_color: emailSecondaryColor,
+    });
+  };
 
   const handleSaveSmtp = () => {
     // Validate SMTP config
@@ -493,6 +529,76 @@ export const EmailConfigPage: React.FC = () => {
                   </ul>
                 </div>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Email Branding - below SMTP settings */}
+      {activeTab === 'smtp' && (
+        <div className="mt-6">
+          <Card padding="md">
+            <div className="flex items-center gap-2 mb-4">
+              <Palette className="w-5 h-5 text-neutral-500" />
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('email.brandingTitle')}</h2>
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">{t('email.brandingDescription')}</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('email.primaryColor')}
+                </label>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t('email.primaryColorHint')}</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={emailPrimaryColor}
+                    onChange={(e) => setEmailPrimaryColor(e.target.value)}
+                    className="w-10 h-10 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={emailPrimaryColor}
+                    onChange={(e) => setEmailPrimaryColor(e.target.value)}
+                    className="w-32"
+                    placeholder="#5C8762"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('email.secondaryColor')}
+                </label>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t('email.secondaryColorHint')}</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={emailSecondaryColor}
+                    onChange={(e) => setEmailSecondaryColor(e.target.value)}
+                    className="w-10 h-10 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={emailSecondaryColor}
+                    onChange={(e) => setEmailSecondaryColor(e.target.value)}
+                    className="w-32"
+                    placeholder="#f9f9f9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                variant="primary"
+                onClick={handleSaveEmailColors}
+                isLoading={saveEmailColorsMutation.isPending}
+                leftIcon={<Save className="w-5 h-5" />}
+              >
+                {t('email.saveEmailColors')}
+              </Button>
             </div>
           </Card>
         </div>

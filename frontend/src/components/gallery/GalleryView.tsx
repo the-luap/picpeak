@@ -16,7 +16,6 @@ import { UserPhotoUpload } from './UserPhotoUpload';
 import type { FilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
-import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { api } from '../../config/api';
 import { Upload, Menu } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
@@ -44,7 +43,7 @@ interface GalleryViewProps {
 export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { t } = useTranslation();
   const { logout } = useGalleryAuth();
-  const { setTheme, theme } = useTheme();
+  const { theme } = useTheme();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
@@ -274,62 +273,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     // No category selected or category has no hero — revert to default
     setStaticHeroPhoto(defaultHeroPhoto);
   }, [selectedCategoryId, data?.categories, data?.photos, defaultHeroPhoto]);
-
-  // Apply theme when settings are loaded
-  useEffect(() => {
-    if (settingsData && data?.event) {
-      let themeToApply = null;
-      const fullEvent = data.event; // Use the full event data from API
-      
-      if (fullEvent.color_theme) {
-        try {
-          // Check if it's a valid JSON string
-          if (fullEvent.color_theme.startsWith('{')) {
-            const eventTheme = JSON.parse(fullEvent.color_theme);
-            themeToApply = eventTheme;
-          } else {
-            // Handle legacy theme names - check if it's a preset
-            const preset = GALLERY_THEME_PRESETS[fullEvent.color_theme];
-            if (preset) {
-              themeToApply = preset.config;
-            } else {
-              // Unknown theme name, fall back to global theme
-              if (settingsData.theme_config) {
-                themeToApply = settingsData.theme_config;
-              }
-            }
-          }
-        } catch {
-          // Invalid theme format - use default
-          // Fall back to global theme
-          if (settingsData.theme_config) {
-            themeToApply = settingsData.theme_config;
-          }
-        }
-      } else if (settingsData.theme_config) {
-        // No event theme, use global theme
-        themeToApply = settingsData.theme_config;
-      }
-      
-      // Apply theme with a small delay to ensure it overrides any global theme
-      if (themeToApply) {
-        // Use setTimeout to ensure this runs after any global theme application
-        const timer = setTimeout(() => {
-          // If there's a hero photo, add it to gallery settings
-          if (fullEvent.hero_photo_id && themeToApply.gallerySettings) {
-            themeToApply.gallerySettings.heroImageId = fullEvent.hero_photo_id;
-            // Apply hero photo ID to existing gallery settings
-          } else if (fullEvent.hero_photo_id) {
-            themeToApply.gallerySettings = { heroImageId: fullEvent.hero_photo_id };
-            // Create gallery settings with hero photo ID
-          }
-          setTheme(themeToApply);
-        }, 0);
-        
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [settingsData, data, setTheme]); // Use data instead of event prop
 
   // Calculate days until expiration (null means never expires)
   const daysUntilExpiration = event.expires_at
@@ -619,6 +562,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           headerStyle={data?.event?.header_style || theme.headerStyle}
           heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
           heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+          welcomeMessage={event.welcome_message}
           onLogout={logout}
         />
 
@@ -794,6 +738,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             headerStyle={data?.event?.header_style || theme.headerStyle}
             heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
             heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+            welcomeMessage={event.welcome_message}
           />
         </div>
 

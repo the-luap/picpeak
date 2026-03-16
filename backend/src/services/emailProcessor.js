@@ -111,34 +111,47 @@ async function getRecipientLanguage(email, eventId = null) {
   return 'en'; // Default to English
 }
 
+// Darken a hex color by a percentage (0-1)
+function darkenColor(hex, amount = 0.15) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, Math.min(255, ((num >> 16) & 0xFF) * (1 - amount)));
+  const g = Math.max(0, Math.min(255, ((num >> 8) & 0xFF) * (1 - amount)));
+  const b = Math.max(0, Math.min(255, (num & 0xFF) * (1 - amount)));
+  return `#${(1 << 24 | Math.round(r) << 16 | Math.round(g) << 8 | Math.round(b)).toString(16).slice(1)}`;
+}
+
 // Wrap HTML body in the styled email template with header, footer, and logo
 async function wrapEmailHtml(htmlBody, subject, language = 'en') {
-  // Get branding settings for logo
+  // Get branding settings for logo and email colors
   let logoUrl = '';
   let companyName = 'PicPeak';
+  let primaryColor = '#5C8762';
+  let secondaryColor = '#f9f9f9';
   try {
     const brandingSettings = await db('app_settings')
-      .whereIn('setting_key', ['branding_logo_url', 'branding_company_name'])
+      .whereIn('setting_key', [
+        'branding_logo_url', 'branding_company_name',
+        'email_primary_color', 'email_secondary_color'
+      ])
       .select('setting_key', 'setting_value');
 
     brandingSettings.forEach(setting => {
-      if (setting.setting_key === 'branding_logo_url' && setting.setting_value) {
-        try {
-          logoUrl = JSON.parse(setting.setting_value);
-        } catch (e) {
-          logoUrl = setting.setting_value;
-        }
-      } else if (setting.setting_key === 'branding_company_name' && setting.setting_value) {
-        try {
-          companyName = JSON.parse(setting.setting_value);
-        } catch (e) {
-          companyName = setting.setting_value;
-        }
+      const val = setting.setting_value;
+      if (setting.setting_key === 'branding_logo_url' && val) {
+        try { logoUrl = JSON.parse(val); } catch (e) { logoUrl = val; }
+      } else if (setting.setting_key === 'branding_company_name' && val) {
+        try { companyName = JSON.parse(val); } catch (e) { companyName = val; }
+      } else if (setting.setting_key === 'email_primary_color' && val) {
+        try { primaryColor = JSON.parse(val); } catch (e) { primaryColor = val; }
+      } else if (setting.setting_key === 'email_secondary_color' && val) {
+        try { secondaryColor = JSON.parse(val); } catch (e) { secondaryColor = val; }
       }
     });
   } catch (error) {
     logger.error('Error fetching branding settings:', error);
   }
+
+  const hoverColor = darkenColor(primaryColor, 0.15);
 
   // If no custom logo, use default PicPeak logo
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -172,7 +185,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       overflow: hidden;
     }
     .email-header {
-      background-color: #5C8762;
+      background-color: ${primaryColor};
       padding: 30px;
       text-align: center;
     }
@@ -185,7 +198,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       padding: 40px 30px;
     }
     .email-content h2 {
-      color: #5C8762;
+      color: ${primaryColor};
       margin-top: 0;
       margin-bottom: 20px;
       font-size: 24px;
@@ -206,7 +219,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
     .button {
       display: inline-block;
       padding: 12px 30px;
-      background-color: #5C8762;
+      background-color: ${primaryColor};
       color: white !important;
       text-decoration: none;
       border-radius: 5px;
@@ -214,10 +227,10 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       margin: 20px 0;
     }
     .button:hover {
-      background-color: #4a6f4f;
+      background-color: ${hoverColor};
     }
     .email-footer {
-      background-color: #f9f9f9;
+      background-color: ${secondaryColor};
       padding: 30px;
       text-align: center;
       border-top: 1px solid #eee;
@@ -234,11 +247,11 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       margin: 5px 0;
     }
     a {
-      color: #5C8762;
+      color: ${primaryColor};
       text-decoration: underline;
     }
     a:hover {
-      color: #4a6f4f;
+      color: ${hoverColor};
     }
     strong {
       color: #333;

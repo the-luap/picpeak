@@ -1963,6 +1963,13 @@
     "required": "erforderlich",
     "ignoreSslErrors": "SSL/TLS-Zertifikatfehler ignorieren",
     "ignoreSslWarning": "Warnung: Das Deaktivieren der Zertifikatüberprüfung macht die Verbindung anfällig für Man-in-the-Middle-Angriffe. Aktivieren Sie dies nur, wenn Sie dem SMTP-Server vertrauen und die Sicherheitsrisiken verstehen.",
+    "brandingTitle": "E-Mail-Branding",
+    "brandingDescription": "Passen Sie die Farben in E-Mail-Vorlagen an. Änderungen gelten für Kopfzeile, Schaltflächen, Links und Fußzeilen-Hintergrund.",
+    "primaryColor": "Primärfarbe",
+    "primaryColorHint": "Wird für Kopfzeile, Schaltflächen und Links verwendet",
+    "secondaryColor": "Fußzeilen-Hintergrund",
+    "secondaryColorHint": "Wird für den Hintergrund der Fußzeile verwendet",
+    "saveEmailColors": "E-Mail-Farben speichern",
     "editor": {
       "bold": "Fett",
       "italic": "Kursiv",
