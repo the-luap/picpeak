@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.18.1-beta.0...v3.18.2-beta.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* resolve code scanning security alerts (multer, tar, Node 22) ([85a07fc](https://github.com/the-luap/picpeak/commit/85a07fcca7ad935f4c0c300f5ffe2f3af8da1e5f))
+* update dependencies to resolve code scanning security alerts ([1f524f2](https://github.com/the-luap/picpeak/commit/1f524f23580d2e2a21dbba28cb46aed76e85c475))
+
 ## [3.18.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.18.0-beta.0...v3.18.1-beta.0) (2026-03-16)
 
 
