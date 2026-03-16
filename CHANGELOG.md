@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.2-beta.0...v3.18.0-beta.0) (2026-03-16)
+
+
+### Features
+
+* add visual WYSIWYG email template editor ([#229](https://github.com/the-luap/picpeak/issues/229)) ([04a7ea8](https://github.com/the-luap/picpeak/commit/04a7ea80f95d6aeb474b145292e75f45fb85c66d))
+* register Russian locale and add to language selector ([6f95b8c](https://github.com/the-luap/picpeak/commit/6f95b8c26cd794525e15e45d478f9ead0ec22555))
+* visual WYSIWYG email template editor ([703c03f](https://github.com/the-luap/picpeak/commit/703c03fbee754a5291b57b885c5e82fbdd3e69e9))
+
+
+### Bug Fixes
+
+* shorten Save button label on email template editor ([7250c42](https://github.com/the-luap/picpeak/commit/7250c427b905ffa3e8696dff607450f5a0b801b8))
+
 ## [3.17.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.1-beta.0...v3.17.2-beta.0) (2026-03-11)
 
 
