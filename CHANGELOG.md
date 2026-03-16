@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.18.0-beta.0...v3.18.1-beta.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* wrap email preview with full styled header/footer template ([9a6d2e8](https://github.com/the-luap/picpeak/commit/9a6d2e8e3a3fab8d7969a8a42e94934c38d88392))
+* wrap email preview with full styled header/footer template ([fc0911a](https://github.com/the-luap/picpeak/commit/fc0911acf8b7c8a18d71bb4267f1086acd1e0ca1)), closes [#229](https://github.com/the-luap/picpeak/issues/229)
+
 ## [3.18.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.17.2-beta.0...v3.18.0-beta.0) (2026-03-16)
 
 
