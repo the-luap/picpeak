@@ -85,18 +85,28 @@ async function sessionTimeoutMiddleware(req, res, next) {
     const now = Date.now();
     const lastActivity = sessions.get(token);
     const timeout = await getSessionTimeout();
-    
-    // If session exists, check if it's expired
+
     if (lastActivity) {
+      // Existing session — check if idle too long
       if (now - lastActivity > timeout) {
         sessions.delete(token);
-        return res.status(401).json({ 
-          error: 'Session expired', 
-          code: 'SESSION_TIMEOUT' 
+        return res.status(401).json({
+          error: 'Session expired',
+          code: 'SESSION_TIMEOUT'
+        });
+      }
+    } else {
+      // First request with this token — check if token was issued longer ago than the timeout
+      // This prevents old/stolen tokens from bypassing session timeout after server restart
+      const tokenIssuedAt = (decoded.iat || 0) * 1000; // iat is in seconds
+      if (now - tokenIssuedAt > timeout) {
+        return res.status(401).json({
+          error: 'Session expired',
+          code: 'SESSION_TIMEOUT'
         });
       }
     }
-    
+
     // Update last activity
     sessions.set(token, now);
     
