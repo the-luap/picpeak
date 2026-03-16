@@ -64,6 +64,8 @@ interface PhotoGridWithLayoutsProps {
   heroDividerStyle?: HeroDividerStyle;
   // Hero image anchor position (#162) – keyword or "X% Y%" focal point
   heroImageAnchor?: string;
+  // Welcome message (per-event) for layouts that display it
+  welcomeMessage?: string;
   // Logout callback for full-page layouts
   onLogout?: () => void;
 }
@@ -97,6 +99,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   headerStyle,
   heroDividerStyle = 'wave',
   heroImageAnchor = 'center',
+  welcomeMessage,
   onLogout
 }) => {
   const { t } = useTranslation();
@@ -226,6 +229,7 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     heroLogoVisible,
     heroLogoSize,
     heroLogoPosition,
+    welcomeMessage,
     onLogout,
   };
 

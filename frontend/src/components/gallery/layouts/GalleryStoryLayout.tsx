@@ -34,6 +34,7 @@ interface CategoryScene {
 
 interface GalleryStoryLayoutProps extends BaseGalleryLayoutProps {
   heroPhotoOverride?: Photo | null;
+  welcomeMessage?: string;
 }
 
 export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
@@ -55,6 +56,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
   feedbackEnabled = false,
   feedbackOptions,
   heroPhotoOverride,
+  welcomeMessage,
   onLogout
 }) => {
   // These props are passed by parent but we use our own feedback system, so mark as intentionally unused
@@ -348,7 +350,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
       <footer className="story-footer">
         <h2 className="story-footer-title">{t('gallery.thankYou', 'Thank You')}</h2>
         <p className="story-footer-text">
-          {t('gallery.thankYouMessage', 'For being part of our story and making our special day unforgettable.')}
+          {welcomeMessage || t('gallery.thankYouMessage', 'For being part of our story and making our special day unforgettable.')}
         </p>
         {allowDownloads && (
           <button className="story-footer-btn" onClick={handleDownloadAll}>

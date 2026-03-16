@@ -156,6 +156,15 @@ export const GalleryPage: React.FC = () => {
         themeToApply = settingsData.theme_config;
       }
 
+      // Inject hero photo ID into theme gallery settings
+      if (themeToApply && galleryInfo.hero_photo_id) {
+        if (themeToApply.gallerySettings) {
+          themeToApply.gallerySettings.heroImageId = galleryInfo.hero_photo_id;
+        } else {
+          themeToApply.gallerySettings = { heroImageId: galleryInfo.hero_photo_id };
+        }
+      }
+
       // Apply theme
       if (themeToApply) {
         setTheme(themeToApply);

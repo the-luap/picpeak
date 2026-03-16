@@ -5,6 +5,7 @@ const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const { list, resolveExternalPath, getExternalMediaRoot } = require('../services/externalMediaService');
 const { db, logActivity } = require('../database/db');
+const sharp = require('sharp');
 const logger = require('../utils/logger');
 
 const router = express.Router();
@@ -108,6 +109,18 @@ router.post('/events/:id/import-external', adminAuth, requirePermission('photos.
           .first();
         if (exists) { skipped++; continue; }
         const stats = await fs.stat(f.full);
+
+        // Extract dimensions via Sharp
+        let width = null;
+        let height = null;
+        try {
+          const metadata = await sharp(f.full).metadata();
+          width = metadata.width || null;
+          height = metadata.height || null;
+        } catch (dimErr) {
+          logger.warn(`Could not extract dimensions for ${f.rel}: ${dimErr.message}`);
+        }
+
         const inserted = await db('photos')
           .insert({
             event_id: eventId,
@@ -117,6 +130,8 @@ router.post('/events/:id/import-external', adminAuth, requirePermission('photos.
             thumbnail_path: null,
             type,
             size_bytes: stats.size,
+            width,
+            height,
             source_origin: 'external',
             external_relpath: f.rel
           })
