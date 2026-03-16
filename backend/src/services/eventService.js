@@ -138,7 +138,9 @@ const createEvent = async (eventData) => {
     show_feedback_to_guests,
     // Upload settings
     allow_user_uploads,
-    upload_category_id
+    upload_category_id,
+    // Photo cap
+    photo_cap
   } = eventData;
 
   const requirePassword = parseBooleanInput(require_password, true);
@@ -207,7 +209,9 @@ const createEvent = async (eventData) => {
     show_feedback_to_guests: show_feedback_to_guests !== undefined ? formatBoolean(show_feedback_to_guests) : undefined,
     // Upload settings
     allow_user_uploads: allow_user_uploads !== undefined ? formatBoolean(allow_user_uploads) : undefined,
-    upload_category_id: upload_category_id || null
+    upload_category_id: upload_category_id || null,
+    // Photo cap
+    photo_cap: photo_cap || null
   };
 
   // Remove undefined values

@@ -280,7 +280,8 @@ router.post('/gallery/verify', [
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
         upload_category_id: event.upload_category_id,
-        require_password: requiresPassword
+        require_password: requiresPassword,
+        photo_cap: event.photo_cap
       }
     });
   } catch (error) {
@@ -353,7 +354,8 @@ router.post('/gallery/share-login', [
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
         upload_category_id: event.upload_category_id,
-        require_password: requiresPassword
+        require_password: requiresPassword,
+        photo_cap: event.photo_cap
       }
     });
   } catch (error) {

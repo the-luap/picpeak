@@ -835,6 +835,8 @@
     "expirationWarning": "Gäste erhalten 7 Tage vor Ablauf eine Warn-E-Mail.",
     "noExpiration": "Kein Ablaufdatum",
     "noExpirationHelp": "Diese Galerie bleibt aktiv, bis sie manuell archiviert wird.",
+    "photoCap": "Fotolimit",
+    "photoCapHelp": "Maximale Anzahl erlaubter Fotos. 0 = unbegrenzt",
     "userUploads": "Benutzer-Upload-Einstellungen",
     "allowUserUploads": "Gästen erlauben, Fotos hochzuladen",
     "allowUserUploadsHelp": "Ermöglichen Sie Gästen, ihre eigenen Fotos in diese Galerie hochzuladen",

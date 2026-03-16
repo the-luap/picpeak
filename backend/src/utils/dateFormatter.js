@@ -54,6 +54,8 @@ async function formatDate(date, language = 'en') {
     let locale = dateConfig.locale || 'en-GB';
     if (language === 'de') {
       locale = 'de-DE';
+    } else if (language === 'pt') {
+      locale = 'pt-BR';
     } else if (language === 'en' && dateConfig.format === 'MM/DD/YYYY') {
       locale = 'en-US';
     }

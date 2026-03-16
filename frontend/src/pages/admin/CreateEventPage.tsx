@@ -8,7 +8,8 @@ import {
   ArrowLeft,
   Palette,
   Eye,
-  EyeOff
+  EyeOff,
+  Image
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -44,6 +45,7 @@ interface FormData {
   allow_user_uploads: boolean;
   upload_category_id: number | null;
   css_template_id: number | null;
+  photo_cap: number;
   feedback_settings: {
     feedback_enabled: boolean;
     allow_ratings: boolean;
@@ -98,6 +100,7 @@ export const CreateEventPage: React.FC = () => {
     allow_user_uploads: false,
     upload_category_id: null,
     css_template_id: null,
+    photo_cap: 0,
     feedback_settings: {
       feedback_enabled: false,
       allow_ratings: true,
@@ -298,6 +301,7 @@ export const CreateEventPage: React.FC = () => {
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
       css_template_id: formData.css_template_id,
+      photo_cap: formData.photo_cap > 0 ? formData.photo_cap : null,
       feedback_enabled: feedbackSettings.feedback_enabled,
       allow_ratings: feedbackSettings.allow_ratings,
       allow_likes: feedbackSettings.allow_likes,
@@ -716,6 +720,27 @@ export const CreateEventPage: React.FC = () => {
                 </p>
               </div>
             )}
+
+            {/* Photo Cap */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                {t('events.photoCap', 'Photo Limit')}
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="w-32">
+                  <Input
+                    type="number"
+                    value={formData.photo_cap}
+                    onChange={(e) => setFormData({ ...formData, photo_cap: parseInt(e.target.value) || 0 })}
+                    min={0}
+                    leftIcon={<Image className="w-5 h-5" />}
+                  />
+                </div>
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
+                </span>
+              </div>
+            </div>
 
             {/* User Upload Settings */}
             <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">

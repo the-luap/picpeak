@@ -170,7 +170,30 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
       }
       return res.status(404).json({ error: 'Event not found' });
     }
-    
+
+    // Enforce photo cap if set
+    if (event.photo_cap && event.photo_cap > 0) {
+      const existingPhotoCount = await db('photos')
+        .where({ event_id: eventId })
+        .count('id as count')
+        .first();
+      const currentCount = parseInt(existingPhotoCount.count) || 0;
+      const newFilesCount = (req.files && req.files.length) || 0;
+      if (currentCount + newFilesCount > event.photo_cap) {
+        // Clean up temp files
+        if (req.tempUploadPath) {
+          try {
+            await fs.rm(req.tempUploadPath, { recursive: true, force: true });
+          } catch (e) {
+            console.error('Failed to clean up temp path:', e);
+          }
+        }
+        return res.status(400).json({
+          error: `Photo cap exceeded. This event allows a maximum of ${event.photo_cap} photos. Currently ${currentCount} photos exist, and you are trying to upload ${newFilesCount} more.`
+        });
+      }
+    }
+
     if (!req.files || req.files.length === 0) {
       console.error('No files in request. req.files:', req.files);
       console.error('Request body keys:', Object.keys(req.body));

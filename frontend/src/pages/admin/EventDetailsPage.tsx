@@ -172,6 +172,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_position: 'top' | 'center' | 'bottom';
     // Hero image anchor position (#162) – keyword or "X% Y%" focal point
     hero_image_anchor: string;
+    // Photo cap
+    photo_cap: number;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -202,6 +204,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_position: 'top',
     // Hero image anchor position (#162)
     hero_image_anchor: 'center',
+    // Photo cap
+    photo_cap: 0,
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -417,6 +421,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_position: event.hero_logo_position || 'top',
       // Hero image anchor position (#162)
       hero_image_anchor: event.hero_image_anchor || 'center',
+      // Photo cap
+      photo_cap: event.photo_cap || 0,
     });
 
     setShowNewPassword(false);
@@ -550,6 +556,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_position: editForm.hero_logo_position,
       // Hero image anchor position (#162)
       hero_image_anchor: editForm.hero_image_anchor,
+      // Photo cap
+      photo_cap: editForm.photo_cap > 0 ? editForm.photo_cap : null,
       // Header style settings (decoupled from layout, #158)
       header_style: currentTheme?.headerStyle || 'standard',
       hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
@@ -1026,6 +1034,25 @@ export const EventDetailsPage: React.FC = () => {
                   </div>
                 )}
                 
+                {/* Photo Cap */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('events.photoCap', 'Photo Limit')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={editForm.photo_cap}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, photo_cap: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
+                    </span>
+                  </div>
+                </div>
+
                 <div>
                   <label className="flex items-center">
                     <input

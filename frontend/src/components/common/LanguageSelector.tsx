@@ -29,10 +29,20 @@ const RUFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => 
   </svg>
 );
 
+const PTBRFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#009B3A" d="M0 0h640v480H0z"/>
+    <path fill="#FEDF00" d="M320 39.4 590.4 240 320 440.6 49.6 240z"/>
+    <circle fill="#002776" cx="320" cy="240" r="95"/>
+    <path fill="#FFF" d="M226.3 262.8c0-27 12.8-51 32.7-66.3a95.3 95.3 0 0 0-3.5 120.6c-17.8-14.8-29.2-37-29.2-54.3z" opacity=".5"/>
+  </svg>
+);
+
 const languages = [
   { code: 'en', name: 'English', Flag: GBFlag },
   { code: 'de', name: 'Deutsch', Flag: DEFlag },
   { code: 'ru', name: 'Русский', Flag: RUFlag },
+  { code: 'pt', name: 'Português', Flag: PTBRFlag },
 ];
 
 export const LanguageSelector: React.FC = () => {

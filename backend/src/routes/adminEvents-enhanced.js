@@ -42,7 +42,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       color_theme = null,
       expiration_days = 30,
       allow_user_uploads = false,
-      upload_category_id = null
+      upload_category_id = null,
+      photo_cap = null
     } = req.body;
     
     // Validate password strength for gallery
@@ -105,7 +106,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       expires_at: expires_at.toISOString(),
       created_at: new Date().toISOString(),
       allow_user_uploads,
-      upload_category_id
+      upload_category_id,
+      photo_cap: photo_cap || null
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
