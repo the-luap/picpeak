@@ -111,57 +111,8 @@ async function getRecipientLanguage(email, eventId = null) {
   return 'en'; // Default to English
 }
 
-// Process email template with variables
-async function processTemplate(template, variables, language = 'en') {
-  // Import date formatter and text formatters
-  const { formatDate } = require('../utils/dateFormatter');
-  const { formatWelcomeMessage } = require('../utils/formatters');
-  
-  // Get the appropriate language fields
-  const subjectField = language === 'de' ? 'subject_de' : 'subject_en';
-  const htmlField = language === 'de' ? 'body_html_de' : 'body_html_en';
-  const textField = language === 'de' ? 'body_text_de' : 'body_text_en';
-  
-  // Fall back to non-language-specific fields for backward compatibility
-  let subject = template[subjectField] || template.subject || '';
-  let htmlBody = template[htmlField] || template.body_html || '';
-  let textBody = template[textField] || template.body_text || '';
-  
-  // Process variables before template compilation
-  const processedVariables = { ...variables };
-  
-  // Handle password security message
-  if (processedVariables.gallery_password === '{{password_security_message}}') {
-    processedVariables.gallery_password = language === 'de' 
-      ? '(Aus Sicherheitsgründen nicht angezeigt)' 
-      : '(Not shown for security reasons)';
-  }
-
-  if (processedVariables.gallery_password === 'No password required') {
-    processedVariables.gallery_password = language === 'de'
-      ? 'Kein Passwort erforderlich'
-      : 'No password required';
-  }
-  
-  // Format dates if they exist
-  if (processedVariables.event_date) {
-    processedVariables.event_date = await formatDate(processedVariables.event_date, language);
-  }
-  if (processedVariables.expiry_date) {
-    processedVariables.expiry_date = await formatDate(processedVariables.expiry_date, language);
-  }
-  if (processedVariables.archive_date) {
-    processedVariables.archive_date = await formatDate(processedVariables.archive_date, language);
-  }
-  if (processedVariables.expires_at) {
-    processedVariables.expires_at = await formatDate(processedVariables.expires_at, language);
-  }
-  
-  // Format welcome message for HTML display (preserve line breaks)
-  if (processedVariables.welcome_message) {
-    processedVariables.welcome_message = formatWelcomeMessage(processedVariables.welcome_message);
-  }
-
+// Wrap HTML body in the styled email template with header, footer, and logo
+async function wrapEmailHtml(htmlBody, subject, language = 'en') {
   // Get branding settings for logo
   let logoUrl = '';
   let companyName = 'PicPeak';
@@ -169,7 +120,7 @@ async function processTemplate(template, variables, language = 'en') {
     const brandingSettings = await db('app_settings')
       .whereIn('setting_key', ['branding_logo_url', 'branding_company_name'])
       .select('setting_key', 'setting_value');
-    
+
     brandingSettings.forEach(setting => {
       if (setting.setting_key === 'branding_logo_url' && setting.setting_value) {
         try {
@@ -190,22 +141,10 @@ async function processTemplate(template, variables, language = 'en') {
   }
 
   // If no custom logo, use default PicPeak logo
-  const apiUrl = process.env.API_URL || 'http://localhost:3001';
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3005';
-  const logoFullUrl = logoUrl ? `${apiUrl}${logoUrl}` : `${frontendUrl}/picpeak-logo-transparent.png`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const logoFullUrl = `${frontendUrl}${logoUrl || '/picpeak-logo-transparent.png'}`;
 
-  // Compile templates with Handlebars
-  const subjectTemplate = Handlebars.compile(subject);
-  const htmlTemplate = Handlebars.compile(htmlBody);
-  const textTemplate = Handlebars.compile(textBody);
-  
-  // Process templates with processedVariables (includes formatted dates and security messages)
-  subject = subjectTemplate(processedVariables);
-  htmlBody = htmlTemplate(processedVariables);
-  textBody = textTemplate(processedVariables);
-
-  // Wrap HTML body in styled template
-  const styledHtmlBody = `
+  return `
 <!DOCTYPE html>
 <html lang="${language}">
 <head>
@@ -338,6 +277,71 @@ async function processTemplate(template, variables, language = 'en') {
   </div>
 </body>
 </html>`;
+}
+
+// Process email template with variables
+async function processTemplate(template, variables, language = 'en') {
+  // Import date formatter and text formatters
+  const { formatDate } = require('../utils/dateFormatter');
+  const { formatWelcomeMessage } = require('../utils/formatters');
+
+  // Get the appropriate language fields
+  const subjectField = language === 'de' ? 'subject_de' : 'subject_en';
+  const htmlField = language === 'de' ? 'body_html_de' : 'body_html_en';
+  const textField = language === 'de' ? 'body_text_de' : 'body_text_en';
+
+  // Fall back to non-language-specific fields for backward compatibility
+  let subject = template[subjectField] || template.subject || '';
+  let htmlBody = template[htmlField] || template.body_html || '';
+  let textBody = template[textField] || template.body_text || '';
+
+  // Process variables before template compilation
+  const processedVariables = { ...variables };
+
+  // Handle password security message
+  if (processedVariables.gallery_password === '{{password_security_message}}') {
+    processedVariables.gallery_password = language === 'de'
+      ? '(Aus Sicherheitsgründen nicht angezeigt)'
+      : '(Not shown for security reasons)';
+  }
+
+  if (processedVariables.gallery_password === 'No password required') {
+    processedVariables.gallery_password = language === 'de'
+      ? 'Kein Passwort erforderlich'
+      : 'No password required';
+  }
+
+  // Format dates if they exist
+  if (processedVariables.event_date) {
+    processedVariables.event_date = await formatDate(processedVariables.event_date, language);
+  }
+  if (processedVariables.expiry_date) {
+    processedVariables.expiry_date = await formatDate(processedVariables.expiry_date, language);
+  }
+  if (processedVariables.archive_date) {
+    processedVariables.archive_date = await formatDate(processedVariables.archive_date, language);
+  }
+  if (processedVariables.expires_at) {
+    processedVariables.expires_at = await formatDate(processedVariables.expires_at, language);
+  }
+
+  // Format welcome message for HTML display (preserve line breaks)
+  if (processedVariables.welcome_message) {
+    processedVariables.welcome_message = formatWelcomeMessage(processedVariables.welcome_message);
+  }
+
+  // Compile templates with Handlebars
+  const subjectTemplate = Handlebars.compile(subject);
+  const htmlTemplate = Handlebars.compile(htmlBody);
+  const textTemplate = Handlebars.compile(textBody);
+
+  // Process templates with processedVariables (includes formatted dates and security messages)
+  subject = subjectTemplate(processedVariables);
+  htmlBody = htmlTemplate(processedVariables);
+  textBody = textTemplate(processedVariables);
+
+  // Wrap HTML body in styled template
+  const styledHtmlBody = await wrapEmailHtml(htmlBody, subject, language);
 
   return { subject, htmlBody: styledHtmlBody, textBody };
 }
@@ -558,5 +562,6 @@ module.exports = {
   processEmailQueue,
   queueEmail,
   stopEmailQueueProcessor,
-  testEmailConnection
+  testEmailConnection,
+  wrapEmailHtml
 };

@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
+const { wrapEmailHtml } = require('../services/emailProcessor');
 const router = express.Router();
 
 // Get email configuration
@@ -458,9 +459,12 @@ router.post('/templates/:key/preview', adminAuth, requirePermission('email.view'
       });
     }
 
+    // Wrap in the full styled email template with header/footer/logo
+    const wrappedHtml = await wrapEmailHtml(htmlContent, subject, language);
+
     res.json({
       subject,
-      body_html: htmlContent,
+      body_html: wrappedHtml,
       body_text: textContent,
       language
     });
