@@ -461,6 +461,8 @@
     "expirationWarning": "Guests will receive a warning email 7 days before expiration.",
     "noExpiration": "No Expiration",
     "noExpirationHelp": "This gallery will remain active until manually archived.",
+    "photoCap": "Photo Limit",
+    "photoCapHelp": "Maximum number of photos allowed. 0 = unlimited",
     "userUploads": "User Upload Settings",
     "allowUserUploads": "Allow guests to upload photos",
     "allowUserUploadsHelp": "Enable guests to upload their own photos to this gallery",

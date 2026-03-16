@@ -256,7 +256,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       header_style = 'standard',
       hero_divider_style = 'wave',
       // Hero image anchor position (#162)
-      hero_image_anchor = 'center'
+      hero_image_anchor = 'center',
+      // Photo cap
+      photo_cap = null
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -416,7 +418,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_logo_position: hero_logo_position || 'top',
       header_style: effectiveHeaderStyle || 'standard',
       hero_divider_style: effectiveDividerStyle || 'wave',
-      hero_image_anchor: hero_image_anchor || 'center'
+      hero_image_anchor: hero_image_anchor || 'center',
+      photo_cap: photo_cap || null
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -479,6 +482,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       customer_name: customerName,
       customer_email: customerEmail,
       require_password: requirePassword,
+      photo_cap: photo_cap || null,
       share_link: shareUrl,
       expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString()

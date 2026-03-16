@@ -53,6 +53,8 @@ export interface Event {
   hero_image_anchor?: string;
   // CSS Template
   css_template_id?: number | null;
+  // Photo cap
+  photo_cap?: number | null;
 }
 
 export interface GalleryInfo {
@@ -202,6 +204,7 @@ export interface GalleryAuthResponse {
     allow_user_uploads?: boolean;
     upload_category_id?: number | null;
     require_password?: boolean;
+    photo_cap?: number | null;
   };
 }
 

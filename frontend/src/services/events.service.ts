@@ -39,6 +39,7 @@ interface CreateEventData {
   require_name_email?: boolean;
   moderate_comments?: boolean;
   show_feedback_to_guests?: boolean;
+  photo_cap?: number | null;
 }
 
 interface UpdateEventData {
@@ -58,6 +59,7 @@ interface UpdateEventData {
   hero_photo_id?: number | null;
   source_mode?: 'managed' | 'reference';
   external_path?: string | null;
+  photo_cap?: number | null;
 }
 
 interface EventsListResponse {
