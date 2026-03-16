@@ -1949,6 +1949,7 @@
     "subjectLine": "Betreffzeile",
     "emailBody": "E-Mail-Text",
     "preview": "Vorschau",
+    "save": "Speichern",
     "saveChanges": "Änderungen speichern",
     "templates": "Vorlagen",
     "variableHelp": "Verwenden Sie diese Variablen in Ihrer Vorlage. Sie werden beim Senden durch tatsächliche Werte ersetzt.",
@@ -1959,7 +1960,28 @@
     "enterPassword": "Passwort eingeben",
     "required": "erforderlich",
     "ignoreSslErrors": "SSL/TLS-Zertifikatfehler ignorieren",
-    "ignoreSslWarning": "Warnung: Das Deaktivieren der Zertifikatüberprüfung macht die Verbindung anfällig für Man-in-the-Middle-Angriffe. Aktivieren Sie dies nur, wenn Sie dem SMTP-Server vertrauen und die Sicherheitsrisiken verstehen."
+    "ignoreSslWarning": "Warnung: Das Deaktivieren der Zertifikatüberprüfung macht die Verbindung anfällig für Man-in-the-Middle-Angriffe. Aktivieren Sie dies nur, wenn Sie dem SMTP-Server vertrauen und die Sicherheitsrisiken verstehen.",
+    "editor": {
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "bulletList": "Aufzählung",
+      "numberedList": "Nummerierte Liste",
+      "blockquote": "Zitat",
+      "link": "Link hinzufügen",
+      "horizontalRule": "Trennlinie",
+      "alignLeft": "Linksbündig",
+      "alignCenter": "Zentriert",
+      "alignRight": "Rechtsbündig",
+      "clearFormatting": "Formatierung entfernen",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "insertVariable": "Variable einfügen",
+      "sourceMode": "Quellcode",
+      "visualMode": "Visuell",
+      "enterUrl": "URL eingeben...",
+      "addLink": "Hinzufügen",
+      "cancel": "Abbrechen"
+    }
   },
   "cms": {
     "title": "CMS-Seiten",
