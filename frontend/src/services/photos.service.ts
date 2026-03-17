@@ -73,9 +73,16 @@ class PhotosService {
   }
 
   async updatePhotosCategory(eventId: number, photoIds: number[], categoryId: number | null): Promise<void> {
-    await api.post(`/admin/events/${eventId}/photos/bulk-update`, { 
-      photoIds, 
+    await api.post(`/admin/events/${eventId}/photos/bulk-update`, {
+      photoIds,
       updates: { category_id: categoryId }
+    });
+  }
+
+  async bulkUpdatePhotos(eventId: number, photoIds: number[], updates: Record<string, unknown>): Promise<void> {
+    await api.post(`/admin/events/${eventId}/photos/bulk-update`, {
+      photoIds,
+      updates
     });
   }
 

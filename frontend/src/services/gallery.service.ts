@@ -114,6 +114,16 @@ export const galleryService = {
     window.URL.revokeObjectURL(url);
   },
 
+  // Toggle photo visibility (client-only)
+  async togglePhotoVisibility(slug: string, photoId: number, visibility: 'visible' | 'hidden'): Promise<void> {
+    await api.patch(`/gallery/${slug}/photos/${photoId}/visibility`, { visibility });
+  },
+
+  // Bulk toggle photo visibility (client-only)
+  async bulkToggleVisibility(slug: string, photoIds: number[], visibility: 'visible' | 'hidden'): Promise<void> {
+    await api.patch(`/gallery/${slug}/photos/visibility/bulk`, { photoIds, visibility });
+  },
+
   // Get gallery statistics
   async getGalleryStats(slug: string): Promise<GalleryStats> {
     const response = await api.get<GalleryStats>(`/gallery/${slug}/stats`);

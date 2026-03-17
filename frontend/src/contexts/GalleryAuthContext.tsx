@@ -11,6 +11,7 @@ import {
   setActiveGallerySlug,
   storeGalleryToken,
 } from '../utils/galleryAuthStorage';
+import type { GalleryAccessLevel } from '../types';
 
 interface GalleryEvent {
   id: number;
@@ -37,7 +38,10 @@ const normalizeEvent = (incoming: GalleryEvent | null | undefined): GalleryEvent
 interface GalleryAuthContextType {
   isAuthenticated: boolean;
   event: GalleryEvent | null;
+  accessLevel: GalleryAccessLevel;
+  isClient: boolean;
   login: (slug: string, password?: string, recaptchaToken?: string | null) => Promise<void>;
+  clientLogin: (slug: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -60,6 +64,7 @@ interface GalleryAuthProviderProps {
 export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [event, setEvent] = useState<GalleryEvent | null>(null);
+  const [accessLevel, setAccessLevel] = useState<GalleryAccessLevel>('guest');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -188,6 +193,14 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       }
     }
 
+    // Restore access level from session storage
+    const storedAccessLevel = sessionStorage.getItem(`gallery_access_level_${currentSlug}`);
+    if (storedAccessLevel === 'client') {
+      setAccessLevel('client');
+    } else {
+      setAccessLevel('guest');
+    }
+
     const initialise = async () => {
       try {
         setIsLoading(true);
@@ -285,15 +298,43 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
     }
   };
 
+  const clientLoginFn = async (slug: string, password: string) => {
+    try {
+      setRouteError(null);
+      setError(null);
+      setIsLoading(true);
+      const response = await authService.clientLogin(slug, password);
+      if (response.token) {
+        storeGalleryToken(slug, response.token);
+      }
+      setActiveGallerySlug(slug);
+      const normalizedEvent = normalizeEvent(response.event);
+      setEvent(normalizedEvent);
+      if (normalizedEvent) {
+        sessionStorage.setItem(`gallery_event_${slug}`, JSON.stringify(normalizedEvent));
+      }
+      setAccessLevel(response.accessLevel || 'client');
+      sessionStorage.setItem(`gallery_access_level_${slug}`, 'client');
+      setIsAuthenticated(true);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Invalid PIN');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     const currentSlug = routeInfo.slug;
     if (currentSlug) {
       sessionStorage.removeItem(`gallery_event_${currentSlug}`);
+      sessionStorage.removeItem(`gallery_access_level_${currentSlug}`);
       clearGalleryToken(currentSlug);
     }
     authService.galleryLogout(currentSlug || undefined);
     setIsAuthenticated(false);
     setEvent(null);
+    setAccessLevel('guest');
     clearActiveGallerySlug();
   };
 
@@ -302,7 +343,10 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
       value={{
         isAuthenticated,
         event,
+        accessLevel,
+        isClient: accessLevel === 'client',
         login,
+        clientLogin: clientLoginFn,
         logout,
         isLoading,
         error: routeError ?? error,

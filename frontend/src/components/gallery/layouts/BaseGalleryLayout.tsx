@@ -33,6 +33,9 @@ export interface BaseGalleryLayoutProps {
   };
   // Logout callback for full-page layouts
   onLogout?: () => void;
+  // Client visibility controls (#172)
+  isClient?: boolean;
+  onToggleVisibility?: (photoId: number, currentVisibility: string) => void;
 }
 
 export abstract class BaseGalleryLayout<T extends BaseGalleryLayoutProps = BaseGalleryLayoutProps> extends React.Component<T> {

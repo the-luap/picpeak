@@ -8,6 +8,7 @@ import { analyticsService } from './services/analytics.service';
 import { GalleryAuthProvider, MaintenanceProvider } from './contexts';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GalleryPage } from './pages/GalleryPage';
+import { ClientAccessPage } from './pages/ClientAccessPage';
 import { PreviewPage } from './pages/gallery/PreviewPage';
 import { LegalPage } from './pages/public/LegalPage';
 import {
@@ -121,6 +122,11 @@ function App() {
                   <Routes>
                   {/* Public gallery routes */}
                   <Route path="/gallery/preview" element={<PreviewPage />} />
+                  <Route path="/gallery/:slug/client-access" element={
+                    <GalleryAuthProvider>
+                      <ClientAccessPage />
+                    </GalleryAuthProvider>
+                  } />
                   <Route path="/gallery/:slug/:token?" element={
                     <GalleryAuthProvider>
                       <GalleryPage />

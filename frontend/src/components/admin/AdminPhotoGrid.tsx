@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Download, Trash2, Eye, Package, MessageSquare, Star, Video, FolderOpen } from 'lucide-react';
+import { Check, Download, Trash2, Eye, EyeOff, Package, MessageSquare, Star, Video, FolderOpen } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
@@ -201,6 +201,34 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                   >
                     {t('photos.moveToCategory', 'Move to Category')}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await photosService.bulkUpdatePhotos(eventId, Array.from(selectedPhotos), { visibility: 'hidden' });
+                        toast.success(t('admin.photos.hiddenSuccess', 'Photos hidden'));
+                        onPhotosDeleted();
+                      } catch { toast.error(t('common.error')); }
+                    }}
+                    leftIcon={<EyeOff className="w-4 h-4" />}
+                  >
+                    {t('admin.photos.hideSelected', 'Hide')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await photosService.bulkUpdatePhotos(eventId, Array.from(selectedPhotos), { visibility: 'visible' });
+                        toast.success(t('admin.photos.visibleSuccess', 'Photos visible'));
+                        onPhotosDeleted();
+                      } catch { toast.error(t('common.error')); }
+                    }}
+                    leftIcon={<Eye className="w-4 h-4" />}
+                  >
+                    {t('admin.photos.showSelected', 'Show')}
+                  </Button>
                   <button
                     onClick={handleDeleteSelected}
                     disabled={isDeleting}
@@ -259,6 +287,16 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                 {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
               </div>
             </button>
+
+            {/* Visibility badge (#172) */}
+            {(photo as any).visibility === 'hidden' && (
+              <div className="absolute top-2 left-2 z-20">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px] font-medium">
+                  <EyeOff className="w-3 h-3" />
+                  {t('admin.photos.hidden', 'Hidden')}
+                </span>
+              </div>
+            )}
 
             {/* Thumbnail */}
             <div className="aspect-square">

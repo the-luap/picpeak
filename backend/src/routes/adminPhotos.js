@@ -587,7 +587,7 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
 router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.edit'), async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
-    const { category_id } = req.body;
+    const { category_id, visibility } = req.body;
 
     // Verify photo belongs to event
     const photo = await db('photos')
@@ -600,6 +600,13 @@ router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.e
 
     // Prepare update data
     const updateData = {};
+
+    // Handle visibility update (#172)
+    if (visibility !== undefined) {
+      if (['visible', 'hidden'].includes(visibility)) {
+        updateData.visibility = visibility;
+      }
+    }
 
     // Handle type-based categories ('individual' or 'collage')
     // These are string values that map to the photo.type field
@@ -735,6 +742,13 @@ router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos
     
     // Prepare update data
     const updateData = {};
+
+    // Handle visibility update (#172)
+    if (updates.visibility !== undefined) {
+      if (['visible', 'hidden'].includes(updates.visibility)) {
+        updateData.visibility = updates.visibility;
+      }
+    }
 
     if (updates.category_id !== undefined) {
       // Handle type-based categories ('individual' or 'collage')

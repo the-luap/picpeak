@@ -124,6 +124,8 @@ const mapEventForApi = (event) => {
     host_email,
     customer_name,
     customer_email,
+    password_hash: _ph,
+    client_password_hash: _cph,
     ...rest
   } = event;
 
@@ -208,7 +210,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
-  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
+  // Client access settings (#172)
+  body('client_access_enabled').optional().isBoolean(),
+  body('client_password').optional().isString()
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -258,7 +263,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       // Hero image anchor position (#162)
       hero_image_anchor = 'center',
       // Photo cap
-      photo_cap = null
+      photo_cap = null,
+      // Client access settings (#172)
+      client_access_enabled = false,
+      client_password = null
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -419,7 +427,13 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       header_style: effectiveHeaderStyle || 'standard',
       hero_divider_style: effectiveDividerStyle || 'wave',
       hero_image_anchor: hero_image_anchor || 'center',
-      photo_cap: photo_cap || null
+      photo_cap: photo_cap || null,
+      // Client access (#172)
+      client_access_enabled: formatBoolean(client_access_enabled),
+      ...(client_access_enabled && client_password ? {
+        client_password_hash: await bcrypt.hash(client_password, getBcryptRounds()),
+        client_share_token: crypto.randomBytes(32).toString('hex')
+      } : {})
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -453,21 +467,32 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     // Language detection is handled by email processor
 
     if (customerEmail) {
+      // Build email data with optional client access info
+      const emailData = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
+        event_name,
+        event_date: event_date,  // Pass raw date - will be formatted by email processor
+        gallery_link: shareUrl,
+        gallery_password: requirePassword ? password : 'No password required',
+        expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
+        welcome_message: welcome_message || ''
+      };
+
+      // Include client access info in email when enabled (#172)
+      if (client_access_enabled && client_password) {
+        const createdEvent = await db('events').where('id', eventId).first();
+        const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || '';
+        emailData.client_link = `${frontendUrl}/gallery/${slug}/client-access?token=${createdEvent.client_share_token}`;
+        emailData.client_password = client_password;
+      }
+
       await db('email_queue').insert({
         event_id: eventId,
         recipient_email: customerEmail,
         email_type: 'gallery_created',
-        email_data: JSON.stringify({
-          customer_name: customerName,
-          customer_email: customerEmail,
-          host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
-          event_name,
-          event_date: event_date,  // Pass raw date - will be formatted by email processor
-          gallery_link: shareUrl,
-          gallery_password: requirePassword ? password : 'No password required',
-          expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
-          welcome_message: welcome_message || ''
-        }),
+        email_data: JSON.stringify(emailData),
         status: 'pending',
         created_at: new Date()
         // scheduled_at will use default value
@@ -709,7 +734,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
-  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
+  // Client access settings (#172)
+  body('client_access_enabled').optional().isBoolean(),
+  body('client_password').optional().isString(),
+  body('regenerate_client_token').optional().isBoolean()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -787,6 +816,25 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     if (updates.source_mode === 'reference' && (updates.external_path === null || updates.external_path === undefined)) {
       return res.status(400).json({ error: 'external_path is required when source_mode is reference' });
     }
+
+    // Handle client access fields (#172)
+    if (Object.prototype.hasOwnProperty.call(updates, 'client_access_enabled')) {
+      updates.client_access_enabled = formatBoolean(updates.client_access_enabled);
+      // Auto-generate client share token when first enabling
+      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token) {
+        updates.client_share_token = crypto.randomBytes(32).toString('hex');
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'client_password') && updates.client_password) {
+      updates.client_password_hash = await bcrypt.hash(updates.client_password, getBcryptRounds());
+      delete updates.client_password;
+    } else {
+      delete updates.client_password;
+    }
+    if (updates.regenerate_client_token) {
+      updates.client_share_token = crypto.randomBytes(32).toString('hex');
+    }
+    delete updates.regenerate_client_token;
 
     // Log the update request for debugging
     logger.debug('Update event request', {
