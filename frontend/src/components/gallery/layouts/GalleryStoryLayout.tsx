@@ -17,6 +17,7 @@ import {
   StoryFeedbackSheet,
   StoryScrollToTop
 } from './story';
+import { PhotoLightbox } from '../PhotoLightbox';
 
 import './GalleryStoryLayout.css';
 
@@ -71,6 +72,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [selectedPhotoForFeedback, setSelectedPhotoForFeedback] = useState<Photo | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, Array<{ id: string; author: string; text: string; date: string }>>>({});
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
@@ -112,7 +114,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
 
     // Group by category
     filteredPhotos.forEach(photo => {
-      const categoryName = photo.category_name || t('gallery.uncategorized', 'Gallery');
+      const categoryName = photo.category_name || '';
       if (!photosByCategory[categoryName]) {
         photosByCategory[categoryName] = [];
       }
@@ -162,6 +164,11 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
   const handleOpenFeedback = useCallback((photo: Photo) => {
     setSelectedPhotoForFeedback(photo);
   }, []);
+
+  const handleOpenLightbox = useCallback((photo: Photo) => {
+    const index = photos.findIndex(p => p.id === photo.id);
+    setLightboxIndex(index >= 0 ? index : 0);
+  }, [photos]);
 
   const handleCloseFeedback = useCallback(() => {
     setSelectedPhotoForFeedback(null);
@@ -312,7 +319,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
                   photos={scene.photos}
                   favorites={favorites}
                   onToggleFavorite={handleToggleFavorite}
-                  onPhotoClick={handleOpenFeedback}
+                  onPhotoClick={handleOpenLightbox}
                   slug={slug}
                   allowDownloads={allowDownloads}
                   protectionLevel={protectionLevel}
@@ -328,7 +335,7 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
                       index={index}
                       isFavorite={favorites.has(photo.id)}
                       onToggleFavorite={handleToggleFavorite}
-                      onClick={() => handleOpenFeedback(photo)}
+                      onClick={() => handleOpenLightbox(photo)}
                       slug={slug}
                       galleryId={`gallery-${scene.id}`}
                       allowDownloads={allowDownloads}
@@ -358,6 +365,22 @@ export const GalleryStoryLayout: React.FC<GalleryStoryLayoutProps> = ({
           </button>
         )}
       </footer>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <PhotoLightbox
+          photos={photos}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          slug={slug}
+          feedbackEnabled={feedbackEnabled}
+          allowDownloads={allowDownloads}
+          protectionLevel={protectionLevel}
+          useEnhancedProtection={useEnhancedProtection}
+          useCanvasRendering={useCanvasRendering}
+          onFeedbackChange={onFeedbackChange}
+        />
+      )}
 
       {/* Feedback Sheet */}
       {feedbackEnabled && (

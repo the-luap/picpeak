@@ -343,7 +343,7 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
         <div
           className="gallery-premium-hero-bg"
           style={{
-            backgroundImage: heroPhoto ? `url(${heroPhoto.thumbnail_url || heroPhoto.url})` : undefined
+            backgroundImage: heroPhoto ? `url(${heroPhoto.hero_url || heroPhoto.url})` : undefined
           }}
         />
         <div className="gallery-premium-hero-overlay" />
