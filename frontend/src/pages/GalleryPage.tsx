@@ -106,7 +106,7 @@ export const GalleryPage: React.FC = () => {
   }, [resolvedSlug]);
   
   // Fetch branding settings
-  const { data: settingsData } = useQuery({
+  const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['gallery-settings'],
     queryFn: async () => {
       const response = await api.get('/public/settings');
@@ -177,7 +177,7 @@ export const GalleryPage: React.FC = () => {
       return;
     }
 
-    if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted) {
+    if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted && !isLoadingSettings) {
       setAutoLoginAttempted(true);
       setIsLoggingIn(true);
       login(resolvedSlug, '')
@@ -194,7 +194,7 @@ export const GalleryPage: React.FC = () => {
           setIsLoggingIn(false);
         });
     }
-  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier]);
+  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier, isLoadingSettings]);
 
   // Calculate days until expiration (null if no expiration set)
   const daysUntilExpiration = galleryInfo?.expires_at
@@ -526,15 +526,23 @@ export const GalleryPage: React.FC = () => {
                 </>
               ) : (
                 <div className="text-center space-y-3">
-                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
-                    {t('gallery.publicGalleryTitle', 'This gallery is publicly accessible')}
-                  </h2>
-                  <p className="text-sm text-neutral-600">
-                    {t('gallery.publicGallerySubtitle', 'Loading the photos now...')}
-                  </p>
-                  <div className="flex justify-center py-4">
-                    <Loading size="sm" text={t('gallery.loading')} />
-                  </div>
+                  {isLoadingSettings ? (
+                    <div className="flex justify-center py-4">
+                      <Loading size="sm" />
+                    </div>
+                  ) : (
+                    <>
+                      <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
+                        {t('gallery.publicGalleryTitle', 'This gallery is publicly accessible')}
+                      </h2>
+                      <p className="text-sm text-neutral-600">
+                        {t('gallery.publicGallerySubtitle', 'Loading the photos now...')}
+                      </p>
+                      <div className="flex justify-center py-4">
+                        <Loading size="sm" text={t('gallery.loading')} />
+                      </div>
+                    </>
+                  )}
                   {loginError && (
                     <p className="text-xs text-red-600">{loginError}</p>
                   )}
