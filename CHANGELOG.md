@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.20.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.19.2-beta.0...v3.20.0-beta.0) (2026-03-17)
+
+
+### Features
+
+* photo visibility control with client access ([#172](https://github.com/the-luap/picpeak/issues/172)) ([4a93e4e](https://github.com/the-luap/picpeak/commit/4a93e4e8cbe1b7a23a8be706291a270ccdf5bb55))
+* photo visibility control with client access ([#172](https://github.com/the-luap/picpeak/issues/172)) ([e1b6e43](https://github.com/the-luap/picpeak/commit/e1b6e43e524211c913d3d29ade5fc029df12920f))
+
 ## [3.19.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.19.1-beta.0...v3.19.2-beta.0) (2026-03-16)
 
 
