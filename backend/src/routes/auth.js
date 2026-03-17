@@ -290,6 +290,82 @@ router.post('/gallery/verify', [
   }
 });
 
+// Client access login (PIN-based)
+router.post('/gallery/:slug/client-login', [
+  body('password').notEmpty().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { slug } = req.params;
+    const { password } = req.body;
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers['user-agent'] || '';
+
+    const event = await db('events')
+      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .first();
+
+    if (!event || !event.client_access_enabled || !event.client_password_hash) {
+      await trackFailedAttempt(`client:${slug}`, ipAddress, userAgent);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const lockoutStatus = await checkAccountLockout(`client:${slug}`, ipAddress);
+    if (lockoutStatus.isLocked) {
+      return res.status(423).json({
+        error: 'Too many failed attempts. Please try again later.',
+        retryAfter: lockoutStatus.remainingTime
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, event.client_password_hash);
+    if (!validPassword) {
+      await trackFailedAttempt(`client:${slug}`, ipAddress, userAgent);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    await trackSuccessfulLogin(`client:${slug}`, ipAddress, userAgent);
+
+    const token = jwt.sign({
+      eventId: event.id,
+      eventSlug: event.slug,
+      type: 'gallery',
+      accessLevel: 'client',
+      ip: ipAddress,
+      loginTime: Date.now()
+    }, process.env.JWT_SECRET, {
+      expiresIn: '24h',
+      issuer: 'picpeak-auth'
+    });
+
+    setGalleryAuthCookies(res, token, event.slug);
+
+    res.json({
+      token,
+      event: {
+        id: event.id,
+        event_name: event.event_name,
+        event_type: event.event_type,
+        event_date: event.event_date,
+        welcome_message: event.welcome_message,
+        color_theme: event.color_theme,
+        expires_at: event.expires_at,
+        allow_user_uploads: event.allow_user_uploads,
+        upload_category_id: event.upload_category_id,
+        require_password: true
+      },
+      accessLevel: 'client'
+    });
+  } catch (error) {
+    logger.error('Client login error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
 // Share link authentication (token-based)
 router.post('/gallery/share-login', [
   body('slug').notEmpty().trim(),

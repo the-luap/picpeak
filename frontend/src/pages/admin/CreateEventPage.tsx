@@ -9,7 +9,8 @@ import {
   Palette,
   Eye,
   EyeOff,
-  Image
+  Image,
+  Key
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -59,6 +60,9 @@ interface FormData {
     rate_limit_window_minutes?: number;
     rate_limit_max_requests?: number;
   };
+  // Client access (#172)
+  client_access_enabled: boolean;
+  client_password: string;
 }
 
 // Fallback event types (used when API is unavailable)
@@ -114,8 +118,10 @@ export const CreateEventPage: React.FC = () => {
       rate_limit_window_minutes: 15,
       rate_limit_max_requests: 10,
     },
+    client_access_enabled: false,
+    client_password: '',
   });
-  
+
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -310,6 +316,9 @@ export const CreateEventPage: React.FC = () => {
       require_name_email: feedbackSettings.require_name_email,
       moderate_comments: feedbackSettings.moderate_comments,
       show_feedback_to_guests: feedbackSettings.show_feedback_to_guests,
+      // Client access (#172)
+      client_access_enabled: formData.client_access_enabled,
+      client_password: formData.client_access_enabled ? formData.client_password : undefined,
     };
 
     createMutation.mutate(payload);
@@ -740,6 +749,44 @@ export const CreateEventPage: React.FC = () => {
                   {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
                 </span>
               </div>
+            </div>
+
+            {/* Client Access (#172) */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  checked={formData.client_access_enabled}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    client_access_enabled: e.target.checked,
+                    client_password: e.target.checked ? prev.client_password : '',
+                  }))}
+                />
+                <div>
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    {t('clientAccess.enableToggle')}
+                  </span>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {t('clientAccess.enableDescription')}
+                  </p>
+                </div>
+              </label>
+
+              {formData.client_access_enabled && (
+                <div className="mt-3">
+                  <Input
+                    type="text"
+                    label={t('clientAccess.pinLabel')}
+                    placeholder={t('clientAccess.pinPlaceholder')}
+                    value={formData.client_password}
+                    onChange={handleInputChange('client_password')}
+                    leftIcon={<Key className="w-5 h-5" />}
+                    helperText={t('clientAccess.pinHelperText')}
+                  />
+                </div>
+              )}
             </div>
 
             {/* User Upload Settings */}

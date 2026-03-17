@@ -17,11 +17,13 @@ import type { FilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { api } from '../../config/api';
-import { Upload, Menu } from 'lucide-react';
+import { Upload, Menu, Eye, EyeOff, Shield } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
 import { useGalleryCustomCss } from '../../hooks/useGalleryCustomCss';
 import type { Photo } from '../../types';
+import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface GalleryViewProps {
   slug: string;
@@ -42,8 +44,9 @@ interface GalleryViewProps {
 
 export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { t } = useTranslation();
-  const { logout } = useGalleryAuth();
-  const { theme } = useTheme();
+  const { logout, isClient } = useGalleryAuth();
+  const { setTheme, theme } = useTheme();
+  const queryClient = useQueryClient();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
@@ -273,6 +276,93 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     // No category selected or category has no hero — revert to default
     setStaticHeroPhoto(defaultHeroPhoto);
   }, [selectedCategoryId, data?.categories, data?.photos, defaultHeroPhoto]);
+
+  // Apply theme when settings are loaded
+  useEffect(() => {
+    if (settingsData && data?.event) {
+      let themeToApply = null;
+      const fullEvent = data.event; // Use the full event data from API
+
+      if (fullEvent.color_theme) {
+        try {
+          // Check if it's a valid JSON string
+          if (fullEvent.color_theme.startsWith('{')) {
+            const eventTheme = JSON.parse(fullEvent.color_theme);
+            themeToApply = eventTheme;
+          } else {
+            // Handle legacy theme names - check if it's a preset
+            const preset = GALLERY_THEME_PRESETS[fullEvent.color_theme];
+            if (preset) {
+              themeToApply = preset.config;
+            } else {
+              // Unknown theme name, fall back to global theme
+              if (settingsData.theme_config) {
+                themeToApply = settingsData.theme_config;
+              }
+            }
+          }
+        } catch {
+          // Invalid theme format - use default
+          // Fall back to global theme
+          if (settingsData.theme_config) {
+            themeToApply = settingsData.theme_config;
+          }
+        }
+      } else if (settingsData.theme_config) {
+        // No event theme, use global theme
+        themeToApply = settingsData.theme_config;
+      }
+
+      // Apply theme with a small delay to ensure it overrides any global theme
+      if (themeToApply) {
+        // Use setTimeout to ensure this runs after any global theme application
+        const timer = setTimeout(() => {
+          // If there's a hero photo, add it to gallery settings
+          if (fullEvent.hero_photo_id && themeToApply.gallerySettings) {
+            themeToApply.gallerySettings.heroImageId = fullEvent.hero_photo_id;
+            // Apply hero photo ID to existing gallery settings
+          } else if (fullEvent.hero_photo_id) {
+            themeToApply.gallerySettings = { heroImageId: fullEvent.hero_photo_id };
+            // Create gallery settings with hero photo ID
+          }
+          setTheme(themeToApply);
+        }, 0);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [settingsData, data, setTheme]); // Use data instead of event prop
+
+  // Client visibility toggle handler (#172)
+  const handleToggleVisibility = async (photoId: number, currentVisibility: string) => {
+    const newVisibility = currentVisibility === 'hidden' ? 'visible' : 'hidden';
+    try {
+      await galleryService.togglePhotoVisibility(slug, photoId, newVisibility);
+      queryClient.invalidateQueries({ queryKey: ['gallery-photos', slug] });
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error);
+    }
+  };
+
+  const handleBulkVisibility = async (visibility: 'visible' | 'hidden') => {
+    if (selectedPhotos.size === 0) return;
+    try {
+      await galleryService.bulkToggleVisibility(slug, Array.from(selectedPhotos), visibility);
+      setSelectedPhotos(new Set());
+      setIsSelectionMode(false);
+      queryClient.invalidateQueries({ queryKey: ['gallery-photos', slug] });
+    } catch (error) {
+      console.error('Failed to bulk toggle visibility:', error);
+    }
+  };
+
+  // Client visibility stats
+  const visibleCount = useMemo(() => {
+    if (!isClient || !data?.photos) return 0;
+    return data.photos.filter(p => p.visibility !== 'hidden').length;
+  }, [isClient, data?.photos]);
+
+  const totalCount = data?.photos?.length || 0;
 
   // Calculate days until expiration (null means never expires)
   const daysUntilExpiration = event.expires_at
@@ -677,6 +767,43 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           <ExpirationBanner daysRemaining={daysUntilExpiration} expiresAt={event.expires_at} />
         )}
 
+        {/* Client Access Banner (#172) */}
+        {isClient && (
+          <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {t('clientAccess.banner')}
+                </span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                  {t('clientAccess.visibleCount', { visible: visibleCount, total: totalCount })}
+                </span>
+              </div>
+              {isSelectionMode && selectedPhotos.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<EyeOff className="w-4 h-4" />}
+                    onClick={() => handleBulkVisibility('hidden')}
+                  >
+                    {t('clientAccess.hideSelected')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Eye className="w-4 h-4" />}
+                    onClick={() => handleBulkVisibility('visible')}
+                  >
+                    {t('clientAccess.showSelected')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Search and Filters - Only for grid layout */}
         {!showSidebar ? (
           <div className="mt-6">
@@ -739,6 +866,8 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
             heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
             welcomeMessage={event.welcome_message}
+            isClient={isClient}
+            onToggleVisibility={isClient ? handleToggleVisibility : undefined}
           />
         </div>
 

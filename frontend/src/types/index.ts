@@ -55,7 +55,12 @@ export interface Event {
   css_template_id?: number | null;
   // Photo cap
   photo_cap?: number | null;
+  // Client access (#172)
+  client_access_enabled?: boolean;
+  client_share_token?: string;
 }
+
+export type GalleryAccessLevel = 'guest' | 'client';
 
 export interface GalleryInfo {
   event_name: string;
@@ -92,6 +97,8 @@ export interface Photo {
   audio_codec?: string;
   width?: number;
   height?: number;
+  // Visibility (#172)
+  visibility?: 'visible' | 'hidden';
   // Feedback fields
   has_feedback?: boolean;
   average_rating?: number;
@@ -206,6 +213,7 @@ export interface GalleryAuthResponse {
     require_password?: boolean;
     photo_cap?: number | null;
   };
+  accessLevel?: GalleryAccessLevel;
 }
 
 // API Error type

@@ -102,8 +102,9 @@ async function verifyGalleryAccess(req, res, next) {
     
     logger.debug('[verifyGalleryAccess] Event located', { eventId: event.id, slug: event.slug });
     req.event = event;
+    req.accessLevel = decoded.accessLevel || 'guest';
     req.sessionID = decoded.sessionId || `gallery_${event.id}_${Date.now()}`;
-    
+
     // Create client info for logging (similar to secureImageMiddleware but simpler)
     req.clientInfo = {
       ip: req.ip || req.connection.remoteAddress || 'unknown',

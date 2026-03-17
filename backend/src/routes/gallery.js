@@ -198,9 +198,17 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
 
     // Build the query with sorting
     const sortOrder = order === 'asc' ? 'asc' : 'desc';
+    const isClient = req.accessLevel === 'client';
     let photosQuery = db('photos')
       .where('photos.event_id', req.event.id)
       .select('photos.*');
+
+    // Guests only see visible photos; clients see all
+    if (!isClient) {
+      photosQuery = photosQuery.where(function() {
+        this.where('photos.visibility', 'visible').orWhereNull('photos.visibility');
+      });
+    }
 
     // Apply sort option
     if (sort === 'capture_date') {
@@ -414,12 +422,20 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           height: photo.height || null,
           // Fixed: Use the calculated useJwtUrl variable instead of recalculating
           requires_token: !useJwtUrl,
+          // EXIF capture date
+          captured_at: photo.captured_at || null,
+          // Media type
+          media_type: photo.media_type || null,
+          mime_type: photo.mime_type || null,
+          duration: photo.duration || null,
           // Feedback data
           has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
           average_rating: photo.average_rating || 0,
           comment_count: commentMap[photo.id] || 0,
           like_count: photo.like_count || 0,
-          favorite_count: photo.favorite_count || 0
+          favorite_count: photo.favorite_count || 0,
+          // Visibility (only included for clients)
+          ...(isClient ? { visibility: photo.visibility || 'visible' } : {})
         };
       })
     });
@@ -429,24 +445,91 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   }
 });
 
+// Toggle photo visibility (client-only)
+router.patch('/:slug/photos/:photoId/visibility', verifyGalleryAccess, async (req, res) => {
+  try {
+    if (req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Client access required' });
+    }
+
+    const { photoId } = req.params;
+    const { visibility } = req.body;
+
+    if (!['visible', 'hidden'].includes(visibility)) {
+      return res.status(400).json({ error: 'Invalid visibility value' });
+    }
+
+    const photo = await db('photos')
+      .where({ id: photoId, event_id: req.event.id })
+      .first();
+
+    if (!photo) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    await db('photos')
+      .where({ id: photoId, event_id: req.event.id })
+      .update({ visibility });
+
+    res.json({ message: 'Photo visibility updated', visibility });
+  } catch (error) {
+    logger.error('Error updating photo visibility:', error);
+    res.status(500).json({ error: 'Failed to update photo visibility' });
+  }
+});
+
+// Bulk toggle photo visibility (client-only)
+router.patch('/:slug/photos/visibility/bulk', verifyGalleryAccess, async (req, res) => {
+  try {
+    if (req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Client access required' });
+    }
+
+    const { photoIds, visibility } = req.body;
+
+    if (!Array.isArray(photoIds) || photoIds.length === 0) {
+      return res.status(400).json({ error: 'Invalid photo IDs' });
+    }
+
+    if (!['visible', 'hidden'].includes(visibility)) {
+      return res.status(400).json({ error: 'Invalid visibility value' });
+    }
+
+    const count = await db('photos')
+      .whereIn('id', photoIds)
+      .where('event_id', req.event.id)
+      .update({ visibility });
+
+    res.json({ message: `${count} photos updated`, visibility });
+  } catch (error) {
+    logger.error('Error bulk updating photo visibility:', error);
+    res.status(500).json({ error: 'Failed to update photo visibility' });
+  }
+});
+
 // Download single photo
 router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => {
   try {
     const { photoId } = req.params;
-    
+
     // Check if downloads are allowed for this event
     if (req.event.allow_downloads === false) {
       return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
     }
-    
+
     const photo = await db('photos')
       .where({ id: photoId, event_id: req.event.id })
       .first();
-    
+
     if (!photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Block guest access to hidden photos
+    if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Photo not available' });
+    }
+
     // Update download count
     await db('photos').where('id', photoId).increment('download_count', 1);
     
@@ -745,9 +828,13 @@ router.get('/:slug/photo/:photoId',
         .where({ id: photoId, event_id: req.event.id })
         .first();
 
-
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
       }
 
       // Check if this is a video
@@ -935,6 +1022,11 @@ router.get('/:slug/thumbnail/:photoId',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
+      }
+
       // Ensure thumbnail exists and is valid, regenerate if needed
       const thumbnailPath = await ensureThumbnail(photo);
 
@@ -1011,6 +1103,11 @@ router.get('/:slug/hero/:photoId',
 
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
       }
 
       // Check if this is a video - videos don't get hero images

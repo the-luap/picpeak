@@ -68,6 +68,9 @@ interface PhotoGridWithLayoutsProps {
   welcomeMessage?: string;
   // Logout callback for full-page layouts
   onLogout?: () => void;
+  // Client visibility controls (#172)
+  isClient?: boolean;
+  onToggleVisibility?: (photoId: number, currentVisibility: string) => void;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -100,7 +103,9 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   heroDividerStyle = 'wave',
   heroImageAnchor = 'center',
   welcomeMessage,
-  onLogout
+  onLogout,
+  isClient = false,
+  onToggleVisibility
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -231,6 +236,8 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     heroLogoPosition,
     welcomeMessage,
     onLogout,
+    isClient,
+    onToggleVisibility,
   };
 
   // Determine if we should show hero header (decoupled from layout)

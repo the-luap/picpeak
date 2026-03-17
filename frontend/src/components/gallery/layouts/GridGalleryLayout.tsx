@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video, Eye, EyeOff } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -365,7 +365,9 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   useEnhancedProtection = false,
   useCanvasRendering = false,
   feedbackEnabled = false,
-  feedbackOptions
+  feedbackOptions,
+  isClient = false,
+  onToggleVisibility
 }) => {
   const { theme } = useTheme();
   const gallerySettings = theme.gallerySettings || {};
@@ -388,40 +390,61 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
 
   return (
     <div className={gridClass}>
-      {photos.map((photo, index) => (
-        <GridPhoto
-          key={photo.id}
-          photo={photo}
-          isSelected={selectedPhotos.has(photo.id)}
-          isSelectionMode={isSelectionMode}
-          onClick={() => onPhotoClick(index)}
-          onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
-          onDownload={(e) => onDownload(photo, e)}
-          animationType={animation}
-          allowDownloads={allowDownloads}
-          slug={slug}
-          protectionLevel={protectionLevel}
-          useEnhancedProtection={useEnhancedProtection}
-          useCanvasRendering={useCanvasRendering}
-          feedbackEnabled={feedbackEnabled}
-          feedbackOptions={feedbackOptions}
-          savedIdentity={savedIdentity}
-          onRequireIdentity={(action, photoId) => {
-            setPendingAction({ type: action, photoId });
-            setShowIdentityModal(true);
-          }}
-          onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(index)}
-          onFeedbackChange={onFeedbackChange}
-          liked={likedPhotoIds.has(photo.id)}
-          onLikeSuccess={() => {
-            setLikedPhotoIds((prev) => {
-              const next = new Set(prev);
-              next.add(photo.id);
-              return next;
-            });
-          }}
-        />
-      ))}
+      {photos.map((photo, index) => {
+        const isHidden = photo.visibility === 'hidden';
+        return (
+          <div key={photo.id} className={`relative ${isClient && isHidden ? 'opacity-40' : ''}`}>
+            <GridPhoto
+              photo={photo}
+              isSelected={selectedPhotos.has(photo.id)}
+              isSelectionMode={isSelectionMode}
+              onClick={() => onPhotoClick(index)}
+              onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
+              onDownload={(e) => onDownload(photo, e)}
+              animationType={animation}
+              allowDownloads={allowDownloads}
+              slug={slug}
+              protectionLevel={protectionLevel}
+              useEnhancedProtection={useEnhancedProtection}
+              useCanvasRendering={useCanvasRendering}
+              feedbackEnabled={feedbackEnabled}
+              feedbackOptions={feedbackOptions}
+              savedIdentity={savedIdentity}
+              onRequireIdentity={(action, photoId) => {
+                setPendingAction({ type: action, photoId });
+                setShowIdentityModal(true);
+              }}
+              onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(index)}
+              onFeedbackChange={onFeedbackChange}
+              liked={likedPhotoIds.has(photo.id)}
+              onLikeSuccess={() => {
+                setLikedPhotoIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(photo.id);
+                  return next;
+                });
+              }}
+            />
+            {/* Client visibility toggle overlay (#172) */}
+            {isClient && onToggleVisibility && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleVisibility(photo.id, photo.visibility || 'visible');
+                }}
+                className={`absolute top-2 left-2 z-10 p-1.5 rounded-full shadow-md transition-colors ${
+                  isHidden
+                    ? 'bg-red-500/90 text-white hover:bg-red-600'
+                    : 'bg-white/90 text-neutral-700 hover:bg-white dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-700'
+                }`}
+                title={isHidden ? 'Hidden from guests' : 'Visible to guests'}
+              >
+                {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        );
+      })}
       <FeedbackIdentityModal
         isOpen={showIdentityModal}
         onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}

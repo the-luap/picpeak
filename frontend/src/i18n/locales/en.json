@@ -1471,6 +1471,13 @@
       "username": "Choose a Username",
       "password": "Create Password",
       "submit": "Create Account"
+    },
+    "photos": {
+      "hidden": "Hidden",
+      "hideSelected": "Hide",
+      "showSelected": "Show",
+      "hiddenSuccess": "Photos hidden from guests",
+      "visibleSuccess": "Photos now visible to guests"
     }
   },
   "permissions": {
@@ -2337,5 +2344,30 @@
     "needHelp": "Need help? Contact",
     "poweredBy": "Powered by PicPeak",
     "devModeHint": "Development Mode: Use email: admin@example.com, password: admin123"
+  },
+  "clientAccess": {
+    "title": "Client Access",
+    "description": "Review photos and manage visibility before the gallery is shared with guests.",
+    "pinLabel": "Client PIN",
+    "pinPlaceholder": "Enter your client PIN",
+    "enterPin": "Please enter your client PIN",
+    "invalidPin": "Invalid PIN. Please try again.",
+    "loginFailed": "Authentication failed. Please try again.",
+    "loginButton": "Access Gallery",
+    "guestHint": "Looking for the guest gallery?",
+    "guestLink": "Go to guest view",
+    "banner": "Client Mode",
+    "visibleCount": "{{visible}} of {{total}} photos visible to guests",
+    "hideSelected": "Hide Selected",
+    "showSelected": "Show Selected",
+    "adminTitle": "Client Access",
+    "enableToggle": "Enable Client Access",
+    "enableDescription": "Allow clients to review and hide photos before the gallery is shared with guests.",
+    "pinHelperText": "The client will use this PIN to access the review page.",
+    "pinUpdated": "Client PIN updated",
+    "setPin": "Set PIN",
+    "linkLabel": "Client Access Link",
+    "regenerateToken": "Regenerate link",
+    "tokenRegenerated": "Client access link regenerated"
   }
 }

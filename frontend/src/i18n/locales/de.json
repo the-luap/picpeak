@@ -1758,6 +1758,13 @@
       "username": "Benutzernamen wählen",
       "password": "Passwort erstellen",
       "submit": "Konto erstellen"
+    },
+    "photos": {
+      "hidden": "Versteckt",
+      "hideSelected": "Ausblenden",
+      "showSelected": "Einblenden",
+      "hiddenSuccess": "Fotos für Gäste ausgeblendet",
+      "visibleSuccess": "Fotos jetzt für Gäste sichtbar"
     }
   },
   "permissions": {
@@ -2575,6 +2582,31 @@
     "exportSelected": "{{count}} ausgewählte exportieren",
     "exportFiltered": "Gefilterte Fotos exportieren",
     "hint": "Fotos auswählen oder Filter anwenden zum Exportieren"
+  },
+  "clientAccess": {
+    "title": "Kundenzugang",
+    "description": "Geben Sie Ihre PIN ein, um Fotos vor der Veröffentlichung zu überprüfen und auszuwählen.",
+    "pinLabel": "Kunden-PIN",
+    "pinPlaceholder": "PIN eingeben",
+    "enterPin": "Geben Sie die PIN ein, die Sie erhalten haben",
+    "invalidPin": "Ungültige PIN. Bitte versuchen Sie es erneut.",
+    "loginFailed": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "loginButton": "Zugang erhalten",
+    "guestHint": "Nur Fotos ansehen?",
+    "guestLink": "Zur Gästegalerie",
+    "banner": "Kundenmodus",
+    "visibleCount": "{{visible}} von {{total}} Fotos für Gäste sichtbar",
+    "hideSelected": "Ausgewählte ausblenden",
+    "showSelected": "Ausgewählte einblenden",
+    "adminTitle": "Kundenzugang",
+    "enableToggle": "Kundenzugang aktivieren",
+    "enableDescription": "Ermöglichen Sie Kunden, Fotos zu überprüfen und auszublenden, bevor die Galerie mit den Gästen geteilt wird.",
+    "pinHelperText": "Der Kunde verwendet diese PIN, um die Überprüfungsseite aufzurufen.",
+    "pinUpdated": "Kunden-PIN aktualisiert",
+    "setPin": "PIN festlegen",
+    "linkLabel": "Kundenzugangs-Link",
+    "regenerateToken": "Link neu generieren",
+    "tokenRegenerated": "Kundenzugangs-Link neu generiert"
   },
   "adminLogin": {
     "title": "Admin-Anmeldung",

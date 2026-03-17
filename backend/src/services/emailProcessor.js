@@ -353,6 +353,53 @@ async function processTemplate(template, variables, language = 'en') {
   htmlBody = htmlTemplate(processedVariables);
   textBody = textTemplate(processedVariables);
 
+  // Inject client access section if client_link is provided (#172)
+  if (processedVariables.client_link) {
+    const clientAccessI18n = {
+      de: {
+        label: 'Kundenzugang (Privat)',
+        desc: 'Fotos überprüfen und deren Sichtbarkeit festlegen, bevor die Galerie geteilt wird:',
+        link: 'Kundenzugang öffnen',
+        warning: 'Diesen Link nicht teilen — er ermöglicht das Ausblenden von Fotos in der Gästegalerie.',
+      },
+      ru: {
+        label: 'Доступ клиента (Личный)',
+        desc: 'Просмотрите и управляйте видимостью фотографий перед тем, как поделиться галереей с гостями:',
+        link: 'Открыть доступ клиента',
+        warning: 'Не делитесь этой ссылкой — она позволяет скрывать фотографии из гостевой галереи.',
+      },
+      pt: {
+        label: 'Acesso do Cliente (Privado)',
+        desc: 'Revise e gerencie a visibilidade das fotos antes de compartilhar com os convidados:',
+        link: 'Abrir Acesso do Cliente',
+        warning: 'Não compartilhe este link — ele permite ocultar fotos da galeria de convidados.',
+      },
+      en: {
+        label: 'Client Access (Private)',
+        desc: 'Review and manage photo visibility before sharing with guests:',
+        link: 'Open Client Access',
+        warning: 'Do not share this link — it allows hiding photos from the guest gallery.',
+      },
+    };
+    const ci18n = clientAccessI18n[language] || clientAccessI18n.en;
+    const clientAccessLabel = ci18n.label;
+    const clientAccessDesc = ci18n.desc;
+    const clientAccessLink = ci18n.link;
+    const clientAccessWarning = ci18n.warning;
+    const pinLabel = 'PIN';
+
+    htmlBody += `
+      <div style="margin-top: 24px; padding: 20px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <strong style="font-size: 15px;">&#128274; ${clientAccessLabel}</strong>
+        <p style="margin: 10px 0 8px;">${clientAccessDesc}</p>
+        <p style="margin: 8px 0;">
+          <a href="${processedVariables.client_link}" style="display: inline-block; padding: 10px 20px; background-color: #5C8762; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">${clientAccessLink}</a>
+        </p>
+        <p style="margin: 8px 0;">${pinLabel}: <strong>${processedVariables.client_password}</strong></p>
+        <p style="color: #856404; font-size: 12px; margin: 8px 0 0;">&#9888;&#65039; ${clientAccessWarning}</p>
+      </div>`;
+  }
+
   // Wrap HTML body in styled template
   const styledHtmlBody = await wrapEmailHtml(htmlBody, subject, language);
 
