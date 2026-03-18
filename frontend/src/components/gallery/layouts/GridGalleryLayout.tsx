@@ -374,6 +374,10 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const columns = gallerySettings.gridColumns || { mobile: 2, tablet: 3, desktop: 4 };
   const spacing = gallerySettings.spacing || 'normal';
   const animation = gallerySettings.photoAnimation || 'fade';
+  const scale = gallerySettings.thumbnailScale || 'md';
+
+  const scaleOffsets: Record<string, number> = { xs: 3, sm: 1, md: 0, lg: -1, xl: -2 };
+  const applyScale = (cols: number) => Math.max(1, cols + (scaleOffsets[scale] ?? 0));
 
   const [showIdentityModal, setShowIdentityModal] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<null | { type: 'like'; photoId: number }>(null);
@@ -381,12 +385,12 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
-  
+
   const gridClass = `photo-grid grid ${spacingClass}
-    grid-cols-${columns.mobile}
-    sm:grid-cols-${columns.tablet}
-    lg:grid-cols-${columns.desktop}
-    xl:grid-cols-${columns.desktop + 1}`;
+    grid-cols-${applyScale(columns.mobile)}
+    sm:grid-cols-${applyScale(columns.tablet)}
+    lg:grid-cols-${applyScale(columns.desktop)}
+    xl:grid-cols-${applyScale(columns.desktop + 1)}`;
 
   return (
     <div className={gridClass}>

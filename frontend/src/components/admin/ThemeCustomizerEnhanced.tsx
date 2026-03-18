@@ -312,52 +312,73 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
               {/* Grid specific */}
               {localTheme.galleryLayout === 'grid' && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                    {t('branding.columns')}
-                  </label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.mobile')}</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="4"
-                        value={localTheme.gallerySettings?.gridColumns?.mobile || 2}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          mobile: parseInt(e.target.value)
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.tablet')}</label>
-                      <Input
-                        type="number"
-                        min="2"
-                        max="6"
-                        value={localTheme.gallerySettings?.gridColumns?.tablet || 3}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          tablet: parseInt(e.target.value)
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.desktop')}</label>
-                      <Input
-                        type="number"
-                        min="3"
-                        max="8"
-                        value={localTheme.gallerySettings?.gridColumns?.desktop || 4}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          desktop: parseInt(e.target.value)
-                        })}
-                      />
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      {t('branding.columns')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.mobile')}</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="4"
+                          value={localTheme.gallerySettings?.gridColumns?.mobile || 2}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            mobile: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.tablet')}</label>
+                        <Input
+                          type="number"
+                          min="2"
+                          max="6"
+                          value={localTheme.gallerySettings?.gridColumns?.tablet || 3}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            tablet: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.desktop')}</label>
+                        <Input
+                          type="number"
+                          min="3"
+                          max="8"
+                          value={localTheme.gallerySettings?.gridColumns?.desktop || 4}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            desktop: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                    </label>
+                    <select
+                      value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                      onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                    >
+                      <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                      <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                      <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                      <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                      <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                    </select>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                    </p>
+                  </div>
+                </>
               )}
 
               {/* Carousel specific */}
@@ -437,6 +458,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                     </p>
                   </div>
 
+                  {/* Thumbnail scale - only for columns mode */}
+                  {(!localTheme.gallerySettings?.masonryMode || localTheme.gallerySettings?.masonryMode === 'columns') && (
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                        {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                      </label>
+                      <select
+                        value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                        onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                        className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                      >
+                        <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                        <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                        <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                        <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                        <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Row-specific settings - show for all row-based modes */}
                   {['rows', 'flickr', 'justified'].includes(localTheme.gallerySettings?.masonryMode || '') && (
                     <>
@@ -475,6 +519,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                     </>
                   )}
                 </>
+              )}
+
+              {/* Mosaic specific */}
+              {localTheme.galleryLayout === 'mosaic' && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                  </label>
+                  <select
+                    value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                    onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                    <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                    <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                    <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                    <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                  </select>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                  </p>
+                </div>
               )}
             </div>
           )}

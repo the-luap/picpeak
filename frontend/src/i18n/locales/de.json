@@ -1437,6 +1437,15 @@
       "center": "Zentriert",
       "justify": "Blocksatz (gestreckt)"
     },
+    "thumbnailScale": "Vorschau-Skalierung",
+    "thumbnailScaleOptions": {
+      "xs": "XS — Meiste Fotos",
+      "sm": "SM — Mehr Fotos",
+      "md": "MD — Standard",
+      "lg": "LG — Größere Fotos",
+      "xl": "XL — Größte Fotos"
+    },
+    "thumbnailScaleHint": "Passt die Spaltenanzahl relativ zu den Basis-Rasterspalten an",
     "showHeroSection": "Hero-Bereich anzeigen",
     "showHeroSectionHint": "Zeigt ein hervorgehobenes Titelbild über der Galerie an",
     "heroHeight": "Hero-Bereich Höhe",

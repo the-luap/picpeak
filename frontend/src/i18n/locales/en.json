@@ -1152,6 +1152,15 @@
       "center": "Centered",
       "justify": "Justified (stretch)"
     },
+    "thumbnailScale": "Thumbnail Scale",
+    "thumbnailScaleOptions": {
+      "xs": "XS — Most photos",
+      "sm": "SM — More photos",
+      "md": "MD — Default",
+      "lg": "LG — Larger photos",
+      "xl": "XL — Largest photos"
+    },
+    "thumbnailScaleHint": "Adjusts column count relative to the base grid columns",
     "showHeroSection": "Show Hero Section",
     "showHeroSectionHint": "Display a featured hero image above the justified gallery",
     "heroHeight": "Hero Section Height",
