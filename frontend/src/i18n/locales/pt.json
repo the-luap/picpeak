@@ -1130,6 +1130,15 @@
       "center": "Centralizado",
       "justify": "Justified (esticado)"
     },
+    "thumbnailScale": "Escala de Miniaturas",
+    "thumbnailScaleOptions": {
+      "xs": "XS — Mais fotos",
+      "sm": "SM — Muitas fotos",
+      "md": "MD — Padrão",
+      "lg": "LG — Fotos maiores",
+      "xl": "XL — Fotos grandes"
+    },
+    "thumbnailScaleHint": "Ajusta a contagem de colunas em relação às colunas base da grade",
     "showHeroSection": "Mostrar Seção Hero",
     "showHeroSectionHint": "Exibir uma imagem hero em destaque acima da galeria justified",
     "heroHeight": "Altura da Seção Hero",

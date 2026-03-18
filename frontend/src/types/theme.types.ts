@@ -47,6 +47,9 @@ export interface GalleryLayoutSettings {
   
   // Mosaic specific
   mosaicPattern?: 'random' | 'structured' | 'alternating';
+
+  // Thumbnail scale (applies to Grid, Masonry columns, Mosaic)
+  thumbnailScale?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export interface ThemeConfig {

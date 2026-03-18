@@ -241,6 +241,13 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const mode = gallerySettings.masonryMode || 'columns';
   const targetRowHeight = gallerySettings.masonryRowHeight || 250;
   const lastRowBehavior = gallerySettings.masonryLastRowBehavior || 'left';
+  const scale = gallerySettings.thumbnailScale || 'md';
+
+  const scaleOffsets: Record<string, number> = { xs: 3, sm: 1, md: 0, lg: -1, xl: -2 };
+  const applyScale = (cols: number) => Math.max(1, cols + (scaleOffsets[scale] ?? 0));
+
+  // Apply scale to columns only in columns mode
+  const scaledColumns = mode === 'columns' ? applyScale(columns) : columns;
 
 
   // Calculate number of columns based on container width (for columns mode)
@@ -339,20 +346,20 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   // This creates a more balanced masonry layout instead of round-robin
   const photoColumns: Photo[][] = useMemo(() => {
     if (mode !== 'columns' || photos.length === 0) {
-      return Array.from({ length: columns }, () => []);
+      return Array.from({ length: scaledColumns }, () => []);
     }
 
-    const cols: Photo[][] = Array.from({ length: columns }, () => []);
-    const colHeights: number[] = Array(columns).fill(0);
+    const cols: Photo[][] = Array.from({ length: scaledColumns }, () => []);
+    const colHeights: number[] = Array(scaledColumns).fill(0);
 
     // Calculate approximate column width for height estimation
-    const approxColWidth = containerWidth > 0 ? (containerWidth - (columns - 1) * gutter) / columns : 300;
+    const approxColWidth = containerWidth > 0 ? (containerWidth - (scaledColumns - 1) * gutter) / scaledColumns : 300;
 
     photos.forEach((photo) => {
       // Find the shortest column
       let shortestCol = 0;
       let minHeight = colHeights[0];
-      for (let i = 1; i < columns; i++) {
+      for (let i = 1; i < scaledColumns; i++) {
         if (colHeights[i] < minHeight) {
           minHeight = colHeights[i];
           shortestCol = i;
@@ -373,15 +380,15 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     });
 
     return cols;
-  }, [mode, photos, columns, containerWidth, gutter]);
+  }, [mode, photos, scaledColumns, containerWidth, gutter]);
 
   // Calculate approximate column width for aspect ratio calculations
   const columnWidth = useMemo(() => {
-    if (containerWidth <= 0 || columns <= 0) return 300;
+    if (containerWidth <= 0 || scaledColumns <= 0) return 300;
     // Account for gaps between columns
-    const totalGaps = (columns - 1) * gutter;
-    return (containerWidth - totalGaps) / columns;
-  }, [containerWidth, columns, gutter]);
+    const totalGaps = (scaledColumns - 1) * gutter;
+    return (containerWidth - totalGaps) / scaledColumns;
+  }, [containerWidth, scaledColumns, gutter]);
 
   // ROWS MODE - Google Photos style justified layout
   if (mode === 'rows') {

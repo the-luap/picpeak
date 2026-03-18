@@ -84,6 +84,13 @@ export default {
       },
     },
   },
+  safelist: [
+    // Dynamic grid-cols classes used by thumbnail scale offsets
+    ...Array.from({ length: 12 }, (_, i) => `grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `sm:grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `lg:grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `xl:grid-cols-${i + 1}`),
+  ],
   plugins: [],
 }
 
