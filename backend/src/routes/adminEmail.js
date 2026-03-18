@@ -160,22 +160,26 @@ router.post('/test', adminAuth, requirePermission('email.send'), async (req, res
 
     const transporter = nodemailer.createTransport(transportConfig);
 
-    // Send test email
+    // Send test email with the same wrapper used for all other emails
+    const subject = 'Test Email - Photo Sharing Platform';
+    const testHtmlBody = `
+      <h2>Test Email Successful!</h2>
+      <p>This is a test email from your Photo Sharing platform.</p>
+      <p>If you're seeing this, your email configuration is working correctly.</p>
+      <hr>
+      <p style="color: #666; font-size: 12px;">
+        Sent from: ${config.from_email}<br>
+        SMTP Host: ${config.smtp_host}<br>
+        Time: ${new Date().toISOString()}
+      </p>
+    `;
+    const wrappedHtml = await wrapEmailHtml(testHtmlBody, subject);
+
     await transporter.sendMail({
       from: `${config.from_name} <${config.from_email}>`,
       to: test_email,
-      subject: 'Test Email - Photo Sharing Platform',
-      html: `
-        <h2>Test Email Successful!</h2>
-        <p>This is a test email from your Photo Sharing platform.</p>
-        <p>If you're seeing this, your email configuration is working correctly.</p>
-        <hr>
-        <p style="color: #666; font-size: 12px;">
-          Sent from: ${config.from_email}<br>
-          SMTP Host: ${config.smtp_host}<br>
-          Time: ${new Date().toISOString()}
-        </p>
-      `,
+      subject,
+      html: wrappedHtml,
       text: 'Test Email Successful! Your email configuration is working correctly.'
     });
 
