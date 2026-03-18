@@ -5,6 +5,18 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.20.1-beta.0...v3.21.0-beta.0) (2026-03-18)
+
+
+### Features
+
+* add per-gallery thumbnail scale setting ([#172](https://github.com/the-luap/picpeak/issues/172)) ([#251](https://github.com/the-luap/picpeak/issues/251)) ([ee46088](https://github.com/the-luap/picpeak/commit/ee46088985ebbbb81d16e5bac23be2060c94397f))
+
+
+### Bug Fixes
+
+* wrap test email with standard email template ([#252](https://github.com/the-luap/picpeak/issues/252)) ([954a011](https://github.com/the-luap/picpeak/commit/954a0118bae5770c74f1e811e03b8fc702c70db2))
+
 ## [3.20.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.20.0-beta.0...v3.20.1-beta.0) (2026-03-17)
 
 
