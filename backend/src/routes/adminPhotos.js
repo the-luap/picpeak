@@ -14,6 +14,7 @@ const { getMaxFilesPerUpload, getAllowedMimeTypes } = require('../services/uploa
 const { processUploadedPhotos } = require('../services/photoProcessor');
 const chunkedUpload = require('../services/chunkedUploadService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
+const { requireEventOwnership } = require('../middleware/ownership');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -120,7 +121,7 @@ const uploadTimeout = (timeout = 300000) => { // 5 minutes default
 
 // Upload photos for an event
 // Max file count is configurable via general settings
-router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), uploadTimeout(600000), resolveAllowedTypes, async (req, res, next) => { // 10 minute timeout
+router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), requireEventOwnership, uploadTimeout(600000), resolveAllowedTypes, async (req, res, next) => { // 10 minute timeout
   let maxFilesPerUpload;
   try {
     maxFilesPerUpload = await getMaxFilesPerUpload();
@@ -522,7 +523,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), u
 });
 
 // Delete a photo
-router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.delete'), async (req, res) => {
+router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     
@@ -584,7 +585,7 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
 });
 
 // Update a photo (e.g., change category)
-router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.edit'), async (req, res) => {
+router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     const { category_id, visibility } = req.body;
@@ -647,7 +648,7 @@ router.patch('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.e
 });
 
 // Bulk delete photos
-router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos.delete'), async (req, res) => {
+router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds } = req.body;
@@ -720,7 +721,7 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
 });
 
 // Bulk update photos
-router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos.edit'), async (req, res) => {
+router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { photoIds, updates } = req.body;
@@ -783,7 +784,7 @@ router.post('/:eventId/photos/bulk-update', adminAuth, requirePermission('photos
 });
 
 // Download a photo
-router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('photos.download'), async (req, res) => {
+router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('photos.download'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     
@@ -815,7 +816,7 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
 });
 
 // Get all photos for an event
-router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), async (req, res) => {
+router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { category_id, type, search, sort = 'date' } = req.query;
@@ -914,7 +915,7 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), asyn
 });
 
 // Serve photo with admin authentication
-router.get('/:eventId/photo/:photoId', adminAuth, requirePermission('photos.view'), async (req, res) => {
+router.get('/:eventId/photo/:photoId', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     
@@ -951,7 +952,7 @@ router.get('/:eventId/photo/:photoId', adminAuth, requirePermission('photos.view
 });
 
 // Serve thumbnail with admin authentication
-router.get('/:eventId/thumbnail/:photoId', adminAuth, requirePermission('photos.view'), async (req, res) => {
+router.get('/:eventId/thumbnail/:photoId', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
     
@@ -991,7 +992,7 @@ router.get('/:eventId/thumbnail/:photoId', adminAuth, requirePermission('photos.
 });
 
 // Debug endpoint to check photo existence
-router.get('/:eventId/debug', adminAuth, requirePermission('photos.view'), async (req, res) => {
+router.get('/:eventId/debug', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
     
@@ -1017,7 +1018,7 @@ router.get('/:eventId/debug', adminAuth, requirePermission('photos.view'), async
 // ============================================
 
 // Initialize a chunked upload
-router.post('/:eventId/chunked-upload/init', adminAuth, requirePermission('photos.upload'), async (req, res) => {
+router.post('/:eventId/chunked-upload/init', adminAuth, requirePermission('photos.upload'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { filename, fileSize, mimeType, totalChunks } = req.body;
@@ -1055,7 +1056,7 @@ router.post('/:eventId/chunked-upload/init', adminAuth, requirePermission('photo
 });
 
 // Upload a chunk
-router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, requirePermission('photos.upload'), async (req, res) => {
+router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, requirePermission('photos.upload'), requireEventOwnership, async (req, res) => {
   try {
     const { uploadId, chunkIndex } = req.params;
 
@@ -1076,7 +1077,7 @@ router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, r
 });
 
 // Complete chunked upload and process the file
-router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, requirePermission('photos.upload'), async (req, res) => {
+router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, requirePermission('photos.upload'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, uploadId } = req.params;
     const { category_id } = req.body;
@@ -1118,7 +1119,7 @@ router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, requirePer
 });
 
 // Get upload status
-router.get('/:eventId/chunked-upload/:uploadId/status', adminAuth, requirePermission('photos.view'), async (req, res) => {
+router.get('/:eventId/chunked-upload/:uploadId/status', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { uploadId } = req.params;
 
@@ -1136,7 +1137,7 @@ router.get('/:eventId/chunked-upload/:uploadId/status', adminAuth, requirePermis
 });
 
 // Abort chunked upload
-router.delete('/:eventId/chunked-upload/:uploadId', adminAuth, requirePermission('photos.delete'), async (req, res) => {
+router.delete('/:eventId/chunked-upload/:uploadId', adminAuth, requirePermission('photos.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { uploadId } = req.params;
 

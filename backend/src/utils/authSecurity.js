@@ -261,7 +261,7 @@ async function checkAccountLockout(identifier, ipAddress) {
     return { isLocked: false };
   } catch (error) {
     logger.error('Error checking account lockout:', error);
-    return { isLocked: false }; // Fail open to avoid locking users out due to errors
+    return { isLocked: true, remainingTime: 300 }; // Fail closed on DB error
   }
 }
 

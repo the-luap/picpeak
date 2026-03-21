@@ -20,6 +20,7 @@ const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 const eventTypeService = require('../services/eventTypeService');
 const { validateFileType } = require('../utils/fileSecurityUtils');
+const { requireEventOwnership } = require('../middleware/ownership');
 
 // Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
 const validateHeroImageAnchor = (value) => {
@@ -680,7 +681,7 @@ router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res)
 });
 
 // Update event
-router.put('/:id', adminAuth, requirePermission('events.edit'), [
+router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwnership, [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
@@ -926,7 +927,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
 });
 
 // Delete event
-router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('events.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1017,7 +1018,7 @@ router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req,
 });
 
 // Toggle event status
-router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1057,7 +1058,7 @@ router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), a
 });
 
 // Reset event password
-router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
     const { sendEmail = true } = req.body;
@@ -1124,7 +1125,7 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
 });
 
 // Resend creation email
-router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1208,7 +1209,7 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
 });
 
 // Archive event
-router.post('/:id/archive', adminAuth, requirePermission('events.archive'), async (req, res) => {
+router.post('/:id/archive', adminAuth, requirePermission('events.archive'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1318,7 +1319,7 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
 });
 
 // Upload event custom logo
-router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoUpload.single('logo'), async (req, res) => {
+router.post('/:id/logo', adminAuth, requirePermission('events.edit'), requireEventOwnership, eventLogoUpload.single('logo'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1373,7 +1374,7 @@ router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoU
 });
 
 // Delete event custom logo
-router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -61,6 +61,12 @@ router.post('/config', [
       tls_reject_unauthorized
     } = req.body;
 
+    // Validate SMTP host is not a private/internal address (SSRF protection)
+    const { isPrivateIP } = require('../utils/networkValidation');
+    if (isPrivateIP(smtp_host)) {
+      return res.status(400).json({ error: 'SMTP host cannot point to a private or internal network address' });
+    }
+
     // Check if config exists
     const existingConfig = await db('email_configs').first();
     
@@ -455,11 +461,19 @@ router.post('/templates/:key/preview', adminAuth, requirePermission('email.view'
     let subject = template[subjectField] || template.subject || '';
 
     if (preview_data) {
+      const escapeHtml = (str) => String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
       Object.keys(preview_data).forEach(key => {
         const regex = new RegExp(`{{${key}}}`, 'g');
-        htmlContent = htmlContent.replace(regex, preview_data[key]);
-        textContent = textContent.replace(regex, preview_data[key]);
-        subject = subject.replace(regex, preview_data[key]);
+        const escapedValue = escapeHtml(preview_data[key]);
+        htmlContent = htmlContent.replace(regex, escapedValue);
+        textContent = textContent.replace(regex, preview_data[key]); // text doesn't need HTML escaping
+        subject = subject.replace(regex, escapeHtml(preview_data[key]));
       });
     }
 

@@ -8,9 +8,8 @@ const secureCookie = (() => {
   if (typeof process.env.COOKIE_SECURE === 'string') {
     return process.env.COOKIE_SECURE.toLowerCase() === 'true';
   }
-  // Default to false so native HTTP installs stay functional. Operators can
-  // opt-in via COOKIE_SECURE=true when serving behind HTTPS.
-  return false;
+  // Default to true in production (HTTPS expected), false in development
+  return process.env.NODE_ENV === 'production';
 })();
 const sameSiteDefault = process.env.COOKIE_SAMESITE || 'Lax';
 const cookieDomain = process.env.COOKIE_DOMAIN;

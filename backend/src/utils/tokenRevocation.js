@@ -57,11 +57,6 @@ async function isTokenRevoked(decodedToken) {
     
     const revoked = await db('revoked_tokens')
       .where('token_id', tokenId)
-      .orWhere((builder) => {
-        builder
-          .where('user_id', decodedToken.id)
-          .where('revoked_at', '<=', new Date(decodedToken.iat * 1000).toISOString());
-      })
       .first();
     
     return !!revoked;
