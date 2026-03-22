@@ -13,6 +13,7 @@ const {
   getGenericAuthError
 } = require('../utils/authSecurity');
 const { endSession } = require('../middleware/sessionTimeout');
+const { revokeToken } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 const {
   setAdminAuthCookie,
@@ -117,9 +118,8 @@ router.post('/admin/login', [
 
     setAdminAuthCookie(res, token);
 
-    // Include role in response
+    // Token is delivered via HttpOnly cookie only (not in response body)
     res.json({
-      token,
       user: {
         id: admin.id,
         username: admin.username,
@@ -145,7 +145,8 @@ router.post('/logout', async (req, res) => {
     const token = adminToken || galleryToken;
 
     if (token) {
-      // End the session
+      // Revoke the token so it can't be reused, then end the session
+      await revokeToken(token, 'user_logout');
       endSession(token);
 
       try {
@@ -198,6 +199,8 @@ router.post('/gallery/verify', [
       .first();
 
     if (!event) {
+      // Perform a dummy bcrypt compare to prevent timing-based slug enumeration
+      await bcrypt.compare(password || '', '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
       await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
       return res.status(401).json({ error: 'Invalid gallery or password' });
     }
@@ -381,6 +384,17 @@ router.post('/gallery/share-login', [
     const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
 
+    // Rate limit share-link login attempts
+    const shareIdentifier = `gallery:${slug}:share`;
+    const lockoutStatus = await checkAccountLockout(shareIdentifier, ipAddress);
+    if (lockoutStatus.isLocked) {
+      logger.warn('Share link login attempt on locked gallery', { slug, ipAddress });
+      return res.status(423).json({
+        error: 'Too many failed attempts. Please try again later.',
+        retryAfter: lockoutStatus.remainingTime
+      });
+    }
+
     let event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
       .first();
@@ -393,12 +407,14 @@ router.post('/gallery/share-login', [
     }
 
     if (!event) {
+      await trackFailedAttempt(shareIdentifier, ipAddress, userAgent);
       return res.status(404).json({ error: 'Gallery not found' });
     }
 
     const expectedToken = getEventShareToken(event);
 
     if (!expectedToken || token !== expectedToken) {
+      await trackFailedAttempt(shareIdentifier, ipAddress, userAgent);
       return res.status(401).json({ error: 'Invalid or expired share link' });
     }
 
@@ -440,10 +456,14 @@ router.post('/gallery/share-login', [
   }
 });
 
-// Gallery logout to clear cookies
+// Gallery logout to clear cookies and revoke token
 router.post('/gallery/logout', async (req, res) => {
   try {
     const { slug } = req.body || {};
+    const token = getGalleryTokenFromRequest(req, slug);
+    if (token) {
+      await revokeToken(token, 'gallery_logout');
+    }
     clearGalleryAuthCookies(res, slug);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -464,11 +484,17 @@ router.get('/session', async (req, res) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
+
+      // Check if token has been revoked (e.g. after logout)
+      const { isTokenRevoked } = require('../utils/tokenRevocation');
+      if (await isTokenRevoked(decoded)) {
+        return res.status(401).json({ valid: false, error: 'Session has been invalidated' });
+      }
+
       // Calculate remaining time
       const now = Date.now() / 1000;
       const remainingTime = Math.max(0, decoded.exp - now);
-      
+
       res.json({
         valid: true,
         type: decoded.type,

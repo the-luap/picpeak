@@ -76,6 +76,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
                 srcDoc={htmlContent}
                 className="w-full h-[600px] border-0"
                 title="Email Preview"
+                sandbox="allow-same-origin"
               />
             </div>
           ) : (

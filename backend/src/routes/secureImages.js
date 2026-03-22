@@ -350,34 +350,11 @@ router.get('/:slug/secure-download/:photoId/:token',
 /**
  * Get security statistics for monitoring
  */
-router.get('/security/stats', async (req, res) => {
-  try {
-    // Only allow admin access
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 
-    const jwt = require('jsonwebtoken');
-    // Try to verify with issuer first, fallback to no issuer for backward compatibility
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET, {
-        issuer: 'picpeak-auth'
-      });
-    } catch (issuerError) {
-      // If verification fails with issuer, try without issuer (backward compatibility)
-      if (issuerError.name === 'JsonWebTokenError' && issuerError.message.includes('jwt issuer invalid')) {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-      } else {
-        throw issuerError;
-      }
-    }
-    const admin = await db('admin_users').where({ id: decoded.id }).first();
-    
-    if (!admin) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+router.get('/security/stats', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
 
     // Get security statistics
     const stats = {

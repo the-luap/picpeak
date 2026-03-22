@@ -12,11 +12,13 @@ const {
   validateWordFilter,
   checkValidation
 } = require('../utils/feedbackValidation');
+const { requireEventOwnership } = require('../middleware/ownership');
 
 // Get event feedback settings
 router.get('/events/:eventId/feedback-settings',
   adminAuth,
   requirePermission('events.view'),
+  requireEventOwnership,
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -42,6 +44,7 @@ router.get('/events/:eventId/feedback-settings',
 router.put('/events/:eventId/feedback-settings',
   adminAuth,
   requirePermission('events.edit'),
+  requireEventOwnership,
   validateEventId,
   validateFeedbackSettings,
   checkValidation,
@@ -79,6 +82,7 @@ router.put('/events/:eventId/feedback-settings',
 router.get('/events/:eventId/feedback',
   adminAuth,
   requirePermission('events.view'),
+  requireEventOwnership,
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -204,6 +208,7 @@ router.delete('/feedback/:feedbackId',
 router.get('/events/:eventId/feedback-analytics',
   adminAuth,
   requirePermission('events.view'),
+  requireEventOwnership,
   validateEventId,
   checkValidation,
   async (req, res) => {
@@ -304,6 +309,7 @@ router.get('/events/:eventId/feedback-analytics',
 router.get('/events/:eventId/feedback/export',
   adminAuth,
   requirePermission('events.view'),
+  requireEventOwnership,
   validateEventId,
   checkValidation,
   async (req, res) => {

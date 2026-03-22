@@ -204,7 +204,7 @@ router.post('/:slug/photos/:photoId/feedback',
         guest_name: req.body.guest_name,
         guest_email: req.body.guest_email,
         ip_address: req.ip || req.connection.remoteAddress,
-        user_agent: req.headers['user-agent'],
+        user_agent: (req.headers['user-agent'] || '').replace(/[<>&"']/g, '').substring(0, 255),
         moderate_comments: settings.moderate_comments
       };
       

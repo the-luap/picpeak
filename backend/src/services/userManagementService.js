@@ -18,7 +18,7 @@ const { ConflictError, NotFoundError, ValidationError } = require('../utils/erro
  * @param {object} params - { email, roleId, invitedById }
  * @returns {Promise<object>} Created invitation details
  */
-async function createInvitation({ email, roleId, invitedById }) {
+async function createInvitation({ email, roleId, invitedById, inviterRoleName }) {
   // Check if email already exists
   const existingUser = await db('admin_users').where('email', email).first();
   if (existingUser) {
@@ -40,6 +40,11 @@ async function createInvitation({ email, roleId, invitedById }) {
   const role = await db('roles').where('id', roleId).first();
   if (!role) {
     throw new NotFoundError('Role', roleId);
+  }
+
+  // Role hierarchy: only super_admin can invite super_admin
+  if (role.name === 'super_admin' && inviterRoleName !== 'super_admin') {
+    throw new ValidationError('Only Super Admins can invite new Super Admins');
   }
 
   // Generate secure invitation token (64 characters hex = 32 bytes)
@@ -213,7 +218,7 @@ async function getAdminUserById(id) {
  * @param {number} updatedById - ID of user making the update
  * @returns {Promise<object>} Updated user
  */
-async function updateAdminUser(id, updates, updatedById) {
+async function updateAdminUser(id, updates, updatedById, requestingAdmin = {}) {
   const user = await db('admin_users').where('id', id).first();
   if (!user) {
     throw new NotFoundError('Admin user', id);
@@ -248,6 +253,34 @@ async function updateAdminUser(id, updates, updatedById) {
     if (!role) {
       throw new NotFoundError('Role', updates.role_id);
     }
+
+    // Role hierarchy enforcement
+    const superAdminRole = await db('roles').where('name', 'super_admin').first();
+    const isSuperAdmin = requestingAdmin.roleName === 'super_admin';
+
+    // Only super_admin can assign super_admin role
+    if (superAdminRole && role.id === superAdminRole.id && !isSuperAdmin) {
+      throw new ValidationError('Only Super Admins can assign the Super Admin role');
+    }
+
+    // Prevent self-role-update
+    if (id === updatedById) {
+      throw new ValidationError('Cannot change your own role');
+    }
+
+    // Prevent downgrading the last super_admin
+    if (superAdminRole && user.role_id === superAdminRole.id && role.id !== superAdminRole.id) {
+      const superAdminCount = await db('admin_users')
+        .where('role_id', superAdminRole.id)
+        .where('is_active', formatBoolean(true))
+        .count('id as count')
+        .first();
+
+      if (Number(superAdminCount?.count) <= 1) {
+        throw new ValidationError('Cannot demote the last Super Admin');
+      }
+    }
+
     allowedUpdates.role_id = updates.role_id;
   }
 

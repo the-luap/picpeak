@@ -194,13 +194,23 @@ function composeInlineStyles(payload) {
   return cssSegments.join('\n\n');
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function renderBrandHeader(branding) {
-  const displayName = branding.companyName || 'PicPeak';
-  const logoSrc = branding.logoUrl || '/picpeak-logo-transparent.png';
+  const displayName = escapeHtml(branding.companyName || 'PicPeak');
+  const logoSrc = encodeURI(branding.logoUrl || '/picpeak-logo-transparent.png');
   const logo = `<img src="${logoSrc}" alt="${displayName}" class="brand-logo" loading="lazy" decoding="async" />`;
 
   const tagline = branding.companyTagline
-    ? `<p class="brand-tagline">${branding.companyTagline}</p>`
+    ? `<p class="brand-tagline">${escapeHtml(branding.companyTagline)}</p>`
     : '';
 
   return `<header class="site-header">
@@ -224,13 +234,14 @@ function renderBrandHeader(branding) {
 }
 
 function renderBrandFooter(branding) {
-  const displayName = branding.companyName || 'PicPeak';
+  const displayName = escapeHtml(branding.companyName || 'PicPeak');
   const footerNote = branding.footerText
-    ? `<p>${branding.footerText}</p>`
+    ? `<p>${escapeHtml(branding.footerText)}</p>`
     : '<p>Powered by PicPeak to keep every celebration beautifully organised.</p>';
 
-  const supportLink = branding.supportEmail
-    ? `<a href="mailto:${branding.supportEmail}">Support</a>`
+  const supportEmail = escapeHtml(branding.supportEmail || '');
+  const supportLink = supportEmail
+    ? `<a href="mailto:${supportEmail}">Support</a>`
     : '';
 
   const legalLinks = `
@@ -282,7 +293,7 @@ function buildPublicSiteDocument(payload) {
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${payload.title}</title>
+  <title>${escapeHtml(payload.title)}</title>
   <meta name="description" content="Curated photo galleries and stories from unforgettable celebrations." />
   ${seoMeta}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -361,6 +372,20 @@ async function initializeRateLimiters() {
 // Note: Rate limiters will be initialized after database connection
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// CSRF protection: require JSON Content-Type on mutating API requests
+// This blocks cross-origin form submissions which cannot set Content-Type: application/json
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const contentType = req.headers['content-type'] || '';
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    // Allow empty-body requests (e.g. logout), multipart for uploads, and JSON for API calls
+    if (contentLength > 0 && !contentType.includes('application/json') && !contentType.includes('multipart/form-data')) {
+      return res.status(415).json({ error: 'Unsupported Content-Type. Use application/json or multipart/form-data.' });
+    }
+  }
+  next();
+});
 
 // Request logging for API routes (with timestamps)
 const apiRequestLogger = (req, res, next) => {

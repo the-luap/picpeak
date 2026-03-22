@@ -345,15 +345,16 @@ async function processTemplate(template, variables, language = 'en') {
     processedVariables.welcome_message = formatWelcomeMessage(processedVariables.welcome_message);
   }
 
-  // Compile templates with Handlebars
-  const subjectTemplate = Handlebars.compile(subject);
-  const htmlTemplate = Handlebars.compile(htmlBody);
-  const textTemplate = Handlebars.compile(textBody);
+  // Safe template replacement (no code execution, only simple variable substitution)
+  function safeTemplateReplace(template, variables) {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, key) =>
+      variables.hasOwnProperty(key) ? String(variables[key]) : match
+    );
+  }
 
-  // Process templates with processedVariables (includes formatted dates and security messages)
-  subject = subjectTemplate(processedVariables);
-  htmlBody = htmlTemplate(processedVariables);
-  textBody = textTemplate(processedVariables);
+  subject = safeTemplateReplace(subject, processedVariables);
+  htmlBody = safeTemplateReplace(htmlBody, processedVariables);
+  textBody = safeTemplateReplace(textBody, processedVariables);
 
   // Inject client access section if client_link is provided (#172)
   if (processedVariables.client_link) {

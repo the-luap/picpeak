@@ -9,28 +9,8 @@ function getClientIp(req) {
   if (!req) {
     return '';
   }
-
-  const forwardedFor = req.headers['x-forwarded-for'];
-
-  if (typeof forwardedFor === 'string' && forwardedFor.length > 0) {
-    const [firstIp] = forwardedFor.split(',').map(part => part.trim()).filter(Boolean);
-    if (firstIp) {
-      return firstIp;
-    }
-  } else if (Array.isArray(forwardedFor) && forwardedFor.length > 0) {
-    const [firstIp] = forwardedFor;
-    if (firstIp) {
-      return firstIp.trim();
-    }
-  }
-
-  return (
-    req.ip ||
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    req.connection?.socket?.remoteAddress ||
-    ''
-  );
+  // Use req.ip which respects Express 'trust proxy' setting
+  return req.ip || req.connection?.remoteAddress || '';
 }
 
 module.exports = { getClientIp };

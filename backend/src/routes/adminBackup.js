@@ -258,6 +258,13 @@ router.post('/test-connection', adminAuth, requirePermission('backup.create'), a
           break;
         }
 
+        // SSRF protection: block connections to private/internal addresses
+        const { isPrivateIP } = require('../utils/networkValidation');
+        if (isPrivateIP(host)) {
+          res.json({ success: false, message: 'Host cannot be a private or internal network address' });
+          break;
+        }
+
         // Validate username format if provided
         if (user && !/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(user)) {
           res.json({ success: false, message: 'Invalid username format' });
@@ -355,12 +362,17 @@ router.get('/manifest/:backupRunId', adminAuth, requirePermission('backup.view')
 router.post('/manifest/validate', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { manifestPath } = req.body;
-    
+
     if (!manifestPath) {
       return res.status(400).json({ error: 'manifestPath is required' });
     }
-    
-    const result = await validateBackupManifest(manifestPath);
+
+    // Prevent path traversal — manifest must be within backup directory
+    const backupBasePath = process.env.BACKUP_PATH || path.join(__dirname, '../../../backups');
+    const { safePathJoin } = require('../utils/fileSecurityUtils');
+    const safePath = safePathJoin(backupBasePath, manifestPath);
+
+    const result = await validateBackupManifest(safePath);
     
     res.json({
       valid: result.valid,
@@ -456,19 +468,24 @@ router.get('/manifests/:backupId/download', adminAuth, requirePermission('backup
 router.post('/manifests/validate', adminAuth, requirePermission('backup.view'), async (req, res) => {
   try {
     const { manifestPath, manifestData } = req.body;
-    
+
     if (!manifestPath && !manifestData) {
       return res.status(400).json({ error: 'Either manifestPath or manifestData is required' });
     }
-    
+
     if (manifestData) {
       // Validate provided manifest data directly
       const validationResult = await validateManifestData(manifestData);
       return res.json(validationResult);
     }
-    
+
+    // Prevent path traversal — manifest must be within backup directory
+    const backupBasePath = process.env.BACKUP_PATH || path.join(__dirname, '../../../backups');
+    const { safePathJoin } = require('../utils/fileSecurityUtils');
+    const safePath = safePathJoin(backupBasePath, manifestPath);
+
     // Use existing validation function for path
-    const result = await validateBackupManifest(manifestPath);
+    const result = await validateBackupManifest(safePath);
     
     res.json({
       valid: result.valid,
@@ -757,10 +774,14 @@ router.get('/checksums', adminAuth, requirePermission('backup.view'), async (req
   try {
     const { path: targetPath = '', recursive = true } = req.query;
     const checksums = {};
-    
+
     // Get storage path
     const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-    const basePath = targetPath ? path.join(storagePath, targetPath) : storagePath;
+    let basePath = storagePath;
+    if (targetPath) {
+      const { safePathJoin } = require('../utils/fileSecurityUtils');
+      basePath = safePathJoin(storagePath, targetPath);
+    }
     
     // Calculate checksums for files
     async function calculateDirChecksums(dirPath, relative = '') {

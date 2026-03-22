@@ -30,10 +30,10 @@ async function verifyRecaptcha(token) {
     return false;
   }
   
-  // If no secret key configured, log warning but pass
+  // If no secret key configured, fail closed
   if (!secretKey) {
-    console.warn('reCAPTCHA enabled but no secret key configured');
-    return true;
+    console.warn('reCAPTCHA enabled but no secret key configured — blocking request');
+    return false;
   }
   
   try {

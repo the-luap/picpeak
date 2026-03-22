@@ -437,26 +437,59 @@ async function performLocalBackup(config, files) {
   };
 }
 
+function validateRsyncParam(value, label) {
+  if (!value || typeof value !== 'string') return null;
+  if (!/^[a-zA-Z0-9._\/@:-]+$/.test(value)) {
+    throw new Error(`Invalid ${label}: contains disallowed characters`);
+  }
+  if (value.length > 1024) {
+    throw new Error(`Invalid ${label}: too long`);
+  }
+  return value;
+}
+
 function buildRsyncArgs(config) {
   const storagePath = getStoragePath();
-  const host = config.backup_rsync_host;
-  const remotePath = config.backup_rsync_path;
+  const host = validateRsyncParam(config.backup_rsync_host, 'host');
+  const remotePath = validateRsyncParam(config.backup_rsync_path, 'remote path');
 
   if (!host || !remotePath) {
     throw new Error('Rsync configuration incomplete');
   }
 
+  // Validate host format (hostname or IP only)
+  const hostRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!hostRegex.test(host) && !ipRegex.test(host)) {
+    throw new Error('Invalid rsync host format');
+  }
+
   const args = ['-avz', '--delete', '--stats'];
   if (config.backup_rsync_ssh_key) {
-    args.push('-e', `ssh -i ${config.backup_rsync_ssh_key} -o StrictHostKeyChecking=no`);
+    const sshKey = validateRsyncParam(config.backup_rsync_ssh_key, 'SSH key path');
+    const fs = require('fs');
+    if (!fs.existsSync(sshKey) || !fs.statSync(sshKey).isFile()) {
+      throw new Error('SSH key file not found or is not a file');
+    }
+    // Pass SSH options as separate array elements to avoid shell interpretation
+    args.push('-e', `ssh -i ${sshKey} -o StrictHostKeyChecking=no`);
   }
 
   const excludePatterns = config.backup_exclude_patterns || [];
   excludePatterns.forEach(pattern => args.push('--exclude', pattern));
 
   const source = `${storagePath}/`;
-  const destination = config.backup_rsync_user
-    ? `${config.backup_rsync_user}@${host}:${remotePath}`
+
+  const user = config.backup_rsync_user;
+  if (user) {
+    validateRsyncParam(user, 'user');
+    if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(user)) {
+      throw new Error('Invalid rsync username format');
+    }
+  }
+
+  const destination = user
+    ? `${user}@${host}:${remotePath}`
     : `${host}:${remotePath}`;
 
   args.push(source, destination);
