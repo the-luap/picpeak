@@ -303,7 +303,9 @@
       "writeLovelyNote": "Напишите тёплые слова...",
       "postComment": "Оставить комментарий",
       "anonymous": "Аноним"
-    }
+    },
+    "rated": "Оценено",
+    "commented": "Прокомментировано"
   },
   "categories": {
     "title": "Категории фото",
@@ -600,7 +602,24 @@
       "failed": "Ошибка переименования",
       "filesRenamed": "Обновлено {{count}} файлов",
       "confirm": "Переименовать событие"
-    }
+    },
+    "activeFilter": "Активные",
+    "archivedFilter": "Архивированные",
+    "sortByName": "По имени",
+    "sortByDate": "По дате",
+    "sortByExpiration": "По сроку",
+    "photosCount": "Фото",
+    "moreActions": "Ещё",
+    "copyLinkTooltip": "Копировать ссылку",
+    "viewGalleryTooltip": "Просмотр галереи",
+    "uploadPhotosTooltip": "Загрузить фото",
+    "editTooltip": "Редактировать",
+    "archiveTooltip": "Архивировать",
+    "noEvents": "События не найдены",
+    "noEventsDescription": "Создайте своё первое событие, чтобы начать.",
+    "bulkArchive": "Архивировать",
+    "confirmBulkArchive": "Вы уверены, что хотите архивировать {{count}} событие(й)?",
+    "confirmBulkArchiveDescription": "Это действие нельзя отменить. Архивированные события больше не будут доступны публично."
   },
   "settings": {
     "title": "Системные настройки",
@@ -1799,7 +1818,9 @@
         "upToDate": "Резервная копия актуальна",
         "recent": "Резервная копия свежая",
         "gettingOld": "Резервная копия устаревает",
-        "outdated": "Резервная копия устарела"
+        "outdated": "Резервная копия устарела",
+        "failed": "Последнее резервное копирование не удалось",
+        "old": "Резервная копия устаревает"
       },
       "stats": {
         "totalBackups": "Всего копий",
@@ -2303,7 +2324,9 @@
     "fiveStarsOnly": "Только 5 звёзд",
     "hasLikes": "Есть лайки",
     "hasFavorites": "Есть в избранном",
-    "hasComments": "Есть комментарии"
+    "hasComments": "Есть комментарии",
+    "showingPhotos": "Всего фото",
+    "withRatings": "С оценками"
   },
   "adminLogin": {
     "title": "Вход для администратора",
@@ -2353,5 +2376,13 @@
     "linkLabel": "Ссылка для клиента",
     "regenerateToken": "Сгенерировать новую ссылку",
     "tokenRegenerated": "Ссылка для клиента обновлена"
+  },
+  "export": {
+    "button": "Экспорт",
+    "success": "Экспорт успешно загружен",
+    "error": "Ошибка экспорта: ",
+    "exportSelected": "Экспортировать {{count}} выбранных",
+    "exportFiltered": "Экспортировать отфильтрованные фото",
+    "hint": "Выберите фото или примените фильтры для экспорта"
   }
 }

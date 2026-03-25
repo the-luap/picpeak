@@ -7,6 +7,7 @@ import enTranslations from './locales/en.json';
 import deTranslations from './locales/de.json';
 import ruTranslations from './locales/ru.json';
 import ptTranslations from './locales/pt.json';
+import nlTranslations from './locales/nl.json';
 
 i18n
   .use(HttpBackend)
@@ -15,7 +16,7 @@ i18n
   .init({
     fallbackLng: 'en',
     debug: false,
-    
+
     resources: {
       en: {
         translation: enTranslations,
@@ -28,6 +29,9 @@ i18n
       },
       pt: {
         translation: ptTranslations,
+      },
+      nl: {
+        translation: nlTranslations,
       },
     },
     

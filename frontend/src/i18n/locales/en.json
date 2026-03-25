@@ -224,10 +224,10 @@
     "dayRemaining": "1 day remaining",
     "hoursRemaining": "{{hours}} hours remaining",
     "expiredMessage": "This gallery expired on {{date}}",
-    "contactOrganizer": "Please contact the event organizer if you need access to these photos",
+    "contactOrganizer": "Please contact the event organizer if you need access to these photos.",
     "searchPhotos": "Search photos by filename...",
     "sortByDate": "Sort by Date",
-    "sortByName": "Sort by Name", 
+    "sortByName": "Sort by Name",
     "sortBySize": "Sort by Size",
     "allPhotos": "All Photos",
     "filter": "Filter",
@@ -236,7 +236,7 @@
     "liked": "Liked",
     "favorited": "Favorited",
     "favorites": "Favorites",
-    "downloadSelected": "Download Selected",
+    "downloadSelected": "Download {{count}} Selected",
     "shareGallery": "Share Gallery",
     "needHelp": "Need help? Contact us at",
     "noPhotosFound": "No photos found",
@@ -244,7 +244,6 @@
     "tryAgain": "Try Again",
     "loading": "Loading gallery...",
     "expiredOn": "This gallery expired on {{date}}.",
-    "contactOrganizer": "Please contact the event organizer if you need access to these photos.",
     "expiresIn": "Gallery expires in {{count}} day",
     "expiresIn_plural": "Gallery expires in {{count}} days",
     "downloadBefore": "Download your photos before they're no longer available.",
@@ -262,7 +261,6 @@
     "photosSelected": "{{count}} selected",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
-    "downloadSelected": "Download {{count}} Selected",
     "deleteSelected": "Delete Selected",
     "photosCount": "{{count}} photo",
     "photosCount_plural": "{{count}} photos",
@@ -286,10 +284,7 @@
     "noMedia": "No media uploaded yet",
     "searchPlaceholder": "Search photos...",
     "sortBy": "Sort By",
-    "sortByDate": "Sort by Date",
     "sortByCaptureDate": "Sort by Capture Date",
-    "sortByName": "Sort by Name",
-    "sortBySize": "Sort by Size",
     "sortByRating": "Sort by Rating",
     "photoGallery": "Photo Gallery",
     "photos": "Photos",
@@ -308,7 +303,9 @@
       "writeLovelyNote": "Write a lovely note...",
       "postComment": "Post Comment",
       "anonymous": "Anonymous"
-    }
+    },
+    "rated": "Rated",
+    "commented": "Commented"
   },
   "categories": {
     "title": "Photo Categories",
@@ -429,7 +426,6 @@
     "statistics": "Statistics",
     "views": "Views",
     "downloads": "Downloads",
-    "uniqueVisitors": "Unique Visitors",
     "noStatistics": "No statistics available yet",
     "archiveStatus": "Archive Status",
     "archivedOn": "Archived On",
@@ -437,7 +433,7 @@
     "loadingPhotos": "Loading photos...",
     "photoCategories": "Photo Categories",
     "organizeCategoriesInfo": "Organize your photos into categories. Categories help guests navigate and find specific types of photos.",
-    "categoriesTip": "Tip: Categories are specific to each event. You can also create global categories in Settings.",
+    "categoriesTip": "Tip: Categories are specific to each event. You can create custom categories like \"Ceremony\", \"Reception\", \"Portraits\", etc.",
     "contactInformation": "Contact Information",
     "hostEmailHelp": "Customer will receive gallery creation and expiration notifications",
     "adminEmailHelp": "Will receive system notifications and archive confirmations",
@@ -534,8 +530,8 @@
     "days365": "1 year",
     "inactive": "Inactive",
     "expired": "Expired",
-    "daysLeft": "{{count}}d left",
-    "daysLeft_plural": "{{count}}d left",
+    "daysLeft": "({{count}} day left)",
+    "daysLeft_plural": "({{count}} days left)",
     "subtitle": "Manage your photo galleries and events",
     "loadingEvents": "Loading events...",
     "failedToLoadEvents": "Failed to load events",
@@ -556,8 +552,6 @@
     "type": "Type",
     "date": "Date",
     "status": "Status",
-    "expires": "Expires",
-    "actions": "Actions",
     "noEventsFound": "No events found",
     "stats": {
       "totalEvents": "Total Events",
@@ -571,31 +565,17 @@
     "deleteEvent": "Delete Event",
     "deleteEventConfirm": "Are you sure you want to delete this event?",
     "downloadArchiveSoon": "Download archive coming soon",
-    "failedToLoadEvents": "Failed to load events",
-    "tryAgain": "Try Again",
     "eventExpiredMessage": "This event has expired",
     "guestsCannotAccessGallery": "Guests can no longer access the gallery. Consider archiving this event.",
     "warningEmailsHaveBeenSent": "Warning emails have been sent to the customer.",
     "extendSevenDays": "Extend 7 Days",
-    "overview": "Overview",
-    "eventInformation": "Event Information",
     "welcomeMessageLabel": "Welcome Message",
     "noWelcomeMessageSet": "No welcome message set",
-    "hostEmail": "Customer Email",
-    "adminEmail": "Admin Email",
     "createdOn": "Created",
-    "expires": "Expires",
-    "daysLeft": "({{count}} day left)",
-    "daysLeft_plural": "({{count}} days left)",
-    "shareLink": "Share Link",
     "copy": "Copy",
     "copied": "Copied!",
-    "uploadPhotos": "Upload Photos",
-    "photoCategories": "Photo Categories",
     "organizingPhotosInfo": "Organize your photos into categories. Categories help guests navigate and find specific types of photos.",
-    "categoriesTip": "Tip: Categories are specific to each event. You can create custom categories like \"Ceremony\", \"Reception\", \"Portraits\", etc.",
     "archiveStatusTitle": "Archive Status",
-    "archivedOn": "Archived On",
     "downloadingArchive": "Downloading {{name}} archive...",
     "downloadStarted": "Download started",
     "failedToDownloadArchive": "Failed to download archive",
@@ -622,7 +602,24 @@
       "failed": "Rename failed",
       "filesRenamed": "{{count}} files updated",
       "confirm": "Rename Event"
-    }
+    },
+    "activeFilter": "Active",
+    "archivedFilter": "Archived",
+    "sortByName": "By Name",
+    "sortByDate": "By Date",
+    "sortByExpiration": "By Expiration",
+    "photosCount": "Photos",
+    "moreActions": "More Actions",
+    "copyLinkTooltip": "Copy Link",
+    "viewGalleryTooltip": "View Gallery",
+    "uploadPhotosTooltip": "Upload Photos",
+    "editTooltip": "Edit",
+    "archiveTooltip": "Archive",
+    "noEvents": "No events found",
+    "noEventsDescription": "Create your first event to get started.",
+    "bulkArchive": "Archive",
+    "confirmBulkArchive": "Are you sure you want to archive {{count}} event(s)?",
+    "confirmBulkArchiveDescription": "This action cannot be undone. Archived events will no longer be publicly accessible."
   },
   "settings": {
     "title": "System Settings",
@@ -1005,7 +1002,7 @@
     "fullDashboard": "Full Dashboard",
     "refresh": "Refresh",
     "last7Days": "Last 7 days",
-    "last30Days": "Last 30 days", 
+    "last30Days": "Last 30 days",
     "last90Days": "Last 90 days",
     "pageViews": "Page Views",
     "uniqueVisitors": "Unique Visitors",
@@ -1049,7 +1046,7 @@
     "uploadLogo": "Upload Logo",
     "removeLogo": "Remove Logo",
     "logoHelp": "Recommended size: 200x60px, PNG or JPEG",
-    "favicon": "Favicon", 
+    "favicon": "Favicon",
     "currentFavicon": "Current favicon",
     "uploadFavicon": "Upload Favicon",
     "removeFavicon": "Remove Favicon",
@@ -1671,8 +1668,6 @@
     "username": "Username",
     "password": "Password",
     "enterPassword": "Enter password",
-    "fromEmail": "From Email",
-    "fromName": "From Name",
     "required": "required",
     "ignoreSslErrors": "Ignore SSL/TLS certificate errors",
     "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications.",
@@ -1823,7 +1818,9 @@
         "upToDate": "Backup is up to date",
         "recent": "Backup is recent",
         "gettingOld": "Backup is getting old",
-        "outdated": "Backup is outdated"
+        "outdated": "Backup is outdated",
+        "failed": "Last backup failed",
+        "old": "Backup is getting old"
       },
       "stats": {
         "totalBackups": "Total Backups",
@@ -2000,7 +1997,15 @@
         "duration": "Duration",
         "actions": "Actions"
       },
-      "details": "Details",
+      "details": {
+        "backupDetails": "Backup Details",
+        "destination": "Destination",
+        "started": "Started",
+        "completed": "Completed",
+        "contentBackedUp": "Content Backed Up",
+        "errorDetails": "Error Details",
+        "manifest": "Manifest"
+      },
       "statistics": "Statistics",
       "errors": "Errors",
       "backupDetails": {
@@ -2030,15 +2035,6 @@
       "backupsWillAppear": "Backups will appear here once created",
       "messages": {
         "deleteSuccess": "Backup deleted successfully"
-      },
-      "details": {
-        "backupDetails": "Backup Details",
-        "destination": "Destination",
-        "started": "Started",
-        "completed": "Completed",
-        "contentBackedUp": "Content Backed Up",
-        "errorDetails": "Error Details",
-        "manifest": "Manifest"
       }
     },
     "restore": {
@@ -2083,26 +2079,26 @@
         "at": "at"
       },
       "restoreTypes": {
-          "full": {
-            "name": "Full Restore",
-            "description": "Restore everything including database, photos, and archives",
-            "warning": "This will replace all current data"
-          },
-          "database": {
-            "name": "Database Only",
-            "description": "Restore only the database (settings, events, users)",
-            "warning": "Current database will be replaced"
-          },
-          "files": {
-            "name": "Files Only",
-            "description": "Restore only photos and archives",
-            "warning": "Existing files may be overwritten"
-          },
-          "selective": {
-            "name": "Selective Restore",
-            "description": "Choose specific items to restore",
-            "warning": "Only selected items will be restored"
-          }
+        "full": {
+          "name": "Full Restore",
+          "description": "Restore everything including database, photos, and archives",
+          "warning": "This will replace all current data"
+        },
+        "database": {
+          "name": "Database Only",
+          "description": "Restore only the database (settings, events, users)",
+          "warning": "Current database will be replaced"
+        },
+        "files": {
+          "name": "Files Only",
+          "description": "Restore only photos and archives",
+          "warning": "Existing files may be overwritten"
+        },
+        "selective": {
+          "name": "Selective Restore",
+          "description": "Choose specific items to restore",
+          "warning": "Only selected items will be restored"
+        }
       },
       "options": {
         "title": "Restore Options",
@@ -2328,7 +2324,9 @@
     "fiveStarsOnly": "5 Stars Only",
     "hasLikes": "Has likes",
     "hasFavorites": "Has favorites",
-    "hasComments": "Has comments"
+    "hasComments": "Has comments",
+    "showingPhotos": "Total photos",
+    "withRatings": "With ratings"
   },
   "adminLogin": {
     "title": "Admin Login",
@@ -2378,5 +2376,13 @@
     "linkLabel": "Client Access Link",
     "regenerateToken": "Regenerate link",
     "tokenRegenerated": "Client access link regenerated"
+  },
+  "export": {
+    "button": "Export",
+    "success": "Export downloaded successfully",
+    "error": "Export failed: ",
+    "exportSelected": "Export {{count}} selected",
+    "exportFiltered": "Export filtered photos",
+    "hint": "Select photos or apply filters to export"
   }
 }

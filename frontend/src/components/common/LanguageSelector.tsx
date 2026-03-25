@@ -38,11 +38,20 @@ const PTBRFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) =
   </svg>
 );
 
+const NLFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#AE1C28" d="M0 0h640v160H0z"/>
+    <path fill="#FFF" d="M0 160h640v160H0z"/>
+    <path fill="#21468B" d="M0 320h640v160H0z"/>
+  </svg>
+);
+
 const languages = [
   { code: 'en', name: 'English', Flag: GBFlag },
   { code: 'de', name: 'Deutsch', Flag: DEFlag },
   { code: 'ru', name: 'Русский', Flag: RUFlag },
   { code: 'pt', name: 'Português', Flag: PTBRFlag },
+  { code: 'nl', name: 'Nederlands', Flag: NLFlag },
 ];
 
 export const LanguageSelector: React.FC = () => {

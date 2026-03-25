@@ -303,7 +303,9 @@
       "writeLovelyNote": "Escreva uma mensagem carinhosa...",
       "postComment": "Publicar Comentário",
       "anonymous": "Anônimo"
-    }
+    },
+    "rated": "Avaliado",
+    "commented": "Comentado"
   },
   "categories": {
     "title": "Categorias de Fotos",
@@ -600,7 +602,24 @@
       "failed": "Falha ao renomear",
       "filesRenamed": "{{count}} arquivos atualizados",
       "confirm": "Renomear Evento"
-    }
+    },
+    "activeFilter": "Ativos",
+    "archivedFilter": "Arquivados",
+    "sortByName": "Por nome",
+    "sortByDate": "Por data",
+    "sortByExpiration": "Por expiração",
+    "photosCount": "Fotos",
+    "moreActions": "Mais ações",
+    "copyLinkTooltip": "Copiar link",
+    "viewGalleryTooltip": "Ver galeria",
+    "uploadPhotosTooltip": "Enviar fotos",
+    "editTooltip": "Editar",
+    "archiveTooltip": "Arquivar",
+    "noEvents": "Nenhum evento encontrado",
+    "noEventsDescription": "Crie seu primeiro evento para começar.",
+    "bulkArchive": "Arquivar",
+    "confirmBulkArchive": "Tem certeza de que deseja arquivar {{count}} evento(s)?",
+    "confirmBulkArchiveDescription": "Esta ação não pode ser desfeita. Eventos arquivados não serão mais acessíveis publicamente."
   },
   "settings": {
     "title": "Configurações do Sistema",
@@ -1799,7 +1818,9 @@
         "upToDate": "Backup está atualizado",
         "recent": "Backup é recente",
         "gettingOld": "Backup está ficando antigo",
-        "outdated": "Backup está desatualizado"
+        "outdated": "Backup está desatualizado",
+        "failed": "Último backup falhou",
+        "old": "Backup está ficando antigo"
       },
       "stats": {
         "totalBackups": "Total de Backups",
@@ -2303,7 +2324,9 @@
     "fiveStarsOnly": "Apenas 5 Estrelas",
     "hasLikes": "Tem curtidas",
     "hasFavorites": "Tem favoritos",
-    "hasComments": "Tem comentários"
+    "hasComments": "Tem comentários",
+    "showingPhotos": "Total de fotos",
+    "withRatings": "Com avaliações"
   },
   "adminLogin": {
     "title": "Login de Administrador",
@@ -2353,5 +2376,13 @@
     "linkLabel": "Link de Acesso do Cliente",
     "regenerateToken": "Regenerar link",
     "tokenRegenerated": "Link de acesso do cliente regenerado"
+  },
+  "export": {
+    "button": "Exportar",
+    "success": "Exportação baixada com sucesso",
+    "error": "Falha na exportação: ",
+    "exportSelected": "Exportar {{count}} selecionados",
+    "exportFiltered": "Exportar fotos filtradas",
+    "hint": "Selecione fotos ou aplique filtros para exportar"
   }
 }
