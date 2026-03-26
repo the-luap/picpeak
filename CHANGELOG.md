@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.21.1-beta.0...v3.22.0-beta.0) (2026-03-25)
+
+
+### Features
+
+* add Dutch (nl) locale and fix missing translation keys across all locales ([b54a80d](https://github.com/the-luap/picpeak/commit/b54a80d251bcbb9a126e32eeaef522688bc810c6))
+* add Dutch locale and fix missing translation keys ([e32da68](https://github.com/the-luap/picpeak/commit/e32da68cbdfa430d62cbb1057ea418dc6b2f14fb))
+
 ## [3.21.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.21.0-beta.0...v3.21.1-beta.0) (2026-03-22)
 
 
