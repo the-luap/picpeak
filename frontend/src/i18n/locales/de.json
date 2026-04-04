@@ -2149,7 +2149,11 @@
       "enterUrl": "URL eingeben...",
       "addLink": "Hinzufügen",
       "cancel": "Abbrechen"
-    }
+    },
+    "copiedFromLanguage": "Inhalt von {{language}} kopiert",
+    "noTranslation": "Noch keine Übersetzung",
+    "noTranslationYet": "Für diese Sprache existiert noch keine Übersetzung. Kopieren Sie von einer vorhandenen Sprache:",
+    "copyFrom": "Kopieren von"
   },
   "cms": {
     "title": "CMS-Seiten",

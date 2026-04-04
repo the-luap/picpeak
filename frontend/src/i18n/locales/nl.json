@@ -433,7 +433,7 @@
     "loadingPhotos": "Foto's laden...",
     "photoCategories": "Fotocategorieen",
     "organizeCategoriesInfo": "Organiseer uw foto's in categorieen. Categorieen helpen gasten om specifieke soorten foto's te vinden.",
-    "categoriesTip": "Tip: Categorieen zijn specifiek per evenement. U kunt ook globale categorieen aanmaken in Instellingen.",
+    "categoriesTip": "Tip: Categorieen zijn specifiek per evenement. U kunt aangepaste categorieen aanmaken zoals \"Ceremonie\", \"Receptie\", \"Portretten\", etc.",
     "contactInformation": "Contactgegevens",
     "hostEmailHelp": "Klant ontvangt meldingen over aanmaak en verloop van de galerij",
     "adminEmailHelp": "Ontvangt systeemmeldingen en archiefbevestigingen",
@@ -569,19 +569,13 @@
     "guestsCannotAccessGallery": "Gasten hebben geen toegang meer tot de galerij. Overweeg dit evenement te archiveren.",
     "warningEmailsHaveBeenSent": "Waarschuwingsmails zijn naar de klant verzonden.",
     "extendSevenDays": "7 dagen verlengen",
-    "eventInformation": "Evenementinformatie",
     "welcomeMessageLabel": "Welkomstbericht",
     "noWelcomeMessageSet": "Geen welkomstbericht ingesteld",
-    "hostEmail": "E-mail klant",
-    "adminEmail": "E-mail beheerder",
     "createdOn": "Aangemaakt",
-    "shareLink": "Deellink",
     "copy": "Kopieren",
     "copied": "Gekopieerd!",
     "organizingPhotosInfo": "Organiseer uw foto's in categorieen. Categorieen helpen gasten om specifieke soorten foto's te vinden.",
-    "categoriesTip": "Tip: Categorieen zijn specifiek per evenement. U kunt aangepaste categorieen aanmaken zoals \"Ceremonie\", \"Receptie\", \"Portretten\", etc.",
     "archiveStatusTitle": "Archiefstatus",
-    "archivedOn": "Gearchiveerd op",
     "downloadingArchive": "Archief {{name}} downloaden...",
     "downloadStarted": "Download gestart",
     "failedToDownloadArchive": "Kan archief niet downloaden",
@@ -1704,7 +1698,11 @@
       "enterUrl": "Voer URL in...",
       "addLink": "Toevoegen",
       "cancel": "Annuleren"
-    }
+    },
+    "copiedFromLanguage": "Inhoud gekopieerd van {{language}}",
+    "noTranslation": "Nog geen vertaling",
+    "noTranslationYet": "Er bestaat nog geen vertaling voor deze taal. Kopieer van een bestaande taal om te beginnen:",
+    "copyFrom": "Kopiëren van"
   },
   "cms": {
     "title": "CMS-pagina's",
@@ -2003,7 +2001,15 @@
         "duration": "Duur",
         "actions": "Acties"
       },
-      "details": "Details",
+      "details": {
+        "backupDetails": "Back-updetails",
+        "destination": "Bestemming",
+        "started": "Gestart",
+        "completed": "Voltooid",
+        "contentBackedUp": "Geback-upte inhoud",
+        "errorDetails": "Foutdetails",
+        "manifest": "Manifest"
+      },
       "statistics": "Statistieken",
       "errors": "Fouten",
       "backupDetails": {
@@ -2033,15 +2039,6 @@
       "backupsWillAppear": "Back-ups verschijnen hier zodra ze zijn aangemaakt",
       "messages": {
         "deleteSuccess": "Back-up succesvol verwijderd"
-      },
-      "details": {
-        "backupDetails": "Back-updetails",
-        "destination": "Bestemming",
-        "started": "Gestart",
-        "completed": "Voltooid",
-        "contentBackedUp": "Geback-upte inhoud",
-        "errorDetails": "Foutdetails",
-        "manifest": "Manifest"
       }
     },
     "restore": {

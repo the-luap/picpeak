@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   ShieldAlert,
+  Copy,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -19,9 +20,17 @@ import { EmailPreviewModal } from '../../components/admin/EmailPreviewModal';
 import { EmailTemplateEditor } from '../../components/admin/EmailTemplateEditor';
 import { Palette } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { emailService, type EmailConfig, type EmailTemplate } from '../../services/email.service';
+import { emailService, type EmailConfig, type EmailTemplate, type EmailTemplateTranslation } from '../../services/email.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
+  { code: 'pt', name: 'Português', flag: '🇧🇷' },
+  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+];
 
 const defaultTemplateKeys = [
   {
@@ -92,7 +101,7 @@ export const EmailConfigPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'smtp' | 'templates'>('smtp');
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('gallery_created');
   const [editedTemplate, setEditedTemplate] = useState<Partial<EmailTemplate>>({});
-  const [editingLang, setEditingLang] = useState<'en' | 'de'>('en');
+  const [editingLang, setEditingLang] = useState<string>('en');
   const [showPassword, setShowPassword] = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [showPreview, setShowPreview] = useState(false);
@@ -104,7 +113,7 @@ export const EmailConfigPage: React.FC = () => {
   const [emailPrimaryColor, setEmailPrimaryColor] = useState('#5C8762');
   const [emailSecondaryColor, setEmailSecondaryColor] = useState('#f9f9f9');
   const queryClient = useQueryClient();
-  
+
   // SMTP Configuration state
   const [smtpConfig, setSmtpConfig] = useState<EmailConfig>({
     smtp_host: '',
@@ -191,8 +200,8 @@ export const EmailConfigPage: React.FC = () => {
   });
 
   const saveTemplateMutation = useMutation({
-    mutationFn: ({ key, template }: { key: string; template: Partial<EmailTemplate> }) => 
-      emailService.updateTemplate(key, template),
+    mutationFn: ({ key, translations }: { key: string; translations: Record<string, EmailTemplateTranslation> }) =>
+      emailService.updateTemplate(key, { translations }),
     onSuccess: () => {
       toast.success(t('toast.saveSuccess'));
       queryClient.invalidateQueries({ queryKey: ['email-templates'] });
@@ -241,21 +250,41 @@ export const EmailConfigPage: React.FC = () => {
     testEmailMutation.mutate(testEmail);
   };
 
+  // Get current translation for the editing language
+  const currentTranslation = editedTemplate.translations?.[editingLang] || { subject: '', body_html: '', body_text: '' };
+
+  const handleTranslationChange = (field: keyof EmailTemplateTranslation, value: string) => {
+    setEditedTemplate(prev => ({
+      ...prev,
+      translations: {
+        ...prev.translations,
+        [editingLang]: {
+          ...prev.translations?.[editingLang],
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const handleCopyFromLanguage = (sourceLang: string) => {
+    const sourceTranslation = editedTemplate.translations?.[sourceLang];
+    if (!sourceTranslation) return;
+
+    setEditedTemplate(prev => ({
+      ...prev,
+      translations: {
+        ...prev.translations,
+        [editingLang]: { ...sourceTranslation },
+      },
+    }));
+    toast.info(t('email.copiedFromLanguage', { language: SUPPORTED_LANGUAGES.find(l => l.code === sourceLang)?.name || sourceLang }));
+  };
+
   const handleSaveTemplate = () => {
-    if (selectedTemplateKey && editedTemplate) {
-      const templateData: Partial<EmailTemplate> = {};
-      
-      // Include both language versions
-      if (editedTemplate.subject_en !== undefined) templateData.subject_en = editedTemplate.subject_en;
-      if (editedTemplate.subject_de !== undefined) templateData.subject_de = editedTemplate.subject_de;
-      if (editedTemplate.body_html_en !== undefined) templateData.body_html_en = editedTemplate.body_html_en;
-      if (editedTemplate.body_html_de !== undefined) templateData.body_html_de = editedTemplate.body_html_de;
-      if (editedTemplate.body_text_en !== undefined) templateData.body_text_en = editedTemplate.body_text_en;
-      if (editedTemplate.body_text_de !== undefined) templateData.body_text_de = editedTemplate.body_text_de;
-      
-      saveTemplateMutation.mutate({ 
-        key: selectedTemplateKey, 
-        template: templateData
+    if (selectedTemplateKey && editedTemplate.translations) {
+      saveTemplateMutation.mutate({
+        key: selectedTemplateKey,
+        translations: editedTemplate.translations,
       });
     }
   };
@@ -264,11 +293,10 @@ export const EmailConfigPage: React.FC = () => {
     if (!selectedTemplateKey || !editedTemplate) return;
 
     // Generate sample data based on the template
-    // Note: These are clearly marked placeholder values for template preview only
     const sampleData: Record<string, string> = {
       event_name: 'John & Jane Wedding',
       event_date: 'December 25, 2024',
-      password: '••••••••', // Masked placeholder for preview
+      password: '••••••••',
       gallery_link: 'https://photos.example.com/gallery/john-jane-wedding',
       expiration_date: 'January 25, 2025',
       welcome_message: 'Thank you for celebrating our special day with us!',
@@ -289,6 +317,19 @@ export const EmailConfigPage: React.FC = () => {
       toast.error(t('toast.saveError'));
     }
   };
+
+  // Count how many languages have translations for a template
+  const getTranslationCount = (template: EmailTemplate) => {
+    if (!template.translations) return 0;
+    return Object.keys(template.translations).filter(
+      lang => template.translations[lang]?.subject || template.translations[lang]?.body_html
+    ).length;
+  };
+
+  // Languages that have content and can be copied from
+  const copySourceLanguages = SUPPORTED_LANGUAGES.filter(
+    lang => lang.code !== editingLang && editedTemplate.translations?.[lang.code]?.body_html
+  );
 
   if (configLoading || templatesLoading) {
     return (
@@ -612,6 +653,8 @@ export const EmailConfigPage: React.FC = () => {
             <div className="space-y-2">
               {templates.map(template => {
                 const templateInfo = defaultTemplateKeys.find(t => t.key === template.template_key);
+                const translationCount = getTranslationCount(template);
+                const enTranslation = template.translations?.en;
                 return (
                   <button
                     key={template.template_key}
@@ -625,11 +668,16 @@ export const EmailConfigPage: React.FC = () => {
                         : 'bg-neutral-50 dark:bg-neutral-700 border-2 border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-600'
                     }`}
                   >
-                    <p className="font-medium text-neutral-900 dark:text-neutral-100">
-                      {templateInfo?.name || template.template_key}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                        {templateInfo?.name || template.template_key}
+                      </p>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-600 text-neutral-600 dark:text-neutral-300">
+                        {translationCount}/{SUPPORTED_LANGUAGES.length}
+                      </span>
+                    </div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 truncate">
-                      {template.subject_en || template.subject}
+                      {enTranslation?.subject || ''}
                     </p>
                   </button>
                 );
@@ -642,28 +690,6 @@ export const EmailConfigPage: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('email.editTemplate')}</h3>
                 <div className="flex gap-2">
-                  <div className="flex gap-1 mr-4">
-                    <button
-                      onClick={() => setEditingLang('en')}
-                      className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                        editingLang === 'en'
-                          ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
-                    >
-                      🇬🇧 English
-                    </button>
-                    <button
-                      onClick={() => setEditingLang('de')}
-                      className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                        editingLang === 'de'
-                          ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
-                          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                      }`}
-                    >
-                      🇩🇪 Deutsch
-                    </button>
-                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -684,6 +710,49 @@ export const EmailConfigPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Language tabs */}
+              <div className="flex flex-wrap gap-1 mb-4 p-1 bg-neutral-100 dark:bg-neutral-700 rounded-lg">
+                {SUPPORTED_LANGUAGES.map(lang => {
+                  const hasContent = editedTemplate.translations?.[lang.code]?.body_html;
+                  return (
+                    <button
+                      key={lang.code}
+                      onClick={() => setEditingLang(lang.code)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                        editingLang === lang.code
+                          ? 'bg-white dark:bg-neutral-800 text-primary-700 dark:text-primary-300 shadow-sm'
+                          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                      }`}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.name}</span>
+                      {!hasContent && lang.code !== 'en' && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={t('email.noTranslation')} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Copy from language */}
+              {!currentTranslation.body_html && copySourceLanguages.length > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">{t('email.noTranslationYet')}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {copySourceLanguages.map(lang => (
+                      <button
+                        key={lang.code}
+                        onClick={() => handleCopyFromLanguage(lang.code)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 text-sm bg-white dark:bg-neutral-800 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {t('email.copyFrom')} {lang.flag} {lang.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -699,37 +768,23 @@ export const EmailConfigPage: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    {t('email.subjectLine')} ({editingLang === 'en' ? 'English' : 'German'})
+                    {t('email.subjectLine')} ({SUPPORTED_LANGUAGES.find(l => l.code === editingLang)?.name || editingLang})
                   </label>
                   <Input
                     type="text"
-                    value={
-                      editingLang === 'en' 
-                        ? (editedTemplate.subject_en || editedTemplate.subject || '')
-                        : (editedTemplate.subject_de || '')
-                    }
-                    onChange={(e) => setEditedTemplate(prev => ({ 
-                      ...prev, 
-                      [editingLang === 'en' ? 'subject_en' : 'subject_de']: e.target.value 
-                    }))}
+                    value={currentTranslation.subject || ''}
+                    onChange={(e) => handleTranslationChange('subject', e.target.value)}
                     placeholder="Email subject"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    {t('email.emailBody')} ({editingLang === 'en' ? 'English' : 'German'})
+                    {t('email.emailBody')} ({SUPPORTED_LANGUAGES.find(l => l.code === editingLang)?.name || editingLang})
                   </label>
                   <EmailTemplateEditor
-                    content={
-                      editingLang === 'en'
-                        ? (editedTemplate.body_html_en || editedTemplate.body_html || '')
-                        : (editedTemplate.body_html_de || '')
-                    }
-                    onChange={(value) => setEditedTemplate(prev => ({
-                      ...prev,
-                      [editingLang === 'en' ? 'body_html_en' : 'body_html_de']: value
-                    }))}
+                    content={currentTranslation.body_html || ''}
+                    onChange={(value) => handleTranslationChange('body_html', value)}
                     variables={editedTemplate.variables || []}
                   />
                 </div>
