@@ -1698,7 +1698,11 @@
       "enterUrl": "Digite a URL...",
       "addLink": "Adicionar",
       "cancel": "Cancelar"
-    }
+    },
+    "copiedFromLanguage": "Conteúdo copiado de {{language}}",
+    "noTranslation": "Ainda sem tradução",
+    "noTranslationYet": "Ainda não existe tradução para este idioma. Copie de um idioma existente para começar:",
+    "copyFrom": "Copiar de"
   },
   "cms": {
     "title": "Páginas CMS",

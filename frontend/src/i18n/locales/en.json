@@ -1698,7 +1698,11 @@
       "enterUrl": "Enter URL...",
       "addLink": "Add",
       "cancel": "Cancel"
-    }
+    },
+    "copiedFromLanguage": "Copied content from {{language}}",
+    "noTranslation": "No translation yet",
+    "noTranslationYet": "No translation exists for this language yet. Copy from an existing language to get started:",
+    "copyFrom": "Copy from"
   },
   "cms": {
     "title": "CMS Pages",

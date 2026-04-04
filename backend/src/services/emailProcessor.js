@@ -99,15 +99,22 @@ async function getRecipientLanguage(email, eventId = null) {
     logger.error('Error fetching email config language:', error);
   }
   
-  // Fourth priority: Check if the email domain suggests German
+  // Fourth priority: Check if the email domain suggests a language
   if (email) {
-    const germanDomains = ['.de', '.at', '.ch', '.li'];
     const domain = email.toLowerCase();
-    if (germanDomains.some(d => domain.endsWith(d))) {
-      return 'de';
+    const domainLanguageMap = [
+      { domains: ['.de', '.at', '.ch', '.li'], language: 'de' },
+      { domains: ['.nl', '.be'], language: 'nl' },
+      { domains: ['.br', '.pt'], language: 'pt' },
+      { domains: ['.ru', '.su'], language: 'ru' },
+    ];
+    for (const { domains, language: lang } of domainLanguageMap) {
+      if (domains.some(d => domain.endsWith(d))) {
+        return lang;
+      }
     }
   }
-  
+
   return 'en'; // Default to English
 }
 
@@ -300,30 +307,73 @@ async function processTemplate(template, variables, language = 'en') {
   const { formatDate } = require('../utils/dateFormatter');
   const { formatWelcomeMessage } = require('../utils/formatters');
 
-  // Get the appropriate language fields
-  const subjectField = language === 'de' ? 'subject_de' : 'subject_en';
-  const htmlField = language === 'de' ? 'body_html_de' : 'body_html_en';
-  const textField = language === 'de' ? 'body_text_de' : 'body_text_en';
+  // Get translation from email_template_translations table with fallback chain
+  let subject = '';
+  let htmlBody = '';
+  let textBody = '';
 
-  // Fall back to non-language-specific fields for backward compatibility
-  let subject = template[subjectField] || template.subject || '';
-  let htmlBody = template[htmlField] || template.body_html || '';
-  let textBody = template[textField] || template.body_text || '';
+  try {
+    // Try requested language first, then English, then any available
+    let translation = await db('email_template_translations')
+      .where({ template_id: template.id, language })
+      .first();
+
+    if (!translation && language !== 'en') {
+      translation = await db('email_template_translations')
+        .where({ template_id: template.id, language: 'en' })
+        .first();
+    }
+
+    if (!translation) {
+      translation = await db('email_template_translations')
+        .where({ template_id: template.id })
+        .first();
+    }
+
+    if (translation) {
+      subject = translation.subject || '';
+      htmlBody = translation.body_html || '';
+      textBody = translation.body_text || '';
+    }
+  } catch (error) {
+    logger.warn('email_template_translations table not available, falling back to columns:', error.message);
+  }
+
+  // Fallback to legacy column-based fields if no translation found
+  if (!subject && !htmlBody) {
+    const subjectField = language === 'de' ? 'subject_de' : 'subject_en';
+    const htmlField = language === 'de' ? 'body_html_de' : 'body_html_en';
+    const textField = language === 'de' ? 'body_text_de' : 'body_text_en';
+    subject = template[subjectField] || template.subject_en || template.subject || '';
+    htmlBody = template[htmlField] || template.body_html_en || template.body_html || '';
+    textBody = template[textField] || template.body_text_en || template.body_text || '';
+  }
 
   // Process variables before template compilation
   const processedVariables = { ...variables };
 
   // Handle password security message
+  const passwordSecurityI18n = {
+    en: '(Not shown for security reasons)',
+    de: '(Aus Sicherheitsgründen nicht angezeigt)',
+    nl: '(Om veiligheidsredenen niet weergegeven)',
+    pt: '(Não exibido por motivos de segurança)',
+    ru: '(Не показано в целях безопасности)',
+  };
+  const noPasswordI18n = {
+    en: 'No password required',
+    de: 'Kein Passwort erforderlich',
+    nl: 'Geen wachtwoord vereist',
+    pt: 'Nenhuma senha necessária',
+    ru: 'Пароль не требуется',
+  };
+
   if (processedVariables.gallery_password === '{{password_security_message}}') {
-    processedVariables.gallery_password = language === 'de'
-      ? '(Aus Sicherheitsgründen nicht angezeigt)'
-      : '(Not shown for security reasons)';
+    processedVariables.gallery_password = passwordSecurityI18n[language] || passwordSecurityI18n.en;
   }
 
   if (processedVariables.gallery_password === 'No password required') {
-    processedVariables.gallery_password = language === 'de'
-      ? 'Kein Passwort erforderlich'
-      : 'No password required';
+    processedVariables.gallery_password = noPasswordI18n[language] || noPasswordI18n.en;
   }
 
   // Format dates if they exist
@@ -370,6 +420,12 @@ async function processTemplate(template, variables, language = 'en') {
         desc: 'Просмотрите и управляйте видимостью фотографий перед тем, как поделиться галереей с гостями:',
         link: 'Открыть доступ клиента',
         warning: 'Не делитесь этой ссылкой — она позволяет скрывать фотографии из гостевой галереи.',
+      },
+      nl: {
+        label: 'Klanttoegang (Privé)',
+        desc: 'Bekijk en beheer de zichtbaarheid van foto\'s voordat u deelt met gasten:',
+        link: 'Klanttoegang openen',
+        warning: 'Deel deze link niet — hiermee kunnen foto\'s worden verborgen in de gastengalerij.',
       },
       pt: {
         label: 'Acesso do Cliente (Privado)',

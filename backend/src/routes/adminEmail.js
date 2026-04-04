@@ -248,6 +248,58 @@ router.post('/test', adminAuth, requirePermission('email.send'), async (req, res
   }
 });
 
+// Helper: parse variables JSON safely
+function parseVariables(template) {
+  try {
+    if (!template.variables) return [];
+    if (typeof template.variables === 'object') return template.variables;
+    return JSON.parse(template.variables);
+  } catch (e) {
+    console.warn('Failed to parse variables for template:', template.template_key, e.message);
+    return [];
+  }
+}
+
+// Helper: get translations for a template, with legacy column fallback
+async function getTemplateTranslations(templateId, template) {
+  const translations = {};
+  try {
+    const rows = await db('email_template_translations')
+      .where('template_id', templateId)
+      .select('language', 'subject', 'body_html', 'body_text');
+
+    rows.forEach(row => {
+      translations[row.language] = {
+        subject: row.subject || '',
+        body_html: row.body_html || '',
+        body_text: row.body_text || '',
+      };
+    });
+  } catch (error) {
+    // Translations table might not exist yet (pre-migration)
+    // Fall back to legacy columns
+    if (template.subject_en !== undefined) {
+      translations.en = {
+        subject: template.subject_en || '',
+        body_html: template.body_html_en || '',
+        body_text: template.body_text_en || '',
+      };
+      translations.de = {
+        subject: template.subject_de || '',
+        body_html: template.body_html_de || '',
+        body_text: template.body_text_de || '',
+      };
+    } else {
+      translations.en = {
+        subject: template.subject || '',
+        body_html: template.body_html || '',
+        body_text: template.body_text || '',
+      };
+    }
+  }
+  return translations;
+}
+
 // Get email templates
 router.get('/templates', adminAuth, requirePermission('email.view'), async (req, res) => {
   try {
@@ -255,45 +307,17 @@ router.get('/templates', adminAuth, requirePermission('email.view'), async (req,
       .select('*')
       .orderBy('template_key');
 
-    // Parse variables JSON and format for multi-language support
-    const formattedTemplates = templates.map(template => {
-      const result = {
+    const formattedTemplates = [];
+    for (const template of templates) {
+      const translations = await getTemplateTranslations(template.id, template);
+      formattedTemplates.push({
         id: template.id,
         template_key: template.template_key,
-        variables: (() => {
-          try {
-            if (!template.variables) return [];
-            if (typeof template.variables === 'object') return template.variables;
-            return JSON.parse(template.variables);
-          } catch (e) {
-            console.warn('Failed to parse variables for template:', template.template_key, e.message);
-            return [];
-          }
-        })(),
-        updated_at: template.updated_at
-      };
-      
-      // Handle both old and new schema formats
-      if (template.subject_en !== undefined) {
-        // New schema with language columns
-        result.subject_en = template.subject_en;
-        result.body_html_en = template.body_html_en;
-        result.body_text_en = template.body_text_en;
-        result.subject_de = template.subject_de;
-        result.body_html_de = template.body_html_de;
-        result.body_text_de = template.body_text_de;
-      } else {
-        // Old schema - use basic columns for both languages
-        result.subject_en = template.subject;
-        result.body_html_en = template.body_html;
-        result.body_text_en = template.body_text;
-        result.subject_de = template.subject;
-        result.body_html_de = template.body_html;
-        result.body_text_de = template.body_text;
-      }
-      
-      return result;
-    });
+        variables: parseVariables(template),
+        translations,
+        updated_at: template.updated_at,
+      });
+    }
 
     res.json(formattedTemplates);
   } catch (error) {
@@ -313,119 +337,99 @@ router.get('/templates/:key', adminAuth, requirePermission('email.view'), async 
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    // Handle both old and new schema formats
-    const response = {
+    const translations = await getTemplateTranslations(template.id, template);
+
+    res.json({
       id: template.id,
       template_key: template.template_key,
-      variables: (() => {
-        try {
-          if (!template.variables) return [];
-          if (typeof template.variables === 'object') return template.variables;
-          return JSON.parse(template.variables);
-        } catch (e) {
-          console.warn('Failed to parse variables for template:', template.template_key, e.message);
-          return [];
-        }
-      })(),
-      updated_at: template.updated_at
-    };
-    
-    // Check which columns exist and use them appropriately
-    if (template.subject_en !== undefined) {
-      // New schema with language columns
-      response.subject_en = template.subject_en;
-      response.body_html_en = template.body_html_en;
-      response.body_text_en = template.body_text_en;
-      response.subject_de = template.subject_de;
-      response.body_html_de = template.body_html_de;
-      response.body_text_de = template.body_text_de;
-    } else {
-      // Old schema - use basic columns for both languages
-      response.subject_en = template.subject;
-      response.body_html_en = template.body_html;
-      response.body_text_en = template.body_text;
-      response.subject_de = template.subject;
-      response.body_html_de = template.body_html;
-      response.body_text_de = template.body_text;
-    }
-    
-    res.json(response);
+      variables: parseVariables(template),
+      translations,
+      updated_at: template.updated_at,
+    });
   } catch (error) {
     console.error('Email template fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch email template' });
   }
 });
 
-// Update email template
+// Update email template translations
 router.put('/templates/:key', [
   adminAuth,
   requirePermission('email.edit'),
-  body('subject_en').optional().notEmpty().withMessage('English subject cannot be empty'),
-  body('subject_de').optional().notEmpty().withMessage('German subject cannot be empty'),
-  body('body_html_en').optional().notEmpty().withMessage('English HTML body cannot be empty'),
-  body('body_html_de').optional().notEmpty().withMessage('German HTML body cannot be empty')
 ], async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const {
-      subject_en, subject_de,
-      body_html_en, body_html_de,
-      body_text_en, body_text_de
-    } = req.body;
-
-    const updateData = {
-      updated_at: new Date()
-    };
-
-    // Check which columns exist in the database
     const template = await db('email_templates')
       .where('template_key', req.params.key)
       .first();
-      
+
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });
     }
 
-    // Determine schema type and update accordingly
-    if (template.subject_en !== undefined) {
-      // New schema with language columns
-      if (subject_en !== undefined) updateData.subject_en = subject_en;
-      if (subject_de !== undefined) updateData.subject_de = subject_de;
-      if (body_html_en !== undefined) updateData.body_html_en = body_html_en;
-      if (body_html_de !== undefined) updateData.body_html_de = body_html_de;
-      if (body_text_en !== undefined) updateData.body_text_en = body_text_en || '';
-      if (body_text_de !== undefined) updateData.body_text_de = body_text_de || '';
-      
-      // Also update basic columns if they exist
-      if (template.subject !== undefined) {
-        updateData.subject = subject_en || updateData.subject_en;
-        updateData.body_html = body_html_en || updateData.body_html_en;
-        updateData.body_text = body_text_en || updateData.body_text_en || '';
-      }
-    } else {
-      // Old schema - only update basic columns
-      if (subject_en !== undefined) {
-        updateData.subject = subject_en;
-        updateData.body_html = body_html_en;
-        updateData.body_text = body_text_en || '';
+    const { translations } = req.body;
+
+    if (!translations || typeof translations !== 'object') {
+      return res.status(400).json({ error: 'translations object is required' });
+    }
+
+    // Upsert each language translation
+    for (const [language, data] of Object.entries(translations)) {
+      if (!data || typeof data !== 'object') continue;
+
+      const existing = await db('email_template_translations')
+        .where({ template_id: template.id, language })
+        .first();
+
+      const row = {
+        subject: data.subject || '',
+        body_html: data.body_html || '',
+        body_text: data.body_text || '',
+        updated_at: new Date(),
+      };
+
+      if (existing) {
+        await db('email_template_translations')
+          .where({ template_id: template.id, language })
+          .update(row);
+      } else {
+        await db('email_template_translations').insert({
+          template_id: template.id,
+          language,
+          ...row,
+          created_at: new Date(),
+        });
       }
     }
 
-    const updated = await db('email_templates')
-      .where('template_key', req.params.key)
-      .update(updateData);
+    // Update timestamp on parent template
+    await db('email_templates')
+      .where('id', template.id)
+      .update({ updated_at: new Date() });
 
-    if (!updated) {
-      return res.status(404).json({ error: 'Template not found' });
+    // Also sync legacy columns for backward compatibility
+    const enData = translations.en;
+    const deData = translations.de;
+    const legacyUpdate = { updated_at: new Date() };
+    const columnInfo = await db('email_templates').columnInfo();
+
+    if (enData && columnInfo.subject_en) {
+      legacyUpdate.subject_en = enData.subject || '';
+      legacyUpdate.body_html_en = enData.body_html || '';
+      legacyUpdate.body_text_en = enData.body_text || '';
     }
+    if (deData && columnInfo.subject_de) {
+      legacyUpdate.subject_de = deData.subject || '';
+      legacyUpdate.body_html_de = deData.body_html || '';
+      legacyUpdate.body_text_de = deData.body_text || '';
+    }
+
+    await db('email_templates')
+      .where('id', template.id)
+      .update(legacyUpdate);
 
     // Log activity
     await logActivity('email_template_updated',
-      { template_key: req.params.key },
+      { template_key: req.params.key, languages: Object.keys(translations) },
       null,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
@@ -449,16 +453,40 @@ router.post('/templates/:key/preview', adminAuth, requirePermission('email.view'
     }
 
     const { preview_data, language = 'en' } = req.body;
-    
-    // Get the appropriate language version
-    const subjectField = language === 'de' && template.subject_de ? 'subject_de' : 'subject_en';
-    const htmlField = language === 'de' && template.body_html_de ? 'body_html_de' : 'body_html_en';
-    const textField = language === 'de' && template.body_text_de ? 'body_text_de' : 'body_text_en';
-    
-    // Handle backward compatibility
-    let htmlContent = template[htmlField] || template.body_html || '';
-    let textContent = template[textField] || template.body_text || '';
-    let subject = template[subjectField] || template.subject || '';
+
+    // Get translation from translations table with fallback
+    let translation = null;
+    try {
+      translation = await db('email_template_translations')
+        .where({ template_id: template.id, language })
+        .first();
+
+      if (!translation && language !== 'en') {
+        translation = await db('email_template_translations')
+          .where({ template_id: template.id, language: 'en' })
+          .first();
+      }
+    } catch (e) {
+      // Fallback to legacy columns
+    }
+
+    let subject = '';
+    let htmlContent = '';
+    let textContent = '';
+
+    if (translation) {
+      subject = translation.subject || '';
+      htmlContent = translation.body_html || '';
+      textContent = translation.body_text || '';
+    } else {
+      // Legacy column fallback
+      const subjectField = language === 'de' && template.subject_de ? 'subject_de' : 'subject_en';
+      const htmlField = language === 'de' && template.body_html_de ? 'body_html_de' : 'body_html_en';
+      const textField = language === 'de' && template.body_text_de ? 'body_text_de' : 'body_text_en';
+      subject = template[subjectField] || template.subject || '';
+      htmlContent = template[htmlField] || template.body_html || '';
+      textContent = template[textField] || template.body_text || '';
+    }
 
     if (preview_data) {
       const escapeHtml = (str) => String(str)
@@ -472,7 +500,7 @@ router.post('/templates/:key/preview', adminAuth, requirePermission('email.view'
         const regex = new RegExp(`{{${key}}}`, 'g');
         const escapedValue = escapeHtml(preview_data[key]);
         htmlContent = htmlContent.replace(regex, escapedValue);
-        textContent = textContent.replace(regex, preview_data[key]); // text doesn't need HTML escaping
+        textContent = textContent.replace(regex, preview_data[key]);
         subject = subject.replace(regex, escapeHtml(preview_data[key]));
       });
     }
