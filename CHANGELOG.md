@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.22.0-beta.0...v3.23.0-beta.0) (2026-04-04)
+
+
+### Features
+
+* multilingual email templates with translations table ([8c5996e](https://github.com/the-luap/picpeak/commit/8c5996e4ec43b2817d84cc040cfe52878ffb61d5))
+* multilingual email templates with translations table ([f50d7c0](https://github.com/the-luap/picpeak/commit/f50d7c0c51aa84a2182e450cd4b6a00777a8f9c0))
+
+
+### Bug Fixes
+
+* pin npm to v10 in backend Dockerfile ([ddefd3a](https://github.com/the-luap/picpeak/commit/ddefd3a95e5047d4a22aa4b6fef57dfb1c880967))
+* pin npm upgrade to v10 in backend Dockerfile ([978e447](https://github.com/the-luap/picpeak/commit/978e4473b5227ee61ad7d17487063eb3284bea36))
+
 ## [3.22.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.21.1-beta.0...v3.22.0-beta.0) (2026-03-25)
 
 
