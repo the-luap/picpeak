@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film, AlertTriangle } from 'lucide-react';
 import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
-// import { settingsService } from '../../services/settings.service';
-// import { toast } from 'react-toastify';
+import { settingsService } from '../../services/settings.service';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 interface ThemeCustomizerEnhancedProps {
@@ -90,7 +90,21 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   const [selectedPreset, setSelectedPreset] = useState(presetName);
   const [customCss, setCustomCss] = useState(value.customCss || '');
   const [showCssInstructions, setShowCssInstructions] = useState(false);
-  // const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const BETA_LAYOUTS: GalleryLayoutType[] = ['gallery-premium', 'gallery-story'];
+  const MIN_RECOMMENDED_THUMBNAIL_SIZE = 500;
+
+  // Fetch thumbnail settings to warn about low resolution with beta themes
+  const { data: allSettings } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => settingsService.getAllSettings(),
+    staleTime: 60000,
+  });
+
+  const thumbnailWidth = parseInt(allSettings?.thumbnail_width) || 300;
+  const thumbnailHeight = parseInt(allSettings?.thumbnail_height) || 300;
+  const isBetaLayout = BETA_LAYOUTS.includes(localTheme.galleryLayout as GalleryLayoutType);
+  const isThumbnailTooSmall = Math.max(thumbnailWidth, thumbnailHeight) < MIN_RECOMMENDED_THUMBNAIL_SIZE;
 
   useEffect(() => {
     setLocalTheme(value);
@@ -230,6 +244,33 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </button>
           ))}
         </div>
+
+        {/* Warning: Beta preset with low thumbnail resolution */}
+        {isBetaLayout && isThumbnailTooSmall && !showGalleryLayouts && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  {t('branding.betaThumbnailWarningTitle')}
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  {t('branding.betaThumbnailWarningText', { width: thumbnailWidth, height: thumbnailHeight, recommended: MIN_RECOMMENDED_THUMBNAIL_SIZE })}
+                </p>
+                <a
+                  href="/admin/settings"
+                  className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-800 dark:text-amber-300 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.location.href = '/admin/settings';
+                  }}
+                >
+                  {t('branding.betaThumbnailWarningLink')} →
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Gallery Layout */}
@@ -270,6 +311,33 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               </button>
             ))}
           </div>
+
+          {/* Warning: Beta theme with low thumbnail resolution */}
+          {isBetaLayout && isThumbnailTooSmall && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    {t('branding.betaThumbnailWarningTitle')}
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    {t('branding.betaThumbnailWarningText', { width: thumbnailWidth, height: thumbnailHeight, recommended: MIN_RECOMMENDED_THUMBNAIL_SIZE })}
+                  </p>
+                  <a
+                    href="/admin/settings"
+                    className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-800 dark:text-amber-300 hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = '/admin/settings';
+                    }}
+                  >
+                    {t('branding.betaThumbnailWarningLink')} →
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Layout-specific settings */}
           {localTheme.galleryLayout && (
