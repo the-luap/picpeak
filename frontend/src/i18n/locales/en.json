@@ -1276,7 +1276,10 @@
       "classic": "Inline filter bar below header",
       "sidebar": "Menu button opens sidebar with filters"
     },
-    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image."
+    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image.",
+    "betaThumbnailWarningTitle": "Low thumbnail resolution detected",
+    "betaThumbnailWarningText": "Your thumbnails are currently {{width}}×{{height}}px. Beta themes display photos at larger sizes and require at least {{recommended}}×{{recommended}}px for good quality. Increase the thumbnail dimensions in Settings > Thumbnails and regenerate.",
+    "betaThumbnailWarningLink": "Go to Thumbnail Settings"
   },
   "admin": {
     "title": "Admin Panel",

@@ -1705,7 +1705,10 @@
       "classic": "Inline-Filterleiste unter der Kopfzeile",
       "sidebar": "Menü-Schaltfläche öffnet Seitenleiste mit Filtern"
     },
-    "controlsStyleHeroWarning": "Für Hero-Kopfzeilen wird die Seitenleiste empfohlen, um zu verhindern, dass Steuerelemente über dem Hero-Bild erscheinen."
+    "controlsStyleHeroWarning": "Für Hero-Kopfzeilen wird die Seitenleiste empfohlen, um zu verhindern, dass Steuerelemente über dem Hero-Bild erscheinen.",
+    "betaThumbnailWarningTitle": "Niedrige Thumbnail-Auflösung erkannt",
+    "betaThumbnailWarningText": "Ihre Thumbnails sind derzeit {{width}}×{{height}}px. Beta-Themes zeigen Fotos in größeren Formaten an und benötigen mindestens {{recommended}}×{{recommended}}px für gute Qualität. Erhöhen Sie die Thumbnail-Abmessungen unter Einstellungen > Thumbnails und regenerieren Sie diese.",
+    "betaThumbnailWarningLink": "Zu den Thumbnail-Einstellungen"
   },
   "admin": {
     "title": "Admin-Panel",

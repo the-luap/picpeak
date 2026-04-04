@@ -1276,7 +1276,10 @@
       "classic": "Inline filterbalk onder de header",
       "sidebar": "Menuknop opent zijbalk met filters"
     },
-    "controlsStyleHeroWarning": "Zijbalk wordt aanbevolen voor hero-headers om te voorkomen dat bedieningen boven de hero-afbeelding verschijnen."
+    "controlsStyleHeroWarning": "Zijbalk wordt aanbevolen voor hero-headers om te voorkomen dat bedieningen boven de hero-afbeelding verschijnen.",
+    "betaThumbnailWarningTitle": "Lage thumbnailresolutie gedetecteerd",
+    "betaThumbnailWarningText": "Uw thumbnails zijn momenteel {{width}}×{{height}}px. Beta-thema's tonen foto's op grotere formaten en vereisen minimaal {{recommended}}×{{recommended}}px voor goede kwaliteit. Verhoog de thumbnail-afmetingen via Instellingen > Thumbnails en genereer opnieuw.",
+    "betaThumbnailWarningLink": "Naar thumbnail-instellingen"
   },
   "admin": {
     "title": "Beheerpaneel",

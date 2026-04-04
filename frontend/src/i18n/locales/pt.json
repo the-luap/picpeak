@@ -1276,7 +1276,10 @@
       "classic": "Barra de filtros inline abaixo do cabeçalho",
       "sidebar": "Botão de menu abre barra lateral com filtros"
     },
-    "controlsStyleHeroWarning": "A barra lateral é recomendada para cabeçalhos hero para evitar que os controles apareçam acima da imagem hero."
+    "controlsStyleHeroWarning": "A barra lateral é recomendada para cabeçalhos hero para evitar que os controles apareçam acima da imagem hero.",
+    "betaThumbnailWarningTitle": "Baixa resolução de miniatura detectada",
+    "betaThumbnailWarningText": "Suas miniaturas são atualmente {{width}}×{{height}}px. Temas beta exibem fotos em tamanhos maiores e requerem pelo menos {{recommended}}×{{recommended}}px para boa qualidade. Aumente as dimensões das miniaturas em Configurações > Miniaturas e regenere.",
+    "betaThumbnailWarningLink": "Ir para configurações de miniaturas"
   },
   "admin": {
     "title": "Painel Admin",
