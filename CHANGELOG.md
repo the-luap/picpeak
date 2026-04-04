@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.23.0-beta.0...v3.24.0-beta.0) (2026-04-04)
+
+
+### Features
+
+* warn about low thumbnail resolution when selecting beta themes ([ee3f6ae](https://github.com/the-luap/picpeak/commit/ee3f6ae13bf9c9fb3295286e84150e04bf9fbce4))
+* warn about low thumbnail resolution with beta themes ([aef9b4e](https://github.com/the-luap/picpeak/commit/aef9b4ed7fc443cbec8890c580759077e05e77b4))
+
 ## [3.23.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.22.0-beta.0...v3.23.0-beta.0) (2026-04-04)
 
 
