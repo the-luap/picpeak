@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { body } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
@@ -7,6 +8,7 @@ const { endSession } = require('../middleware/sessionTimeout');
 const { validatePasswordStrength } = require('../utils/passwordGenerator');
 const { handleAsync, validateRequest, successResponse } = require('../utils/routeHelpers');
 const { NotFoundError, ConflictError, ValidationError } = require('../utils/errors');
+const { setAdminAuthCookie } = require('../utils/tokenUtils');
 const router = express.Router();
 
 // Get admin profile
@@ -132,6 +134,20 @@ router.post('/change-password', [
       must_change_password: false,
       updated_at: now
     });
+
+  // Issue a new token so the session remains valid after password_changed_at invalidated the old one
+  const newToken = jwt.sign({
+    id: user.id,
+    username: user.username,
+    type: 'admin',
+    role: user.role_name,
+    loginTime: Date.now()
+  }, process.env.JWT_SECRET, {
+    expiresIn: '24h',
+    issuer: 'picpeak-auth'
+  });
+
+  setAdminAuthCookie(res, newToken);
 
   // Log activity
   await logActivity('password_changed',
