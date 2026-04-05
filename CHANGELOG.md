@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.24.0-beta.0...v3.24.1-beta.0) (2026-04-05)
+
+
+### Bug Fixes
+
+* resolve redirect loop after mandatory password change ([#263](https://github.com/the-luap/picpeak/issues/263)) ([07fc5e6](https://github.com/the-luap/picpeak/commit/07fc5e6519cd84f2214479d5f31bc35a495bfe4b))
+* resolve redirect loop after mandatory password change ([#263](https://github.com/the-luap/picpeak/issues/263)) ([3c8d344](https://github.com/the-luap/picpeak/commit/3c8d344ddd23974c9cf0f5f63edd6cd07817fee9))
+
 ## [3.24.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.23.0-beta.0...v3.24.0-beta.0) (2026-04-04)
 
 
