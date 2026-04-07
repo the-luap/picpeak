@@ -11,7 +11,7 @@ This guide covers multiple deployment options for PicPeak, from simple local set
 - [First Login](#-first-login)
 - [Release Channels](#-release-channels)
 - [Reverse Proxy Setup](#-reverse-proxy-setup)
-- [External Media Library](#external-media-library)
+- [External Media Library](#-external-media-library)
 - [Maintenance](#-maintenance)
 - [Troubleshooting](#-troubleshooting)
 
@@ -551,6 +551,95 @@ sudo certbot certonly --webroot -w /var/www/certbot -d your-domain.com
 
 # Or use your reverse proxy's built-in ACME support
 ```
+
+## 📂 External Media Library
+
+The External Media Library allows events to reference photos stored directly on your host filesystem instead of uploading them through the admin UI. This is useful for photographers who already have organized photo libraries and want to share them without re-uploading.
+
+### How It Works
+
+- **Managed mode** (default): Photos are uploaded through the admin UI and stored inside PicPeak's storage directory.
+- **Reference mode**: Photos remain on your host filesystem. PicPeak reads them directly and generates thumbnails on demand.
+
+Each event can use either mode. Reference mode events point to a folder under the configured external media root.
+
+### Configuration
+
+Add the following to your `.env` file:
+
+```bash
+# Path where your photo library is stored on the host
+EXTERNAL_MEDIA_ROOT=/path/to/your/photos
+```
+
+Then mount this path into the backend container in your `docker-compose.yml` or `docker-compose.production.yml`:
+
+```yaml
+services:
+  backend:
+    environment:
+      - EXTERNAL_MEDIA_ROOT=/external-media
+    volumes:
+      - /path/to/your/photos:/external-media:ro  # read-only is recommended
+```
+
+> **Permissions**: Ensure the container user (`PUID`/`PGID`) has read access to the mounted directory. If thumbnails fail to generate, this is usually a permissions issue.
+
+### Folder Structure
+
+Organize your photos with subdirectories for each event. Within each event folder, use `individual/` and `collages/` subdirectories to classify photos:
+
+```
+/path/to/your/photos/
+├── wedding-smith-2026/
+│   ├── individual/
+│   │   ├── IMG_0001.jpg
+│   │   ├── IMG_0002.jpg
+│   │   └── ...
+│   └── collages/
+│       ├── group-photo.jpg
+│       └── ...
+├── corporate-event/
+│   ├── individual/
+│   │   └── ...
+│   └── collages/
+│       └── ...
+```
+
+Supported file formats: `.jpg`, `.jpeg`, `.png`, `.webp`
+
+### Usage
+
+1. **Create an event** in the admin panel as usual (name, date, email, etc.).
+
+2. **Switch source mode** to "Reference external folder" in the event details under Source Mode.
+
+3. **Browse and select** the external folder using the folder picker that appears. Navigate to the event's directory.
+
+4. **Import photos** by clicking "Import from External Folder" in the Photos tab. PicPeak will:
+   - Recursively scan the selected folder
+   - Classify photos by subfolder name (`individual/` or `collages/`)
+   - Deduplicate by filename (keeps the largest file if duplicates exist)
+   - Extract image dimensions for gallery layout
+   - Register the photos in the database
+
+5. **Thumbnails** are generated on demand when a guest first views the gallery. There is no upfront processing delay.
+
+### Limitations
+
+- **Images only** — video files are not supported for external media.
+- **Read-only** — PicPeak does not modify or delete files in the external media directory.
+- **No automatic sync** — If you add new photos to the external folder, you need to re-import from the admin UI.
+- **Backup caveat** — External media originals are excluded from PicPeak's built-in backup system. Only thumbnails and database records are backed up. You are responsible for backing up the source files separately.
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Folder picker shows empty directory | Check that the volume is mounted correctly and `EXTERNAL_MEDIA_ROOT` matches the container path |
+| "Permission denied" errors | Ensure `PUID`/`PGID` in `.env` match the owner of the external media files on the host |
+| Thumbnails not generating | Verify the backend container can read the files: `docker exec picpeak-backend ls /external-media/your-folder/` |
+| Import finds 0 photos | Only `.jpg`, `.jpeg`, `.png`, `.webp` files are supported. Check file extensions. |
 
 ## 🔧 Maintenance
 
