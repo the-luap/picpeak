@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3](https://github.com/the-luap/picpeak/compare/v2.6.2...v2.6.3) (2026-04-07)
+
+
+### Documentation
+
+* add External Media Library section to deployment guide ([#270](https://github.com/the-luap/picpeak/issues/270)) ([2e1c71c](https://github.com/the-luap/picpeak/commit/2e1c71c1ab073e488ac93e35337a2d3955dfef3d))
+* add External Media Library section to deployment guide ([#270](https://github.com/the-luap/picpeak/issues/270)) ([f6ca713](https://github.com/the-luap/picpeak/commit/f6ca713a6edc8ba371db790daba05ecb85ea4872))
+
 ## [2.6.2](https://github.com/the-luap/picpeak/compare/v2.6.1...v2.6.2) (2026-03-16)
 
 
