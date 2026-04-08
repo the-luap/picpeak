@@ -74,7 +74,7 @@ export const eventsService = {
   async getEvents(
     page: number = 1,
     limit: number = 20,
-    status?: 'active' | 'inactive' | 'archived'
+    status?: 'active' | 'inactive' | 'archived' | 'draft'
   ): Promise<EventsListResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -171,6 +171,18 @@ export const eventsService = {
   }> {
     const response = await api.post(`/admin/events/${eventId}/validate-rename`, { newEventName });
     return response.data;
+  },
+
+  // Publish a draft event
+  async publishEvent(eventId: number): Promise<{ message: string; is_draft: boolean }> {
+    const response = await api.post(`/admin/events/${eventId}/publish`);
+    return response.data;
+  },
+
+  // Get admin preview token (uses existing admin session token)
+  getPreviewToken(): string | null {
+    const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+    return token;
   },
 
   // Rename event

@@ -48,8 +48,9 @@ export const EventsListPage: React.FC = () => {
   const [showBulkArchiveModal, setShowBulkArchiveModal] = useState(false);
 
   // Get filter from URL
-  const statusFilter = searchParams.get('filter') as 'active' | 'archived' | null;
+  const statusFilter = searchParams.get('filter') as 'active' | 'archived' | 'draft' | null;
   const isExpiringFilter = searchParams.get('filter') === 'expiring';
+  const isDraftFilter = searchParams.get('filter') === 'draft';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -141,8 +142,10 @@ export const EventsListPage: React.FC = () => {
     let events = [...data.events];
     
     // Apply status filter
-    if (statusFilter === 'active') {
-      events = events.filter(e => e.is_active && !e.is_archived);
+    if (isDraftFilter) {
+      events = events.filter(e => e.is_draft);
+    } else if (statusFilter === 'active') {
+      events = events.filter(e => e.is_active && !e.is_archived && !e.is_draft);
     } else if (isExpiringFilter) {
       events = events.filter(e => {
         if (!e.is_active || e.is_archived) return false;
@@ -190,6 +193,7 @@ export const EventsListPage: React.FC = () => {
   };
 
   const getEventStatus = (event: Event) => {
+    if (event.is_draft) return { label: t('events.draft'), color: 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/40' };
     if (event.is_archived) return { label: t('events.archived'), color: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700' };
     if (!event.is_active) return { label: t('events.inactive'), color: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40' };
 
@@ -338,6 +342,13 @@ export const EventsListPage: React.FC = () => {
               leftIcon={<AlertTriangle className="w-4 h-4" />}
             >
               {t('events.expiring')}
+            </Button>
+            <Button
+              variant={isDraftFilter ? 'primary' : 'outline'}
+              size="md"
+              onClick={() => setSearchParams({ filter: 'draft' })}
+            >
+              {t('events.draft')}
             </Button>
             <Button
               variant={statusFilter === 'archived' ? 'primary' : 'outline'}

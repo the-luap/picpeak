@@ -4,6 +4,18 @@ const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 const logger = require('../utils/logger');
 
+// Check if the request carries a valid admin preview token (Feature 3)
+function isAdminPreview(req) {
+  const previewToken = req.query?.preview;
+  if (!previewToken) return false;
+  try {
+    const decoded = jwt.verify(previewToken, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });
+    return decoded.type === 'admin';
+  } catch {
+    return false;
+  }
+}
+
 // Middleware to verify gallery access
 async function verifyGalleryAccess(req, res, next) {
   try {
@@ -16,15 +28,18 @@ async function verifyGalleryAccess(req, res, next) {
         return res.status(401).json({ error: 'No token provided' });
       }
 
+      const adminPreview = isAdminPreview(req);
       event = await withRetry(async () => {
-        return await db('events')
-          .where({ 
+        const q = db('events')
+          .where({
             slug: requestedSlug,
             is_active: formatBoolean(true),
             is_archived: formatBoolean(false)
-          })
-          .select('*')
-          .first();
+          });
+        if (!adminPreview) {
+          q.where({ is_draft: formatBoolean(false) });
+        }
+        return await q.select('*').first();
       });
 
       if (!event) {
@@ -66,15 +81,18 @@ async function verifyGalleryAccess(req, res, next) {
     // If we have a slug in the URL params or from pre-middleware, verify it matches
     if (requestedSlug) {
       // Verify by slug and ensure it matches the token's event
+      const adminPreviewToken = isAdminPreview(req);
       event = await withRetry(async () => {
-        return await db('events')
-          .where({ 
+        const q = db('events')
+          .where({
             slug: requestedSlug,
             is_active: formatBoolean(true),
             is_archived: formatBoolean(false)
-          })
-          .select('*')
-          .first();
+          });
+        if (!adminPreviewToken) {
+          q.where({ is_draft: formatBoolean(false) });
+        }
+        return await q.select('*').first();
       });
       
       // Verify the token's eventId matches
@@ -83,15 +101,18 @@ async function verifyGalleryAccess(req, res, next) {
       }
     } else {
       // Fallback to using eventId from token
+      const adminPreviewFallback = isAdminPreview(req);
       event = await withRetry(async () => {
-        return await db('events')
-          .where({ 
-            id: decoded.eventId, 
+        const q = db('events')
+          .where({
+            id: decoded.eventId,
             is_active: formatBoolean(true),
             is_archived: formatBoolean(false)
-          })
-          .select('*')
-          .first();
+          });
+        if (!adminPreviewFallback) {
+          q.where({ is_draft: formatBoolean(false) });
+        }
+        return await q.select('*').first();
       });
     }
     
@@ -122,5 +143,6 @@ async function verifyGalleryAccess(req, res, next) {
 }
 
 module.exports = {
-  verifyGalleryAccess
+  verifyGalleryAccess,
+  isAdminPreview
 };

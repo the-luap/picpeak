@@ -25,7 +25,7 @@ export const AdminLoginPage: React.FC = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
-  // Fetch branding settings
+  // Fetch branding settings (unauthenticated)
   const { data: settingsData } = useQuery({
     queryKey: ['admin-login-settings'],
     queryFn: async () => {
@@ -34,6 +34,12 @@ export const AdminLoginPage: React.FC = () => {
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
+
+  const companyName = settingsData?.branding_company_name?.trim() || 'PicPeak';
+  const logoUrl = settingsData?.branding_logo_url?.trim();
+  const resolvedLogoUrl = logoUrl
+    ? (logoUrl.startsWith('http') ? logoUrl : logoUrl)
+    : '/picpeak-logo-transparent.png';
 
   // Check for session expired message
   useEffect(() => {
@@ -126,13 +132,13 @@ export const AdminLoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div 
+          <div
             className="w-[200px] h-[150px] mx-auto mb-6 rounded-2xl flex items-center justify-center"
             style={{ backgroundColor: '#eee6d2' }}
           >
-            <img 
-              src="/picpeak-logo-transparent.png" 
-              alt="PicPeak"
+            <img
+              src={resolvedLogoUrl}
+              alt={companyName}
               className="w-[180px] h-[130px] object-contain"
             />
           </div>

@@ -40,7 +40,7 @@ export const DynamicFavicon: React.FC = () => {
     }
   }, [settings?.branding_favicon_url]);
 
-  // Update document title when company name or tagline changes
+  // Update document title and OG meta tags when company name or tagline changes
   useEffect(() => {
     const companyName = settings?.branding_company_name?.trim();
     const tagline = settings?.branding_company_tagline?.trim();
@@ -52,6 +52,33 @@ export const DynamicFavicon: React.FC = () => {
     } else {
       document.title = DEFAULT_TITLE;
     }
+
+    // Update OG meta tags
+    const title = companyName || 'PicPeak';
+    const description = tagline || 'Photo Sharing Platform';
+
+    const updateMeta = (property: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('property', property);
+        document.head.appendChild(meta);
+      }
+      meta.content = content;
+    };
+
+    updateMeta('og:title', document.title);
+    updateMeta('og:site_name', title);
+    updateMeta('og:description', description);
+
+    // Also update standard meta description
+    let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.name = 'description';
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.content = description;
   }, [settings?.branding_company_name, settings?.branding_company_tagline]);
 
   return null;
