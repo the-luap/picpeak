@@ -13,6 +13,7 @@ import { PasswordChangeModal } from './PasswordChangeModal';
 import { LanguageSelector } from '../common';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from 'react-toastify';
+import { buildResourceUrl, getApiBaseUrl } from '../../utils/url';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -30,6 +31,24 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const queryClient = useQueryClient();
   
+  // Fetch branding settings
+  const { data: brandingSettings } = useQuery({
+    queryKey: ['admin-settings', 'branding'],
+    queryFn: async () => {
+      const response = await fetch(`${getApiBaseUrl()}/public/settings`);
+      if (response.ok) return response.json();
+      return null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const companyName = brandingSettings?.branding_company_name?.trim() || 'PicPeak';
+  const logoUrl = brandingSettings?.branding_logo_url?.trim();
+  const logoDisplayMode = brandingSettings?.branding_logo_display_mode || 'logo_and_text';
+  const resolvedLogoUrl = logoUrl
+    ? (logoUrl.startsWith('http') ? logoUrl : buildResourceUrl(logoUrl))
+    : '/picpeak-kamera-transparent.png';
+
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -82,10 +101,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
 
-            {/* PicPeak logo - sticky to the left on all sizes */}
+            {/* Logo - sticky to the left on all sizes */}
             <div className="flex items-center gap-2">
-              <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-8 w-auto object-contain" />
-              <span className="text-xl sm:text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
+              {(logoDisplayMode === 'logo_only' || logoDisplayMode === 'logo_and_text') && (
+                <img src={resolvedLogoUrl} alt={companyName} className="h-8 w-auto object-contain" />
+              )}
+              {(logoDisplayMode === 'text_only' || logoDisplayMode === 'logo_and_text') && (
+                <span className="text-xl sm:text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>{companyName}</span>
+              )}
             </div>
 
             {/* Date display - hidden on smaller screens */}

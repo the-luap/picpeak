@@ -55,6 +55,8 @@ export interface Event {
   css_template_id?: number | null;
   // Photo cap
   photo_cap?: number | null;
+  // Draft mode
+  is_draft?: boolean;
   // Client access (#172)
   client_access_enabled?: boolean;
   client_share_token?: string;

@@ -21,6 +21,7 @@ const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 const eventTypeService = require('../services/eventTypeService');
 const { validateFileType } = require('../utils/fileSecurityUtils');
 const { requireEventOwnership } = require('../middleware/ownership');
+const { getFrontendBaseUrl } = require('../utils/frontendUrl');
 
 // Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
 const validateHeroImageAnchor = (value) => {
@@ -107,6 +108,50 @@ const getEventFieldRequirements = async () => {
       require_admin_email: true,
       require_event_date: true,
       require_expiration: true
+    };
+  }
+};
+
+// Helper to get branding defaults for new events (Feature 7: Branding Inheritance)
+const getBrandingDefaults = async () => {
+  try {
+    const settings = await db('app_settings')
+      .whereIn('setting_key', [
+        'branding_logo_display_hero',
+        'branding_logo_size',
+        'branding_logo_position'
+      ])
+      .select('setting_key', 'setting_value');
+
+    const defaults = {
+      hero_logo_visible: true,
+      hero_logo_size: 'medium',
+      hero_logo_position: 'top'
+    };
+
+    settings.forEach(s => {
+      let value = s.setting_value;
+      if (typeof value === 'string') {
+        try { value = JSON.parse(value); } catch (e) { /* use as-is */ }
+      }
+      if (s.setting_key === 'branding_logo_display_hero') {
+        defaults.hero_logo_visible = value !== false;
+      }
+      if (s.setting_key === 'branding_logo_size' && value) {
+        defaults.hero_logo_size = value;
+      }
+      if (s.setting_key === 'branding_logo_position' && value) {
+        defaults.hero_logo_position = value;
+      }
+    });
+
+    return defaults;
+  } catch (error) {
+    logger.error('Failed to get branding defaults', { error: error.message });
+    return {
+      hero_logo_visible: true,
+      hero_logo_size: 'medium',
+      hero_logo_position: 'top'
     };
   }
 };
@@ -267,7 +312,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       photo_cap = null,
       // Client access settings (#172)
       client_access_enabled = false,
-      client_password = null
+      client_password = null,
+      // Draft mode
+      is_draft = true
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -396,6 +443,12 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       }
     }
 
+    // Get branding defaults for hero logo settings (Feature 7: Branding Inheritance)
+    const brandingDefaults = await getBrandingDefaults();
+    const effectiveHeroLogoVisible = req.body.hero_logo_visible !== undefined ? hero_logo_visible : brandingDefaults.hero_logo_visible;
+    const effectiveHeroLogoSize = req.body.hero_logo_size || brandingDefaults.hero_logo_size;
+    const effectiveHeroLogoPosition = req.body.hero_logo_position || brandingDefaults.hero_logo_position;
+
     // Insert into database
     const insertResult = await db('events').insert({
       slug,
@@ -422,13 +475,14 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       watermark_text,
       require_password: formatBoolean(requirePassword),
       css_template_id: css_template_id || null,
-      hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
-      hero_logo_size: hero_logo_size || 'medium',
-      hero_logo_position: hero_logo_position || 'top',
+      hero_logo_visible: formatBoolean(effectiveHeroLogoVisible),
+      hero_logo_size: effectiveHeroLogoSize,
+      hero_logo_position: effectiveHeroLogoPosition,
       header_style: effectiveHeaderStyle || 'standard',
       hero_divider_style: effectiveDividerStyle || 'wave',
       hero_image_anchor: hero_image_anchor || 'center',
       photo_cap: photo_cap || null,
+      is_draft: formatBoolean(parseBooleanInput(is_draft, true)),
       // Client access (#172)
       client_access_enabled: formatBoolean(client_access_enabled),
       ...(client_access_enabled && client_password ? {
@@ -464,10 +518,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
-    // Queue creation email (only if there is a recipient)
+    // Queue creation email (only if there is a recipient and event is not a draft)
     // Language detection is handled by email processor
+    const isDraft = parseBooleanInput(is_draft, true);
 
-    if (customerEmail) {
+    if (customerEmail && !isDraft) {
       // Build email data with optional client access info
       const emailData = {
         customer_name: customerName,
@@ -509,6 +564,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       customer_email: customerEmail,
       require_password: requirePassword,
       photo_cap: photo_cap || null,
+      is_draft: isDraft,
       share_link: shareUrl,
       expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString()
@@ -556,6 +612,8 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
       query = query.where('is_archived', formatBoolean(true));
     } else if (status === 'inactive') {
       query = query.where('is_active', formatBoolean(false)).where('is_archived', formatBoolean(false));
+    } else if (status === 'draft') {
+      query = query.where('is_draft', formatBoolean(true));
     } else if (status === 'expiring') {
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -677,6 +735,65 @@ router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res)
   } catch (error) {
     console.error('Error fetching event:', error);
     res.status(500).json({ error: 'Failed to fetch event details' });
+  }
+});
+
+// Publish a draft event (set is_draft=false and queue creation email)
+router.post('/:id/publish', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await db('events').where('id', id).first();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!parseBooleanInput(event.is_draft, false)) {
+      return res.status(400).json({ error: 'Event is already published' });
+    }
+
+    // Set is_draft to false
+    await db('events').where('id', id).update({ is_draft: formatBoolean(false) });
+
+    // Queue creation email
+    const customerEmail = event.customer_email || event.host_email;
+    const customerName = event.customer_name || event.host_name;
+    if (customerEmail) {
+      const frontendBase = await getFrontendBaseUrl();
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
+
+      const emailData = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
+        event_name: event.event_name,
+        event_date: event.event_date,
+        gallery_link: shareUrl || `${frontendBase}/gallery/${event.slug}`,
+        gallery_password: parseBooleanInput(event.require_password, true) ? '(set at creation)' : 'No password required',
+        expiry_date: event.expires_at ? new Date(event.expires_at).toISOString() : null,
+        welcome_message: event.welcome_message || ''
+      };
+
+      await db('email_queue').insert({
+        event_id: id,
+        recipient_email: customerEmail,
+        email_type: 'gallery_created',
+        email_data: JSON.stringify(emailData),
+        status: 'pending',
+        created_at: new Date()
+      });
+    }
+
+    await logActivity('event_published',
+      { event_name: event.event_name },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({ message: 'Event published successfully', is_draft: false });
+  } catch (error) {
+    logger.error('Error publishing event:', { error: error.message });
+    res.status(500).json({ error: 'Failed to publish event' });
   }
 });
 

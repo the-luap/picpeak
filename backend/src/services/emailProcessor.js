@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const Handlebars = require('handlebars');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
+const { getFrontendBaseUrl } = require('../utils/frontendUrl');
 
 let transporter = null;
 let lastConfigHash = null;
@@ -161,7 +162,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
   const hoverColor = darkenColor(primaryColor, 0.15);
 
   // Build full logo URL - ensure logoUrl is a valid non-empty string
-  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+  const frontendUrl = (await getFrontendBaseUrl()) || 'http://localhost:3000';
   const logoPath = (typeof logoUrl === 'string' && logoUrl.trim()) ? logoUrl : '/picpeak-logo-transparent.png';
   const logoFullUrl = `${frontendUrl}${logoPath.startsWith('/') ? '' : '/'}${logoPath}`;
   logger.debug('Email logo URL:', { frontendUrl, logoPath, logoFullUrl });

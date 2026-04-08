@@ -27,7 +27,8 @@ import {
   Droplets,
   MousePointer,
   Layout,
-  Trash2
+  Trash2,
+  Send
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -154,6 +155,7 @@ export const EventDetailsPage: React.FC = () => {
     upload_category_id: number | null;
     hero_photo_id: number | null;
     customer_name: string;
+    customer_email: string;
     source_mode: 'managed' | 'reference';
     external_path: string;
     require_password: boolean;
@@ -186,6 +188,7 @@ export const EventDetailsPage: React.FC = () => {
     upload_category_id: null,
     hero_photo_id: null,
     customer_name: '',
+    customer_email: '',
     source_mode: 'managed',
     external_path: '',
     require_password: true,
@@ -368,6 +371,19 @@ export const EventDetailsPage: React.FC = () => {
     },
   });
 
+  // Publish mutation (Draft mode)
+  const publishMutation = useMutation({
+    mutationFn: () => eventsService.publishEvent(parseInt(id!)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      toast.success(t('events.publishSuccess'));
+    },
+    onError: () => {
+      toast.error(t('errors.somethingWentWrong'));
+    },
+  });
+
   // Extend expiration mutation
   const extendMutation = useMutation({
     mutationFn: (days: number) => {
@@ -405,6 +421,7 @@ export const EventDetailsPage: React.FC = () => {
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
       customer_name: event.customer_name || '',
+      customer_email: event.customer_email || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
       require_password: normalizeRequirePassword(event.require_password),
@@ -585,6 +602,9 @@ export const EventDetailsPage: React.FC = () => {
     if (editForm.customer_name !== undefined && editForm.customer_name !== null) {
       updateData.customer_name = editForm.customer_name;
     }
+    if (editForm.customer_email !== undefined && editForm.customer_email !== null && editForm.customer_email.trim()) {
+      updateData.customer_email = editForm.customer_email;
+    }
 
     if (editForm.new_password) {
       updateData.password = editForm.new_password;
@@ -682,6 +702,11 @@ export const EventDetailsPage: React.FC = () => {
               >
                 {isGalleryPublic(event.require_password) ? t('events.publicAccess', 'Public access') : t('events.passwordProtected', 'Password protected')}
               </span>
+              {event.is_draft ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">
+                  {t('events.draft')}
+                </span>
+              ) : null}
               {event.is_archived ? (
                 <span className="text-neutral-500 dark:text-neutral-400 flex items-center">
                   <Archive className="w-4 h-4 mr-1" />
@@ -748,7 +773,10 @@ export const EventDetailsPage: React.FC = () => {
             )}
             {event.share_link && !isEditing && (
               <a
-                href={resolveShareLink(event.share_link)}
+                href={event.is_draft
+                  ? `${resolveShareLink(event.share_link)}${resolveShareLink(event.share_link).includes('?') ? '&' : '?'}preview=${eventsService.getPreviewToken() || ''}`
+                  : resolveShareLink(event.share_link)
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
@@ -760,6 +788,36 @@ export const EventDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Draft Banner */}
+      {event.is_draft && !event.is_archived && (
+        <Card className="p-4 mb-6 border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-900 dark:text-yellow-200">
+                {t('events.draft')}
+              </p>
+              <p className="text-sm mt-1 text-yellow-700 dark:text-yellow-300">
+                {t('events.draftBanner')}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Send className="w-4 h-4" />}
+              onClick={() => {
+                if (confirm(t('events.publishConfirm'))) {
+                  publishMutation.mutate();
+                }
+              }}
+              isLoading={publishMutation.isPending}
+            >
+              {t('events.publishAndNotify')}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Expiration Warning */}
       {!event.is_archived && (isExpired || isExpiring) && (
@@ -874,6 +932,18 @@ export const EventDetailsPage: React.FC = () => {
                   />
                 </div>
                 
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('events.hostEmail')}
+                  </label>
+                  <Input
+                    type="email"
+                    value={editForm.customer_email}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, customer_email: e.target.value }))}
+                    placeholder={t('events.hostEmailPlaceholder')}
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.expirationDate')}
@@ -1671,23 +1741,45 @@ export const EventDetailsPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.actions')}</h2>
 
               <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  leftIcon={<Archive className="w-4 h-4" />}
-                  onClick={() => {
-                    if (confirm(t('events.archiveConfirm'))) {
-                      archiveMutation.mutate();
-                    }
-                  }}
-                  isLoading={archiveMutation.isPending}
-                  className="w-full justify-center"
-                >
-                  {t('events.archiveEvent')}
-                </Button>
-
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                  {t('events.archivingInfo')}
-                </p>
+                {event.is_draft ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      leftIcon={<Send className="w-4 h-4" />}
+                      onClick={() => {
+                        if (confirm(t('events.publishConfirm'))) {
+                          publishMutation.mutate();
+                        }
+                      }}
+                      isLoading={publishMutation.isPending}
+                      className="w-full justify-center"
+                    >
+                      {t('events.publishAndNotify')}
+                    </Button>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      {t('events.draftBanner')}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      leftIcon={<Archive className="w-4 h-4" />}
+                      onClick={() => {
+                        if (confirm(t('events.archiveConfirm'))) {
+                          archiveMutation.mutate();
+                        }
+                      }}
+                      isLoading={archiveMutation.isPending}
+                      className="w-full justify-center"
+                    >
+                      {t('events.archiveEvent')}
+                    </Button>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      {t('events.archivingInfo')}
+                    </p>
+                  </>
+                )}
               </div>
             </Card>
           )}

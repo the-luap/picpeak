@@ -6,7 +6,7 @@ const path = require('path');
 const router = express.Router();
 const watermarkService = require('../services/watermarkService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
-const { verifyGalleryAccess } = require('../middleware/gallery');
+const { verifyGalleryAccess, isAdminPreview } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
@@ -74,7 +74,7 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
   const { slug, token } = req.params;
 
   const event = await db('events')
-    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false), is_draft: formatBoolean(false) })
     .select('id', 'share_link', 'share_token')
     .first();
 
@@ -122,7 +122,8 @@ router.get('/:slug/info', async (req, res) => {
         'hero_logo_url',
         'header_style',
         'hero_divider_style',
-        'hero_image_anchor'
+        'hero_image_anchor',
+        'is_draft'
       )
       .first();
 
@@ -138,10 +139,15 @@ router.get('/:slug/info', async (req, res) => {
       }
       return res.status(404).json({ error: 'Gallery not found' });
     }
-    
+
     // Check if event is archived
     if (event.is_archived) {
       return res.status(404).json({ error: 'Gallery has been archived and is no longer available' });
+    }
+
+    // Check if event is a draft (allow admin preview)
+    if (event.is_draft && !isAdminPreview(req)) {
+      return res.status(404).json({ error: 'Gallery is not yet published' });
     }
     
     // If token provided, verify it matches the share link
