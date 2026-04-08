@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.25.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.24.1-beta.0...v3.25.0-beta.0) (2026-04-08)
+
+
+### Features
+
+* draft mode, admin branding, and workflow improvements ([dc98206](https://github.com/the-luap/picpeak/commit/dc98206737d1ebe43637319ce8c5b6da2e44c05d))
+* draft mode, admin branding, and workflow improvements ([40332a7](https://github.com/the-luap/picpeak/commit/40332a71db6534097940d3f9362b0fe651dba6c7))
+
 ## [3.24.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.24.0-beta.0...v3.24.1-beta.0) (2026-04-05)
 
 
