@@ -135,12 +135,17 @@ router.post('/change-password', [
       updated_at: now
     });
 
-  // Issue a new token so the session remains valid after password_changed_at invalidated the old one
+  // Issue a new token so the session remains valid after password_changed_at invalidated the old one.
+  // Set iat to 1 second after password_changed_at to guarantee the token passes the
+  // "iat < password_changed_at" check in auth middleware (password_changed_at has ms precision
+  // but JWT iat is floored to seconds, which can cause the new token to be rejected).
+  const iatAfterPasswordChange = Math.floor(now.getTime() / 1000) + 1;
   const newToken = jwt.sign({
     id: user.id,
     username: user.username,
     type: 'admin',
     role: user.role_name,
+    iat: iatAfterPasswordChange,
     loginTime: Date.now()
   }, process.env.JWT_SECRET, {
     expiresIn: '24h',
