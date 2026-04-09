@@ -25,8 +25,8 @@ interface PhotoFilterBarProps {
   onCategoryChange: (categoryId: number | string | null) => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  sortBy: 'date' | 'name' | 'size' | 'rating';
-  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating') => void;
+  sortBy: 'date' | 'name' | 'size' | 'rating' | 'capture_date';
+  onSortChange: (sort: 'date' | 'name' | 'size' | 'rating' | 'capture_date') => void;
   photoCount: number;
   // Feedback filter props
   feedbackEnabled?: boolean;
@@ -82,9 +82,10 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
             className="w-full md:w-auto text-sm md:text-base"
           >
             <span className="hidden md:inline">{t('common.sortBy')} </span>
-            {sortBy === 'date' ? t('gallery.sortByDate').replace('Sort by ', '') : 
-             sortBy === 'name' ? t('gallery.sortByName').replace('Sort by ', '') : 
+            {sortBy === 'date' ? t('gallery.sortByDate').replace('Sort by ', '') :
+             sortBy === 'name' ? t('gallery.sortByName').replace('Sort by ', '') :
              sortBy === 'size' ? t('gallery.sortBySize').replace('Sort by ', '') :
+             sortBy === 'capture_date' ? t('photoSort.dateTaken', 'Date Taken') :
              t('gallery.sortByRating', 'Rating')}
           </Button>
           
@@ -100,6 +101,17 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                 }`}
               >
                 {t('gallery.sortByDate')}
+              </button>
+              <button
+                onClick={() => {
+                  onSortChange('capture_date');
+                  setShowSortMenu(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
+                  sortBy === 'capture_date' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                }`}
+              >
+                {t('photoSort.dateTaken', 'Date Taken')}
               </button>
               <button
                 onClick={() => {

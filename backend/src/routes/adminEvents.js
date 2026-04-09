@@ -259,7 +259,12 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
   // Client access settings (#172)
   body('client_access_enabled').optional().isBoolean(),
-  body('client_password').optional().isString()
+  body('client_password').optional().isString(),
+  body('default_photo_sort').optional().isIn([
+    'upload_date_desc', 'upload_date_asc',
+    'capture_date_desc', 'capture_date_asc',
+    'filename_asc', 'filename_desc'
+  ])
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -314,7 +319,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       client_access_enabled = false,
       client_password = null,
       // Draft mode
-      is_draft = true
+      is_draft = true,
+      // Default photo sort
+      default_photo_sort = 'upload_date_desc'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
@@ -483,6 +490,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       hero_image_anchor: hero_image_anchor || 'center',
       photo_cap: photo_cap || null,
       is_draft: formatBoolean(parseBooleanInput(is_draft, true)),
+      default_photo_sort: default_photo_sort || 'upload_date_desc',
       // Client access (#172)
       client_access_enabled: formatBoolean(client_access_enabled),
       ...(client_access_enabled && client_password ? {
@@ -856,7 +864,12 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   // Client access settings (#172)
   body('client_access_enabled').optional().isBoolean(),
   body('client_password').optional().isString(),
-  body('regenerate_client_token').optional().isBoolean()
+  body('regenerate_client_token').optional().isBoolean(),
+  body('default_photo_sort').optional().isIn([
+    'upload_date_desc', 'upload_date_asc',
+    'capture_date_desc', 'capture_date_asc',
+    'filename_asc', 'filename_desc'
+  ])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

@@ -2396,5 +2396,15 @@
     "exportSelected": "Export {{count}} selected",
     "exportFiltered": "Export filtered photos",
     "hint": "Select photos or apply filters to export"
+  },
+  "photoSort": {
+    "defaultSort": "Default Photo Sort",
+    "uploadDateNewest": "Upload Date (Newest First)",
+    "uploadDateOldest": "Upload Date (Oldest First)",
+    "captureDateNewest": "Date Taken (Newest First)",
+    "captureDateOldest": "Date Taken (Oldest First)",
+    "filenameAZ": "Filename (A-Z)",
+    "filenameZA": "Filename (Z-A)",
+    "dateTaken": "Date Taken"
   }
 }

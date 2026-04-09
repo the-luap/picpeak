@@ -356,7 +356,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
                     <button
                       key={option.value}
                       onClick={() => {
-                        onSortChange(option.value as 'date' | 'name' | 'size' | 'rating');
+                        onSortChange(option.value as 'date' | 'name' | 'size' | 'rating' | 'capture_date');
                         if (isMobile) onClose();
                       }}
                       className={`

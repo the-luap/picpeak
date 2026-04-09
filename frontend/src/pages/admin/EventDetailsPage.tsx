@@ -176,6 +176,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_image_anchor: string;
     // Photo cap
     photo_cap: number;
+    // Default photo sort
+    default_photo_sort: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -209,6 +211,8 @@ export const EventDetailsPage: React.FC = () => {
     hero_image_anchor: 'center',
     // Photo cap
     photo_cap: 0,
+    // Default photo sort
+    default_photo_sort: 'upload_date_desc',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -442,6 +446,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_image_anchor: event.hero_image_anchor || 'center',
       // Photo cap
       photo_cap: event.photo_cap || 0,
+      // Default photo sort
+      default_photo_sort: event.default_photo_sort || 'upload_date_desc',
     });
 
     setShowNewPassword(false);
@@ -577,6 +583,8 @@ export const EventDetailsPage: React.FC = () => {
       hero_image_anchor: editForm.hero_image_anchor,
       // Photo cap
       photo_cap: editForm.photo_cap > 0 ? editForm.photo_cap : null,
+      // Default photo sort
+      default_photo_sort: editForm.default_photo_sort,
       // Header style settings (decoupled from layout, #158)
       header_style: currentTheme?.headerStyle || 'standard',
       hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
@@ -1123,6 +1131,25 @@ export const EventDetailsPage: React.FC = () => {
                       {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
                     </span>
                   </div>
+                </div>
+
+                {/* Default Photo Sort */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('photoSort.defaultSort', 'Default Photo Sort')}
+                  </label>
+                  <select
+                    value={editForm.default_photo_sort}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, default_photo_sort: e.target.value }))}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
+                    <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
+                    <option value="capture_date_desc">{t('photoSort.captureDateNewest', 'Date Taken (Newest First)')}</option>
+                    <option value="capture_date_asc">{t('photoSort.captureDateOldest', 'Date Taken (Oldest First)')}</option>
+                    <option value="filename_asc">{t('photoSort.filenameAZ', 'Filename (A-Z)')}</option>
+                    <option value="filename_desc">{t('photoSort.filenameZA', 'Filename (Z-A)')}</option>
+                  </select>
                 </div>
 
                 <div>

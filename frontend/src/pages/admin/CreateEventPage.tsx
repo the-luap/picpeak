@@ -63,6 +63,8 @@ interface FormData {
   // Client access (#172)
   client_access_enabled: boolean;
   client_password: string;
+  // Default photo sort
+  default_photo_sort: string;
 }
 
 // Fallback event types (used when API is unavailable)
@@ -120,6 +122,7 @@ export const CreateEventPage: React.FC = () => {
     },
     client_access_enabled: false,
     client_password: '',
+    default_photo_sort: 'upload_date_desc',
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -319,6 +322,8 @@ export const CreateEventPage: React.FC = () => {
       // Client access (#172)
       client_access_enabled: formData.client_access_enabled,
       client_password: formData.client_access_enabled ? formData.client_password : undefined,
+      // Default photo sort
+      default_photo_sort: formData.default_photo_sort,
     };
 
     createMutation.mutate(payload);
@@ -749,6 +754,25 @@ export const CreateEventPage: React.FC = () => {
                   {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
                 </span>
               </div>
+            </div>
+
+            {/* Default Photo Sort */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                {t('photoSort.defaultSort', 'Default Photo Sort')}
+              </label>
+              <select
+                value={formData.default_photo_sort}
+                onChange={(e) => setFormData({ ...formData, default_photo_sort: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
+                <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
+                <option value="capture_date_desc">{t('photoSort.captureDateNewest', 'Date Taken (Newest First)')}</option>
+                <option value="capture_date_asc">{t('photoSort.captureDateOldest', 'Date Taken (Oldest First)')}</option>
+                <option value="filename_asc">{t('photoSort.filenameAZ', 'Filename (A-Z)')}</option>
+                <option value="filename_desc">{t('photoSort.filenameZA', 'Filename (Z-A)')}</option>
+              </select>
             </div>
 
             {/* Client Access (#172) */}

@@ -2396,5 +2396,15 @@
     "exportSelected": "Exportar {{count}} selecionados",
     "exportFiltered": "Exportar fotos filtradas",
     "hint": "Selecione fotos ou aplique filtros para exportar"
+  },
+  "photoSort": {
+    "defaultSort": "Ordenação padrão das fotos",
+    "uploadDateNewest": "Data de envio (Mais recentes)",
+    "uploadDateOldest": "Data de envio (Mais antigas)",
+    "captureDateNewest": "Data da captura (Mais recentes)",
+    "captureDateOldest": "Data da captura (Mais antigas)",
+    "filenameAZ": "Nome do arquivo (A-Z)",
+    "filenameZA": "Nome do arquivo (Z-A)",
+    "dateTaken": "Data da captura"
   }
 }

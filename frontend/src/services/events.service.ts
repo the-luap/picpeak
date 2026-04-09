@@ -40,6 +40,7 @@ interface CreateEventData {
   moderate_comments?: boolean;
   show_feedback_to_guests?: boolean;
   photo_cap?: number | null;
+  default_photo_sort?: string;
 }
 
 interface UpdateEventData {
@@ -60,6 +61,7 @@ interface UpdateEventData {
   source_mode?: 'managed' | 'reference';
   external_path?: string | null;
   photo_cap?: number | null;
+  default_photo_sort?: string;
 }
 
 interface EventsListResponse {
