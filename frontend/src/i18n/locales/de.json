@@ -2396,5 +2396,15 @@
     "sanitizationWarning": "Einige CSS-Muster wurden aus Sicherheitsgründen blockiert",
     "reset": "Vorlage auf Standard zurückgesetzt",
     "resetFailed": "Vorlage konnte nicht zurückgesetzt werden"
+  },
+  "photoSort": {
+    "defaultSort": "Standard-Fotosortierung",
+    "uploadDateNewest": "Hochladedatum (Neueste zuerst)",
+    "uploadDateOldest": "Hochladedatum (Älteste zuerst)",
+    "captureDateNewest": "Aufnahmedatum (Neueste zuerst)",
+    "captureDateOldest": "Aufnahmedatum (Älteste zuerst)",
+    "filenameAZ": "Dateiname (A-Z)",
+    "filenameZA": "Dateiname (Z-A)",
+    "dateTaken": "Aufnahmedatum"
   }
 }

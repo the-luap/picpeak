@@ -2396,5 +2396,15 @@
     "linkLabel": "Klanttoegangslink",
     "regenerateToken": "Link opnieuw genereren",
     "tokenRegenerated": "Klanttoegangslink opnieuw gegenereerd"
+  },
+  "photoSort": {
+    "defaultSort": "Standaard fotovolgorde",
+    "uploadDateNewest": "Uploaddatum (Nieuwste eerst)",
+    "uploadDateOldest": "Uploaddatum (Oudste eerst)",
+    "captureDateNewest": "Opnamedatum (Nieuwste eerst)",
+    "captureDateOldest": "Opnamedatum (Oudste eerst)",
+    "filenameAZ": "Bestandsnaam (A-Z)",
+    "filenameZA": "Bestandsnaam (Z-A)",
+    "dateTaken": "Opnamedatum"
   }
 }

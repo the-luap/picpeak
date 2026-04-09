@@ -123,7 +123,8 @@ router.get('/:slug/info', async (req, res) => {
         'header_style',
         'hero_divider_style',
         'hero_image_anchor',
-        'is_draft'
+        'is_draft',
+        'default_photo_sort'
       )
       .first();
 
@@ -182,7 +183,8 @@ router.get('/:slug/info', async (req, res) => {
       hero_logo_url: event.hero_logo_url || null,
       header_style: event.header_style || 'standard',
       hero_divider_style: event.hero_divider_style || 'wave',
-      hero_image_anchor: event.hero_image_anchor || 'center'
+      hero_image_anchor: event.hero_image_anchor || 'center',
+      default_photo_sort: event.default_photo_sort || 'upload_date_desc'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -397,6 +399,7 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         header_style: req.event.header_style || 'standard',
         hero_divider_style: req.event.hero_divider_style || 'wave',
         hero_image_anchor: req.event.hero_image_anchor || 'center',
+        default_photo_sort: req.event.default_photo_sort || 'upload_date_desc',
         ...protectionSettings
       },
       categories: categories,

@@ -60,6 +60,8 @@ export interface Event {
   // Client access (#172)
   client_access_enabled?: boolean;
   client_share_token?: string;
+  // Default photo sort order
+  default_photo_sort?: string;
 }
 
 export type GalleryAccessLevel = 'guest' | 'client';
@@ -73,6 +75,7 @@ export interface GalleryInfo {
   is_expired: boolean;
   requires_password?: boolean;
   color_theme?: string;
+  default_photo_sort?: string;
 }
 
 export interface Photo {
@@ -151,6 +154,8 @@ export interface GalleryData {
     hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
     // Hero image anchor position (#162) – keyword or "X% Y%" focal point
     hero_image_anchor?: string;
+    // Default photo sort order
+    default_photo_sort?: string;
   };
   categories?: PhotoCategory[];
   photos: Photo[];

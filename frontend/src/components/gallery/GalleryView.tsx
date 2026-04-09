@@ -42,6 +42,25 @@ interface GalleryViewProps {
   };
 }
 
+// Convert default_photo_sort DB value to internal sortBy state
+const parseDefaultPhotoSort = (defaultSort?: string): { sortBy: 'date' | 'name' | 'size' | 'rating' | 'capture_date'; sortDesc: boolean } => {
+  switch (defaultSort) {
+    case 'upload_date_asc':
+      return { sortBy: 'date', sortDesc: false };
+    case 'capture_date_desc':
+      return { sortBy: 'capture_date', sortDesc: true };
+    case 'capture_date_asc':
+      return { sortBy: 'capture_date', sortDesc: false };
+    case 'filename_asc':
+      return { sortBy: 'name', sortDesc: false };
+    case 'filename_desc':
+      return { sortBy: 'name', sortDesc: true };
+    case 'upload_date_desc':
+    default:
+      return { sortBy: 'date', sortDesc: true };
+  }
+};
+
 export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { t } = useTranslation();
   const { logout, isClient } = useGalleryAuth();
@@ -50,6 +69,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
+  const [defaultSortApplied, setDefaultSortApplied] = useState(false);
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -102,6 +122,15 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       setProtectionLevel(data.event.protection_level);
     }
   }, [data?.event?.protection_level]);
+
+  // Apply default photo sort from event settings
+  useEffect(() => {
+    if (!defaultSortApplied && data?.event?.default_photo_sort) {
+      const { sortBy: defaultSortBy } = parseDefaultPhotoSort(data.event.default_photo_sort);
+      setSortBy(defaultSortBy);
+      setDefaultSortApplied(true);
+    }
+  }, [data?.event?.default_photo_sort, defaultSortApplied]);
 
   // Get individual protection settings from event
   const disableRightClick = data?.event?.disable_right_click === true;
