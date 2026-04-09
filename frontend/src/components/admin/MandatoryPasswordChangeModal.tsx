@@ -27,14 +27,12 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
     mutationFn: adminService.changePassword,
     onSuccess: () => {
       toast.success(t('mandatoryPasswordChange.success'));
-      updatePasswordChanged();
-      // Reset form
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      setErrors({});
+      // Force a full page reload so the browser picks up the new JWT cookie
+      // set by the backend. A React state update alone causes a race condition
+      // where the auth context checks the session before the cookie is stored.
+      setTimeout(() => {
+        window.location.href = '/admin/dashboard';
+      }, 500);
     },
     onError: (error: any) => {
       if (error.response?.data?.error) {
