@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.25.0-beta.0...v3.26.0-beta.0) (2026-04-09)
+
+
+### Features
+
+* sort photos by capture date with configurable default sort ([#283](https://github.com/the-luap/picpeak/issues/283)) ([8805fa5](https://github.com/the-luap/picpeak/commit/8805fa53e61c6b3672a8f6dad14d2fd17998a451))
+* sort photos by capture date with configurable default sort ([#283](https://github.com/the-luap/picpeak/issues/283)) ([633d4a0](https://github.com/the-luap/picpeak/commit/633d4a0f301e355ee9f057347f2f8dee8c5b4163))
+
+
+### Bug Fixes
+
+* resolve password change redirect loop ([#263](https://github.com/the-luap/picpeak/issues/263)) and file watcher crash ([#269](https://github.com/the-luap/picpeak/issues/269)) ([b23c51b](https://github.com/the-luap/picpeak/commit/b23c51b386270dee4d911902b728dfacb1ff1bf9))
+* resolve password change redirect loop and file watcher crash ([835bdf5](https://github.com/the-luap/picpeak/commit/835bdf5abb40c7b143c5cdafb507c317a7c349bf)), closes [#269](https://github.com/the-luap/picpeak/issues/269)
+
 ## [3.25.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.24.1-beta.0...v3.25.0-beta.0) (2026-04-08)
 
 
