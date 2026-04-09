@@ -5,7 +5,7 @@ const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { generateThumbnail, generateVideoPlaceholder } = require('./imageProcessor');
 const logger = require('../utils/logger');
-const { isVideoMimeType } = require('../utils/fileSecurityUtils');
+const { isVideoMimeType } = require('./videoProcessor');
 const mime = require('mime-types');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
