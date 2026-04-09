@@ -219,29 +219,36 @@ location ~ ^/(photos|thumbnails|uploads) {
 
 ### Creating a Gallery
 
-#### Method 1: Via Admin Panel (Recommended)
-1. Login to admin panel
+#### Via Admin Panel
+1. Login to admin panel at `/admin`
 2. Click "Create New Event"
-3. Configure settings and upload photos
+3. Configure settings (name, date, password, customer email)
+4. Upload photos via drag & drop in the Photos tab
+5. Publish the gallery when ready
 
-#### Method 2: File System
+#### Adding Photos via File System
+
+> **Important:** You must first create the event in the admin panel. The file watcher only detects new photos for events that already exist in the database. You cannot create a gallery by copying files alone.
+
+Once an event exists, you can add photos by copying them into the event's folder. PicPeak's built-in file watcher will automatically detect the new files, create database records, and generate thumbnails.
+
 ```bash
-# Docker installation
-mkdir -p ~/picpeak/storage/events/active/wedding-smith-2024
-cp /path/to/photos/* ~/picpeak/storage/events/active/wedding-smith-2024/
+# Docker installation — copy photos into an existing event's folder
+cp /path/to/photos/*.jpg ~/picpeak/storage/events/active/<event-slug>/
 
 # Native installation
-sudo mkdir -p /opt/picpeak/events/active/wedding-smith-2024
-sudo cp /path/to/photos/* /opt/picpeak/events/active/wedding-smith-2024/
-sudo chown -R picpeak:picpeak /opt/picpeak/events/active/wedding-smith-2024
+sudo cp /path/to/photos/*.jpg /opt/picpeak/events/active/<event-slug>/
+sudo chown -R picpeak:picpeak /opt/picpeak/events/active/<event-slug>
 ```
+
+The event slug is visible in the admin panel URL or share link (e.g. `wedding-smith-2024`). Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`. The file watcher has a 2-second stability delay before processing new files.
 
 ### Gallery Structure
 ```
-wedding-smith-2024/
-├── collages/        # Group photos
-├── individual/      # Individual photos
-└── thumbnails/      # Auto-generated thumbnails
+<event-slug>/
+├── collages/        # Group photos (optional subfolder)
+├── individual/      # Individual photos (optional subfolder)
+└── photo.jpg        # Photos at root level also work
 ```
 
 ## 🔧 Service Management
