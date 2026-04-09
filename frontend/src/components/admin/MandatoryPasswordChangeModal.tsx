@@ -32,7 +32,7 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
       // where the auth context checks the session before the cookie is stored.
       setTimeout(() => {
         window.location.href = '/admin/dashboard';
-      }, 500);
+      }, 2000);
     },
     onError: (error: any) => {
       if (error.response?.data?.error) {
