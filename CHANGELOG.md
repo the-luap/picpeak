@@ -5,6 +5,22 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.26.0-beta.0...v3.26.1-beta.0) (2026-04-09)
+
+
+### Bug Fixes
+
+* apply password change fix to regular modal + longer toast delay ([#263](https://github.com/the-luap/picpeak/issues/263)) ([c63bc47](https://github.com/the-luap/picpeak/commit/c63bc47089b4b32c570bdeeb1f82bf722569875f))
+* apply password change redirect fix to regular modal too ([#263](https://github.com/the-luap/picpeak/issues/263)) ([147dc28](https://github.com/the-luap/picpeak/commit/147dc28440ca69ed970677fa221dfac00c8e2560))
+* resolve JWT iat timing issue in password change ([#263](https://github.com/the-luap/picpeak/issues/263)) ([c031b1e](https://github.com/the-luap/picpeak/commit/c031b1e86333d90e8e0e0aa723572efa110f7fd1))
+* set JWT iat after password_changed_at to prevent token rejection ([#263](https://github.com/the-luap/picpeak/issues/263)) ([b1d1667](https://github.com/the-luap/picpeak/commit/b1d16670d56e19f7b35e7f2f12f3611fdb3fab58))
+
+
+### Documentation
+
+* clarify file system photo import requires existing event ([#269](https://github.com/the-luap/picpeak/issues/269)) ([5295516](https://github.com/the-luap/picpeak/commit/5295516b67a1d9f035564c5f9a724f25f8d21c78))
+* clarify file system photo import requires existing event ([#269](https://github.com/the-luap/picpeak/issues/269)) ([ee0baaf](https://github.com/the-luap/picpeak/commit/ee0baafc59f3588a26172aa8835c12dcaec35d10))
+
 ## [3.26.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.25.0-beta.0...v3.26.0-beta.0) (2026-04-09)
 
 
