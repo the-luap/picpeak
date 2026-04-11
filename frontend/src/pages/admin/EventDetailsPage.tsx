@@ -294,10 +294,21 @@ export const EventDetailsPage: React.FC = () => {
 
   // Statistics are now fetched with the event details from the admin API
 
+  // Merge feedback filters into photo query params so the grid reflects
+  // the Has Likes / Has Favorites / Has Comments / min rating checkboxes.
+  const combinedPhotoFilters: PhotoFilterParams = useMemo(() => ({
+    ...photoFilters,
+    hasLikes: feedbackFilters.hasLikes || undefined,
+    hasFavorites: feedbackFilters.hasFavorites || undefined,
+    hasComments: feedbackFilters.hasComments || undefined,
+    minRating: feedbackFilters.minRating ?? undefined,
+    logic: feedbackFilters.logic,
+  }), [photoFilters, feedbackFilters]);
+
   // Fetch photos (needed for both photos tab and hero photo selector)
   const { data: photos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
-    queryKey: ['admin-event-photos', id, photoFilters],
-    queryFn: () => photosService.getEventPhotos(parseInt(id!), photoFilters),
+    queryKey: ['admin-event-photos', id, combinedPhotoFilters],
+    queryFn: () => photosService.getEventPhotos(parseInt(id!), combinedPhotoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
   });
 
