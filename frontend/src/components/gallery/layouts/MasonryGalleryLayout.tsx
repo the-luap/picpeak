@@ -34,6 +34,9 @@ interface MasonryPhotoProps {
   onQuickComment?: () => void;
   // Column width for calculating proper aspect-ratio-based height
   columnWidth?: number;
+  // Optimistic "I liked this" state + callback (lifted to parent)
+  liked?: boolean;
+  onLikeSuccess?: () => void;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -49,7 +52,9 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   slug,
   feedbackOptions,
   onQuickComment,
-  columnWidth = 300
+  columnWidth = 300,
+  liked = false,
+  onLikeSuccess,
 }) => {
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
@@ -150,7 +155,11 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
             )}
             {feedbackEnabled && feedbackOptions?.allowLikes && (
               <button
-                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                className={`p-2 rounded-full transition-colors ${
+                  liked
+                    ? 'bg-red-500/90 hover:bg-red-500'
+                    : 'bg-white/90 hover:bg-white'
+                }`}
                 onClick={async (e) => {
                   e.stopPropagation();
                   if (guestIdentity?.identityMode === 'guest') {
@@ -159,9 +168,16 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                     } catch {
                       return;
                     }
-                    await feedbackService.submitFeedback(slug!, String(photo.id), {
-                      feedback_type: 'like',
-                    });
+                    // Optimistic UI: mark as liked immediately
+                    if (onLikeSuccess) onLikeSuccess();
+                    try {
+                      await feedbackService.submitFeedback(slug!, String(photo.id), {
+                        feedback_type: 'like',
+                      });
+                    } catch (err) {
+                      // eslint-disable-next-line no-console
+                      console.warn('Like submit failed, keeping optimistic UI', err);
+                    }
                     return;
                   }
                   if (feedbackOptions?.requireNameEmail && !savedIdentity) {
@@ -169,16 +185,26 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                     setShowIdentityModal(true);
                     return;
                   }
-                  await feedbackService.submitFeedback(slug!, String(photo.id), {
-                    feedback_type: 'like',
-                    guest_name: savedIdentity?.name,
-                    guest_email: savedIdentity?.email,
-                  });
+                  // Optimistic UI: mark as liked immediately
+                  if (onLikeSuccess) onLikeSuccess();
+                  try {
+                    await feedbackService.submitFeedback(slug!, String(photo.id), {
+                      feedback_type: 'like',
+                      guest_name: savedIdentity?.name,
+                      guest_email: savedIdentity?.email,
+                    });
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn('Like submit failed, keeping optimistic UI', err);
+                  }
                 }}
-                aria-label="Like photo"
-                title="Like"
+                aria-label={liked ? 'Unlike photo' : 'Like photo'}
+                aria-pressed={liked}
+                title={liked ? 'Unlike' : 'Like'}
               >
-                <Heart className="w-5 h-5 text-neutral-800" />
+                <Heart
+                  className={`w-5 h-5 ${liked ? 'text-white fill-white' : 'text-neutral-800'}`}
+                />
               </button>
             )}
           </>
@@ -193,6 +219,9 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
           setSavedIdentity({ name, email });
           setShowIdentityModal(false);
           if (pendingAction) {
+            if (pendingAction.type === 'like' && onLikeSuccess) {
+              onLikeSuccess();
+            }
             await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
               feedback_type: pendingAction.type,
               guest_name: name,
@@ -249,6 +278,9 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
   const [containerWidth, setContainerWidth] = useState(0);
+  // Optimistic "I liked this" state — lifted here so it survives re-renders
+  // of individual MasonryPhoto components during layout reflow/resize.
+  const [likedPhotoIds, setLikedPhotoIds] = useState<Set<number>>(new Set());
   const gallerySettings = theme.gallerySettings || {};
   const gutter = gallerySettings.masonryGutter || 16;
   const mode = gallerySettings.masonryMode || 'columns';
@@ -798,6 +830,14 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 feedbackOptions={feedbackOptions}
                 onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(originalIndex)}
                 columnWidth={columnWidth}
+                liked={likedPhotoIds.has(photo.id)}
+                onLikeSuccess={() => {
+                  setLikedPhotoIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(photo.id);
+                    return next;
+                  });
+                }}
               />
             );
           })}

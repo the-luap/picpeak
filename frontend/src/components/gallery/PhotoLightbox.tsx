@@ -8,6 +8,7 @@ import { PhotoFeedback } from './PhotoFeedback';
 import { feedbackService } from '../../services/feedback.service';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
 import { VideoPlayer } from './VideoPlayer';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoLightboxProps {
   photos: Photo[];
@@ -63,6 +64,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'rating'; rating?: number }>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const guestIdentity = useGuestIdentityOptional();
+  const isGuestMode = guestIdentity?.identityMode === 'guest';
 
   useEffect(() => {
     const onResize = () => setIsSmallScreen(window.innerWidth < 640);
@@ -203,6 +206,33 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   }, [slug, currentPhoto.id, feedbackSettings?.feedback_enabled]);
 
   const submitLike = async () => {
+    // Guest identity mode: ensure we have a per-person guest token. The
+    // server reads name/email from the token — body values are ignored.
+    if (isGuestMode && guestIdentity) {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        // User cancelled the prompt — abort silently.
+        return;
+      }
+      try {
+        await feedbackService.submitFeedback(slug, String(currentPhoto.id), {
+          feedback_type: 'like',
+        });
+        setMyLiked(prev => {
+          const next = !prev;
+          setLikeCount(c => Math.max(0, c + (next ? 1 : -1)));
+          return next;
+        });
+        if (onFeedbackChange) onFeedbackChange();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Like submit failed', err);
+      }
+      return;
+    }
+
+    // Simple mode: legacy inline identity modal flow.
     const needIdentity = feedbackSettings?.require_name_email && !savedIdentity;
     if (needIdentity) {
       setPendingAction({ type: 'like' });
@@ -222,6 +252,33 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   };
 
   const submitRating = async (value: number) => {
+    // Guest identity mode.
+    if (isGuestMode && guestIdentity) {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      try {
+        await feedbackService.submitFeedback(slug, String(currentPhoto.id), {
+          feedback_type: 'rating',
+          rating: value,
+        });
+        setMyRating(value);
+        try {
+          const fresh = await feedbackService.getPhotoFeedback(slug, String(currentPhoto.id));
+          setAvgRating(Number(fresh.summary?.average_rating) || 0);
+          setTotalRatings(Number(fresh.summary?.total_ratings) || 0);
+        } catch {}
+        if (onFeedbackChange) onFeedbackChange();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Rating submit failed', err);
+      }
+      return;
+    }
+
+    // Simple mode: legacy inline identity modal flow.
     const needIdentity = feedbackSettings?.require_name_email && !savedIdentity;
     if (needIdentity) {
       setPendingAction({ type: 'rating', rating: value });
