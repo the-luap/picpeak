@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.26.1-beta.0...v3.26.2-beta.0) (2026-04-11)
+
+
+### Bug Fixes
+
+* admin photo feedback filters have no effect ([#293](https://github.com/the-luap/picpeak/issues/293)) ([9ed8a2b](https://github.com/the-luap/picpeak/commit/9ed8a2b1994d139efd100c8fb97e6368655e5530))
+* wire admin photo feedback filters into grid query ([#293](https://github.com/the-luap/picpeak/issues/293)) ([d4b4dc6](https://github.com/the-luap/picpeak/commit/d4b4dc628f28a303ff1c80ba6d8e5e768217ba51))
+
 ## [3.26.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.26.0-beta.0...v3.26.1-beta.0) (2026-04-09)
 
 
