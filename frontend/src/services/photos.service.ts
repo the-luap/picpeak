@@ -32,6 +32,11 @@ export interface PhotoFilters {
   search?: string;
   sort?: 'date' | 'name' | 'size' | 'rating';
   order?: 'asc' | 'desc';
+  hasLikes?: boolean;
+  hasFavorites?: boolean;
+  hasComments?: boolean;
+  minRating?: number | null;
+  logic?: 'AND' | 'OR';
 }
 
 class PhotosService {
@@ -47,6 +52,13 @@ class PhotosService {
       if (filters.search) params.append('search', filters.search);
       if (filters.sort) params.append('sort', filters.sort);
       if (filters.order) params.append('order', filters.order);
+      if (filters.hasLikes) params.append('has_likes', 'true');
+      if (filters.hasFavorites) params.append('has_favorites', 'true');
+      if (filters.hasComments) params.append('has_comments', 'true');
+      if (filters.minRating !== undefined && filters.minRating !== null) {
+        params.append('min_rating', filters.minRating.toString());
+      }
+      if (filters.logic) params.append('logic', filters.logic);
     }
     
     const queryString = params.toString();

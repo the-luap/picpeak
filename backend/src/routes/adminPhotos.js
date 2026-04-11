@@ -819,14 +819,15 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
 router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id, type, search, sort = 'date' } = req.query;
+    const { category_id, type, search, sort = 'date', has_likes, has_favorites, has_comments, min_rating } = req.query;
     const order = ['asc', 'desc'].includes(req.query.order) ? req.query.order : 'desc';
-    
+    const logic = req.query.logic === 'OR' ? 'OR' : 'AND';
+
     let query = db('photos')
       .where({ 'photos.event_id': eventId })
       .leftJoin('photo_categories', 'photos.category_id', 'photo_categories.id')
       .select('photos.*', 'photo_categories.name as pc_name', 'photo_categories.slug as pc_slug');
-    
+
     // Filter by category_id
     if (category_id !== undefined && category_id !== '' && category_id !== '0') {
       if (category_id === 'individual' || category_id === 'collage') {
@@ -843,18 +844,53 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), requ
         }
       }
     }
-    
+
     // Keep type filter for backwards compatibility
     if (type) {
       query = query.where({ 'photos.type': type });
     }
-    
+
     // Search by filename
     if (search) {
       const escapedSearch = escapeLikePattern(search);
       query = query.where('photos.filename', 'like', `%${escapedSearch}%`);
     }
-    
+
+    // Feedback filters (has likes / favorites / comments / min rating) with AND/OR logic
+    const feedbackConditions = [];
+    if (has_likes === 'true' || has_likes === true) {
+      feedbackConditions.push(qb => qb.where('photos.like_count', '>', 0));
+    }
+    if (has_favorites === 'true' || has_favorites === true) {
+      feedbackConditions.push(qb => qb.where('photos.favorite_count', '>', 0));
+    }
+    if (has_comments === 'true' || has_comments === true) {
+      feedbackConditions.push(qb => qb.where('photos.comment_count', '>', 0));
+    }
+    if (min_rating !== undefined && min_rating !== null && min_rating !== '') {
+      const minRatingNum = parseFloat(min_rating);
+      if (!isNaN(minRatingNum)) {
+        feedbackConditions.push(qb => qb.where('photos.average_rating', '>=', minRatingNum));
+      }
+    }
+    if (feedbackConditions.length > 0) {
+      if (logic === 'OR') {
+        query = query.where(builder => {
+          feedbackConditions.forEach((cond, idx) => {
+            if (idx === 0) {
+              cond(builder);
+            } else {
+              builder.orWhere(sub => cond(sub));
+            }
+          });
+        });
+      } else {
+        feedbackConditions.forEach(cond => {
+          query = query.where(builder => cond(builder));
+        });
+      }
+    }
+
     // Sorting
     let orderByColumn = 'photos.uploaded_at';
     if (sort === 'name') {
