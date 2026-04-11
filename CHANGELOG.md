@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.27.0-beta.0...v3.28.0-beta.0) (2026-04-11)
+
+
+### Features
+
+* add COOKIE_SECURE=auto for mixed HTTPS/HTTP deployments ([#298](https://github.com/the-luap/picpeak/issues/298)) ([b1dfbe4](https://github.com/the-luap/picpeak/commit/b1dfbe4c2fe271d8087974d02cf724f04058bdc9))
+* add COOKIE_SECURE=auto for mixed HTTPS/HTTP deployments ([#298](https://github.com/the-luap/picpeak/issues/298)) ([15a8ab4](https://github.com/the-luap/picpeak/commit/15a8ab41fd1c94e3397d300b161cd1fdd459ea05))
+
+
+### Bug Fixes
+
+* guest feedback flow bugs in Masonry grid and PhotoLightbox ([#292](https://github.com/the-luap/picpeak/issues/292)) ([54badef](https://github.com/the-luap/picpeak/commit/54badefc51b834d55530722f87c81a6ade33e35b))
+* guest feedback flow bugs in Masonry grid and PhotoLightbox ([#292](https://github.com/the-luap/picpeak/issues/292)) ([77f07e9](https://github.com/the-luap/picpeak/commit/77f07e9329e47f6ac5040f2e85d2710ebbea3ced))
+
 ## [3.27.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.26.2-beta.0...v3.27.0-beta.0) (2026-04-11)
 
 
