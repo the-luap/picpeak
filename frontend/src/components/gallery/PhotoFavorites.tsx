@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackService } from '../../services/feedback.service';
 import { toast } from 'react-toastify';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoFavoritesProps {
   photoId: string;
@@ -27,6 +28,7 @@ export const PhotoFavorites: React.FC<PhotoFavoritesProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const guestIdentity = useGuestIdentityOptional();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
@@ -68,9 +70,19 @@ export const PhotoFavorites: React.FC<PhotoFavoritesProps> = ({
     }
   });
 
-  const handleFavoriteClick = () => {
+  const handleFavoriteClick = async () => {
     if (!isEnabled || isSubmitting) return;
-    
+
+    if (guestIdentity?.identityMode === 'guest') {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      submitFavoriteMutation.mutate({});
+      return;
+    }
+
     if (requireNameEmail && !savedIdentity) {
       setShowIdentityModal(true);
     } else {

@@ -4,6 +4,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -53,6 +54,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   const [showIdentityModal, setShowIdentityModal] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
   const [likedLocal, setLikedLocal] = React.useState(false);
   const canComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onQuickComment);
 
@@ -108,6 +110,20 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
                   className={`p-2 rounded-full transition-colors ${likedLocal ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                   onClick={async (e) => {
                     e.stopPropagation();
+                    if (guestIdentity?.identityMode === 'guest') {
+                      try {
+                        await guestIdentity.ensureIdentity();
+                      } catch {
+                        return;
+                      }
+                      setLikedLocal(true);
+                      try {
+                        await feedbackService.submitFeedback(slug!, String(photo.id), {
+                          feedback_type: 'like',
+                        });
+                      } catch (_) {}
+                      return;
+                    }
                     if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                       setPendingAction({ type: 'like', photoId: photo.id });
                       setShowIdentityModal(true);

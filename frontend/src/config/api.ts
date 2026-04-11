@@ -5,6 +5,7 @@ import {
   inferGallerySlugFromLocation,
   resolveSlugFromRequestUrl,
 } from '../utils/galleryAuthStorage';
+import { getGuestToken } from '../utils/guestIdentityStorage';
 import { getApiBaseUrl } from '../utils/url';
 
 // Maintenance mode callback
@@ -77,6 +78,25 @@ api.interceptors.request.use(
               const headersRecord = config.headers as Record<string, string | undefined>;
               if (!headersRecord.Authorization) {
                 headersRecord.Authorization = `Bearer ${token}`;
+              }
+            }
+          }
+
+          // Also inject guest token (x-guest-token) for per-person identity.
+          // Separate header so gallery auth and guest identity are independent.
+          const guestToken = getGuestToken(slug);
+          if (guestToken) {
+            if (!config.headers) {
+              config.headers = new AxiosHeaders();
+            }
+            if (config.headers instanceof AxiosHeaders) {
+              if (!config.headers.get('x-guest-token')) {
+                config.headers.set('x-guest-token', guestToken);
+              }
+            } else {
+              const headersRecord = config.headers as Record<string, string | undefined>;
+              if (!headersRecord['x-guest-token']) {
+                headersRecord['x-guest-token'] = guestToken;
               }
             }
           }

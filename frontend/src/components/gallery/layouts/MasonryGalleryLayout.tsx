@@ -4,6 +4,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import {
   calculateJustifiedLayout,
   createJustifiedPhotos,
@@ -53,6 +54,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
 
   // Calculate height based on actual photo aspect ratio
   // This preserves the photo's natural proportions in the masonry layout
@@ -151,6 +153,17 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
                 className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
                 onClick={async (e) => {
                   e.stopPropagation();
+                  if (guestIdentity?.identityMode === 'guest') {
+                    try {
+                      await guestIdentity.ensureIdentity();
+                    } catch {
+                      return;
+                    }
+                    await feedbackService.submitFeedback(slug!, String(photo.id), {
+                      feedback_type: 'like',
+                    });
+                    return;
+                  }
                   if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                     setPendingAction({ type: 'like', photoId: photo.id });
                     setShowIdentityModal(true);

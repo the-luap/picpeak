@@ -2320,7 +2320,12 @@
       "comments": "Comments",
       "commentsDesc": "Text comments on photos",
       "favorites": "Favorites",
-      "favoritesDesc": "Mark photos as favorites"
+      "favoritesDesc": "Mark photos as favorites",
+      "identityMode": "Identity Mode",
+      "identityModeSimple": "Simple feedback",
+      "identityModeSimpleDesc": "Anonymous, device-based. All visitors on the same device share state.",
+      "identityModeGuest": "Per-guest selections",
+      "identityModeGuestDesc": "Each visitor enters their name. Enables per-guest tracking and admin insights."
     }
   },
   "filter": {

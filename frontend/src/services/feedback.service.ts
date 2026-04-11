@@ -1,5 +1,7 @@
 import { api } from '../config/api';
 
+export type IdentityMode = 'simple' | 'guest';
+
 export interface FeedbackSettings {
   feedback_enabled: boolean;
   allow_ratings: boolean;
@@ -12,6 +14,7 @@ export interface FeedbackSettings {
   enable_rate_limiting: boolean;
   rate_limit_window_minutes?: number;
   rate_limit_max_requests?: number;
+  identity_mode?: IdentityMode;
 }
 
 export interface PhotoFeedback {

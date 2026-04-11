@@ -512,12 +512,14 @@ app.use('/api/auth', authRoutes);
 // Gallery routes - main routes first, then feedback routes
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/gallery', require('./src/routes/galleryFeedback'));
+app.use('/api/gallery', require('./src/routes/galleryGuests'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
 app.use('/api/admin/backup', require('./src/routes/adminBackup'));
 app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
+app.use('/api/admin', require('./src/routes/adminGuests'));
 app.use('/api/admin/image-security', require('./src/routes/adminImageSecurity'));
 app.use('/api/admin/thumbnails', require('./src/routes/adminThumbnails'));
 app.use('/api/admin/photos', require('./src/routes/adminPhotoDimensions'));

@@ -1,6 +1,7 @@
 const ADMIN_COOKIE_NAME = 'admin_token';
 const GALLERY_COOKIE_NAME = 'gallery_token';
 const GALLERY_COOKIE_PREFIX = 'gallery_token_';
+const GUEST_COOKIE_PREFIX = 'guest_token_';
 
 const DEFAULT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -114,10 +115,37 @@ function getGalleryTokenFromRequest(req, slug) {
   return null;
 }
 
+function getGuestTokenFromRequest(req, slug) {
+  // Primary transport: custom header (set by frontend axios interceptor).
+  const headerToken = req.headers?.['x-guest-token'];
+  if (headerToken) {
+    return headerToken;
+  }
+
+  if (!req.cookies) {
+    return null;
+  }
+
+  if (slug) {
+    const cookieName = `${GUEST_COOKIE_PREFIX}${sanitizeSlugForCookie(slug)}`;
+    if (req.cookies[cookieName]) {
+      return req.cookies[cookieName];
+    }
+  }
+
+  const prefixed = Object.keys(req.cookies).find((name) => name.startsWith(GUEST_COOKIE_PREFIX));
+  if (prefixed) {
+    return req.cookies[prefixed];
+  }
+
+  return null;
+}
+
 module.exports = {
   ADMIN_COOKIE_NAME,
   GALLERY_COOKIE_NAME,
   GALLERY_COOKIE_PREFIX,
+  GUEST_COOKIE_PREFIX,
   sanitizeSlugForCookie,
   setAdminAuthCookie,
   clearAdminAuthCookie,
@@ -125,4 +153,5 @@ module.exports = {
   clearGalleryAuthCookies,
   getAdminTokenFromRequest,
   getGalleryTokenFromRequest,
+  getGuestTokenFromRequest,
 };

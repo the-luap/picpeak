@@ -17,6 +17,7 @@ import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 import { AuthenticatedImage } from '../../common';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import { FeedbackIdentityModal } from '../FeedbackIdentityModal';
 import { galleryService } from '../../../services/gallery.service';
 import { analyticsService } from '../../../services/analytics.service';
@@ -188,6 +189,7 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [likedPhotoIds, setLikedPhotoIds] = useState<Set<number>>(new Set());
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingLikePhotoId, setPendingLikePhotoId] = useState<number | null>(null);
 
@@ -237,6 +239,28 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
   const handleLike = useCallback(async (photo: Photo, e: React.MouseEvent) => {
     e.stopPropagation();
 
+    if (guestIdentity?.identityMode === 'guest') {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      setLikedPhotoIds(prev => {
+        const next = new Set(prev);
+        next.add(photo.id);
+        return next;
+      });
+      try {
+        await feedbackService.submitFeedback(slug, String(photo.id), {
+          feedback_type: 'like',
+        });
+        onFeedbackChange?.();
+      } catch (err) {
+        console.warn('Like submit failed', err);
+      }
+      return;
+    }
+
     if (feedbackOptions?.requireNameEmail && !savedIdentity) {
       setPendingLikePhotoId(photo.id);
       setShowIdentityModal(true);
@@ -260,7 +284,7 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
     } catch (err) {
       console.warn('Like submit failed', err);
     }
-  }, [slug, savedIdentity, feedbackOptions, onFeedbackChange]);
+  }, [slug, savedIdentity, feedbackOptions, onFeedbackChange, guestIdentity]);
 
   const handleIdentitySubmit = useCallback(async (name: string, email: string) => {
     setSavedIdentity({ name, email });

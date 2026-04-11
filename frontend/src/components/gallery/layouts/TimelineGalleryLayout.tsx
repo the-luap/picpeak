@@ -7,6 +7,7 @@ import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 
 export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
@@ -26,6 +27,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
   const gallerySettings = theme.gallerySettings || {};
   const grouping = gallerySettings.timelineGrouping || 'day';
   const showDates = gallerySettings.timelineShowDates !== false;
@@ -147,6 +149,20 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                               className={`p-2 rounded-full transition-colors ${likedIds.has(photo.id) ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                               onClick={async (e) => {
                                 e.stopPropagation();
+                                if (guestIdentity?.identityMode === 'guest') {
+                                  try {
+                                    await guestIdentity.ensureIdentity();
+                                  } catch {
+                                    return;
+                                  }
+                                  setLikedIds(prev => new Set(prev).add(photo.id));
+                                  try {
+                                    await feedbackService.submitFeedback(slug!, String(photo.id), {
+                                      feedback_type: 'like',
+                                    });
+                                  } catch (_) {}
+                                  return;
+                                }
                                 if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                                   setPendingAction({ type: 'like', photoId: photo.id });
                                   setShowIdentityModal(true);

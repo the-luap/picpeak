@@ -3,6 +3,7 @@ const router = express.Router();
 const { photoAuth } = require('../middleware/photoAuth');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const { feedbackRateLimit, generateGuestIdentifier } = require('../middleware/feedbackRateLimit');
+const { resolveGuest } = require('../middleware/guestAuth');
 const feedbackService = require('../services/feedbackService');
 const feedbackModeration = require('../services/feedbackModeration');
 const { db, logActivity } = require('../database/db');
@@ -22,7 +23,7 @@ router.get('/:slug/feedback-settings',
     try {
       const event = req.event;
       const settings = await feedbackService.getEventFeedbackSettings(event.id);
-      
+
       // Only send relevant settings to guests
       // Convert SQLite boolean values (0/1) to proper booleans
       const guestSettings = {
@@ -32,9 +33,10 @@ router.get('/:slug/feedback-settings',
         allow_comments: Boolean(settings.allow_comments),
         allow_favorites: Boolean(settings.allow_favorites),
         require_name_email: Boolean(settings.require_name_email),
-        show_feedback_to_guests: Boolean(settings.show_feedback_to_guests)
+        show_feedback_to_guests: Boolean(settings.show_feedback_to_guests),
+        identity_mode: settings.identity_mode || 'simple'
       };
-      
+
       res.json(guestSettings);
     } catch (error) {
       logger.error('Error getting feedback settings:', error);
@@ -46,6 +48,7 @@ router.get('/:slug/feedback-settings',
 // Get feedback for a specific photo
 router.get('/:slug/photos/:photoId/feedback',
   verifyGalleryAccess,
+  resolveGuest,
   validatePhotoId,
   checkValidation,
   async (req, res) => {
@@ -137,6 +140,7 @@ router.get('/:slug/photos/:photoId/feedback',
 // Submit feedback for a photo
 router.post('/:slug/photos/:photoId/feedback',
   verifyGalleryAccess,
+  resolveGuest,
   validatePhotoId,
   validateFeedbackSubmission,
   checkValidation,
@@ -144,15 +148,28 @@ router.post('/:slug/photos/:photoId/feedback',
     try {
       const { photoId } = req.params;
       const event = req.event;
-      const guestIdentifier = generateGuestIdentifier(req);
-      
-      // Get feedback settings
+
+      // Get feedback settings first so we can enforce identity_mode.
       const settings = await feedbackService.getEventFeedbackSettings(event.id);
-      
+
       if (!settings.feedback_enabled) {
         return res.status(403).json({ error: 'Feedback is not enabled for this event' });
       }
-      
+
+      // In guest identity mode, a valid guest token is required. The server
+      // never trusts guest_name/guest_email from the body in this mode — it
+      // reads them from the verified token via req.guest.
+      if (settings.identity_mode === 'guest') {
+        if (!req.guest || req.guest.eventId !== event.id) {
+          return res.status(401).json({
+            error: 'Guest identity required',
+            code: 'GUEST_IDENTITY_REQUIRED'
+          });
+        }
+      }
+
+      const guestIdentifier = generateGuestIdentifier(req);
+
       // Check if specific feedback type is allowed
       const feedbackType = req.body.feedback_type;
       const typeAllowed = {
@@ -161,29 +178,32 @@ router.post('/:slug/photos/:photoId/feedback',
         comment: settings.allow_comments,
         favorite: settings.allow_favorites
       };
-      
+
       if (!typeAllowed[feedbackType]) {
         return res.status(403).json({ error: `${feedbackType} feedback is not enabled` });
       }
-      
+
       // Verify photo belongs to event
       const photo = await db('photos')
         .where({ id: photoId, event_id: event.id })
         .first();
-      
+
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
       }
-      
-      // Validate guest requirements
-      const guestValidation = await validateGuestRequirements(settings, req.body);
-      if (!guestValidation.valid) {
-        return res.status(400).json({ 
-          error: 'Guest information required',
-          errors: guestValidation.errors 
-        });
+
+      // Validate guest requirements only in simple mode. In guest mode, the
+      // identity is already provided via the token and verified above.
+      if (settings.identity_mode !== 'guest') {
+        const guestValidation = await validateGuestRequirements(settings, req.body);
+        if (!guestValidation.valid) {
+          return res.status(400).json({
+            error: 'Guest information required',
+            errors: guestValidation.errors
+          });
+        }
       }
-      
+
       // Apply rate limiting based on feedback type
       const rateLimitMiddleware = feedbackRateLimit(feedbackType);
       await new Promise((resolve, reject) => {
@@ -192,17 +212,19 @@ router.post('/:slug/photos/:photoId/feedback',
           else resolve();
         });
       });
-      
+
       // If we got here and response was sent (rate limited), return
       if (res.headersSent) return;
-      
-      // Prepare feedback data
+
+      // Prepare feedback data. In guest mode, use the verified token as the
+      // source of truth for name/email — never the body.
       const feedbackData = {
         feedback_type: feedbackType,
         rating: req.body.rating,
         comment_text: req.body.comment_text,
-        guest_name: req.body.guest_name,
-        guest_email: req.body.guest_email,
+        guest_name: req.guest?.name ?? req.body.guest_name,
+        guest_email: req.guest?.email ?? req.body.guest_email,
+        guest_id: req.guest?.id ?? null,
         ip_address: req.ip || req.connection.remoteAddress,
         user_agent: (req.headers['user-agent'] || '').replace(/[<>&"']/g, '').substring(0, 255),
         moderate_comments: settings.moderate_comments
@@ -316,22 +338,32 @@ router.get('/:slug/feedback-summary',
 // Get user's own feedback for all photos
 router.get('/:slug/my-feedback',
   verifyGalleryAccess,
+  resolveGuest,
   async (req, res) => {
     try {
       const event = req.event;
-      const guestIdentifier = generateGuestIdentifier(req);
-      
-      const myFeedback = await db('photo_feedback')
+
+      const query = db('photo_feedback')
         .join('photos', 'photo_feedback.photo_id', 'photos.id')
-        .where('photo_feedback.event_id', event.id)
-        .where('photo_feedback.guest_identifier', guestIdentifier)
+        .where('photo_feedback.event_id', event.id);
+
+      // Prefer guest_id lookup when a verified guest token is present
+      // (per-person identity). Fall back to the device hash otherwise.
+      if (req.guest?.id) {
+        query.where('photo_feedback.guest_id', req.guest.id);
+      } else {
+        const guestIdentifier = generateGuestIdentifier(req);
+        query.where('photo_feedback.guest_identifier', guestIdentifier);
+      }
+
+      const myFeedback = await query
         .select(
           'photo_feedback.*',
           'photos.filename',
           'photos.path'
         )
         .orderBy('photo_feedback.created_at', 'desc');
-      
+
       res.json(myFeedback);
     } catch (error) {
       logger.error('Error getting user feedback:', error);

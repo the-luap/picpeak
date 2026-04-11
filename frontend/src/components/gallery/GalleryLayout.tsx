@@ -7,6 +7,7 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { Button } from '../common';
 import { DynamicFavicon } from '../common/DynamicFavicon';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 import { buildResourceUrl } from '../../utils/url';
 import type { HeaderStyleType } from '../../types/theme.types';
 
@@ -59,6 +60,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
+  const guestIdentity = useGuestIdentityOptional();
 
   // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
   const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
@@ -589,20 +591,36 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             </p>
           )}
           {/* Legal Links */}
-          <div className="mt-4 flex items-center justify-center gap-4">
-            <Link 
-              to="/impressum" 
+          <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
+            <Link
+              to="/impressum"
               className="text-xs text-muted-theme hover:text-theme transition-colors"
             >
               {t('legal.impressum')}
             </Link>
             <span className="text-xs text-muted-theme">|</span>
-            <Link 
-              to="/datenschutz" 
+            <Link
+              to="/datenschutz"
               className="text-xs text-muted-theme hover:text-theme transition-colors"
             >
               {t('legal.datenschutz')}
             </Link>
+            {guestIdentity?.identity && (
+              <>
+                <span className="text-xs text-muted-theme">|</span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-theme hover:text-theme transition-colors"
+                  onClick={async () => {
+                    if (window.confirm(t('gallery.footer.forgetMeConfirm', 'Your name and selections will be removed from this gallery.'))) {
+                      await guestIdentity.forget();
+                    }
+                  }}
+                >
+                  {t('gallery.footer.forgetMe', 'Forget me ({{name}})', { name: guestIdentity.identity.name })}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </footer>
