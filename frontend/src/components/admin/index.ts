@@ -36,3 +36,7 @@ export { EventRenameDialog } from './EventRenameDialog';
 export { PhotoFilterPanel } from './PhotoFilterPanel';
 export { PhotoExportMenu } from './PhotoExportMenu';
 export { CssTemplateEditor } from './CssTemplateEditor';
+export { AdminGuestsList } from './AdminGuestsList';
+export { AdminGuestDetail } from './AdminGuestDetail';
+export { GuestSelectionsAggregate } from './GuestSelectionsAggregate';
+export { GuestInviteDialog } from './GuestInviteDialog';

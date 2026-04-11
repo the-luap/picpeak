@@ -8,6 +8,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import { buildResourceUrl } from '../../../utils/url';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
@@ -81,6 +82,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
   liked = false,
   onLikeSuccess,
 }) => {
+  const guestIdentity = useGuestIdentityOptional();
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const overlayTimeoutRef = useRef<number | null>(null);
@@ -301,6 +303,25 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
                     }`}
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (guestIdentity?.identityMode === 'guest') {
+                        try {
+                          await guestIdentity.ensureIdentity();
+                        } catch {
+                          hideOverlay();
+                          return;
+                        }
+                        if (onLikeSuccess) onLikeSuccess();
+                        try {
+                          await feedbackService.submitFeedback(slug!, String(photo.id), {
+                            feedback_type: 'like',
+                          });
+                        } catch (err) {
+                          console.warn('Like submit failed, keeping optimistic UI', err);
+                        }
+                        if (onFeedbackChange) onFeedbackChange();
+                        hideOverlay();
+                        return;
+                      }
                       if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
                         onRequireIdentity('like', photo.id);
                         hideOverlay();

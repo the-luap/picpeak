@@ -13,6 +13,9 @@ import { GalleryLayout } from './GalleryLayout';
 import { GallerySidebar } from './GallerySidebar';
 import { PhotoFilterBar } from './PhotoFilterBar';
 import { UserPhotoUpload } from './UserPhotoUpload';
+import { GuestNamePromptModal } from './GuestNamePromptModal';
+import { GuestRecoveryModal } from './GuestRecoveryModal';
+import { GuestIdentityProvider } from '../../contexts/GuestIdentityContext';
 import type { FilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
@@ -701,8 +704,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
+  const identityMode: 'simple' | 'guest' =
+    feedbackSettings?.identity_mode === 'guest' ? 'guest' : 'simple';
+
   return (
+    <GuestIdentityProvider slug={slug} identityMode={identityMode}>
     <>
+      <GuestNamePromptModal requireEmail={!!feedbackSettings?.require_name_email} />
+      <GuestRecoveryModal />
       {/* Sidebar for non-grid layouts */}
       {showSidebar ? (
         <GallerySidebar
@@ -915,5 +924,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         )}
       </GalleryLayout>
     </>
+    </GuestIdentityProvider>
   );
 };

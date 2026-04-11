@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { Button, Input } from '../common';
 import type { PhotoFeedback } from '../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoCommentsProps {
   photoId: string;
@@ -29,6 +30,8 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const guestIdentity = useGuestIdentityOptional();
+  const isGuestMode = guestIdentity?.identityMode === 'guest';
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [guestName, setGuestName] = useState('');
@@ -78,7 +81,7 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
     }
   });
 
-  const handleSubmitComment = (e: React.FormEvent) => {
+  const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -87,7 +90,9 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
     if (!commentText.trim()) {
       newErrors.comment_text = t('feedback.commentRequired', 'Comment is required');
     }
-    if (requireNameEmail) {
+    // In guest identity mode, name/email come from the guest token — don't
+    // ask for them here.
+    if (requireNameEmail && !isGuestMode) {
       if (!guestName.trim()) {
         newErrors.guest_name = t('feedback.nameRequired', 'Name is required');
       }
@@ -98,6 +103,16 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      return;
+    }
+
+    if (isGuestMode && guestIdentity) {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      submitCommentMutation.mutate({ comment_text: commentText.trim() });
       return;
     }
 
@@ -140,7 +155,7 @@ export const PhotoComments: React.FC<PhotoCommentsProps> = ({
       {/* Comment Form */}
       {showCommentForm && (
         <form onSubmit={handleSubmitComment} className="space-y-3 p-4 bg-surface rounded-lg border border-surface">
-          {requireNameEmail && (
+          {requireNameEmail && !isGuestMode && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 placeholder={t('feedback.yourName', 'Your name')}
