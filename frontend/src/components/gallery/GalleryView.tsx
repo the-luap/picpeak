@@ -72,6 +72,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
+  const [sortDesc, setSortDesc] = useState(true);
   const [defaultSortApplied, setDefaultSortApplied] = useState(false);
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -129,8 +130,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   // Apply default photo sort from event settings
   useEffect(() => {
     if (!defaultSortApplied && data?.event?.default_photo_sort) {
-      const { sortBy: defaultSortBy } = parseDefaultPhotoSort(data.event.default_photo_sort);
+      const { sortBy: defaultSortBy, sortDesc: defaultSortDesc } = parseDefaultPhotoSort(data.event.default_photo_sort);
       setSortBy(defaultSortBy);
+      setSortDesc(defaultSortDesc);
       setDefaultSortApplied(true);
     }
   }, [data?.event?.default_photo_sort, defaultSortApplied]);
@@ -447,29 +449,32 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     // Apply sorting
+    // Each comparator defaults to its natural order (desc for dates/size/rating, asc for name).
+    // The flip multiplier reverses that when sortDesc differs from the natural order.
+    const flip = sortDesc ? 1 : -1;
     photos.sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.filename.localeCompare(b.filename);
+          // Natural order is ascending (A-Z); flip when sortDesc=true
+          return (sortDesc ? -1 : 1) * a.filename.localeCompare(b.filename);
         case 'size':
-          return b.size - a.size;
-        case 'rating':
-          // Sort by rating (highest first), then by comment count
+          return flip * (b.size - a.size);
+        case 'rating': {
           const ratingA = a.average_rating || 0;
           const ratingB = b.average_rating || 0;
           if (ratingA !== ratingB) {
-            return ratingB - ratingA;
+            return flip * (ratingB - ratingA);
           }
-          // If ratings are equal, sort by comment count
-          return (b.comment_count || 0) - (a.comment_count || 0);
-        case 'capture_date':
-          // Sort by capture date (from EXIF), fall back to upload date
+          return flip * ((b.comment_count || 0) - (a.comment_count || 0));
+        }
+        case 'capture_date': {
           const captureDateA = a.captured_at || a.uploaded_at;
           const captureDateB = b.captured_at || b.uploaded_at;
-          return new Date(captureDateB).getTime() - new Date(captureDateA).getTime();
+          return flip * (new Date(captureDateB).getTime() - new Date(captureDateA).getTime());
+        }
         case 'date':
         default:
-          return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+          return flip * (new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime());
       }
     });
     
@@ -483,7 +488,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return photos;
-  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType, mediaFilter]);
+  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, sortDesc, watermarkEnabled, slug, filterType, mediaFilter]);
 
   const likeCount = useMemo(
     () => data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0,
