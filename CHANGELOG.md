@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.0-beta.0...v3.28.1-beta.0) (2026-04-12)
+
+
+### Bug Fixes
+
+* apply sort direction in gallery and respect show_feedback_to_guests ([#302](https://github.com/the-luap/picpeak/issues/302), [#303](https://github.com/the-luap/picpeak/issues/303)) ([3716ff5](https://github.com/the-luap/picpeak/commit/3716ff50854766bde588fbd6b9027f8647e59150))
+* apply sort direction in gallery view and respect show_feedback_to_guests ([#302](https://github.com/the-luap/picpeak/issues/302), [#303](https://github.com/the-luap/picpeak/issues/303)) ([dffe057](https://github.com/the-luap/picpeak/commit/dffe057772c922ab6a213e25f171157e0c2badf8))
+
 ## [3.28.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.27.0-beta.0...v3.28.0-beta.0) (2026-04-11)
 
 
