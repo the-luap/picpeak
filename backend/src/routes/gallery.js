@@ -311,6 +311,11 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       }
     }
     
+    // Check if feedback should be visible to guests
+    const feedbackService = require('../services/feedbackService');
+    const feedbackSettings = await feedbackService.getEventFeedbackSettings(req.event.id);
+    const showFeedbackToGuests = isClient || feedbackSettings.show_feedback_to_guests !== false;
+
     // Then get comment counts separately
     const commentCounts = await db('photo_feedback')
       .whereIn('photo_id', photos.map(p => p.id))
@@ -437,12 +442,12 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           media_type: photo.media_type || null,
           mime_type: photo.mime_type || null,
           duration: photo.duration || null,
-          // Feedback data
-          has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
-          average_rating: photo.average_rating || 0,
-          comment_count: commentMap[photo.id] || 0,
-          like_count: photo.like_count || 0,
-          favorite_count: photo.favorite_count || 0,
+          // Feedback data (hidden when show_feedback_to_guests is disabled)
+          has_feedback: showFeedbackToGuests ? (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0) : false,
+          average_rating: showFeedbackToGuests ? (photo.average_rating || 0) : 0,
+          comment_count: showFeedbackToGuests ? (commentMap[photo.id] || 0) : 0,
+          like_count: showFeedbackToGuests ? (photo.like_count || 0) : 0,
+          favorite_count: showFeedbackToGuests ? (photo.favorite_count || 0) : 0,
           // Visibility (only included for clients)
           ...(isClient ? { visibility: photo.visibility || 'visible' } : {})
         };
