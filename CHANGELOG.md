@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.1-beta.0...v3.28.2-beta.0) (2026-04-12)
+
+
+### Bug Fixes
+
+* display welcome message in gallery and fix guest thumbnail URLs ([#306](https://github.com/the-luap/picpeak/issues/306), [#307](https://github.com/the-luap/picpeak/issues/307)) ([b05c36a](https://github.com/the-luap/picpeak/commit/b05c36ac810a557a2ac088ab7bec39bb76f9a2ae))
+* display welcome message in gallery and fix guest thumbnail URLs ([#306](https://github.com/the-luap/picpeak/issues/306), [#307](https://github.com/the-luap/picpeak/issues/307)) ([9323bef](https://github.com/the-luap/picpeak/commit/9323befdd99d64b85cca89af24ac1b7034d72eee))
+
 ## [3.28.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.0-beta.0...v3.28.1-beta.0) (2026-04-12)
 
 
