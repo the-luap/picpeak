@@ -295,6 +295,13 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
         />
       )}
 
+      {/* Welcome Message - shown for non-fullpage layouts when set */}
+      {!isFullPageLayout && welcomeMessage && (
+        <div className="mb-6 px-4 py-3 rounded-lg bg-card-theme/50 border border-border-theme text-center">
+          <p className="text-sm text-muted-theme whitespace-pre-line">{welcomeMessage}</p>
+        </div>
+      )}
+
       {/* Selection Mode Controls - Not shown for carousel, full-page layouts, or when controls are hidden */}
       {showSelectionControls && photos.length > 1 && galleryLayout !== 'carousel' && !isFullPageLayout && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

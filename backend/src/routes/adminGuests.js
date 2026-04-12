@@ -138,8 +138,8 @@ router.get(
             id: p.id,
             filename: p.filename,
             original_filename: p.original_filename,
-            url: `/admin/photos/${eventId}/photo/${p.id}`,
-            thumbnail_url: `/admin/photos/${eventId}/thumbnail/${p.id}`,
+            url: `/api/admin/photos/${eventId}/photo/${p.id}`,
+            thumbnail_url: `/api/admin/photos/${eventId}/thumbnail/${p.id}`,
             picker_count: parseInt(p.picker_count, 10),
           })),
       });
@@ -418,8 +418,8 @@ router.get(
         filename: row.filename,
         original_filename: row.original_filename,
         type: row.type,
-        url: `/admin/photos/${eventId}/photo/${row.photo_id}`,
-        thumbnail_url: `/admin/photos/${eventId}/thumbnail/${row.photo_id}`,
+        url: `/api/admin/photos/${eventId}/photo/${row.photo_id}`,
+        thumbnail_url: `/api/admin/photos/${eventId}/thumbnail/${row.photo_id}`,
       });
 
       const selections = {
