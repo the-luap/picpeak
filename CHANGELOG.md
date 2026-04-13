@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.2-beta.0...v3.28.3-beta.0) (2026-04-13)
+
+
+### Bug Fixes
+
+* revert /api prefix in adminPhotos.js to avoid double-prefix ([094276d](https://github.com/the-luap/picpeak/commit/094276d3cc7117eee30e4bcbce487e54f0eacb29))
+* revert /api prefix in adminPhotos.js to avoid double-prefix ([#307](https://github.com/the-luap/picpeak/issues/307)) ([ceb2a09](https://github.com/the-luap/picpeak/commit/ceb2a09f483b4754fda232c5c1f7acb8971aac10))
+
 ## [3.28.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.1-beta.0...v3.28.2-beta.0) (2026-04-12)
 
 
