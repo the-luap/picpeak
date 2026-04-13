@@ -922,9 +922,9 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), requ
         filename: photo.filename,
         original_filename: photo.original_filename || null,
         // Use the correct admin photos router base for serving images
-        url: `/api/admin/photos/${eventId}/photo/${photo.id}`,
+        url: `/admin/photos/${eventId}/photo/${photo.id}`,
         // Always expose a thumbnail URL; backend will generate on demand if missing
-        thumbnail_url: `/api/admin/photos/${eventId}/thumbnail/${photo.id}`,
+        thumbnail_url: `/admin/photos/${eventId}/thumbnail/${photo.id}`,
         type: photo.type,
         category_id: photo.category_id || photo.type,
         category_name: photo.pc_name || (photo.type === 'individual' ? 'Individual Photos' : 'Collages'),
