@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.3-beta.0...v3.29.0-beta.0) (2026-04-23)
+
+
+### Features
+
+* pre-zip download all and photo replacement by name ([#312](https://github.com/the-luap/picpeak/issues/312), [#313](https://github.com/the-luap/picpeak/issues/313)) ([d3f1206](https://github.com/the-luap/picpeak/commit/d3f12068164a6bfe6c4a3817ad2fc2e8ed7abf4f))
+* pre-zip download all and photo replacement by name ([#312](https://github.com/the-luap/picpeak/issues/312), [#313](https://github.com/the-luap/picpeak/issues/313)) ([e18afd3](https://github.com/the-luap/picpeak/commit/e18afd3e6b0b5a4cdb4873fb227d1b1d2bf35f21))
+
 ## [3.28.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.2-beta.0...v3.28.3-beta.0) (2026-04-13)
 
 
