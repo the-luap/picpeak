@@ -134,6 +134,8 @@
     "uploadComplete": "Envio concluído!",
     "uploadFailed": "Falha no envio",
     "someFilesFailed": "Alguns arquivos falharam ao enviar",
+    "replaceByName": "Substituir fotos existentes com o mesmo nome",
+    "replacedFiles": "{{count}} foto(s) substituída(s)",
     "uploadPhotos": "Enviar Fotos",
     "uploadMedia": "Enviar Fotos e Vídeos",
     "importExternal": "Importar de Pasta Externa",

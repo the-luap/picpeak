@@ -14,6 +14,8 @@ const { getMaxFilesPerUpload, getAllowedMimeTypes } = require('../services/uploa
 const { processUploadedPhotos } = require('../services/photoProcessor');
 const chunkedUpload = require('../services/chunkedUploadService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
+const downloadZipService = require('../services/downloadZipService');
+const { findReplacementCandidate, replacePhoto } = require('../services/photoReplacementService');
 const { requireEventOwnership } = require('../middleware/ownership');
 const router = express.Router();
 
@@ -149,7 +151,8 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
 }, validateUploadContent, validateUploadedFiles, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { category_id } = req.body;
+    const { category_id, replace_by_name } = req.body;
+    const replaceByName = replace_by_name === 'true' || replace_by_name === true;
     
     console.log('Upload request received for event:', eventId);
     console.log('Body:', req.body);
@@ -172,14 +175,21 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Enforce photo cap if set
+    // Enforce photo cap if set (replacements don't count as new)
     if (event.photo_cap && event.photo_cap > 0) {
       const existingPhotoCount = await db('photos')
         .where({ event_id: eventId })
         .count('id as count')
         .first();
       const currentCount = parseInt(existingPhotoCount.count) || 0;
-      const newFilesCount = (req.files && req.files.length) || 0;
+      let newFilesCount = (req.files && req.files.length) || 0;
+      // Subtract likely replacements from cap calculation
+      if (replaceByName && req.files) {
+        for (const file of req.files) {
+          const candidate = await findReplacementCandidate(parseInt(eventId), file.originalname);
+          if (candidate && !candidate.ambiguous) newFilesCount--;
+        }
+      }
       if (currentCount + newFilesCount > event.photo_cap) {
         // Clean up temp files
         if (req.tempUploadPath) {
@@ -238,13 +248,51 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     await fs.mkdir(finalDestPath, { recursive: true });
     
     const uploadedPhotos = [];
+    const replacedPhotos = [];
+    const skippedReplacements = [];
     const errors = [];
-    
-    // Process files in batches to optimize database operations
+
+    // Handle replacements first if enabled
+    let filesToUpload = req.files;
+    if (replaceByName && req.files.length > 0) {
+      const newFiles = [];
+      for (const file of req.files) {
+        const candidate = await findReplacementCandidate(parseInt(eventId), file.originalname);
+        if (candidate && !candidate.ambiguous) {
+          // Replace existing photo
+          const result = await replacePhoto(candidate, file.path, {
+            originalFilename: file.originalname,
+            mimeType: file.mimetype,
+            event,
+          });
+          if (result.success) {
+            replacedPhotos.push({
+              id: result.photo.id,
+              filename: result.photo.filename,
+              original_filename: file.originalname,
+              previous_filename: result.previousFilename,
+            });
+          } else {
+            errors.push({ filename: file.originalname, error: `Replacement failed: ${result.error}` });
+          }
+        } else if (candidate && candidate.ambiguous) {
+          skippedReplacements.push({
+            filename: file.originalname,
+            reason: `${candidate.count} photos share this name — uploaded as new`,
+          });
+          newFiles.push(file);
+        } else {
+          newFiles.push(file);
+        }
+      }
+      filesToUpload = newFiles;
+    }
+
+    // Process remaining new files in batches
     const BATCH_SIZE = 25; // Increased batch size for better performance with large uploads
-    
-    for (let i = 0; i < req.files.length; i += BATCH_SIZE) {
-      const batch = req.files.slice(i, i + BATCH_SIZE);
+
+    for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
+      const batch = filesToUpload.slice(i, i + BATCH_SIZE);
       
       // Start a single transaction for the batch
       const trx = await db.transaction();
@@ -480,21 +528,36 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     
     // Log activity
     await logActivity('photos_uploaded',
-      { count: uploadedPhotos.length, eventName: event.event_name },
+      { count: uploadedPhotos.length, replacedCount: replacedPhotos.length, eventName: event.event_name },
       eventId,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
-    
+
+    // Log individual replacements for audit trail
+    for (const rp of replacedPhotos) {
+      await logActivity('photo_replaced',
+        { photoId: rp.id, originalFilename: rp.original_filename, previousFilename: rp.previous_filename, eventName: event.event_name },
+        eventId,
+        { type: 'admin', id: req.admin.id, name: req.admin.username }
+      );
+    }
+
     // Include any files that were invalid from the validation middleware
     const totalInvalidFiles = (req.invalidFiles || []).concat(errors);
-    
+
     // Prepare response
     const totalAttempted = req.files.length + (req.invalidFiles ? req.invalidFiles.length : 0);
+    const uploadMsg = uploadedPhotos.length > 0 ? `${uploadedPhotos.length} uploaded` : '';
+    const replaceMsg = replacedPhotos.length > 0 ? `${replacedPhotos.length} replaced` : '';
+    const parts = [uploadMsg, replaceMsg].filter(Boolean).join(', ');
     const response = {
-      message: `Successfully uploaded ${uploadedPhotos.length} photos`,
+      message: parts ? `Successfully ${parts}` : 'No photos processed',
       photos: uploadedPhotos,
+      replaced: replacedPhotos,
+      replacedCount: replacedPhotos.length,
+      skippedReplacements,
       totalFiles: totalAttempted,
-      successCount: uploadedPhotos.length,
+      successCount: uploadedPhotos.length + replacedPhotos.length,
       failureCount: totalInvalidFiles.length
     };
     
@@ -504,10 +567,15 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
       response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} photos. ${totalInvalidFiles.length} failed.`;
     }
     
+    // Invalidate download zip cache after successful upload or replacement
+    if (uploadedPhotos.length > 0 || replacedPhotos.length > 0) {
+      downloadZipService.invalidate(parseInt(eventId));
+    }
+
     res.json(response);
   } catch (error) {
     console.error('Error uploading photos:', error);
-    
+
     // Clean up temp upload directory on error
     if (req.tempUploadPath) {
       try {
@@ -576,7 +644,8 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
       eventId,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
-    
+
+    downloadZipService.invalidate(parseInt(eventId));
     res.json({ message: 'Photo deleted successfully' });
   } catch (error) {
     console.error('Error deleting photo:', error);
@@ -713,6 +782,7 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
+    downloadZipService.invalidate(parseInt(eventId));
     res.json({ message: `${photos.length} photos deleted successfully` });
   } catch (error) {
     console.error('Error bulk deleting photos:', error);

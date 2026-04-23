@@ -14,6 +14,8 @@ const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = r
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
 const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
+const downloadZipService = require('../services/downloadZipService');
+const fs = require('fs');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -405,6 +407,7 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         hero_divider_style: req.event.hero_divider_style || 'wave',
         hero_image_anchor: req.event.hero_image_anchor || 'center',
         default_photo_sort: req.event.default_photo_sort || 'upload_date_desc',
+        download_zip_ready: !!(req.event.download_zip_path && req.event.download_zip_generated_at),
         ...protectionSettings
       },
       categories: categories,
@@ -622,32 +625,57 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     if (req.event.allow_downloads === false) {
       return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
     }
-    
+
+    // Try to serve pre-generated zip (instant download with Content-Length)
+    const zipInfo = await downloadZipService.getZipInfo(req.event.id);
+    if (zipInfo) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Length', zipInfo.size);
+      res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
+      const stream = fs.createReadStream(zipInfo.path);
+      stream.pipe(res);
+
+      // Log bulk download
+      db('access_logs').insert({
+        event_id: req.event.id,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        action: 'download_all'
+      }).catch(() => {});
+      return;
+    }
+
+    // Fallback: on-the-fly streaming (existing behavior)
+    // Also trigger background zip generation for next time
+    downloadZipService.generateZip(req.event.id).catch(err =>
+      logger.warn('Background zip generation failed', { eventId: req.event.id, error: err.message })
+    );
+
     // Fetch photos
     const photos = await db('photos')
       .where('photos.event_id', req.event.id)
       .select('photos.*')
       .orderBy('photos.type', 'asc')
       .orderBy('photos.uploaded_at', 'desc');
-    
+
     if (photos.length === 0) {
       return res.status(404).json({ error: 'No photos found' });
     }
-    
+
     // Count unique types
     const uniqueTypes = new Set(photos.map(p => p.type)).size;
     const hasMultipleTypes = uniqueTypes > 1;
-    
+
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
-    
+
     const archive = archiver('zip', { zlib: { level: 5 } });
     archive.on('error', (err) => {
       throw err;
     });
-    
+
     archive.pipe(res);
-    
+
     // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
     const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
@@ -700,9 +728,9 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
         archive.file(filePath, { name: archiveName });
       }
     }
-    
+
     await archive.finalize();
-    
+
     // Log bulk download
     await db('access_logs').insert({
       event_id: req.event.id,

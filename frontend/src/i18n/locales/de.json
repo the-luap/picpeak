@@ -134,6 +134,8 @@
     "uploadComplete": "Upload abgeschlossen!",
     "uploadFailed": "Upload fehlgeschlagen",
     "someFilesFailed": "Einige Dateien konnten nicht hochgeladen werden",
+    "replaceByName": "Vorhandene Fotos mit gleichem Namen ersetzen",
+    "replacedFiles": "{{count}} Foto(s) ersetzt",
     "uploadPhotos": "Fotos hochladen",
     "uploadMedia": "Fotos & Videos hochladen",
     "importExternal": "Aus externem Ordner importieren",

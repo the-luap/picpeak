@@ -134,6 +134,8 @@
     "uploadComplete": "Upload complete!",
     "uploadFailed": "Upload failed",
     "someFilesFailed": "Some files failed to upload",
+    "replaceByName": "Replace existing photos with same name",
+    "replacedFiles": "{{count}} photo(s) replaced",
     "uploadPhotos": "Upload Photos",
     "uploadMedia": "Upload Photos & Videos",
     "importExternal": "Import from External Folder",
