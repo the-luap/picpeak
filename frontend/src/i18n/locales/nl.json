@@ -134,6 +134,8 @@
     "uploadComplete": "Upload voltooid!",
     "uploadFailed": "Upload mislukt",
     "someFilesFailed": "Sommige bestanden konden niet worden geupload",
+    "replaceByName": "Bestaande foto's met dezelfde naam vervangen",
+    "replacedFiles": "{{count}} foto('s) vervangen",
     "uploadPhotos": "Foto's uploaden",
     "uploadMedia": "Foto's & video's uploaden",
     "importExternal": "Importeren uit externe map",

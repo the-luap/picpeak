@@ -26,6 +26,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [replaceByName, setReplaceByName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch categories for this event
@@ -135,6 +136,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
     setTotalChunks(chunks.length);
     let totalUploaded = 0;
+    let totalReplaced = 0;
     let failedFiles = [];
 
     try {
@@ -150,9 +152,12 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         if (selectedCategoryId) {
           formData.append('category_id', selectedCategoryId.toString());
         }
+        if (replaceByName) {
+          formData.append('replace_by_name', 'true');
+        }
 
         try {
-          await api.post(`/admin/events/${eventId}/upload`, formData, {
+          const response = await api.post(`/admin/events/${eventId}/upload`, formData, {
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 // Calculate overall progress across all chunks
@@ -163,7 +168,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
             },
           });
 
-          totalUploaded += chunk.length;
+          totalUploaded += (response.data?.successCount || chunk.length);
+          totalReplaced += (response.data?.replacedCount || 0);
         } catch (error: any) {
           console.error(`Error uploading chunk ${chunkIndex + 1}:`, error);
           failedFiles.push(...chunk.map(f => f.name));
@@ -180,6 +186,9 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       }
 
       // Show appropriate message
+      if (totalReplaced > 0) {
+        toast.info(t('upload.replacedFiles', { count: totalReplaced }) || `${totalReplaced} photo(s) replaced`);
+      }
       if (failedFiles.length === 0) {
         toast.success(t('upload.uploadComplete') || `Successfully uploaded ${totalUploaded} files`);
       } else {
@@ -229,6 +238,20 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Replace by name toggle */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="replace-by-name"
+          checked={replaceByName}
+          onChange={(e) => setReplaceByName(e.target.checked)}
+          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+        />
+        <label htmlFor="replace-by-name" className="text-sm text-neutral-700 dark:text-neutral-300">
+          {t('upload.replaceByName', 'Replace existing photos with same name')}
+        </label>
       </div>
 
       {/* File Input Area */}

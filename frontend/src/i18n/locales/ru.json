@@ -134,6 +134,8 @@
     "uploadComplete": "Загрузка завершена!",
     "uploadFailed": "Ошибка загрузки",
     "someFilesFailed": "Не удалось загрузить некоторые файлы",
+    "replaceByName": "Заменить существующие фото с таким же именем",
+    "replacedFiles": "{{count}} фото заменено",
     "uploadPhotos": "Загрузить фото",
     "uploadMedia": "Загрузить фото и видео",
     "importExternal": "Импортировать из внешней папки",

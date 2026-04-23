@@ -7,6 +7,7 @@ const { generateThumbnail, generateVideoPlaceholder } = require('./imageProcesso
 const logger = require('../utils/logger');
 const { isVideoMimeType } = require('./videoProcessor');
 const mime = require('mime-types');
+const downloadZipService = require('./downloadZipService');
 
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 const WATCH_PATH = () => path.join(getStoragePath(), 'events/active');
@@ -81,11 +82,15 @@ async function processNewPhoto(filePath) {
   const relativeThumbPath = thumbnailPath; // thumbnailPath is already relative to storage root
   const mimeType = detectedMime || (isVideo ? 'video/mp4' : 'image/jpeg');
   
-  // Check if photo already exists
+  // Check if photo already exists (by filename or path, to handle replacements)
   const existingPhoto = await db('photos')
-    .where({ event_id: event.id, filename: path.basename(filePath) })
+    .where({ event_id: event.id })
+    .where(function() {
+      this.where('filename', path.basename(filePath))
+        .orWhere('path', relativePath);
+    })
     .first();
-  
+
   if (!existingPhoto) {
     // Add to database
     await db('photos').insert({
@@ -97,8 +102,9 @@ async function processNewPhoto(filePath) {
       size_bytes: stats.size,
       mime_type: mimeType
     });
-    
+
     logger.info(`Added new photo: ${relativePath}`);
+    downloadZipService.invalidate(event.id);
   } else {
     logger.debug(`Photo already exists: ${relativePath}`);
   }
@@ -106,10 +112,17 @@ async function processNewPhoto(filePath) {
 
 async function removePhoto(filePath) {
   const relativePath = path.relative(WATCH_PATH(), filePath);
-  
+
+  // Look up event before deleting to invalidate zip cache
+  const photo = await db('photos').where({ path: relativePath }).first();
+
   // Remove from database
   await db('photos').where({ path: relativePath }).delete();
-  
+
+  if (photo) {
+    downloadZipService.invalidate(photo.event_id);
+  }
+
   logger.info(`Removed photo: ${relativePath}`);
 }
 

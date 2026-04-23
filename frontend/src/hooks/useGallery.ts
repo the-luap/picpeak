@@ -67,7 +67,8 @@ export const useDownloadPhoto = () => {
 
 export const useDownloadAllPhotos = () => {
   return useMutation({
-    mutationFn: (slug: string) => galleryService.downloadAllPhotos(slug),
+    mutationFn: ({ slug, zipReady }: { slug: string; zipReady?: boolean }) =>
+      galleryService.downloadAllPhotos(slug, zipReady),
     onSuccess: () => {
       toast.success('Download started');
     },

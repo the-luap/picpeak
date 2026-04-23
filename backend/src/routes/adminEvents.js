@@ -22,6 +22,7 @@ const eventTypeService = require('../services/eventTypeService');
 const { validateFileType } = require('../utils/fileSecurityUtils');
 const { requireEventOwnership } = require('../middleware/ownership');
 const { getFrontendBaseUrl } = require('../utils/frontendUrl');
+const downloadZipService = require('../services/downloadZipService');
 
 // Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
 const validateHeroImageAnchor = (value) => {
@@ -1048,6 +1049,12 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
       id,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
+
+    // Invalidate download zip if watermark settings changed
+    const changeKeys = Object.keys(req.body);
+    if (changeKeys.includes('watermark_downloads') || changeKeys.includes('watermark_text')) {
+      downloadZipService.invalidate(parseInt(id));
+    }
 
     res.json({ message: 'Event updated successfully' });
   } catch (error) {

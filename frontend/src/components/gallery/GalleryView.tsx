@@ -514,7 +514,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       return;
     }
     
-    downloadAllMutation.mutate(slug);
+    downloadAllMutation.mutate({ slug, zipReady: data?.event?.download_zip_ready });
     
     // Track download all action
     analyticsService.trackGalleryEvent('bulk_download', {
