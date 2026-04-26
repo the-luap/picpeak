@@ -31,6 +31,8 @@ export interface PublicSettings {
   event_require_admin_email?: boolean;
   event_require_event_date?: boolean;
   event_require_expiration?: boolean;
+  event_default_require_password?: boolean;
+  gallery_show_filter_bar?: boolean;
 }
 
 export const publicSettingsService = {

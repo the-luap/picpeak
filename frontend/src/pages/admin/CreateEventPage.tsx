@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calendar,
@@ -146,15 +146,21 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => eventTypesService.getActiveEventTypes()
   });
 
-  // Compute event types to use (API data or fallback)
-  const availableEventTypes = eventTypes?.length
-    ? eventTypes.map(et => ({
-        value: et.slug_prefix,
-        name: et.name,
-        emoji: et.emoji,
-        theme_preset: et.theme_preset
-      }))
-    : FALLBACK_EVENT_TYPES;
+  // Compute event types to use (API data or fallback). Memoised so its
+  // identity is stable across renders — otherwise the "Update theme when
+  // event type changes" effect below re-runs on every render and silently
+  // overwrites the user's Theme Preset selection (#317).
+  const availableEventTypes = useMemo(
+    () => (eventTypes?.length
+      ? eventTypes.map(et => ({
+          value: et.slug_prefix,
+          name: et.name,
+          emoji: et.emoji,
+          theme_preset: et.theme_preset
+        }))
+      : FALLBACK_EVENT_TYPES),
+    [eventTypes]
+  );
 
   // Fetch default settings
   const { data: settings } = useQuery({
@@ -184,6 +190,19 @@ export const CreateEventPage: React.FC = () => {
       }));
     }
   }, [settings]);
+
+  // Honour the global "Require password by default" admin setting (#317).
+  // Apply once when public settings first load, before the user has interacted.
+  const requirePasswordDefaultApplied = useRef(false);
+  useEffect(() => {
+    if (requirePasswordDefaultApplied.current) return;
+    if (publicSettings?.event_default_require_password === undefined) return;
+    requirePasswordDefaultApplied.current = true;
+    setFormData(prev => ({
+      ...prev,
+      require_password: publicSettings.event_default_require_password !== false
+    }));
+  }, [publicSettings]);
 
   // Update theme when event type changes
   useEffect(() => {

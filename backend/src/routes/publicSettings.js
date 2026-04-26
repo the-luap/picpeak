@@ -13,7 +13,11 @@ router.get('/', async (req, res) => {
           this.whereIn('setting_type', ['branding', 'theme', 'general', 'security', 'analytics', 'boolean'])
             .orWhere('setting_key', 'like', 'analytics_%')
             .orWhere('setting_key', 'like', 'event_require_%')
-            .orWhereIn('setting_key', ['seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai']);
+            .orWhereIn('setting_key', [
+              'seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai',
+              'event_default_require_password',
+              'gallery_show_filter_bar'
+            ]);
         })
         .select('setting_key', 'setting_value');
     });
@@ -78,6 +82,10 @@ router.get('/', async (req, res) => {
       event_require_admin_email: settingsObject.event_require_admin_email !== false,
       event_require_event_date: settingsObject.event_require_event_date !== false,
       event_require_expiration: settingsObject.event_require_expiration !== false,
+      // Default value for "Require password" toggle in event creation form
+      event_default_require_password: settingsObject.event_default_require_password !== false,
+      // Whether to show the search/sort filter bar in public galleries (default: true)
+      gallery_show_filter_bar: settingsObject.gallery_show_filter_bar !== false,
       // Upload settings (safe to expose - needed for client-side validation)
       allowed_file_types: settingsObject.general_allowed_file_types || 'jpg,jpeg,png,webp',
       // SEO meta tag flags (safe to expose - these are intended for crawlers)

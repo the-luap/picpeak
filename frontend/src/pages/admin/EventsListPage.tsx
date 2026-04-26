@@ -12,7 +12,9 @@ import {
   Trash2,
   Calendar,
   Image,
-  Activity
+  Activity,
+  Copy,
+  CheckCircle
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -23,15 +25,9 @@ import { BulkArchiveModal } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { isGalleryPublic } from '../../utils/accessControl';
+import { buildShareLinkUrl } from '../../utils/url';
 import type { Event } from '../../types';
 import { useTranslation } from 'react-i18next';
-
-const resolveShareLink = (link: string): string => {
-  if (!link) return '#';
-  if (link.startsWith('http')) return link;
-  if (link.startsWith('/')) return link;
-  return `/gallery/${link}`;
-};
 
 export const EventsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -46,6 +42,35 @@ export const EventsListPage: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [showBulkArchiveModal, setShowBulkArchiveModal] = useState(false);
+  const [copiedEventId, setCopiedEventId] = useState<number | null>(null);
+
+  const copyShareLink = async (event: Event) => {
+    const url = buildShareLinkUrl(event.share_link);
+    if (!url || url === '#') {
+      toast.error(t('errors.noShareLink', 'No share link available'));
+      return;
+    }
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!ok) throw new Error('Copy failed');
+      }
+      setCopiedEventId(event.id);
+      toast.success(t('events.linkCopied', 'Gallery link copied'));
+      setTimeout(() => setCopiedEventId((current) => (current === event.id ? null : current)), 2000);
+    } catch {
+      toast.error(t('errors.copyFailed', 'Failed to copy link'));
+    }
+  };
 
   // Get filter from URL
   const statusFilter = searchParams.get('filter') as 'active' | 'archived' | 'draft' | null;
@@ -489,10 +514,24 @@ export const EventsListPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => window.open(resolveShareLink(event.share_link), '_blank')}
+                                onClick={() => window.open(buildShareLinkUrl(event.share_link), '_blank')}
                                 title={t('events.viewGallery')}
                               >
                                 <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {event.share_link && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyShareLink(event)}
+                                title={t('events.copyLink', 'Copy Link')}
+                              >
+                                {copiedEventId === event.id ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
                               </Button>
                             )}
                           </div>
@@ -539,7 +578,7 @@ export const EventsListPage: React.FC = () => {
                                   </button>
                                   {event.share_link ? (
                                     <a
-                                      href={resolveShareLink(event.share_link)}
+                                      href={buildShareLinkUrl(event.share_link)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="md:hidden w-full text-left px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
@@ -551,6 +590,19 @@ export const EventsListPage: React.FC = () => {
                                       <ExternalLink className="w-4 h-4" />
                                       {t('events.viewGallery')}
                                     </a>
+                                  ) : null}
+                                  {event.share_link ? (
+                                    <button
+                                      onClick={() => {
+                                        copyShareLink(event);
+                                        setActiveDropdown(null);
+                                        setDropdownPosition(null);
+                                      }}
+                                      className="md:hidden w-full text-left px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                      {t('events.copyLink', 'Copy Link')}
+                                    </button>
                                   ) : null}
                                   {!event.is_archived ? (
                                     <button

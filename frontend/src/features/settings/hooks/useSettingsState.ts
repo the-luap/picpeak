@@ -50,6 +50,8 @@ export interface EventSettings {
   event_require_admin_email: boolean;
   event_require_event_date: boolean;
   event_require_expiration: boolean;
+  event_default_require_password: boolean;
+  gallery_show_filter_bar: boolean;
 }
 
 export interface SeoSettings {
@@ -123,7 +125,9 @@ export function useSettingsState() {
     event_require_customer_email: true,
     event_require_admin_email: true,
     event_require_event_date: true,
-    event_require_expiration: true
+    event_require_expiration: true,
+    event_default_require_password: true,
+    gallery_show_filter_bar: true
   });
 
   // SEO settings state
@@ -206,7 +210,9 @@ export function useSettingsState() {
         event_require_customer_email: toBoolean(settings.event_require_customer_email, true),
         event_require_admin_email: toBoolean(settings.event_require_admin_email, true),
         event_require_event_date: toBoolean(settings.event_require_event_date, true),
-        event_require_expiration: toBoolean(settings.event_require_expiration, true)
+        event_require_expiration: toBoolean(settings.event_require_expiration, true),
+        event_default_require_password: toBoolean(settings.event_default_require_password, true),
+        gallery_show_filter_bar: toBoolean(settings.gallery_show_filter_bar, true)
       });
 
       setSeoSettings({

@@ -113,6 +113,31 @@ const getEventFieldRequirements = async () => {
   }
 };
 
+// Helper to read app_settings booleans by key, used to inherit per-setting
+// defaults onto new events. Returns `undefined` for missing/non-boolean rows
+// so callers can fall back to a legacy default.
+const readBooleanSetting = async (key) => {
+  try {
+    const setting = await db('app_settings').where('setting_key', key).first();
+    if (!setting) return undefined;
+    let value = setting.setting_value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep raw */ }
+    }
+    return typeof value === 'boolean' ? value : undefined;
+  } catch (error) {
+    logger.error('Failed to read app setting', { key, error: error.message });
+    return undefined;
+  }
+};
+
+// Helper to read the global "enable_devtools_protection" admin setting so
+// new events inherit it instead of always falling back to the DB column default
+// (#317 — admin disabled it globally but new events still got it ON).
+const getDownloadProtectionDefaults = async () => {
+  return { enable_devtools_protection: await readBooleanSetting('enable_devtools_protection') };
+};
+
 // Helper to get branding defaults for new events (Feature 7: Branding Inheritance)
 const getBrandingDefaults = async () => {
   try {
@@ -246,6 +271,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
+  body('enable_devtools_protection').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
   body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
@@ -291,9 +317,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       upload_category_id = null,
       allow_downloads = true,
       disable_right_click = false,
+      enable_devtools_protection: enableDevtoolsProtectionInput,
       watermark_downloads = false,
       watermark_text = null,
-      require_password: requirePasswordInput = true,
+      require_password: requirePasswordInput,
       // Feedback settings
       feedback_enabled = false,
       allow_ratings = true,
@@ -349,7 +376,14 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       return res.status(400).json({ errors: validationErrors });
     }
 
-    const requirePassword = parseBooleanInput(requirePasswordInput, true);
+    // Default require_password from global "event_default_require_password"
+    // setting when the body omits it (#317 — admins want to flip the default).
+    let requirePasswordFallback = true;
+    if (requirePasswordInput === undefined) {
+      const setting = await readBooleanSetting('event_default_require_password');
+      if (setting !== undefined) requirePasswordFallback = setting;
+    }
+    const requirePassword = parseBooleanInput(requirePasswordInput, requirePasswordFallback);
 
     // Debug logging
     logger.debug('Download control values', {
@@ -457,6 +491,17 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     const effectiveHeroLogoSize = req.body.hero_logo_size || brandingDefaults.hero_logo_size;
     const effectiveHeroLogoPosition = req.body.hero_logo_position || brandingDefaults.hero_logo_position;
 
+    // Inherit "Detect dev tools" from the global Image Security setting unless
+    // the request explicitly overrides it (#317 — admin disabled it globally
+    // but new events still got it ON because the column default is true).
+    const protectionDefaults = await getDownloadProtectionDefaults();
+    const effectiveEnableDevtoolsProtection =
+      enableDevtoolsProtectionInput !== undefined
+        ? enableDevtoolsProtectionInput
+        : protectionDefaults.enable_devtools_protection !== undefined
+          ? protectionDefaults.enable_devtools_protection
+          : true;
+
     // Insert into database
     const insertResult = await db('events').insert({
       slug,
@@ -479,6 +524,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       upload_category_id,
       allow_downloads: formatBoolean(allow_downloads !== undefined ? allow_downloads : true),
       disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
+      enable_devtools_protection: formatBoolean(effectiveEnableDevtoolsProtection),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
       require_password: formatBoolean(requirePassword),

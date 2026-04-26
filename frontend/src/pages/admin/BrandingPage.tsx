@@ -71,6 +71,11 @@ export const BrandingPage: React.FC = () => {
     mutationFn: settingsService.updateTheme,
     onSuccess: () => {
       toast.success(t('toast.themeUpdated'));
+      // Refresh both the admin settings cache (which the page reads from) and
+      // the public-settings cache (which the gallery reads from) so the saved
+      // theme is reflected without a manual reload (#317).
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['public-settings'] });
     },
     onError: () => {
       toast.error(t('toast.saveError'));
@@ -117,13 +122,19 @@ export const BrandingPage: React.FC = () => {
   };
 
   const handleThemeChange = (newTheme: ThemeConfig) => {
-    setCurrentTheme(newTheme);
-    // Also update logo URL in branding settings if it changed
-    if (newTheme.logoUrl !== currentTheme.logoUrl) {
+    // Preset configs don't carry a logoUrl, so a preset change inside the
+    // customizer arrives here with newTheme.logoUrl=undefined. Keep the
+    // existing logo instead of wiping branding_logo_url on save (#317).
+    const mergedTheme: ThemeConfig = {
+      ...newTheme,
+      logoUrl: newTheme.logoUrl ?? currentTheme.logoUrl
+    };
+    setCurrentTheme(mergedTheme);
+    if (newTheme.logoUrl !== undefined && newTheme.logoUrl !== currentTheme.logoUrl) {
       setBrandingSettings(prev => ({ ...prev, logo_url: newTheme.logoUrl || '' }));
     }
     if (isPreviewMode) {
-      setTheme(newTheme);
+      setTheme(mergedTheme);
     }
   };
 
@@ -132,9 +143,10 @@ export const BrandingPage: React.FC = () => {
     // Get the preset theme config
     const preset = GALLERY_THEME_PRESETS[presetName];
     if (preset) {
-      setCurrentTheme(preset.config);
+      // Preserve the existing logo when switching presets (#317).
+      setCurrentTheme(prev => ({ ...preset.config, logoUrl: prev.logoUrl }));
       if (isPreviewMode) {
-        setTheme(preset.config);
+        setTheme({ ...preset.config, logoUrl: currentTheme.logoUrl });
       }
     }
   };
@@ -201,10 +213,12 @@ export const BrandingPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      // Sync logo URL from theme to branding settings
+      // Sync logo URL from theme to branding settings, but never let an
+      // undefined/empty theme.logoUrl wipe a logo that is still configured in
+      // branding settings (#317 — preset selection does not imply logo removal).
       const updatedBrandingSettings = {
         ...brandingSettings,
-        logo_url: currentTheme.logoUrl || ''
+        logo_url: currentTheme.logoUrl || brandingSettings.logo_url || ''
       };
       
       // Save branding settings to database
