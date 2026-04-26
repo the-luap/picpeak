@@ -61,32 +61,43 @@ async function archiveEvent(event) {
     }
     
     output.on('close', async () => {
-      logger.info(`Archive created: ${archiveName} (${archive.pointer()} bytes)`);
-      
-      // Update database
-      await db('events').where('id', event.id).update({
-        is_archived: true,
-        archive_path: path.relative(getStoragePath(), archivePath),
-        archived_at: new Date()
-      });
-      
-      // Delete original files
-      await fs.rm(eventPath, { recursive: true });
-      
-      // Delete thumbnails
-      const photos = await db('photos').where('event_id', event.id);
-      for (const photo of photos) {
-        if (photo.thumbnail_path) {
-          const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
-          await fs.unlink(thumbPath).catch(() => {}); // Ignore if already deleted
+      try {
+        logger.info(`Archive created: ${archiveName} (${archive.pointer()} bytes)`);
+
+        // Update database
+        await db('events').where('id', event.id).update({
+          is_archived: true,
+          archive_path: path.relative(getStoragePath(), archivePath),
+          archived_at: new Date()
+        });
+
+        // Delete original files
+        await fs.rm(eventPath, { recursive: true });
+
+        // Delete thumbnails
+        const photos = await db('photos').where('event_id', event.id);
+        for (const photo of photos) {
+          if (photo.thumbnail_path) {
+            const thumbPath = path.join(getStoragePath(), photo.thumbnail_path);
+            await fs.unlink(thumbPath).catch(() => {}); // Ignore if already deleted
+          }
         }
+
+        // Queue completion email — admin_email is nullable on events (migration 073);
+        // skip queueing rather than violating email_queue.recipient_email NOT NULL.
+        if (event.admin_email) {
+          await queueEmail(event.id, event.admin_email, 'archive_complete', {
+            event_name: event.event_name,
+            archive_size: (archive.pointer() / 1024 / 1024).toFixed(2) + ' MB'
+          });
+        } else {
+          logger.info(`Skipping archive_complete email for event ${event.slug}: no admin_email set`);
+        }
+      } catch (err) {
+        // Never let the close handler reject — it runs detached from the caller,
+        // and an unhandled rejection here crashes the backend process.
+        logger.error(`Post-archive cleanup failed for event ${event.slug}:`, err);
       }
-      
-      // Queue completion email
-      await queueEmail(event.id, event.admin_email, 'archive_complete', {
-        event_name: event.event_name,
-        archive_size: (archive.pointer() / 1024 / 1024).toFixed(2) + ' MB'
-      });
     });
     
     archive.pipe(output);

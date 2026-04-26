@@ -847,8 +847,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           </div>
         )}
 
-        {/* Search and Filters - Only for grid layout */}
-        {!showSidebar ? (
+        {/* Search and Filters - Only for grid layout, when admin enables the
+            filter bar globally, and when the gallery actually has photos
+            (avoids the empty "Search photos by filename" row in the screenshot
+            from discussion #317). */}
+        {!showSidebar && settingsData?.gallery_show_filter_bar !== false && (data?.photos?.length ?? 0) > 0 ? (
           <div className="mt-6">
             <PhotoFilterBar
               categories={data.categories}

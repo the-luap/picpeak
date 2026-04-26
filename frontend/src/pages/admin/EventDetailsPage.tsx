@@ -58,7 +58,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { publicSettingsService } from '../../services/publicSettings.service';
 import { api } from '../../config/api';
-import { buildResourceUrl } from '../../utils/url';
+import { buildResourceUrl, buildShareLinkUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
 import { externalMediaService } from '../../services/externalMedia.service';
@@ -66,13 +66,6 @@ import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
-
-const resolveShareLink = (link: string): string => {
-  if (!link) return '#';
-  if (link.startsWith('http')) return link;
-  if (link.startsWith('/')) return link;
-  return `/gallery/${link}`;
-};
 
 const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
@@ -657,13 +650,15 @@ export const EventDetailsPage: React.FC = () => {
         return;
       }
 
+      const shareUrl = buildShareLinkUrl(event.share_link);
+
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(event.share_link);
+        await navigator.clipboard.writeText(shareUrl);
       } else {
         // Fallback for non-HTTPS contexts or older browsers
         const textArea = document.createElement('textarea');
-        textArea.value = event.share_link;
+        textArea.value = shareUrl;
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
         textArea.style.top = '-999999px';
@@ -793,8 +788,8 @@ export const EventDetailsPage: React.FC = () => {
             {event.share_link && !isEditing && (
               <a
                 href={event.is_draft
-                  ? `${resolveShareLink(event.share_link)}${resolveShareLink(event.share_link).includes('?') ? '&' : '?'}preview=${eventsService.getPreviewToken() || ''}`
-                  : resolveShareLink(event.share_link)
+                  ? `${buildShareLinkUrl(event.share_link)}${buildShareLinkUrl(event.share_link).includes('?') ? '&' : '?'}preview=${eventsService.getPreviewToken() || ''}`
+                  : buildShareLinkUrl(event.share_link)
                 }
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1604,7 +1599,7 @@ export const EventDetailsPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                value={event.share_link}
+                value={buildShareLinkUrl(event.share_link)}
                 readOnly
                 className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm"
               />
