@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.29.0-beta.0...v3.29.1-beta.0) (2026-04-26)
+
+
+### Bug Fixes
+
+* address bugs and feature requests from discussion [#317](https://github.com/the-luap/picpeak/issues/317) ([6cfff6f](https://github.com/the-luap/picpeak/commit/6cfff6f6a6dbdc5bc1e9fe4fbce5795cdb1855c6))
+* discussion [#317](https://github.com/the-luap/picpeak/issues/317) issues and [#318](https://github.com/the-luap/picpeak/issues/318) archive crash ([2f2f405](https://github.com/the-luap/picpeak/commit/2f2f405d9bc2831b3bbe2ca7fbf726d61382dc38))
+* prevent backend crash on archive when admin_email is null ([#318](https://github.com/the-luap/picpeak/issues/318)) ([e4b0f96](https://github.com/the-luap/picpeak/commit/e4b0f961b75952b6907cc2291fa256215c09c80c))
+
 ## [3.29.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.28.3-beta.0...v3.29.0-beta.0) (2026-04-23)
 
 
