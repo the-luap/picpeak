@@ -213,11 +213,16 @@ export const CreateEventPage: React.FC = () => {
     if (!brandingTheme || Object.keys(brandingTheme).length === 0) return;
     brandingThemeApplied.current = true;
 
-    // Identify which preset (if any) the Branding theme matches, so the
-    // "Theme & Style" panel shows the right name.
+    // Identify which preset (if any) the Branding theme matches. Compare
+    // only on the preset's own fields so saved themes carrying extras
+    // (e.g. logoUrl preserved through preset changes) still match.
     let matchedPreset = 'custom';
     for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
-      if (JSON.stringify(preset.config) === JSON.stringify(brandingTheme)) {
+      const keys = Object.keys(preset.config);
+      const matches = keys.every((k) =>
+        JSON.stringify((preset.config as any)[k]) === JSON.stringify((brandingTheme as any)[k])
+      );
+      if (matches) {
         matchedPreset = key;
         break;
       }
