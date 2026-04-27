@@ -106,9 +106,16 @@ export const BrandingPage: React.FC = () => {
           setBrandingSettings(prev => ({ ...prev, logo_url: formatted.logoUrl }));
         }
 
-        // Try to identify which preset this matches
+        // Try to identify which preset this matches. Compare only on the
+        // fields the preset itself defines so saved themes carrying extras
+        // like a `logoUrl` (preserved through preset changes — see
+        // handlePresetChange) still match the original preset shape.
         for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
-          if (JSON.stringify(preset.config) === JSON.stringify(formatted)) {
+          const keys = Object.keys(preset.config);
+          const matches = keys.every((k) =>
+            JSON.stringify((preset.config as any)[k]) === JSON.stringify((formatted as any)[k])
+          );
+          if (matches) {
             setCurrentThemeName(key);
             break;
           }
@@ -738,7 +745,6 @@ export const BrandingPage: React.FC = () => {
                 onChange={handleThemeChange}
                 presetName={currentThemeName}
                 onPresetChange={handlePresetChange}
-                isPreviewMode={isPreviewMode}
                 showGalleryLayouts={true}
                 hideActions={true}
               />

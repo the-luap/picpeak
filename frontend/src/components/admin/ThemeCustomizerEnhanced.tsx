@@ -12,7 +12,6 @@ interface ThemeCustomizerEnhancedProps {
   onChange: (theme: ThemeConfig) => void;
   presetName?: string;
   onPresetChange?: (presetName: string) => void;
-  isPreviewMode?: boolean;
   showGalleryLayouts?: boolean;
   hideActions?: boolean;
   onApply?: (theme: ThemeConfig, metadata: { presetName: string }) => Promise<void> | void;
@@ -76,7 +75,6 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   onChange,
   presetName = 'default',
   onPresetChange,
-  isPreviewMode = false,
   showGalleryLayouts = true,
   hideActions = false,
   onApply,
@@ -125,10 +123,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       onPresetChange('custom');
     }
 
-    if (isPreviewMode) {
-      // Include customCss in the propagated theme
-      onChange({ ...updated, customCss });
-    }
+    // Always propagate to parent so Save sees the latest values (#323).
+    // The "Apply changes immediately (Live Preview)" toggle controls whether
+    // the parent applies the theme globally — that gating belongs in the
+    // parent, not here.
+    onChange({ ...updated, customCss });
   };
 
   const handlePresetSelect = (presetKey: string) => {
@@ -140,9 +139,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       if (onPresetChange) {
         onPresetChange(presetKey);
       }
-      if (isPreviewMode) {
-        onChange(preset.config);
-      }
+      // Always propagate; live-apply gating is the parent's concern (#323).
+      onChange(preset.config);
     }
   };
 
@@ -201,6 +199,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(GALLERY_THEME_PRESETS).map(([key, theme]) => (
             <button
+              type="button"
               key={key}
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
@@ -283,6 +282,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(layoutIcons) as GalleryLayoutType[]).map((layout) => (
               <button
+                type="button"
                 key={layout}
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
@@ -629,6 +629,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
               <button
+                type="button"
                 key={style}
                 onClick={() => handleChange('headerStyle', style)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
@@ -667,6 +668,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
                   <button
+                    type="button"
                     key={divider}
                     onClick={() => handleChange('heroDividerStyle', divider)}
                     className={`relative p-3 rounded-lg border-2 transition-all ${
@@ -707,6 +709,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'classic')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 (localTheme.controlsStyle || 'classic') === 'classic'
@@ -730,6 +733,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               )}
             </button>
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'sidebar')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 localTheme.controlsStyle === 'sidebar'
@@ -780,6 +784,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="flex gap-2">
             {(['light', 'dark', 'auto'] as const).map((mode) => (
               <button
+                type="button"
                 key={mode}
                 onClick={() => {
                   handleChange('colorMode', mode);
@@ -795,7 +800,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       mutedTextColor: '#a3a3a3',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   } else if (mode === 'light' && localTheme.colorMode === 'dark') {
                     const updated = {
                       ...localTheme,
@@ -807,7 +812,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       mutedTextColor: '#737373',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   }
                 }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
@@ -1039,6 +1044,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* No template option */}
             <button
+              type="button"
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
@@ -1059,6 +1065,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             {/* Template options */}
             {cssTemplates.map((template) => (
               <button
+                type="button"
                 key={template.id}
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
@@ -1181,10 +1188,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               setSelectedPreset('custom');
               onPresetChange('custom');
             }
-            // Propagate customCss changes to parent in preview mode
-            if (isPreviewMode) {
-              onChange({ ...localTheme, customCss: newCss });
-            }
+            // Propagate to parent so Save sees the latest CSS (#323).
+            onChange({ ...localTheme, customCss: newCss });
           }}
           placeholder="/* Add custom CSS here */"
           className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"

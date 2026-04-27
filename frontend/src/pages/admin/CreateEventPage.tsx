@@ -35,6 +35,7 @@ interface FormData {
   event_date: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
   admin_email: string;
   require_password: boolean;
   password: string;
@@ -95,6 +96,7 @@ export const CreateEventPage: React.FC = () => {
     event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     admin_email: '',
     require_password: true,
     password: '',
@@ -177,6 +179,7 @@ export const CreateEventPage: React.FC = () => {
   // Get field requirements (default to true if not set)
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
   const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
+  const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
   const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
   const requireEventDate = publicSettings?.event_require_event_date !== false;
   const requireExpiration = publicSettings?.event_require_expiration !== false;
@@ -204,13 +207,46 @@ export const CreateEventPage: React.FC = () => {
     }));
   }, [publicSettings]);
 
-  // Update theme when event type changes
+  // Apply the global Branding default theme on first load so admins who set a
+  // site-wide default in Branding actually see it on new events (#323).
+  const brandingThemeApplied = useRef(false);
   useEffect(() => {
-    // Find the selected event type's theme preset
-    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
-    const recommendedPreset = selectedType?.theme_preset || 'default';
+    if (brandingThemeApplied.current) return;
+    const brandingTheme = settings?.theme_config as ThemeConfig | undefined;
+    if (!brandingTheme || Object.keys(brandingTheme).length === 0) return;
+    brandingThemeApplied.current = true;
 
-    if (recommendedPreset && GALLERY_THEME_PRESETS[recommendedPreset]) {
+    // Identify which preset (if any) the Branding theme matches. Compare
+    // only on the preset's own fields so saved themes carrying extras
+    // (e.g. logoUrl preserved through preset changes) still match.
+    let matchedPreset = 'custom';
+    for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
+      const keys = Object.keys(preset.config);
+      const matches = keys.every((k) =>
+        JSON.stringify((preset.config as any)[k]) === JSON.stringify((brandingTheme as any)[k])
+      );
+      if (matches) {
+        matchedPreset = key;
+        break;
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      theme_preset: matchedPreset,
+      theme_config: brandingTheme
+    }));
+  }, [settings]);
+
+  // Update theme when event type changes — but only when the event type has
+  // an explicit recommended preset. Skip the generic 'default' so the global
+  // Branding theme isn't clobbered by Classic Grid for event types like
+  // "Other" (#323).
+  useEffect(() => {
+    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
+    const recommendedPreset = selectedType?.theme_preset;
+
+    if (recommendedPreset && recommendedPreset !== 'default' && GALLERY_THEME_PRESETS[recommendedPreset]) {
       setFormData(prev => ({
         ...prev,
         theme_preset: recommendedPreset,
@@ -318,6 +354,7 @@ export const CreateEventPage: React.FC = () => {
       event_date: formData.event_date || undefined,
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
+      ...(phoneFieldEnabled && formData.customer_phone ? { customer_phone: formData.customer_phone.trim() } : {}),
       admin_email: formData.admin_email,
       require_password: formData.require_password,
       password: formData.require_password ? formData.password : undefined,
@@ -525,7 +562,6 @@ export const CreateEventPage: React.FC = () => {
                     onChange={handleThemeChange}
                     presetName={formData.theme_preset}
                     onPresetChange={handlePresetChange}
-                    isPreviewMode={true}
                     showGalleryLayouts={true}
                     hideActions={true}
                   />
@@ -621,6 +657,16 @@ export const CreateEventPage: React.FC = () => {
                   leftIcon={<Mail className="w-5 h-5" />}
                 />
               </div>
+
+              {phoneFieldEnabled && (
+                <Input
+                  type="tel"
+                  label={`${t('events.customerPhone', 'Customer Phone')} (${t('common.optional')})`}
+                  placeholder={t('events.customerPhonePlaceholder', '+1 555 555 1234')}
+                  value={formData.customer_phone}
+                  onChange={handleInputChange('customer_phone')}
+                />
+              )}
 
               <Input
                 type="email"

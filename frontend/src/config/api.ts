@@ -11,6 +11,12 @@ import { getApiBaseUrl } from '../utils/url';
 // Maintenance mode callback
 let maintenanceModeCallback: ((enabled: boolean) => void) | null = null;
 
+// Set true the moment we kick off a hard redirect to /admin/login so
+// subsequent 401s in the same tick don't queue more navigations on top
+// (each `window.location.href = …` aborts the previous, producing a
+// flicker storm — see the response interceptor below).
+let adminLoginRedirectPending = false;
+
 export const setMaintenanceModeCallback = (callback: (enabled: boolean) => void) => {
   maintenanceModeCallback = callback;
 };
@@ -131,10 +137,17 @@ api.interceptors.response.use(
       // Check if it's an admin route (but not public endpoints)
       const isAdminRoute = error.config?.url?.includes('/admin') && !error.config?.url?.includes('/public/');
       const currentPath = window.location.pathname;
-      
+
       if (isAdminRoute) {
-        // Only redirect if we're not already on the admin login page
-        if (!currentPath.includes('/admin/login')) {
+        // Only redirect if we're not already on the admin login page.
+        // `window.location.href = …` is async — `pathname` doesn't change
+        // synchronously — so a fan-out of 401s (the dashboard fires 7 admin
+        // queries in parallel) would each see the old pathname and each
+        // call `location.href`, producing a navigation storm where every
+        // request is aborted by the next. Guard with a module-level flag
+        // so only the first 401 triggers the redirect.
+        if (!currentPath.includes('/admin/login') && !adminLoginRedirectPending) {
+          adminLoginRedirectPending = true;
           window.location.href = '/admin/login';
         }
       } else {

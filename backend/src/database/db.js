@@ -463,7 +463,14 @@ async function ensureGlobalCategories() {
       table.text('title_de');
       table.text('content_en');
       table.text('content_de');
+      table.string('logo_url').nullable();
       table.timestamp('updated_at').defaultTo(db.fn.now());
+    });
+  } else if (!(await db.schema.hasColumn('cms_pages', 'logo_url'))) {
+    // Online migration for existing deployments — see issue #324, per-page
+    // logo override for admin-customisable error pages.
+    await db.schema.alterTable('cms_pages', (table) => {
+      table.string('logo_url').nullable();
     });
   }
 
@@ -499,6 +506,24 @@ async function ensureGlobalCategories() {
       title_de: 'Datenschutzerklärung',
       content_en: '<h2>Privacy Policy</h2><p>Please edit this content in the admin panel.</p>',
       content_de: '<h2>Datenschutzerklärung</h2><p>Bitte bearbeiten Sie diesen Inhalt im Admin-Panel.</p>',
+      updated_at: new Date(),
+    },
+    // Customisable error pages — issue #324. Generic copy by default;
+    // admins can edit text + logo per page in the CMS Pages tab.
+    {
+      slug: 'not-found',
+      title_en: 'Page Not Found',
+      title_de: 'Seite nicht gefunden',
+      content_en: '<h2>Page Not Found</h2><p>The page you are looking for does not exist or has been moved.</p>',
+      content_de: '<h2>Seite nicht gefunden</h2><p>Die gesuchte Seite existiert nicht oder wurde verschoben.</p>',
+      updated_at: new Date(),
+    },
+    {
+      slug: 'gallery-not-found',
+      title_en: 'Gallery Not Found',
+      title_de: 'Galerie nicht gefunden',
+      content_en: '<h2>Gallery Not Found</h2><p>This gallery could not be found. The link may be incorrect, or the gallery may have expired or been archived. Please contact the organiser if you believe this is a mistake.</p>',
+      content_de: '<h2>Galerie nicht gefunden</h2><p>Diese Galerie konnte nicht gefunden werden. Der Link ist möglicherweise nicht korrekt, oder die Galerie ist abgelaufen oder wurde archiviert. Bitte kontaktieren Sie den Veranstalter, falls Sie glauben, dass dies ein Fehler ist.</p>',
       updated_at: new Date(),
     },
   ];

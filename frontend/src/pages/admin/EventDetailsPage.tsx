@@ -149,6 +149,7 @@ export const EventDetailsPage: React.FC = () => {
     hero_photo_id: number | null;
     customer_name: string;
     customer_email: string;
+    customer_phone: string;
     source_mode: 'managed' | 'reference';
     external_path: string;
     require_password: boolean;
@@ -184,6 +185,7 @@ export const EventDetailsPage: React.FC = () => {
     hero_photo_id: null,
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     source_mode: 'managed',
     external_path: '',
     require_password: true,
@@ -338,6 +340,7 @@ export const EventDetailsPage: React.FC = () => {
     queryFn: () => publicSettingsService.getPublicSettings(),
   });
   const requireExpiration = publicSettings?.event_require_expiration !== false;
+  const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
 
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
@@ -430,6 +433,7 @@ export const EventDetailsPage: React.FC = () => {
       hero_photo_id: event.hero_photo_id || null,
       customer_name: event.customer_name || '',
       customer_email: event.customer_email || '',
+      customer_phone: (event as any).customer_phone || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
       require_password: normalizeRequirePassword(event.require_password),
@@ -616,6 +620,11 @@ export const EventDetailsPage: React.FC = () => {
     }
     if (editForm.customer_email !== undefined && editForm.customer_email !== null && editForm.customer_email.trim()) {
       updateData.customer_email = editForm.customer_email;
+    }
+    if (editForm.customer_phone !== undefined) {
+      // Send empty string as null so an admin can clear the field. Backend
+      // strips this entirely if the global phone-field toggle is off.
+      updateData.customer_phone = editForm.customer_phone.trim() || null;
     }
 
     if (editForm.new_password) {
@@ -969,6 +978,20 @@ export const EventDetailsPage: React.FC = () => {
                     placeholder={t('events.hostEmailPlaceholder')}
                   />
                 </div>
+
+                {phoneFieldEnabled && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      {t('events.customerPhone', 'Customer Phone')} ({t('common.optional')})
+                    </label>
+                    <Input
+                      type="tel"
+                      value={editForm.customer_phone}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
+                      placeholder={t('events.customerPhonePlaceholder', '+1 555 555 1234')}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

@@ -486,21 +486,24 @@ app.get('/robots.txt', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Health check endpoint. `pid` + `uptime` let monitors (and the local E2E
+// watchdog) detect a silent process restart between two checks.
 app.get('/health', async (req, res) => {
   try {
-    // Check database connectivity
     await db.raw('SELECT 1');
-
     res.json({
       status: 'ok',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   } catch (error) {
     logger.error('Health check failed:', error);
     res.status(503).json({
       status: 'error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   }
 });
@@ -529,6 +532,26 @@ app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
+app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
+// Public v1 API for n8n / external integrations (#322). Mounted under
+// /api/v1; auth handled per-route via apiTokenAuth (Bearer tokens).
+app.use('/api/v1', require('./src/routes/v1/events'));
+
+// Swagger UI for the v1 API. Admin-gated since it lists endpoint shapes
+// that should not be enumerable to anonymous users (a common reduce-info-leak hardening).
+{
+  const swaggerUi = require('swagger-ui-express');
+  const { adminAuth } = require('./src/middleware/auth');
+  const { getOpenApiSpec } = require('./src/openapi/spec');
+  app.get('/api/openapi.json', adminAuth, (_req, res) => res.json(getOpenApiSpec()));
+  app.use(
+    '/api/docs',
+    adminAuth,
+    swaggerUi.serve,
+    swaggerUi.setup(getOpenApiSpec(), { customSiteTitle: 'PicPeak API · v1' })
+  );
+}
+
 app.use('/api/invite', require('./src/routes/acceptInvite'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
 app.use('/api/public', require('./src/routes/publicCMS'));

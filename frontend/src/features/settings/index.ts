@@ -15,3 +15,4 @@ export { ModerationTab } from './tabs/ModerationTab';
 export { StylingTab } from './tabs/StylingTab';
 export { SEOTab } from './tabs/SEOTab';
 export { ThumbnailsTab } from './tabs/ThumbnailsTab';
+export { ApiTokensTab } from './tabs/ApiTokensTab';
