@@ -1,4 +1,5 @@
 export { Button } from './Button';
+export { CMSContentBlock } from './CMSContentBlock';
 export { Input } from './Input';
 export { Card, CardHeader, CardContent, CardFooter } from './Card';
 export { Loading, LoadingSkeleton } from './Loading';

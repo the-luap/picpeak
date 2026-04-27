@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../hooks/useLocalizedDate';
 import { useQuery } from '@tanstack/react-query';
 
-import { Card, CardContent, Input, Button, ReCaptcha } from '../components/common';
+import { Card, CardContent, Input, Button, ReCaptcha, CMSContentBlock } from '../components/common';
 import { useGalleryAuth, useTheme } from '../contexts';
 import { useGalleryInfo } from '../hooks/useGallery';
 import { GalleryView } from '../components/gallery';
@@ -266,117 +266,16 @@ export const GalleryPage: React.FC = () => {
     return <GallerySkeleton />;
   }
 
-  if (identifierError && !resolvedSlug && !isResolvingIdentifier) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex flex-col">
-          {settingsData?.branding_logo_url && (
-            <div className="p-8 text-center">
-              <img
-                src={buildResourceUrl(settingsData.branding_logo_url)}
-                alt={settingsData.branding_company_name || 'Company Logo'}
-                className="h-16 w-auto object-contain mx-auto"
-              />
-            </div>
-          )}
-
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md w-full mx-4">
-              <CardContent className="text-center py-12">
-                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">
-                  {t('errors.galleryNotFound')}
-                </h2>
-                <p className="text-neutral-600">
-                  {identifierError}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="p-8 text-center">
-            <div className="flex items-center justify-center gap-4">
-              <Link
-                to="/impressum"
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.impressum')}
-              </Link>
-              <span className="text-xs text-neutral-400">|</span>
-              <Link
-                to="/datenschutz"
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.datenschutz')}
-              </Link>
-            </div>
-            <p className="text-xs mt-2 text-neutral-500">
-              Powered by <span className="font-semibold">PicPeak</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (infoError) {
-    // Check if it's an archived gallery error
-    const errorMessage = (infoError as any)?.response?.data?.error;
-    const isArchived = errorMessage?.includes('archived');
-    
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex flex-col">
-          {/* Logo at top */}
-          {settingsData?.branding_logo_url && (
-            <div className="p-8 text-center">
-              <img 
-                src={buildResourceUrl(settingsData.branding_logo_url)} 
-                alt={settingsData.branding_company_name || 'Company Logo'}
-                className="h-16 w-auto object-contain mx-auto"
-              />
-            </div>
-          )}
-          
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md w-full mx-4">
-              <CardContent className="text-center py-12">
-                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">
-                  {t(isArchived ? 'errors.galleryArchived' : 'errors.galleryNotFound')}
-                </h2>
-                <p className="text-neutral-600">
-                  {t(isArchived ? 'errors.galleryArchivedMessage' : 'errors.galleryNotFoundMessage')}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Legal Links */}
-          <div className="p-8 text-center">
-            <div className="flex items-center justify-center gap-4">
-              <Link 
-                to="/impressum" 
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.impressum')}
-              </Link>
-              <span className="text-xs text-neutral-400">|</span>
-              <Link 
-                to="/datenschutz" 
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.datenschutz')}
-              </Link>
-            </div>
-            <p className="text-xs mt-2 text-neutral-500">
-              Powered by <span className="font-semibold">PicPeak</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  // Gallery missing / archived / expired-link / unresolvable identifier all
+  // collapse into the customisable "gallery-not-found" CMS page (#324).
+  // Admins can edit the title, body, and logo from the CMS Pages tab; the
+  // seeded default copy is intentionally generic so any of those reasons
+  // reads correctly.
+  if (
+    (identifierError && !resolvedSlug && !isResolvingIdentifier) ||
+    infoError
+  ) {
+    return <CMSContentBlock slug="gallery-not-found" />;
   }
 
   // Show expired state

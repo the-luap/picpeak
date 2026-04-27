@@ -30,7 +30,7 @@ import {
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
-import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags } from './components/common';
+import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags, CMSContentBlock } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
 import { GlobalThemeProvider } from './components/GlobalThemeProvider';
 import { getApiBaseUrl } from './utils/url';
@@ -165,6 +165,11 @@ function App() {
 
                   {/* Default redirect */}
                   <Route path="/" element={<Navigate to="/admin/login" replace />} />
+
+                  {/* Customisable 404 (#324) — caught here for any path that
+                      didn't match. Top-level `/:slug` is consumed above by
+                      LegalPage; this picks up deeper unknown paths. */}
+                  <Route path="*" element={<CMSContentBlock slug="not-found" />} />
                 </Routes>
               </MaintenanceWrapper>
             </Router>

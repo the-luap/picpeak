@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { FileText, Globe, Clock, Sparkles, ShieldCheck } from 'lucide-react';
+import { FileText, Globe, Clock, Sparkles, ShieldCheck, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { debounce } from 'lodash';
 import DOMPurify from 'dompurify';
@@ -11,6 +11,7 @@ import { CMSEditor } from '../../components/admin/CMSEditor';
 import { cmsService } from '../../services/cms.service';
 import type { CMSPage as CMSPageType } from '../../services/cms.service';
 import { settingsService, PublicSiteBranding } from '../../services/settings.service';
+import { buildResourceUrl } from '../../utils/url';
 
 export const CMSPage: React.FC = () => {
   const { t } = useTranslation();
@@ -180,6 +181,28 @@ export const CMSPage: React.FC = () => {
     setEditForm(prev => ({ ...prev, [field]: title }));
     setHasUnsavedChanges(true);
   };
+
+  // Per-page logo upload (#324). Only meaningful for the customisable
+  // error pages right now, but harmless if exposed for any slug.
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file: File) => cmsService.uploadPageLogo(selectedPage, file),
+    onSuccess: ({ logo_url }) => {
+      setEditForm(prev => ({ ...prev, logo_url }));
+      queryClient.invalidateQueries({ queryKey: ['cms-pages'] });
+      toast.success(t('cms.logoUploaded', 'Logo uploaded'));
+    },
+    onError: () => toast.error(t('toast.uploadError')),
+  });
+  const clearLogoMutation = useMutation({
+    mutationFn: async () => cmsService.clearPageLogo(selectedPage),
+    onSuccess: () => {
+      setEditForm(prev => ({ ...prev, logo_url: null }));
+      queryClient.invalidateQueries({ queryKey: ['cms-pages'] });
+      toast.success(t('cms.logoCleared', 'Logo cleared'));
+    },
+    onError: () => toast.error(t('toast.saveError')),
+  });
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -483,7 +506,12 @@ export const CMSPage: React.FC = () => {
                 >
                   <FileText className="w-5 h-5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{t(`legal.${page.slug}`)}</p>
+                    {/* Fall back to the page's own English title for slugs
+                        that don't have a fixed translation key (e.g. the new
+                        not-found / gallery-not-found error pages). */}
+                    <p className="font-medium truncate">
+                      {t(`legal.${page.slug}`, { defaultValue: page.title_en || page.slug })}
+                    </p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">/{page.slug}</p>
                   </div>
                   {selectedPage === page.slug && hasUnsavedChanges && (
@@ -550,7 +578,7 @@ export const CMSPage: React.FC = () => {
           <Card padding="md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                {t('cms.editPage', { page: t(`legal.${selectedPage}`) })}
+                {t('cms.editPage', { page: t(`legal.${selectedPage}`, { defaultValue: currentPage?.title_en || selectedPage }) })}
               </h2>
 
               {/* Language Tabs */}
@@ -602,6 +630,60 @@ export const CMSPage: React.FC = () => {
                   onSave={handleSave}
                   isSaving={updateMutation.isPending}
                 />
+              </div>
+
+              {/* Per-page logo override (#324) */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  {t('cms.pageLogo', 'Page Logo')}
+                </label>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                  {t('cms.pageLogoHelp', 'Optional. If set, used in place of the global branding logo on this page.')}
+                </p>
+                <div className="flex items-center gap-4">
+                  {editForm.logo_url ? (
+                    <img
+                      src={buildResourceUrl(editForm.logo_url)}
+                      alt="Page logo"
+                      className="h-16 w-auto object-contain bg-neutral-50 dark:bg-neutral-700 rounded border border-neutral-200 dark:border-neutral-600 px-3 py-1"
+                    />
+                  ) : (
+                    <div className="h-16 w-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-700 rounded border border-dashed border-neutral-300 dark:border-neutral-600 text-xs text-neutral-500 dark:text-neutral-400">
+                      {t('cms.noLogo', 'no override')}
+                    </div>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadLogoMutation.mutate(file);
+                      if (logoInputRef.current) logoInputRef.current.value = '';
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<ImageIcon className="w-4 h-4" />}
+                    onClick={() => logoInputRef.current?.click()}
+                    isLoading={uploadLogoMutation.isPending}
+                  >
+                    {editForm.logo_url ? t('cms.replaceLogo', 'Replace Logo') : t('cms.uploadLogo', 'Upload Logo')}
+                  </Button>
+                  {editForm.logo_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={<Trash2 className="w-4 h-4" />}
+                      onClick={() => clearLogoMutation.mutate()}
+                      isLoading={clearLogoMutation.isPending}
+                    >
+                      {t('cms.clearLogo', 'Use site default')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 

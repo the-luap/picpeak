@@ -22,6 +22,9 @@ router.get('/pages/:slug', async (req, res) => {
       title,
       content,
       slug: page.slug,
+      // Per-page logo override (#324). Null means "fall back to global
+      // branding logo" — the consumer decides.
+      logo_url: page.logo_url || null,
       updated_at: page.updated_at
     });
   } catch (error) {
