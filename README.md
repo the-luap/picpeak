@@ -7,8 +7,9 @@
   [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
   [![Node.js](https://img.shields.io/badge/node.js-6DA55F?style=flat&logo=node.js&logoColor=white)](https://nodejs.org/)
   [![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+  [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-theluap-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/theluap)
 
-  [Homepage](https://www.picpeak.app) · [Live Demo](https://demo.picpeak.app) · [Documentation](DEPLOYMENT_GUIDE.md)
+  [Homepage](https://www.picpeak.app) · [Live Demo](https://demo.picpeak.app) · [Documentation](DEPLOYMENT_GUIDE.md) · [Support the project ☕](https://buymeacoffee.com/theluap)
 </div>
 
 **PicPeak** is a powerful, self-hosted open-source alternative to commercial photo-sharing platforms like PicDrop.com and Scrapbook.de. Designed specifically for photographers and event organizers, PicPeak makes it simple to share beautiful, time-limited photo galleries with clients while maintaining full control over your data and branding.
@@ -311,6 +312,18 @@ These features are currently in beta testing and may have limited functionality 
 | **Filtering & Export Options** | Filter photos by likes, ratings, comments, or favorites. Search by filename. Sort by date, name, size, or rating. Export filtered selections as ZIP or generate Capture One/Lightroom-compatible file lists for professional workflows | Medium | ✅ Implemented |
 
 **Status Legend:** ✅ Implemented | 🚧 In Progress | 🔄 Open | 📋 Planned
+
+## ☕ Support the Project
+
+PicPeak is free, open source, and self-hostable forever. If it saves you time or replaces a paid subscription, consider buying me a coffee — it directly funds the time spent on new features, bug fixes, and keeping the demo + docs running.
+
+<p align="left">
+  <a href="https://buymeacoffee.com/theluap" target="_blank">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=☕&slug=theluap&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me A Coffee" />
+  </a>
+</p>
+
+Other ways to support without spending anything: ⭐ star the repo, share it with photographer friends, file good bug reports, or open a PR.
 
 ## 🙏 Acknowledgments
 
