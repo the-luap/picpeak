@@ -185,6 +185,25 @@ const getBrandingDefaults = async () => {
 // Use parseStringInput from shared parsers for customer data extraction
 const getCustomerNameFromPayload = (payload = {}) => parseStringInput(payload.customer_name);
 const getCustomerEmailFromPayload = (payload = {}) => parseStringInput(payload.customer_email);
+const getCustomerPhoneFromPayload = (payload = {}) => parseStringInput(payload.customer_phone);
+
+// Whether the global "phone field" toggle (#322) is enabled. Cached for
+// the request via a module-level read; drift is acceptable since this
+// only governs whether to persist the field, not security boundaries.
+const isPhoneFieldEnabled = async () => {
+  try {
+    const row = await db('app_settings').where('setting_key', 'event_phone_field_enabled').first();
+    if (!row) return false;
+    let value = row.setting_value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep raw */ }
+    }
+    return value === true;
+  } catch (error) {
+    logger.debug('Failed to read event_phone_field_enabled', { error: error.message });
+    return false;
+  }
+};
 
 const mapEventForApi = (event) => {
   if (!event || typeof event !== 'object') {
@@ -196,6 +215,7 @@ const mapEventForApi = (event) => {
     host_email,
     customer_name,
     customer_email,
+    customer_phone,
     password_hash: _ph,
     client_password_hash: _cph,
     ...rest
@@ -204,7 +224,8 @@ const mapEventForApi = (event) => {
   return {
     ...rest,
     customer_name: customer_name ?? host_name ?? null,
-    customer_email: customer_email ?? host_email ?? null
+    customer_email: customer_email ?? host_email ?? null,
+    customer_phone: customer_phone ?? null
   };
 };
 
@@ -239,6 +260,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_date').optional({ values: 'falsy' }).isDate(),
   body('customer_name').optional().trim(),
   body('customer_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
+  body('customer_phone').optional({ nullable: true, checkFalsy: true })
+    .isString().trim()
+    .isLength({ max: 32 }).withMessage('Phone number must be at most 32 characters'),
   body('admin_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
@@ -354,6 +378,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
 
     const customerName = getCustomerNameFromPayload(req.body);
     const customerEmail = getCustomerEmailFromPayload(req.body);
+    // Phone field is opt-in via the global setting (#322). If disabled,
+    // ignore whatever the client posted — defence in depth against form
+    // bypass.
+    const phoneEnabled = await isPhoneFieldEnabled();
+    const customerPhone = phoneEnabled ? getCustomerPhoneFromPayload(req.body) : null;
 
     const customerColumnsAvailable = await hasCustomerContactColumns();
 
@@ -509,6 +538,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       event_name,
       event_date: event_date || null,
       ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
+      ...(customerPhone ? { customer_phone: customerPhone } : {}),
       host_name: customerName || null,
       host_email: customerEmail || null,
       admin_email: admin_email || null,
@@ -863,6 +893,9 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   body('allow_user_uploads').optional().isBoolean(),
   body('customer_name').optional({ nullable: true, checkFalsy: true }).trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
+  body('customer_phone').optional({ nullable: true, checkFalsy: true })
+    .isString().trim()
+    .isLength({ max: 32 }).withMessage('Phone number must be at most 32 characters'),
   body('upload_category_id').optional().custom((value) => {
     // Accept null, undefined, or integer values
     if (value === null || value === undefined) return true;
@@ -958,6 +991,19 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
         updates.host_email = nextEmail;
       } else {
         delete updates.customer_email;
+      }
+    }
+
+    // Phone is gated on the global toggle (#322). Strip from the update
+    // unconditionally if disabled — even null/clear is rejected so an
+    // admin can't accidentally write to a field they've turned off.
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_phone')) {
+      const phoneEnabled = await isPhoneFieldEnabled();
+      if (!phoneEnabled) {
+        delete updates.customer_phone;
+      } else {
+        const nextPhone = getCustomerPhoneFromPayload(updates);
+        updates.customer_phone = nextPhone || null;
       }
     }
 

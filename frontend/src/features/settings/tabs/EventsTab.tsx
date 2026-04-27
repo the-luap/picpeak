@@ -187,6 +187,25 @@ export const EventsTab: React.FC<EventsTabProps> = ({
               </div>
             </label>
           </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.event_phone_field_enabled}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, event_phone_field_enabled: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t('settings.events.enablePhoneField', 'Enable phone number field')}
+                </span>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('settings.events.enablePhoneFieldHelp', 'Adds an optional phone number input to the event form. Useful for downstream automations like WhatsApp delivery via n8n. Always optional even when enabled.')}
+                </p>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div className="mt-6">

@@ -35,6 +35,7 @@ interface FormData {
   event_date: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
   admin_email: string;
   require_password: boolean;
   password: string;
@@ -95,6 +96,7 @@ export const CreateEventPage: React.FC = () => {
     event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     admin_email: '',
     require_password: true,
     password: '',
@@ -177,6 +179,7 @@ export const CreateEventPage: React.FC = () => {
   // Get field requirements (default to true if not set)
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
   const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
+  const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
   const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
   const requireEventDate = publicSettings?.event_require_event_date !== false;
   const requireExpiration = publicSettings?.event_require_expiration !== false;
@@ -351,6 +354,7 @@ export const CreateEventPage: React.FC = () => {
       event_date: formData.event_date || undefined,
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
+      ...(phoneFieldEnabled && formData.customer_phone ? { customer_phone: formData.customer_phone.trim() } : {}),
       admin_email: formData.admin_email,
       require_password: formData.require_password,
       password: formData.require_password ? formData.password : undefined,
@@ -653,6 +657,16 @@ export const CreateEventPage: React.FC = () => {
                   leftIcon={<Mail className="w-5 h-5" />}
                 />
               </div>
+
+              {phoneFieldEnabled && (
+                <Input
+                  type="tel"
+                  label={`${t('events.customerPhone', 'Customer Phone')} (${t('common.optional')})`}
+                  placeholder={t('events.customerPhonePlaceholder', '+1 555 555 1234')}
+                  value={formData.customer_phone}
+                  onChange={handleInputChange('customer_phone')}
+                />
+              )}
 
               <Input
                 type="email"

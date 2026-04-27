@@ -33,6 +33,7 @@ export interface PublicSettings {
   event_require_expiration?: boolean;
   event_default_require_password?: boolean;
   gallery_show_filter_bar?: boolean;
+  event_phone_field_enabled?: boolean;
 }
 
 export const publicSettingsService = {
