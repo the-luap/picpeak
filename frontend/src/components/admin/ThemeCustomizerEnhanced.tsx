@@ -199,6 +199,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(GALLERY_THEME_PRESETS).map(([key, theme]) => (
             <button
+              type="button"
               key={key}
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
@@ -281,6 +282,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(layoutIcons) as GalleryLayoutType[]).map((layout) => (
               <button
+                type="button"
                 key={layout}
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
@@ -627,6 +629,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
               <button
+                type="button"
                 key={style}
                 onClick={() => handleChange('headerStyle', style)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
@@ -665,6 +668,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
                   <button
+                    type="button"
                     key={divider}
                     onClick={() => handleChange('heroDividerStyle', divider)}
                     className={`relative p-3 rounded-lg border-2 transition-all ${
@@ -705,6 +709,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'classic')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 (localTheme.controlsStyle || 'classic') === 'classic'
@@ -728,6 +733,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               )}
             </button>
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'sidebar')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 localTheme.controlsStyle === 'sidebar'
@@ -778,6 +784,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="flex gap-2">
             {(['light', 'dark', 'auto'] as const).map((mode) => (
               <button
+                type="button"
                 key={mode}
                 onClick={() => {
                   handleChange('colorMode', mode);
@@ -1037,6 +1044,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* No template option */}
             <button
+              type="button"
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
@@ -1057,6 +1065,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             {/* Template options */}
             {cssTemplates.map((template) => (
               <button
+                type="button"
                 key={template.id}
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
