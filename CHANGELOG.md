@@ -5,6 +5,29 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.30.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.29.1-beta.0...v3.30.0-beta.0) (2026-04-27)
+
+
+### Features
+
+* customisable 404 + gallery-not-found pages via CMS ([#324](https://github.com/the-luap/picpeak/issues/324)) ([4f77905](https://github.com/the-luap/picpeak/commit/4f77905b87bea474b3d2496350996deaad041230))
+* optional customer phone field gated by global toggle ([#322](https://github.com/the-luap/picpeak/issues/322)) ([be6cb28](https://github.com/the-luap/picpeak/commit/be6cb28c8097d2277c1af2a32cf8bc88ebbc7136))
+* public v1 API + token management + OpenAPI docs ([#322](https://github.com/the-luap/picpeak/issues/322)) ([808b15b](https://github.com/the-luap/picpeak/commit/808b15bafbcdab6ea55aff7f0e507153f513a70a))
+
+
+### Bug Fixes
+
+* dedupe parallel admin 401 redirects to /admin/login ([038e84c](https://github.com/the-luap/picpeak/commit/038e84cae7f56a0a1af8c71b85881ca5d320c6e3))
+* floor password_changed_at when comparing against JWT iat ([793e410](https://github.com/the-luap/picpeak/commit/793e410554b461522fbe24014dfd3baa915da2bb))
+* theme picker buttons no longer submit the parent form ([#326](https://github.com/the-luap/picpeak/issues/326)) ([2eead52](https://github.com/the-luap/picpeak/commit/2eead523193ccb7f23eb767097ad9698e8312833))
+* theme save without Live Preview, Branding default on new events, gallery loading flicker ([#323](https://github.com/the-luap/picpeak/issues/323), [#321](https://github.com/the-luap/picpeak/issues/321)) ([822be9a](https://github.com/the-luap/picpeak/commit/822be9a9b2716f1832a4cb6fccd53602e3cbab51))
+* theme-preset match loop ignores extra fields like logoUrl ([#323](https://github.com/the-luap/picpeak/issues/323)) ([b63a877](https://github.com/the-luap/picpeak/commit/b63a8774c4b44733b903736b2ca5a472a884055e))
+
+
+### Documentation
+
+* add Buy Me a Coffee badge + Support section ([46bc894](https://github.com/the-luap/picpeak/commit/46bc894d917bd55dbd9bafaa64fd38db21488b81))
+
 ## [3.29.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.29.0-beta.0...v3.29.1-beta.0) (2026-04-26)
 
 
