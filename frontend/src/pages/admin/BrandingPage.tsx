@@ -738,7 +738,6 @@ export const BrandingPage: React.FC = () => {
                 onChange={handleThemeChange}
                 presetName={currentThemeName}
                 onPresetChange={handlePresetChange}
-                isPreviewMode={isPreviewMode}
                 showGalleryLayouts={true}
                 hideActions={true}
               />

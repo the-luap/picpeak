@@ -12,7 +12,6 @@ interface ThemeCustomizerEnhancedProps {
   onChange: (theme: ThemeConfig) => void;
   presetName?: string;
   onPresetChange?: (presetName: string) => void;
-  isPreviewMode?: boolean;
   showGalleryLayouts?: boolean;
   hideActions?: boolean;
   onApply?: (theme: ThemeConfig, metadata: { presetName: string }) => Promise<void> | void;
@@ -76,7 +75,6 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   onChange,
   presetName = 'default',
   onPresetChange,
-  isPreviewMode = false,
   showGalleryLayouts = true,
   hideActions = false,
   onApply,
@@ -125,10 +123,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       onPresetChange('custom');
     }
 
-    if (isPreviewMode) {
-      // Include customCss in the propagated theme
-      onChange({ ...updated, customCss });
-    }
+    // Always propagate to parent so Save sees the latest values (#323).
+    // The "Apply changes immediately (Live Preview)" toggle controls whether
+    // the parent applies the theme globally — that gating belongs in the
+    // parent, not here.
+    onChange({ ...updated, customCss });
   };
 
   const handlePresetSelect = (presetKey: string) => {
@@ -140,9 +139,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       if (onPresetChange) {
         onPresetChange(presetKey);
       }
-      if (isPreviewMode) {
-        onChange(preset.config);
-      }
+      // Always propagate; live-apply gating is the parent's concern (#323).
+      onChange(preset.config);
     }
   };
 
@@ -795,7 +793,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       mutedTextColor: '#a3a3a3',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   } else if (mode === 'light' && localTheme.colorMode === 'dark') {
                     const updated = {
                       ...localTheme,
@@ -807,7 +805,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       mutedTextColor: '#737373',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   }
                 }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
@@ -1181,10 +1179,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               setSelectedPreset('custom');
               onPresetChange('custom');
             }
-            // Propagate customCss changes to parent in preview mode
-            if (isPreviewMode) {
-              onChange({ ...localTheme, customCss: newCss });
-            }
+            // Propagate to parent so Save sees the latest CSS (#323).
+            onChange({ ...localTheme, customCss: newCss });
           }}
           placeholder="/* Add custom CSS here */"
           className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"

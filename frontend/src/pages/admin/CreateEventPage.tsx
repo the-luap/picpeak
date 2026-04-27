@@ -204,13 +204,41 @@ export const CreateEventPage: React.FC = () => {
     }));
   }, [publicSettings]);
 
-  // Update theme when event type changes
+  // Apply the global Branding default theme on first load so admins who set a
+  // site-wide default in Branding actually see it on new events (#323).
+  const brandingThemeApplied = useRef(false);
   useEffect(() => {
-    // Find the selected event type's theme preset
-    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
-    const recommendedPreset = selectedType?.theme_preset || 'default';
+    if (brandingThemeApplied.current) return;
+    const brandingTheme = settings?.theme_config as ThemeConfig | undefined;
+    if (!brandingTheme || Object.keys(brandingTheme).length === 0) return;
+    brandingThemeApplied.current = true;
 
-    if (recommendedPreset && GALLERY_THEME_PRESETS[recommendedPreset]) {
+    // Identify which preset (if any) the Branding theme matches, so the
+    // "Theme & Style" panel shows the right name.
+    let matchedPreset = 'custom';
+    for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
+      if (JSON.stringify(preset.config) === JSON.stringify(brandingTheme)) {
+        matchedPreset = key;
+        break;
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      theme_preset: matchedPreset,
+      theme_config: brandingTheme
+    }));
+  }, [settings]);
+
+  // Update theme when event type changes — but only when the event type has
+  // an explicit recommended preset. Skip the generic 'default' so the global
+  // Branding theme isn't clobbered by Classic Grid for event types like
+  // "Other" (#323).
+  useEffect(() => {
+    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
+    const recommendedPreset = selectedType?.theme_preset;
+
+    if (recommendedPreset && recommendedPreset !== 'default' && GALLERY_THEME_PRESETS[recommendedPreset]) {
       setFormData(prev => ({
         ...prev,
         theme_preset: recommendedPreset,
@@ -525,7 +553,6 @@ export const CreateEventPage: React.FC = () => {
                     onChange={handleThemeChange}
                     presetName={formData.theme_preset}
                     onPresetChange={handlePresetChange}
-                    isPreviewMode={true}
                     showGalleryLayouts={true}
                     hideActions={true}
                   />

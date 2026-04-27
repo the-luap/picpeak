@@ -6,10 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../hooks/useLocalizedDate';
 import { useQuery } from '@tanstack/react-query';
 
-import { Card, CardContent, Input, Button, Loading, ReCaptcha } from '../components/common';
+import { Card, CardContent, Input, Button, ReCaptcha } from '../components/common';
 import { useGalleryAuth, useTheme } from '../contexts';
 import { useGalleryInfo } from '../hooks/useGallery';
 import { GalleryView } from '../components/gallery';
+import { GallerySkeleton } from '../components/gallery/GallerySkeleton';
 import { analyticsService } from '../services/analytics.service';
 import { galleryService } from '../services';
 import { api } from '../config/api';
@@ -258,15 +259,11 @@ export const GalleryPage: React.FC = () => {
     }
   };
 
-  // Show loading state
+  // Show the same skeleton GalleryView uses while photos load, so the
+  // visitor sees one continuous loading state from URL open to real photos
+  // instead of three different full-page interstitials (#321).
   if (isLoadingInfo) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex items-center justify-center">
-          <Loading size="lg" text={t('gallery.loading')} />
-        </div>
-      </div>
-    );
+    return <GallerySkeleton />;
   }
 
   if (identifierError && !resolvedSlug && !isResolvingIdentifier) {
@@ -448,6 +445,13 @@ export const GalleryPage: React.FC = () => {
     return <GalleryView slug={gallerySlugForView} event={event} />;
   }
 
+  // Public gallery: auto-login is in flight (or about to fire). Show the
+  // skeleton instead of the "publicly accessible — loading photos" card so
+  // visitors see one continuous skeleton until real photos appear (#321).
+  if (!requiresPassword) {
+    return <GallerySkeleton />;
+  }
+
   // Show login form
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
@@ -487,67 +491,40 @@ export const GalleryPage: React.FC = () => {
 
           <Card>
             <CardContent className="p-4 sm:p-6">
-              {requiresPassword ? (
-                <>
-                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
-                  
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <Input
-                      type="password"
-                      label={t('auth.password')}
-                      placeholder={t('auth.passwordPlaceholder')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      error={loginError || undefined}
-                      autoFocus
-                      className="text-sm sm:text-base"
-                    />
-                    
-                    <ReCaptcha
-                      onChange={setRecaptchaToken}
-                      onExpired={() => setRecaptchaToken(null)}
-                    />
-                    
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      className="w-full text-sm sm:text-base"
-                      isLoading={isLoggingIn}
-                      disabled={isLoggingIn}
-                    >
-                      {t('gallery.viewGallery')}
-                    </Button>
-                  </form>
+              <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
 
-                  <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
-                    {t('auth.passwordHint')}
-                  </p>
-                </>
-              ) : (
-                <div className="text-center space-y-3">
-                  {isLoadingSettings ? (
-                    <div className="flex justify-center py-4">
-                      <Loading size="sm" />
-                    </div>
-                  ) : (
-                    <>
-                      <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
-                        {t('gallery.publicGalleryTitle', 'This gallery is publicly accessible')}
-                      </h2>
-                      <p className="text-sm text-neutral-600">
-                        {t('gallery.publicGallerySubtitle', 'Loading the photos now...')}
-                      </p>
-                      <div className="flex justify-center py-4">
-                        <Loading size="sm" text={t('gallery.loading')} />
-                      </div>
-                    </>
-                  )}
-                  {loginError && (
-                    <p className="text-xs text-red-600">{loginError}</p>
-                  )}
-                </div>
-              )}
+              <form onSubmit={handleLogin} className="space-y-4">
+                <Input
+                  type="password"
+                  label={t('auth.password')}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  error={loginError || undefined}
+                  autoFocus
+                  className="text-sm sm:text-base"
+                />
+
+                <ReCaptcha
+                  onChange={setRecaptchaToken}
+                  onExpired={() => setRecaptchaToken(null)}
+                />
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full text-sm sm:text-base"
+                  isLoading={isLoggingIn}
+                  disabled={isLoggingIn}
+                >
+                  {t('gallery.viewGallery')}
+                </Button>
+              </form>
+
+              <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
+                {t('auth.passwordHint')}
+              </p>
             </CardContent>
           </Card>
 
