@@ -14,9 +14,10 @@ import {
   StylingTab,
   SEOTab,
   ThumbnailsTab,
+  ApiTokensTab,
 } from '../../features/settings';
 
-type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'thumbnails' | 'categories' | 'seo' | 'analytics' | 'moderation' | 'styling';
+type TabType = 'general' | 'events' | 'status' | 'security' | 'imageSecurity' | 'thumbnails' | 'categories' | 'seo' | 'analytics' | 'moderation' | 'styling' | 'apiTokens';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('general');
@@ -81,6 +82,7 @@ export const SettingsPage: React.FC = () => {
     { key: 'analytics', label: t('settings.analytics.title') },
     { key: 'moderation', label: t('settings.moderation.title', 'Moderation') },
     { key: 'styling', label: t('settings.styling.title', 'Custom CSS') },
+    { key: 'apiTokens', label: t('settings.apiTokens.title', 'API Tokens') },
   ];
 
   return (
@@ -185,6 +187,8 @@ export const SettingsPage: React.FC = () => {
       {activeTab === 'moderation' && <ModerationTab />}
 
       {activeTab === 'styling' && <StylingTab />}
+
+      {activeTab === 'apiTokens' && <ApiTokensTab />}
     </div>
   );
 };
