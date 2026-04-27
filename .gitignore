@@ -100,6 +100,12 @@ backup/
 # Local artifacts from browser tooling
 .playwright-mcp/
 
+# Local-only E2E suite (never pushed; runs as pre-push gate on this machine)
+tests/e2e/local/
+playwright-local-results/
+e2e-test.log
+scripts/e2e-local.sh
+
 # Local SQLite files in backend
 backend/*.sqlite*
 backend/*.db

@@ -486,21 +486,24 @@ app.get('/robots.txt', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Health check endpoint. `pid` + `uptime` let monitors (and the local E2E
+// watchdog) detect a silent process restart between two checks.
 app.get('/health', async (req, res) => {
   try {
-    // Check database connectivity
     await db.raw('SELECT 1');
-
     res.json({
       status: 'ok',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   } catch (error) {
     logger.error('Health check failed:', error);
     res.status(503).json({
       status: 'error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   }
 });
