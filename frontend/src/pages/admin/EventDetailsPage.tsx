@@ -431,7 +431,7 @@ export const EventDetailsPage: React.FC = () => {
       hero_photo_id: event.hero_photo_id || null,
       customer_name: event.customer_name || '',
       customer_email: event.customer_email || '',
-      customer_phone: (event as any).customer_phone || '',
+      customer_phone: event.customer_phone || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
       require_password: normalizeRequirePassword(event.require_password),
@@ -1503,6 +1503,19 @@ export const EventDetailsPage: React.FC = () => {
                     <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{event.admin_email}</dd>
                   </div>
                 </div>
+
+                {phoneFieldEnabled && (
+                  <div>
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                      {t('events.customerPhone', 'Customer Phone')}
+                    </dt>
+                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+                      {event.customer_phone || (
+                        <span className="text-neutral-400">{t('common.notSet')}</span>
+                      )}
+                    </dd>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
