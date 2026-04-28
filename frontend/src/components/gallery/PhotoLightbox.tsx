@@ -47,6 +47,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
+  const [swipeStart, setSwipeStart] = useState<{ x: number; y: number; t: number } | null>(null);
   const [showFeedback, setShowFeedback] = useState(initialShowFeedback);
   const [isSmallScreen, setIsSmallScreen] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [feedbackSettings, setFeedbackSettings] = useState<{
@@ -362,7 +363,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     }
   };
 
-  // Touch event handlers for pinch-to-zoom
+  // Touch event handlers: pinch-to-zoom (2 fingers) + single-finger swipe nav.
+  // Swipe is suppressed while zoomed in so the user can pan instead.
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const touch1 = e.touches[0];
@@ -372,6 +374,10 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientY - touch1.clientY
       );
       setTouchDistance(distance);
+      setSwipeStart(null);
+    } else if (e.touches.length === 1 && zoom <= 1) {
+      const t = e.touches[0];
+      setSwipeStart({ x: t.clientX, y: t.clientY, t: Date.now() });
     }
   };
 
@@ -383,7 +389,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientX - touch1.clientX,
         touch2.clientY - touch1.clientY
       );
-      
+
       const scale = newDistance / touchDistance;
       const newZoom = Math.max(1, Math.min(3, zoom * scale));
       setZoom(newZoom);
@@ -391,8 +397,20 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     setTouchDistance(null);
+    if (swipeStart && e.changedTouches.length > 0) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - swipeStart.x;
+      const dy = t.clientY - swipeStart.y;
+      const dt = Date.now() - swipeStart.t;
+      // Horizontal swipe: > 50px and dominant over vertical, completed in < 600ms.
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 600) {
+        if (dx > 0) goToPrevious();
+        else goToNext();
+      }
+    }
+    setSwipeStart(null);
   };
 
   // Apply protection class to the lightbox container
