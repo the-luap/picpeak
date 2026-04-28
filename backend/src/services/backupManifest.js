@@ -323,6 +323,12 @@ class BackupManifestGenerator {
       deleted_files: comparison.deleted_files.map(f => f.path)
     };
 
+    // Recalculate the checksum after attaching the incremental section,
+    // otherwise validateManifest() rejects the loaded manifest because
+    // generateManifest() stamped a checksum that did NOT include this
+    // section.
+    fullManifest.verification.total_checksum = this.calculateManifestChecksum(fullManifest);
+
     return fullManifest;
   }
 

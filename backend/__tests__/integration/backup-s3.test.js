@@ -80,10 +80,12 @@ describe('S3 Backup Integration Tests', () => {
     await setupTestData();
 
     // Mock logger to reduce noise
-    logger.info = jest.fn();
-    logger.debug = jest.fn();
-    logger.warn = jest.fn();
-    logger.error = jest.fn();
+    if (process.env.UNMOCK_LOGGER !== 'true') {
+      logger.info = jest.fn();
+      logger.debug = jest.fn();
+      logger.warn = jest.fn();
+      logger.error = jest.fn();
+    }
   });
 
   afterAll(async () => {
@@ -281,13 +283,16 @@ describe('S3 Backup Integration Tests', () => {
         .first();
 
       expect(secondRun.id).not.toBe(firstRun.id);
-      expect(secondRun.files_backed_up).toBe(1); // Only modified file
+      expect(Number(secondRun.files_backed_up)).toBe(1); // Only modified file
 
-      // Check manifest indicates incremental
+      // Check manifest indicates incremental. The current manifest schema
+      // groups counts under `incremental.changes.*` (added/modified/deleted/
+      // unchanged + size_difference) — see backupManifest.generateIncrementalManifest.
       if (secondRun.manifest_path) {
         const manifest = await backupService.getBackupManifest(secondRun.id);
         expect(manifest.manifest.incremental).toBeDefined();
-        expect(manifest.manifest.incremental.modified_files_count).toBe(1);
+        expect(manifest.manifest.incremental.changes).toBeDefined();
+        expect(manifest.manifest.incremental.changes.modified_files_count).toBe(1);
       }
     });
 
