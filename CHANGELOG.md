@@ -5,6 +5,18 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.31.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.31.0-beta.0...v3.31.1-beta.0) (2026-04-28)
+
+
+### Bug Fixes
+
+* **events:** show customer phone in event details view ([#331](https://github.com/the-luap/picpeak/issues/331)) ([4c73d22](https://github.com/the-luap/picpeak/commit/4c73d228ed98b8ec05bec2824aee7ce066a184e1))
+* **gallery:** single-finger swipe nav in mobile lightbox ([#332](https://github.com/the-luap/picpeak/issues/332)) ([4c8eba0](https://github.com/the-luap/picpeak/commit/4c8eba0cb43635d92a53d90c58b19007136c1c12))
+* **gallery:** use ref for swipe-start to avoid stale-closure miss ([#332](https://github.com/the-luap/picpeak/issues/332)) ([fcddfe0](https://github.com/the-luap/picpeak/commit/fcddfe094b2a01963f7b420afa886e7d5dae4390))
+* **lightbox:** mobile toolbar clipping + iOS safe-area + viewport-fit ([#336](https://github.com/the-luap/picpeak/issues/336)) ([42a7ae4](https://github.com/the-luap/picpeak/commit/42a7ae4be8fe7b12104ae036465c9c4117606378))
+* mobile lightbox + share previews + customer phone bug triage ([1e40677](https://github.com/the-luap/picpeak/commit/1e4067713ce9a808a7b49319bc262e5c9a6599c6))
+* **share:** OG/Twitter-card metadata for gallery share URLs ([#333](https://github.com/the-luap/picpeak/issues/333)) ([5275621](https://github.com/the-luap/picpeak/commit/5275621fcd38f1ec09b54595163ecd5e63614b1a))
+
 ## [3.31.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.30.0-beta.0...v3.31.0-beta.0) (2026-04-28)
 
 
