@@ -182,6 +182,18 @@ router.post(
         type: 'admin', id: req.admin.id, name: req.admin.username
       });
 
+      // Webhook lifecycle (#327). v1 events are not draft-aware, so they're
+      // both created AND published in the same call.
+      try {
+        const webhookService = require('../../services/webhookService');
+        await webhookService.fire('event.created', {
+          event: { id, slug, event_name, event_type, event_date, share_url: shareUrl },
+        });
+        await webhookService.fire('event.published', {
+          event: { id, slug, event_name, share_url: shareUrl },
+        });
+      } catch (e) { /* non-fatal */ }
+
       res.status(201).json({ id, slug, share_url: shareUrl, share_token: shareToken });
     } catch (error) {
       logger.error('v1 POST /events failed', { error: error.message, stack: error.stack });
@@ -346,33 +358,39 @@ router.post(
       const event = await db('events').where({ id: req.params.id }).first();
       if (!event) return res.status(404).json({ error: 'Event not found' });
 
-      const finalDir = path.join(getStoragePath(), 'events/active', event.slug);
-      await fs.mkdir(finalDir, { recursive: true });
       const ext = path.extname(req.file.originalname);
       const finalName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
-      const finalPath = path.join(finalDir, finalName);
-      await fs.rename(tempPath, finalPath);
-      tempPath = null;
+      // photo.path is stored relative to events/active so resolvePhotoStorageKey
+      // can rebuild the full key on read. Same shape as adminPhotos uploads.
+      const relPath = path.posix.join(event.slug, finalName);
+      const finalKey = path.posix.join('events/active', relPath);
 
-      const stat = fsSync.statSync(finalPath);
-      const relPath = path.relative(path.join(getStoragePath(), 'events/active'), finalPath);
+      const stat = fsSync.statSync(tempPath);
+
+      // Read sharp metadata + generate thumbnail FROM the local temp file
+      // before uploading the original through the storage backend. (Same
+      // ordering as adminPhotos.js so sharp/ffmpeg always have a real fs path.)
+      let width = null;
+      let height = null;
+      try {
+        const meta = await sharp(tempPath).metadata();
+        width = meta.width || null;
+        height = meta.height || null;
+      } catch { /* non-fatal */ }
 
       let thumbRel = null;
       try {
-        const thumbPath = await generateThumbnail(finalPath);
-        thumbRel = path.relative(getStoragePath(), thumbPath);
+        thumbRel = await generateThumbnail(tempPath);
       } catch (err) {
         logger.warn('v1 thumbnail generation failed', { err: err.message });
       }
 
-      // Detect image dimensions for masonry layouts.
-      let width = null;
-      let height = null;
-      try {
-        const meta = await sharp(finalPath).metadata();
-        width = meta.width || null;
-        height = meta.height || null;
-      } catch { /* non-fatal */ }
+      // Upload the original via the storage backend (local fs OR S3),
+      // then drop the multer temp file.
+      const { getStorage } = require('../../services/storage');
+      await getStorage().putFromFile(finalKey, tempPath, { contentType: req.file.mimetype });
+      await fs.unlink(tempPath).catch(() => {});
+      tempPath = null;
 
       const insertResult = await db('photos').insert({
         event_id: event.id,
@@ -393,6 +411,16 @@ router.post(
       await logActivity('photo_uploaded', { via: 'api_v1', filename: finalName }, event.id, {
         type: 'admin', id: req.admin.id, name: req.admin.username
       });
+
+      // Webhook (#327): one event per uploaded photo so receivers get a
+      // 1:1 stream they can react to.
+      try {
+        const webhookService = require('../../services/webhookService');
+        await webhookService.fire('photo.uploaded', {
+          event: { id: event.id, slug: event.slug, event_name: event.event_name },
+          photo: { id, filename: finalName, original_filename: req.file.originalname, size_bytes: stat.size, width, height },
+        });
+      } catch (e) { /* non-fatal */ }
 
       res.status(201).json({ id, filename: finalName, path: relPath, thumbnail_path: thumbRel, size_bytes: stat.size });
     } catch (error) {

@@ -25,6 +25,7 @@ import { Upload, Menu, Eye, EyeOff, Shield } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
 import { useGalleryCustomCss } from '../../hooks/useGalleryCustomCss';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import type { Photo } from '../../types';
 import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { useQueryClient } from '@tanstack/react-query';
@@ -199,15 +200,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch branding settings
-  const { data: settingsData } = useQuery({
-    queryKey: ['gallery-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
 
   // Fetch feedback settings
   const { data: feedbackSettings } = useQuery({

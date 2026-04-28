@@ -69,7 +69,9 @@ backend/data/
 backend/docs/
 backend/logs/
 logs/
-storage/
+# Anchored to repo root: matches the top-level runtime storage dir,
+# NOT backend/src/services/storage/ (the storage backend abstraction code).
+/storage/
 data/
 certbot/
 

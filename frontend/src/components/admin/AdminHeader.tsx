@@ -9,11 +9,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAdminAuth } from '../../contexts';
 import { useAdminDarkMode } from '../../contexts/AdminDarkModeContext';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { PasswordChangeModal } from './PasswordChangeModal';
 import { LanguageSelector } from '../common';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from 'react-toastify';
-import { buildResourceUrl, getApiBaseUrl } from '../../utils/url';
+import { buildResourceUrl } from '../../utils/url';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -31,16 +32,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const queryClient = useQueryClient();
   
-  // Fetch branding settings
-  const { data: brandingSettings } = useQuery({
-    queryKey: ['admin-settings', 'branding'],
-    queryFn: async () => {
-      const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-      if (response.ok) return response.json();
-      return null;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: brandingSettings } = usePublicSettings();
 
   const companyName = brandingSettings?.branding_company_name?.trim() || 'PicPeak';
   const logoUrl = brandingSettings?.branding_logo_url?.trim();

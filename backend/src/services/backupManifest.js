@@ -181,8 +181,13 @@ class BackupManifestGenerator {
       const content = await fs.readFile(filePath, 'utf8');
       let manifest;
 
-      // Detect format and parse
-      if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
+      // Detect format from BOTH the extension and the content. Earlier code
+      // trusted the extension alone, which broke when callers stored a YAML
+      // manifest under a .json temp name (getBackupManifest does this when
+      // downloading the s3:// path to a tmp file).
+      const looksLikeJson = content.trimStart().startsWith('{')
+        || content.trimStart().startsWith('[');
+      if (filePath.endsWith('.yaml') || filePath.endsWith('.yml') || !looksLikeJson) {
         manifest = yaml.load(content);
       } else {
         manifest = JSON.parse(content);
@@ -317,6 +322,12 @@ class BackupManifestGenerator {
       modified_files: comparison.modified_files.map(f => f.path),
       deleted_files: comparison.deleted_files.map(f => f.path)
     };
+
+    // Recalculate the checksum after attaching the incremental section,
+    // otherwise validateManifest() rejects the loaded manifest because
+    // generateManifest() stamped a checksum that did NOT include this
+    // section.
+    fullManifest.verification.total_checksum = this.calculateManifestChecksum(fullManifest);
 
     return fullManifest;
   }

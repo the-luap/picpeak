@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { format as dateFnsFormat, formatDistanceToNow as dateFnsFormatDistanceToNow } from 'date-fns';
 import { de, enUS, ptBR } from 'date-fns/locale';
-import { useQuery } from '@tanstack/react-query';
-import { publicSettingsService } from '../services/publicSettings.service';
+import { usePublicSettings } from './usePublicSettings';
 
 // Convert old date format strings to new date-fns format
 const convertDateFormat = (format: string): string => {
@@ -15,13 +14,7 @@ const convertDateFormat = (format: string): string => {
 export const useLocalizedDate = () => {
   const { i18n } = useTranslation();
   
-  // Fetch public settings to get the date format
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings(),
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: 1, // Only retry once to avoid blocking the UI
-  });
+  const { data: settings } = usePublicSettings();
   
   const getLocale = () => {
     if (i18n.language === 'de') return de;

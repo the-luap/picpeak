@@ -56,7 +56,7 @@ import { Button, Input, Card, Loading } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu, AdminGuestsList } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
-import { publicSettingsService } from '../../services/publicSettings.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { api } from '../../config/api';
 import { buildResourceUrl, buildShareLinkUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
@@ -160,6 +160,7 @@ export const EventDetailsPage: React.FC = () => {
     disable_right_click: boolean;
     allow_downloads: boolean;
     watermark_downloads: boolean;
+    allow_presigned_download: boolean;
     enable_devtools_protection: boolean;
     use_canvas_rendering: boolean;
     // Hero logo settings
@@ -196,6 +197,7 @@ export const EventDetailsPage: React.FC = () => {
     disable_right_click: true,
     allow_downloads: true,
     watermark_downloads: false,
+    allow_presigned_download: false,
     enable_devtools_protection: true,
     use_canvas_rendering: false,
     // Hero logo settings
@@ -334,11 +336,7 @@ export const EventDetailsPage: React.FC = () => {
     }
   }, [showMediaFilter, photoFilters.media_type]);
 
-  // Fetch public settings (for field requirement checks like expiration)
-  const { data: publicSettings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings(),
-  });
+  const { data: publicSettings } = usePublicSettings();
   const requireExpiration = publicSettings?.event_require_expiration !== false;
   const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
 
@@ -444,6 +442,7 @@ export const EventDetailsPage: React.FC = () => {
       disable_right_click: event.disable_right_click ?? true,
       allow_downloads: event.allow_downloads ?? true,
       watermark_downloads: event.watermark_downloads ?? false,
+      allow_presigned_download: (event as { allow_presigned_download?: boolean }).allow_presigned_download ?? false,
       enable_devtools_protection: event.enable_devtools_protection ?? true,
       use_canvas_rendering: event.use_canvas_rendering ?? false,
       // Load hero logo settings from event
@@ -581,6 +580,7 @@ export const EventDetailsPage: React.FC = () => {
       disable_right_click: editForm.disable_right_click,
       allow_downloads: editForm.allow_downloads,
       watermark_downloads: editForm.watermark_downloads,
+      allow_presigned_download: editForm.allow_presigned_download,
       enable_devtools_protection: editForm.enable_devtools_protection,
       use_canvas_rendering: editForm.use_canvas_rendering,
       // Hero logo settings
@@ -1277,11 +1277,38 @@ export const EventDetailsPage: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={editForm.watermark_downloads}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, watermark_downloads: e.target.checked }))}
+                        onChange={(e) => setEditForm(prev => ({
+                          ...prev,
+                          watermark_downloads: e.target.checked,
+                          // Watermarking and presigned URLs are mutually
+                          // exclusive — presigned URLs serve raw bytes from
+                          // S3 without going through the watermark pipeline.
+                          allow_presigned_download: e.target.checked ? false : prev.allow_presigned_download,
+                        }))}
                         className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
+                    </label>
+
+                    <label
+                      className={`flex items-center ${editForm.watermark_downloads ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={editForm.watermark_downloads
+                        ? 'Disabled while watermarks are on — presigned URLs bypass the watermark pipeline.'
+                        : 'When the backend uses STORAGE_BACKEND=s3, "Download All" returns a 5-minute presigned S3 URL instead of streaming through the backend. Saves bandwidth on huge galleries; bypasses watermarking.'
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!editForm.allow_presigned_download}
+                        disabled={editForm.watermark_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, allow_presigned_download: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      />
+                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                        {t('events.allowPresignedDownload', 'Allow direct S3 download (no watermark, S3 mode only)')}
+                      </span>
                     </label>
 
                     <label className="flex items-center">

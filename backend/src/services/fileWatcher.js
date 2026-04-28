@@ -13,6 +13,16 @@ const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '.
 const WATCH_PATH = () => path.join(getStoragePath(), 'events/active');
 
 function startFileWatcher() {
+  // Auto-import via filesystem watching only works with the local storage
+  // backend. In S3 mode there is no local directory to watch — every photo
+  // must enter through the admin upload API. Skip cleanly with a clear log
+  // so operators aren't surprised by the missing feature.
+  const backend = (process.env.STORAGE_BACKEND || 'local').toLowerCase();
+  if (backend !== 'local') {
+    logger.warn(`[fileWatcher] auto-import disabled — STORAGE_BACKEND=${backend}. Use the admin upload API instead.`);
+    return null;
+  }
+
   const watcher = chokidar.watch(WATCH_PATH(), {
     ignored: /(^|[\/\\])\../, // ignore dotfiles
     persistent: true,
@@ -93,7 +103,7 @@ async function processNewPhoto(filePath) {
 
   if (!existingPhoto) {
     // Add to database
-    await db('photos').insert({
+    const insertResult = await db('photos').insert({
       event_id: event.id,
       filename: path.basename(filePath),
       path: relativePath,
@@ -101,10 +111,21 @@ async function processNewPhoto(filePath) {
       type: isVideo ? 'video' : photoType,
       size_bytes: stats.size,
       mime_type: mimeType
-    });
+    }).returning('id');
+    const photoId = insertResult[0]?.id || insertResult[0];
 
     logger.info(`Added new photo: ${relativePath}`);
     downloadZipService.invalidate(event.id);
+
+    // Webhook (#327) — auto-import path. Only fires in local mode since
+    // the watcher is disabled in S3 mode.
+    try {
+      const webhookService = require('./webhookService');
+      await webhookService.fire('photo.uploaded', {
+        event: { id: event.id, slug: event.slug, event_name: event.event_name },
+        photo: { id: photoId, filename: path.basename(filePath), size_bytes: stats.size, source: 'auto-import' },
+      });
+    } catch (e) { /* non-fatal */ }
   } else {
     logger.debug(`Photo already exists: ${relativePath}`);
   }
@@ -121,6 +142,16 @@ async function removePhoto(filePath) {
 
   if (photo) {
     downloadZipService.invalidate(photo.event_id);
+
+    // Webhook (#327) — fire only if the row actually existed.
+    try {
+      const event = await db('events').where({ id: photo.event_id }).first();
+      const webhookService = require('./webhookService');
+      await webhookService.fire('photo.deleted', {
+        event: { id: photo.event_id, slug: event?.slug, event_name: event?.event_name },
+        photo: { id: photo.id, filename: photo.filename, source: 'auto-import' },
+      });
+    } catch (e) { /* non-fatal */ }
   }
 
   logger.info(`Removed photo: ${relativePath}`);

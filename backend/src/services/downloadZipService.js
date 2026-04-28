@@ -7,16 +7,22 @@
  *
  * Pattern follows watermarkGeneratorService.js — singleton with
  * in-memory locking and debounced background regeneration.
+ *
+ * Storage: zips are written to a local tmp file then uploaded to the
+ * configured storage backend (local fs or S3) via storage.putFromFile.
+ * The cached zip is served via the storage backend on download.
  */
 
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const os = require('os');
+const crypto = require('crypto');
 const archiver = require('archiver');
 const { db } = require('../database/db');
 const watermarkService = require('./watermarkService');
-const { resolvePhotoFilePath } = require('./photoResolver');
-const { getStoragePath } = require('../config/storage');
+const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
+const { getStorage } = require('./storage');
 const logger = require('../utils/logger');
 
 const DEBOUNCE_MS = 5000;
@@ -29,15 +35,16 @@ class DownloadZipService {
   }
 
   /**
-   * Absolute path to the cached zip for an event slug.
+   * Relative storage key for the cached zip.
    */
-  getCachePath(slug) {
-    return path.join(getStoragePath(), 'events', 'active', slug, '.download-cache', 'all.zip');
+  getCacheKey(slug) {
+    return path.posix.join('events/active', slug, '.download-cache', 'all.zip');
   }
 
   /**
    * Check if a valid cached zip exists.
-   * Returns { path, size, generatedAt } or null.
+   * Returns { key, size, generatedAt } or null. The key is a relative storage
+   * key — callers stream it via storage.get() rather than reading directly.
    */
   async getZipInfo(eventId) {
     try {
@@ -48,15 +55,10 @@ class DownloadZipService {
 
       if (!event || !event.download_zip_path) return null;
 
-      const absPath = this.getCachePath(event.slug);
-      try {
-        const stat = await fsp.stat(absPath);
-        return {
-          path: absPath,
-          size: stat.size,
-          generatedAt: event.download_zip_generated_at,
-        };
-      } catch {
+      const storage = getStorage();
+      const key = this.getCacheKey(event.slug);
+      const stat = await storage.stat(key);
+      if (!stat) {
         // File gone — clear stale DB record
         await db('events').where({ id: eventId }).update({
           download_zip_path: null,
@@ -64,6 +66,11 @@ class DownloadZipService {
         });
         return null;
       }
+      return {
+        key,
+        size: stat.size,
+        generatedAt: event.download_zip_generated_at,
+      };
     } catch (err) {
       logger.warn('downloadZipService.getZipInfo error', { eventId, error: err.message });
       return null;
@@ -71,7 +78,7 @@ class DownloadZipService {
   }
 
   /**
-   * Generate the pre-zip for an event. Returns { success, path, size } or { success: false }.
+   * Generate the pre-zip for an event. Returns { success, key, size } or { success: false }.
    * Concurrent calls for the same eventId share one in-flight build.
    */
   async generateZip(eventId) {
@@ -97,6 +104,9 @@ class DownloadZipService {
   }
 
   async _build(eventId, version) {
+    const storage = getStorage();
+    let tmpDir;
+
     try {
       const event = await db('events').where({ id: eventId }).first();
       if (!event) return { success: false, error: 'Event not found' };
@@ -119,11 +129,10 @@ class DownloadZipService {
         text: event.watermark_text || watermarkSettings?.text || 'Protected',
       } : null;
 
-      const cacheDir = path.dirname(this.getCachePath(event.slug));
-      await fsp.mkdir(cacheDir, { recursive: true });
+      const finalKey = this.getCacheKey(event.slug);
 
-      const tmpPath = this.getCachePath(event.slug) + `.tmp.${Date.now()}`;
-      const finalPath = this.getCachePath(event.slug);
+      tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'picpeak-zipbuild-'));
+      const tmpPath = path.join(tmpDir, `${crypto.randomBytes(4).toString('hex')}-all.zip`);
 
       // Build zip — level 0 (store only) since photos are already compressed
       await new Promise((resolve, reject) => {
@@ -145,13 +154,6 @@ class DownloadZipService {
               return reject(new Error('Build invalidated'));
             }
 
-            let filePath;
-            try {
-              filePath = resolvePhotoFilePath(event, photo);
-            } catch {
-              continue;
-            }
-
             let archiveName;
             if (hasMultipleTypes) {
               const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
@@ -160,14 +162,36 @@ class DownloadZipService {
               archiveName = photo.filename;
             }
 
+            // External-mode photos still live on local disk; managed photos go
+            // through the storage backend. resolvePhotoStorageKey returns null
+            // for external, in which case fall back to resolvePhotoFilePath.
+            const storageKey = resolvePhotoStorageKey(event, photo);
+
             if (shouldApplyWatermark && effectiveSettings) {
               try {
-                const buf = await watermarkService.applyWatermark(filePath, effectiveSettings);
+                let sourcePath;
+                if (storageKey) {
+                  // Stream the original to a tmp file just long enough for sharp
+                  // (watermarkService) to operate on it. Avoids buffering the
+                  // entire image in memory for huge originals.
+                  sourcePath = path.join(tmpDir, `wm-${crypto.randomBytes(4).toString('hex')}`);
+                  await storage.getToFile(storageKey, sourcePath);
+                } else {
+                  sourcePath = resolvePhotoFilePath(event, photo);
+                }
+                const buf = await watermarkService.applyWatermark(sourcePath, effectiveSettings);
                 archive.append(buf, { name: archiveName });
+                if (storageKey) {
+                  await fsp.unlink(sourcePath).catch(() => {});
+                }
               } catch (err) {
                 logger.warn('Skipping watermark in pre-zip', { photoId: photo.id, error: err.message });
               }
+            } else if (storageKey) {
+              const stream = await storage.get(storageKey);
+              archive.append(stream, { name: archiveName });
             } else {
+              const filePath = resolvePhotoFilePath(event, photo);
               archive.file(filePath, { name: archiveName });
             }
           }
@@ -180,29 +204,33 @@ class DownloadZipService {
 
       // Check version again — another invalidation may have arrived
       if (this.versions.get(eventId) !== version) {
-        await fsp.unlink(tmpPath).catch(() => {});
         return { success: false, error: 'Build invalidated' };
       }
 
-      // Atomic rename
-      await fsp.rename(tmpPath, finalPath);
+      // Upload to storage (atomic from caller's perspective: storage.put writes
+      // to a tmp file/object first then commits in LocalFs; in S3 the key only
+      // exists after the multipart upload completes).
+      await storage.putFromFile(finalKey, tmpPath, { contentType: 'application/zip' });
 
-      const stat = await fsp.stat(finalPath);
+      const stat = await storage.stat(finalKey);
 
-      // Update DB
       await db('events').where({ id: eventId }).update({
-        download_zip_path: `events/active/${event.slug}/.download-cache/all.zip`,
+        download_zip_path: finalKey,
         download_zip_generated_at: new Date(),
       });
 
       logger.info('Pre-zip generated', { eventId, slug: event.slug, size: stat.size, photos: photos.length });
-      return { success: true, path: finalPath, size: stat.size };
+      return { success: true, key: finalKey, size: stat.size };
     } catch (err) {
       if (err.message === 'Build invalidated') {
         return { success: false, error: 'Build invalidated' };
       }
       logger.error('downloadZipService._build error', { eventId, error: err.message });
       return { success: false, error: err.message };
+    } finally {
+      if (tmpDir) {
+        await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      }
     }
   }
 
@@ -264,17 +292,14 @@ class DownloadZipService {
 
   async _cleanup(eventId) {
     try {
+      const storage = getStorage();
       const event = await db('events')
         .where({ id: eventId })
         .select('slug', 'download_zip_path')
         .first();
 
       if (event && event.download_zip_path) {
-        const absPath = this.getCachePath(event.slug);
-        await fsp.unlink(absPath).catch(() => {});
-        // Also try to remove the cache directory if empty
-        const cacheDir = path.dirname(absPath);
-        await fsp.rmdir(cacheDir).catch(() => {});
+        await storage.delete(this.getCacheKey(event.slug)).catch(() => {});
       }
 
       await db('events').where({ id: eventId }).update({

@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Upload, X, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { Button } from '../common';
 import { api } from '../../config/api';
-import { publicSettingsService } from '../../services/publicSettings.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { extensionsToMimeTypes, extensionsToAcceptString } from '../../utils/fileTypes';
 
 interface UserPhotoUploadProps {
@@ -26,11 +25,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
-  const { data: publicSettings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: publicSettings } = usePublicSettings();
 
   const allowedMimeTypes = useMemo(
     () => extensionsToMimeTypes(publicSettings?.allowed_file_types),

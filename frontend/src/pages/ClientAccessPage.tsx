@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent, Input, Button, Loading } from '../components/common';
 import { useGalleryAuth } from '../contexts';
 import { useGalleryInfo } from '../hooks/useGallery';
-import { api } from '../config/api';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 import { buildResourceUrl } from '../utils/url';
 
 export const ClientAccessPage: React.FC = () => {
@@ -22,14 +21,7 @@ export const ClientAccessPage: React.FC = () => {
 
   const { data: galleryInfo, isLoading: isLoadingInfo, error: infoError } = useGalleryInfo(slug);
 
-  const { data: settingsData } = useQuery({
-    queryKey: ['gallery-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: settingsData } = usePublicSettings();
 
   // If already authenticated as client, redirect to gallery
   React.useEffect(() => {

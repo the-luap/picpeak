@@ -17,6 +17,7 @@ const watermarkGeneratorService = require('../services/watermarkGeneratorService
 const downloadZipService = require('../services/downloadZipService');
 const { findReplacementCandidate, replacePhoto } = require('../services/photoReplacementService');
 const { requireEventOwnership } = require('../middleware/ownership');
+const { getStorage } = require('../services/storage');
 const router = express.Router();
 
 // Get storage path from environment or default
@@ -243,9 +244,9 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
       categoryName = 'collages';
     }
     
-    // Create final destination directory
-    const finalDestPath = path.join(getStoragePath(), 'events/active', event.slug);
-    await fs.mkdir(finalDestPath, { recursive: true });
+    // Final destination key prefix under the storage backend (no local mkdir
+    // needed — LocalFsStorage creates the parent dir on put, S3 has no dirs).
+    const finalDestPathRel = path.posix.join('events/active', event.slug);
     
     const uploadedPhotos = [];
     const replacedPhotos = [];
@@ -330,10 +331,11 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
               extension
             );
             
-            // Calculate final path
-            const finalPath = path.join(finalDestPath, newFilename);
-            const storagePath = getStoragePath();
-            const relativePath = path.relative(path.join(storagePath, 'events/active'), finalPath);
+            // Storage key: events/active/{slug}/{newFilename}
+            const finalKey = path.posix.join(finalDestPathRel, newFilename);
+            // photo.path is stored relative to events/active so resolvePhotoStorageKey
+            // can rebuild the full key on read.
+            const relativePath = path.posix.join(event.slug, newFilename);
 
             // Extract capture date from EXIF metadata
             let capturedAt = null;
@@ -365,10 +367,10 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
             
             batchPhotos.push(photoData);
             
-            // Store move operation for later
+            // Store upload operation for later (after DB commit)
             fileRenameOperations.push({
               tempPath: tempPath,
-              finalPath: finalPath,
+              finalKey: finalKey,
               filename: newFilename,
               photoData: photoData
             });
@@ -390,34 +392,26 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
           await trx.commit();
           console.log(`Successfully committed batch of ${batchPhotos.length} photos`);
           
-          // Now move files from temp to final location after successful commit
+          // Now upload files from temp into the storage backend after successful commit
+          const storage = getStorage();
           for (let idx = 0; idx < fileRenameOperations.length; idx++) {
             const operation = fileRenameOperations[idx];
             try {
-              // Move the file from temp to final location
-              await fs.rename(operation.tempPath, operation.finalPath);
-              console.log(`Moved file from ${operation.tempPath} to ${operation.finalPath}`);
-              
-              // Verify the file was moved successfully
-              const finalStats = await fs.stat(operation.finalPath);
-              if (finalStats.size !== operation.photoData.size_bytes) {
-                throw new Error(`File size mismatch after move: expected ${operation.photoData.size_bytes}, got ${finalStats.size}`);
-              }
-              
-              // Generate thumbnail and extract metadata
+              // Process source-dependent steps (sharp/ffmpeg) FIRST while the
+              // tmp file is still on local disk, then upload the original and
+              // unlink the tmp.
               const photoId = insertedIds[idx]?.id || insertedIds[idx];
               const isVideoFile = isVideoMimeType(operation.photoData.mime_type);
               let thumbnailPath = null;
 
               try {
                 if (isVideoFile) {
-                  // Process video: extract metadata and generate thumbnail
-                  const thumbnailDir = path.join(getStoragePath(), 'thumbnails');
-                  await fs.mkdir(thumbnailDir, { recursive: true });
-                  const videoThumbnailPath = path.join(thumbnailDir, `thumb_${operation.filename.replace(/\.[^.]+$/, '.jpg')}`);
-
-                  const result = await processUploadedVideo(operation.finalPath, videoThumbnailPath);
-                  thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
+                  const videoThumbnailKey = path.posix.join(
+                    'thumbnails',
+                    `thumb_${operation.filename.replace(/\.[^.]+$/, '.jpg')}`
+                  );
+                  const result = await processUploadedVideo(operation.tempPath, videoThumbnailKey);
+                  thumbnailPath = result.thumbnailKey;
 
                   if (photoId && result.metadata) {
                     await db('photos')
@@ -432,7 +426,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
                       });
                   }
                 } else {
-                  thumbnailPath = await generateThumbnail(operation.finalPath);
+                  thumbnailPath = await generateThumbnail(operation.tempPath);
 
                   // Update the database with thumbnail path and image dimensions
                   if (photoId) {
@@ -441,7 +435,7 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
 
                     try {
                       const sharp = require('sharp');
-                      const metadata = await sharp(operation.finalPath).metadata();
+                      const metadata = await sharp(operation.tempPath).metadata();
                       if (metadata.width && metadata.height) {
                         updateData.width = metadata.width;
                         updateData.height = metadata.height;
@@ -461,12 +455,40 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
                 console.error(`Thumbnail/metadata processing failed for ${operation.filename}:`, thumbError.message);
               }
 
+              // Upload the original through the storage backend, then drop the
+              // local tmp file. We do this AFTER thumbnail/metadata processing
+              // so sharp/ffmpeg still have a local source to work from.
+              await storage.putFromFile(operation.finalKey, operation.tempPath, {
+                contentType: operation.photoData.mime_type,
+              });
+              await fs.unlink(operation.tempPath).catch(() => {});
+
+              // Sanity check: round-trip the size we just wrote.
+              const stat = await storage.stat(operation.finalKey);
+              if (!stat || stat.size !== operation.photoData.size_bytes) {
+                throw new Error(`Size mismatch after upload: expected ${operation.photoData.size_bytes}, got ${stat ? stat.size : 'null'}`);
+              }
+
               // Queue watermark generation in background (non-blocking, images only)
               if (photoId && !isVideoFile) {
                 watermarkGeneratorService.generateForPhoto(photoId)
                   .catch(err => console.warn(`Watermark generation queued failed for photo ${photoId}:`, err.message));
               }
-              
+
+              // Webhook (#327): per-photo upload event.
+              try {
+                const webhookService = require('../services/webhookService');
+                await webhookService.fire('photo.uploaded', {
+                  event: { id: parseInt(eventId, 10), slug: event.slug, event_name: event.event_name },
+                  photo: {
+                    id: insertedIds[idx]?.id || insertedIds[idx],
+                    filename: operation.filename,
+                    original_filename: operation.photoData.original_filename,
+                    size_bytes: operation.photoData.size_bytes,
+                  },
+                });
+              } catch (e) { /* non-fatal */ }
+
               // Add to successful uploads
               uploadedPhotos.push({
                 id: insertedIds[idx]?.id || insertedIds[idx],
@@ -475,10 +497,10 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
                 category_id: operation.photoData.category_id
               });
             } catch (moveError) {
-              console.error(`Failed to move file ${operation.tempPath} to ${operation.finalPath}:`, moveError);
-              errors.push({ 
-                filename: operation.filename, 
-                error: `File move failed: ${moveError.message}` 
+              console.error(`Failed to upload ${operation.tempPath} → ${operation.finalKey}:`, moveError);
+              errors.push({
+                filename: operation.filename,
+                error: `File upload failed: ${moveError.message}`
               });
               
               // Try to clean up the database entry if file move failed
@@ -604,29 +626,29 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    // Delete physical files
-    const storagePath = getStoragePath();
-    const photoPath = path.join(storagePath, 'events/active', photo.path);
-    
+    // Delete original + thumbnail through the storage backend.
+    const storage = getStorage();
+    const { resolvePhotoStorageKey } = require('../services/photoResolver');
+    const event = await db('events').where({ id: eventId }).first();
+
     try {
-      await fs.unlink(photoPath);
+      const originalKey = resolvePhotoStorageKey(event, photo);
+      if (originalKey) await storage.delete(originalKey);
     } catch (error) {
       console.error('Error deleting photo file:', error);
     }
-    
-    // Delete thumbnail if exists
+
+    // photo.thumbnail_path is stored as the canonical storage key
+    // (e.g. "thumbnails/thumb_foo.jpg"), so pass it through verbatim.
     if (photo.thumbnail_path) {
-      const thumbPath = path.join(storagePath, 'events/active', photo.thumbnail_path);
       try {
-        // Check if file exists before attempting to delete
-        await fs.access(thumbPath);
-        await fs.unlink(thumbPath);
+        await storage.delete(photo.thumbnail_path);
       } catch (error) {
-        // Only log if it's not a "file not found" error
-        if (error.code !== 'ENOENT') {
-          console.error('Error deleting thumbnail:', error);
-        }
+        console.error('Error deleting thumbnail:', error);
       }
+    }
+    if (photo.hero_path) {
+      await storage.delete(photo.hero_path).catch(() => {});
     }
 
     // Delete pre-generated watermark if exists
@@ -636,14 +658,22 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
 
     // Remove from database
     await db('photos').where({ id: photoId }).delete();
-    
-    // Log activity
-    const event = await db('events').where({ id: eventId }).first();
+
+    // Log activity (event was fetched above for storage key resolution)
     await logActivity('photo_deleted',
       { filename: photo.filename, eventName: event.event_name },
       eventId,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
+
+    // Webhook (#327): single-photo delete.
+    try {
+      const webhookService = require('../services/webhookService');
+      await webhookService.fire('photo.deleted', {
+        event: { id: parseInt(eventId, 10), slug: event?.slug, event_name: event?.event_name },
+        photo: { id: parseInt(photoId, 10), filename: photo.filename },
+      });
+    } catch (e) { /* non-fatal */ }
 
     downloadZipService.invalidate(parseInt(eventId));
     res.json({ message: 'Photo deleted successfully' });
@@ -735,35 +765,25 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
       return res.status(404).json({ error: 'No photos found' });
     }
     
-    // Delete physical files
-    const storagePath = getStoragePath();
+    // Delete original + thumbnail + hero through the storage backend.
+    const storage = getStorage();
     const event = await db('events').where({ id: eventId }).first();
-    
+    const { resolvePhotoStorageKey } = require('../services/photoResolver');
+
     for (const photo of photos) {
-      // Delete photo file
-      const photoPath = path.join(storagePath, 'events/active', photo.path);
       try {
-        await fs.unlink(photoPath);
+        const originalKey = resolvePhotoStorageKey(event, photo);
+        if (originalKey) await storage.delete(originalKey);
       } catch (error) {
         console.error('Error deleting photo file:', error);
       }
-      
-      // Delete thumbnail
-      if (photo.thumbnail_path) {
-        const thumbPath = path.join(storagePath, photo.thumbnail_path);
-        try {
-          // Check if file exists before attempting to delete
-          await fs.access(thumbPath);
-          await fs.unlink(thumbPath);
-        } catch (error) {
-          // Only log if it's not a "file not found" error
-          if (error.code !== 'ENOENT') {
-            console.error('Error deleting thumbnail:', error);
-          }
-        }
-      }
 
-      // Delete pre-generated watermark
+      if (photo.thumbnail_path) {
+        await storage.delete(photo.thumbnail_path).catch(() => {});
+      }
+      if (photo.hero_path) {
+        await storage.delete(photo.hero_path).catch(() => {});
+      }
       if (photo.watermark_path) {
         await watermarkGeneratorService.deleteForPhoto(photo.id);
       }
@@ -774,7 +794,18 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
       .whereIn('id', photoIds)
       .where('event_id', eventId)
       .delete();
-    
+
+    // Webhook (#327): one photo.deleted per row in the bulk batch.
+    try {
+      const webhookService = require('../services/webhookService');
+      for (const photo of photos) {
+        await webhookService.fire('photo.deleted', {
+          event: { id: parseInt(eventId, 10), slug: event?.slug, event_name: event?.event_name },
+          photo: { id: photo.id, filename: photo.filename },
+        });
+      }
+    } catch (e) { /* non-fatal */ }
+
     // Log activity
     await logActivity('photos_bulk_deleted',
       { count: photos.length, eventName: event.event_name },
@@ -866,18 +897,33 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const { resolvePhotoFilePath } = require('../services/photoResolver');
+    const { resolvePhotoFilePath, resolvePhotoStorageKey } = require('../services/photoResolver');
     const event = await db('events').where('id', eventId).first();
+    const storage = getStorage();
+    const storageKey = resolvePhotoStorageKey(event, photo);
+
+    if (storageKey) {
+      const stat = await storage.stat(storageKey);
+      if (!stat) {
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
+      res.set({
+        'Content-Type': photo.mime_type || 'application/octet-stream',
+        'Content-Length': stat.size,
+        'Content-Disposition': `attachment; filename="${photo.filename}"`,
+      });
+      const stream = await storage.get(storageKey);
+      stream.pipe(res);
+      return;
+    }
+
+    // External-mode photos still live on local disk.
     const filePath = resolvePhotoFilePath(event, photo);
-    
-    // Check if file exists
     try {
       await fs.access(filePath);
     } catch (error) {
       return res.status(404).json({ error: 'Photo file not found' });
     }
-    
-    // Send file
     res.download(filePath, photo.filename);
   } catch (error) {
     console.error('Error downloading photo:', error);
@@ -1033,23 +1079,33 @@ router.get('/:eventId/photo/:photoId', adminAuth, requirePermission('photos.view
       return res.status(404).json({ error: 'Photo not found' });
     }
     
-    const { resolvePhotoFilePath } = require('../services/photoResolver');
+    const { resolvePhotoFilePath, resolvePhotoStorageKey } = require('../services/photoResolver');
     const event = await db('events').where('id', eventId).first();
+    const storageKey = resolvePhotoStorageKey(event, photo);
+
+    res.setHeader('Content-Type', `image/${path.extname(photo.filename).slice(1)}`);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+    if (storageKey) {
+      const storage = getStorage();
+      const stat = await storage.stat(storageKey);
+      if (!stat) {
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
+      res.setHeader('Content-Length', stat.size);
+      const stream = await storage.get(storageKey);
+      stream.pipe(res);
+      return;
+    }
+
+    // External-mode photos still live on local disk.
     const filePath = resolvePhotoFilePath(event, photo);
-    
-    // Check if file exists
     try {
       await fs.access(filePath);
     } catch (error) {
       return res.status(404).json({ error: 'Photo file not found' });
     }
-    
-    // Set appropriate headers
-    res.setHeader('Content-Type', `image/${path.extname(photo.filename).slice(1)}`);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
-    // Send file (sendFile requires absolute path)
     res.sendFile(path.resolve(filePath));
   } catch (error) {
     console.error('Error serving photo:', error);
@@ -1073,22 +1129,24 @@ router.get('/:eventId/thumbnail/:photoId', adminAuth, requirePermission('photos.
     
     // Ensure thumbnail exists and is valid, regenerate if needed
     const thumbnailPath = await ensureThumbnail(photo);
-    
+
     if (!thumbnailPath) {
       console.error(`Failed to generate thumbnail for photo ${photoId}`);
       return res.status(404).json({ error: 'Thumbnail generation failed' });
     }
-    
-    const storagePath = getStoragePath();
-    const filePath = path.join(storagePath, thumbnailPath);
-    
-    // Set appropriate headers
+
     res.setHeader('Content-Type', 'image/jpeg'); // Thumbnails are always JPEG
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
-    // Send file (sendFile requires absolute path)
-    res.sendFile(path.resolve(filePath));
+
+    const storage = getStorage();
+    const stat = await storage.stat(thumbnailPath);
+    if (!stat) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+    res.setHeader('Content-Length', stat.size);
+    const stream = await storage.get(thumbnailPath);
+    stream.pipe(res);
   } catch (error) {
     console.error('Error serving thumbnail:', error);
     console.error('Photo ID:', req.params.photoId);

@@ -6,7 +6,7 @@ import { ArrowLeft, Home } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Loading, Card } from '../../components/common';
 import { cmsService } from '../../services/cms.service';
-import { api } from '../../config/api';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import '../../styles/prose-overrides.css';
 
 export const LegalPage: React.FC = () => {
@@ -18,15 +18,7 @@ export const LegalPage: React.FC = () => {
   const pathname = window.location.pathname;
   const pageSlug = slug || pathname.split('/').pop() || '';
   
-  // Fetch settings to get default language
-  const { data: settingsData } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
 
   // Use admin settings language
   const lang = settingsData?.default_language || 'en';
