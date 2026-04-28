@@ -533,6 +533,7 @@ app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
+app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));
 // Public v1 API for n8n / external integrations (#322). Mounted under
 // /api/v1; auth handled per-route via apiTokenAuth (Bearer tokens).
 app.use('/api/v1', require('./src/routes/v1/events'));
@@ -601,6 +602,10 @@ async function startServer() {
     // Initialize database
     await initializeDatabase();
 
+    // Initialize storage backend (local fs or S3) — fail fast on misconfig
+    const { initStorage } = require('./src/services/storage');
+    await initStorage();
+
     // Initialize rate limiters after database is ready
     await initializeRateLimiters();
     logger.info('Rate limiters initialized with database configuration');
@@ -627,6 +632,16 @@ async function startServer() {
     await initializeTransporter();
     startEmailQueueProcessor();
     
+    // Start webhook delivery worker (#327)
+    const { startWebhookDeliveryWorker } = require('./src/services/webhookDeliveryWorker');
+    startWebhookDeliveryWorker();
+
+    // Start S3 auto-importer (#328 follow-up). No-op when STORAGE_AUTO_IMPORT
+    // is unset OR STORAGE_BACKEND=local — replaces the chokidar watcher
+    // for S3-mode deployments that drop files into the bucket directly.
+    const { startS3AutoImporter } = require('./src/services/s3AutoImporter');
+    startS3AutoImporter();
+
     // Start backup service
     await startBackupService();
     

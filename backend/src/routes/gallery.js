@@ -15,6 +15,7 @@ const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
 const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
 const downloadZipService = require('../services/downloadZipService');
+const { getStorage } = require('../services/storage');
 const fs = require('fs');
 
 // Get storage path from environment or default
@@ -629,10 +630,39 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     // Try to serve pre-generated zip (instant download with Content-Length)
     const zipInfo = await downloadZipService.getZipInfo(req.event.id);
     if (zipInfo) {
+      const storage = getStorage();
+
+      // Per-event presigned-URL fast path (#328 follow-up). Conditions:
+      //   1. STORAGE_BACKEND=s3 (presigned URLs are S3-only)
+      //   2. event.allow_presigned_download is true (admin opted in)
+      //   3. Watermarking is OFF for this event — presigned URLs bypass the
+      //      backend, which means no watermark on bytes leaving S3.
+      // Falls through to streaming on any condition mismatch.
+      const wantsPresigned = req.event.allow_presigned_download === true || req.event.allow_presigned_download === 1;
+      const watermarkOnEvent = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+      if (wantsPresigned && storage.kind() === 's3' && !watermarkOnEvent) {
+        try {
+          const url = await storage.signedUrl(zipInfo.key, 300); // 5 min
+          db('access_logs').insert({
+            event_id: req.event.id,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent'],
+            action: 'download_all_presigned'
+          }).catch(() => {});
+          res.redirect(302, url);
+          return;
+        } catch (err) {
+          logger.warn('presigned download-all failed, falling back to stream', {
+            eventId: req.event.id,
+            error: err.message,
+          });
+        }
+      }
+
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Length', zipInfo.size);
       res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
-      const stream = fs.createReadStream(zipInfo.path);
+      const stream = await storage.get(zipInfo.key);
       stream.pipe(res);
 
       // Log bulk download
@@ -686,46 +716,49 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
     } : null;
 
-    // Add photos to archive
+    // Add photos to archive — managed photos via storage backend, external via local path.
+    const { resolvePhotoStorageKey } = require('../services/photoResolver');
+    const storage = getStorage();
     for (const photo of photos) {
-      let filePath;
-      try {
-        filePath = resolvePhotoFilePath(req.event, photo);
-      } catch (resolveError) {
-        logger.warn('Skipping photo in bulk download due to unresolved path', {
-          slug: req.params.slug,
-          photoId: photo.id,
-          eventId: req.event.id,
-          error: resolveError.message,
-        });
-        continue;
-      }
-
-      // Determine the file name in the archive
+      const storageKey = resolvePhotoStorageKey(req.event, photo);
       let archiveName;
       if (hasMultipleTypes) {
-        // Use photo type as folder
         const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
         archiveName = path.join(folderName, photo.filename);
       } else {
-        // No folders, just the filename
         archiveName = photo.filename;
       }
 
-      if (shouldApplyWatermark && effectiveSettings) {
-        try {
-          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
+      try {
+        if (shouldApplyWatermark && effectiveSettings) {
+          // Watermark service operates on a local path. For managed photos in
+          // S3 mode, materialize a tmp local copy first.
+          const { withLocalCopy } = require('../services/imageProcessor');
+          const sourceForWatermark = storageKey
+            ? null
+            : resolvePhotoFilePath(req.event, photo);
+
+          const watermarkedBuffer = storageKey
+            ? await withLocalCopy(storageKey, (localPath) =>
+                watermarkService.applyWatermark(localPath, effectiveSettings)
+              )
+            : await watermarkService.applyWatermark(sourceForWatermark, effectiveSettings);
+
           archive.append(watermarkedBuffer, { name: archiveName });
-        } catch (watermarkError) {
-          logger.warn('Failed to watermark photo for bulk download, skipping original to avoid leak', {
-            slug: req.params.slug,
-            photoId: photo.id,
-            eventId: req.event.id,
-            error: watermarkError.message,
-          });
+        } else if (storageKey) {
+          const stream = await storage.get(storageKey);
+          archive.append(stream, { name: archiveName });
+        } else {
+          const filePath = resolvePhotoFilePath(req.event, photo);
+          archive.file(filePath, { name: archiveName });
         }
-      } else {
-        archive.file(filePath, { name: archiveName });
+      } catch (err) {
+        logger.warn('Skipping photo in bulk download due to error', {
+          slug: req.params.slug,
+          photoId: photo.id,
+          eventId: req.event.id,
+          error: err.message,
+        });
       }
     }
 
@@ -811,31 +844,32 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
       text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
     } : null;
 
+    const { resolvePhotoStorageKey: resolveSelectedKey } = require('../services/photoResolver');
+    const { withLocalCopy: withSelectedLocalCopy } = require('../services/imageProcessor');
+    const selectedStorage = getStorage();
     for (const photo of photos) {
+      const name = photo.filename || `photo-${photo.id}.jpg`;
+      const storageKey = resolveSelectedKey(req.event, photo);
       try {
-        const filePath = resolvePhotoFilePath(req.event, photo);
-        const name = photo.filename || `photo-${photo.id}.jpg`;
         if (shouldApplyWatermark && effectiveSettings) {
-          try {
-            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
-            archive.append(watermarkedBuffer, { name });
-          } catch (watermarkError) {
-            logger.warn('Failed to watermark selected photo, skipping original to avoid leak', {
-              slug: req.params.slug,
-              photoId: photo.id,
-              eventId: req.event.id,
-              error: watermarkError.message,
-            });
-          }
+          const buf = storageKey
+            ? await withSelectedLocalCopy(storageKey, (lp) =>
+                watermarkService.applyWatermark(lp, effectiveSettings)
+              )
+            : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), effectiveSettings);
+          archive.append(buf, { name });
+        } else if (storageKey) {
+          const stream = await selectedStorage.get(storageKey);
+          archive.append(stream, { name });
         } else {
-          archive.file(filePath, { name });
+          archive.file(resolvePhotoFilePath(req.event, photo), { name });
         }
-      } catch (resolveError) {
-        logger.warn('Skipping selected photo due to unresolved path', {
+      } catch (err) {
+        logger.warn('Skipping selected photo due to error', {
           slug: req.params.slug,
           photoId: photo.id,
           eventId: req.event.id,
-          error: resolveError.message,
+          error: err.message,
         });
       }
     }

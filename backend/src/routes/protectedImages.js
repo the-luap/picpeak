@@ -1,11 +1,12 @@
 const express = require('express');
-const path = require('path');
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 const watermarkService = require('../services/watermarkService');
 const secureImageService = require('../services/secureImageService');
-const { getStoragePath } = require('../config/storage');
+const { getStorage } = require('../services/storage');
+const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('../services/photoResolver');
+const { withLocalCopy } = require('../services/imageProcessor');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -98,11 +99,11 @@ router.get('/:slug/photo/:photoId/view', verifyGalleryAccess, async (req, res) =
       fragmentImage: eventProtectionLevel === 'maximum'
     };
 
-    // Build full path to photo
-    const photoPath = path.join(getStoragePath(), 'events/active', req.event.slug, photo.path);
+    // Resolve photo location through the storage backend (managed) or local
+    // disk (external reference mode).
+    const storageKey = resolvePhotoStorageKey(req.event, photo);
+    const storage = getStorage();
 
-    // For basic/standard protection without special features, serve original file
-    // This avoids unnecessary recompression
     const needsProcessing = eventProtectionLevel === 'enhanced' ||
                             eventProtectionLevel === 'maximum' ||
                             protectionSettings.addFingerprint;
@@ -110,15 +111,25 @@ router.get('/:slug/photo/:photoId/view', verifyGalleryAccess, async (req, res) =
     let finalImage;
 
     if (!needsProcessing) {
-      // Serve original file without processing
-      const fs = require('fs').promises;
-      finalImage = await fs.readFile(photoPath);
+      // Serve original bytes via the storage backend (or local disk for external).
+      if (storageKey) {
+        const stream = await storage.get(storageKey);
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        finalImage = Buffer.concat(chunks);
+      } else {
+        const fs = require('fs').promises;
+        finalImage = await fs.readFile(resolvePhotoFilePath(req.event, photo));
+      }
     } else {
-      // Process image with protection measures
-      const processedImage = await secureImageService.processProtectedImage(photoPath, protectionSettings);
+      // secureImageService.processProtectedImage operates on a local path.
+      // Materialize a tmp local copy in S3 mode, then run processing.
+      const runProcessing = (lp) => secureImageService.processProtectedImage(lp, protectionSettings);
+      const processedImage = storageKey
+        ? await withLocalCopy(storageKey, runProcessing)
+        : await runProcessing(resolvePhotoFilePath(req.event, photo));
 
       if (processedImage.type === 'fragmented') {
-        // Return fragmented image data for canvas reconstruction
         return res.json({
           type: 'fragmented',
           fragments: processedImage.fragments.map(f => ({
@@ -273,12 +284,13 @@ router.get('/:slug/photo/:photoId/signed/:token', async (req, res) => {
     
     // Get watermark settings
     const watermarkSettings = await watermarkService.getWatermarkSettings();
-    
-    // Build full path to photo
-    const photoPath = path.join(getStoragePath(), 'events/active', event.slug, photo.path);
-    
-    // Apply watermark if enabled
-    const imageBuffer = await watermarkService.applyWatermark(photoPath, watermarkSettings);
+
+    // Apply watermark — managed photos are sourced via the storage backend
+    // (S3 mode materializes a tmp local copy via withLocalCopy).
+    const storageKey = resolvePhotoStorageKey(event, photo);
+    const imageBuffer = storageKey
+      ? await withLocalCopy(storageKey, (lp) => watermarkService.applyWatermark(lp, watermarkSettings))
+      : await watermarkService.applyWatermark(resolvePhotoFilePath(event, photo), watermarkSettings);
     
     // Set appropriate headers
     res.set({

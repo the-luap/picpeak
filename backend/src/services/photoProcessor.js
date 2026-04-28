@@ -4,9 +4,7 @@ const { db } = require('../database/db');
 const { generateThumbnail } = require('./imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { processUploadedVideo, isVideoMimeType } = require('./videoProcessor');
-
-// Get storage path from environment or default
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+const { getStorage } = require('./storage');
 
 function normalizeFiles(files) {
   // Handle null, undefined, or falsy values
@@ -99,11 +97,6 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         extension
       );
       
-      // Move file to event folder
-      const destPath = path.join(getStoragePath(), 'events/active', event.slug);
-      await fs.mkdir(destPath, { recursive: true });
-      
-      const newPath = path.join(destPath, newFilename);
       const tempPath = file?.path || file?.filepath || file?.tempFilePath;
 
       if (!tempPath) {
@@ -116,7 +109,7 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         throw new Error(`Uploaded file is missing a temporary path. File info: ${fileInfo}`);
       }
 
-      // Verify temp file exists before copying
+      // Verify temp file exists before processing
       try {
         await fs.access(tempPath);
       } catch (accessErr) {
@@ -127,56 +120,33 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         throw new Error(`Uploaded file not found at temporary location: ${tempPath}`);
       }
 
-      // Use copyFile and unlink instead of rename to avoid cross-device issues
-      try {
-        await fs.copyFile(tempPath, newPath);
-        console.log(`Successfully copied ${file.originalname} to ${newPath}`);
-      } catch (copyErr) {
-        console.error(`Failed to copy file from ${tempPath} to ${newPath}:`, copyErr);
-        throw new Error(`Failed to copy uploaded file: ${copyErr.message}`);
-      } finally {
-        // Clean up temp file with better error handling
-        try {
-          await fs.unlink(tempPath);
-          console.log(`Cleaned up temp file: ${tempPath}`);
-        } catch (unlinkErr) {
-          // Only warn if file exists but couldn't be deleted
-          // ENOENT means file was already deleted, which is fine
-          if (unlinkErr?.code !== 'ENOENT') {
-            console.warn(`Failed to clean up temp upload ${tempPath}:`, {
-              error: unlinkErr.message,
-              code: unlinkErr.code
-            });
-          }
-        }
-      }
-      
+      // Final storage key under events/active/{slug}/{newFilename}.
+      const relativePath = path.posix.join(event.slug, newFilename);
+      const finalKey = path.posix.join('events/active', relativePath);
+
       // Determine if this is a video or image
       const isVideo = isVideoMimeType(file.mimetype);
       const mediaType = isVideo ? 'video' : 'image';
 
-      // Generate thumbnail and extract metadata
+      // Generate thumbnail and extract metadata FROM the temp file (still on
+      // local disk) before uploading the original.
       let thumbnailPath;
       let videoMetadata = null;
       let imageMetadata = null;
 
       if (isVideo) {
-        // Process video: extract metadata and generate thumbnail
-        const thumbnailDir = path.join(getStoragePath(), 'thumbnails');
-        await fs.mkdir(thumbnailDir, { recursive: true });
-        const videoThumbnailPath = path.join(thumbnailDir, `thumb_${newFilename.replace(/\.[^.]+$/, '.jpg')}`);
-
-        const result = await processUploadedVideo(newPath, videoThumbnailPath);
+        const videoThumbnailKey = path.posix.join(
+          'thumbnails',
+          `thumb_${newFilename.replace(/\.[^.]+$/, '.jpg')}`
+        );
+        const result = await processUploadedVideo(tempPath, videoThumbnailKey);
         videoMetadata = result.metadata;
-        thumbnailPath = path.relative(getStoragePath(), videoThumbnailPath);
+        thumbnailPath = result.thumbnailKey;
       } else {
-        // Process image: generate thumbnail and extract dimensions
-        thumbnailPath = await generateThumbnail(newPath);
-
-        // Extract image dimensions using sharp
+        thumbnailPath = await generateThumbnail(tempPath);
         try {
           const sharp = require('sharp');
-          const metadata = await sharp(newPath).metadata();
+          const metadata = await sharp(tempPath).metadata();
           if (metadata.width && metadata.height) {
             imageMetadata = {
               width: metadata.width,
@@ -188,10 +158,29 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
         }
       }
 
-      // Calculate relative paths
-      const storagePath = getStoragePath();
-      const relativePath = path.relative(path.join(storagePath, 'events/active'), newPath);
-      const relativeThumbPath = thumbnailPath; // thumbnailPath is already relative to storage root
+      // Now upload the original through the storage backend and remove the
+      // local temp copy.
+      try {
+        await getStorage().putFromFile(finalKey, tempPath, {
+          contentType: file.mimetype,
+        });
+      } catch (uploadErr) {
+        console.error(`Failed to upload ${file.originalname} → ${finalKey}:`, uploadErr);
+        throw new Error(`Failed to upload to storage: ${uploadErr.message}`);
+      } finally {
+        try {
+          await fs.unlink(tempPath);
+        } catch (unlinkErr) {
+          if (unlinkErr?.code !== 'ENOENT') {
+            console.warn(`Failed to clean up temp upload ${tempPath}:`, {
+              error: unlinkErr.message,
+              code: unlinkErr.code
+            });
+          }
+        }
+      }
+
+      const relativeThumbPath = thumbnailPath;
 
       // Add to database with uploaded_by field and media metadata
       let insertResult;
@@ -247,7 +236,23 @@ async function processUploadedPhotos(files, eventId, uploadedBy = 'admin', categ
 
       // Commit transaction
       await trx.commit();
-      
+
+      // Webhook (#327) — fires for every entry path that lands in this
+      // service: guest upload + auto-import + admin upload via API.
+      try {
+        const webhookService = require('./webhookService');
+        await webhookService.fire('photo.uploaded', {
+          event: { id: event.id, slug: event.slug, event_name: event.event_name },
+          photo: {
+            id: photoId,
+            filename: newFilename,
+            original_filename: file.originalname,
+            size_bytes: file.size,
+            uploaded_by: uploadedBy,
+          },
+        });
+      } catch (e) { /* non-fatal */ }
+
       uploadedPhotos.push({
         id: photoId,
         filename: newFilename,

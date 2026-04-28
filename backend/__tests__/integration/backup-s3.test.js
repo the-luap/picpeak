@@ -7,12 +7,15 @@ const crypto = require('crypto');
 // Load services
 const backupService = require('../../src/services/backupService');
 const S3StorageAdapter = require('../../src/services/storage/s3Storage');
-const { db, initialize: initDb } = require('../../src/database/db');
+const { db, initializeDatabase: initDb } = require('../../src/database/db');
 const logger = require('../../src/utils/logger');
 
 // Test configuration
+// Defaults match the dev MinIO container in docker-compose.dev.yml (port 7104).
+// Override via TEST_S3_ENDPOINT / TEST_S3_ACCESS_KEY / TEST_S3_SECRET_KEY when running
+// against a different S3 endpoint (CI, hosted MinIO, real AWS, etc.).
 const TEST_CONFIG = {
-  endpoint: process.env.TEST_S3_ENDPOINT || 'http://localhost:9000',
+  endpoint: process.env.TEST_S3_ENDPOINT || 'http://localhost:7104',
   accessKeyId: process.env.TEST_S3_ACCESS_KEY || 'minioadmin',
   secretAccessKey: process.env.TEST_S3_SECRET_KEY || 'minioadmin',
   bucket: 'test-backup-bucket-' + Date.now(),
@@ -56,9 +59,17 @@ describe('S3 Backup Integration Tests', () => {
       }
     }
 
-    // Initialize database
-    await initDb();
-    await db.migrate.latest();
+    // Schema is expected to already be applied by `npm run migrate` against
+    // the dev database. db.migrate.latest() can't be used here because
+    // PicPeak's custom run-migrations.js tracks state in the `migrations`
+    // table (not knex's `knex_migrations`), so knex would try to re-apply
+    // every migration and crash on duplicate-table errors.
+    const ok = await db.schema.hasTable('events')
+      && await db.schema.hasTable('app_settings')
+      && await db.schema.hasTable('backup_runs');
+    if (!ok) {
+      throw new Error('Required tables missing — run `npm run migrate` against the dev DB first.');
+    }
 
     // Create test storage directory
     testStoragePath = path.join(__dirname, '../fixtures/test-storage');
@@ -468,15 +479,16 @@ describe('S3 Backup Integration Tests', () => {
       { setting_key: 'backup_max_file_size_mb', setting_value: '100' }
     ];
 
+    // Schema drift: app_settings has no created_at column anymore and the
+    // unique constraint is on setting_key alone, not (setting_type, key).
     for (const setting of settings) {
       await db('app_settings')
         .insert({
           setting_type: 'backup',
           ...setting,
-          created_at: new Date(),
-          updated_at: new Date()
+          updated_at: new Date(),
         })
-        .onConflict(['setting_type', 'setting_key'])
+        .onConflict('setting_key')
         .merge();
     }
   }

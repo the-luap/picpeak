@@ -2,7 +2,11 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const os = require('os');
+const crypto = require('crypto');
 const logger = require('../utils/logger');
+const { getStorage } = require('./storage');
 
 // Set FFmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -45,36 +49,48 @@ async function extractVideoMetadata(videoPath) {
 }
 
 /**
- * Generate thumbnail from video
- * @param {string} videoPath - Path to the video file
- * @param {string} outputPath - Path for the output thumbnail
- * @param {Object} options - Thumbnail options
- * @returns {Promise<string>} - Path to generated thumbnail
+ * Generate a video thumbnail and persist it via the storage backend.
+ *
+ * @param {string} videoPath - Local path to the video file (ffmpeg needs a real fs path).
+ * @param {string} thumbnailKey - Relative storage key the thumbnail will be saved under
+ *                                (e.g. "thumbnails/thumb_video.jpg").
+ * @param {Object} options
+ * @returns {Promise<string>} The thumbnail's relative storage key.
  */
-async function generateVideoThumbnail(videoPath, outputPath, options = {}) {
+async function generateVideoThumbnail(videoPath, thumbnailKey, options = {}) {
   const {
-    timeOffset = '00:00:01', // Take screenshot at 1 second
-    size = '300x300',
-    quality = 2 // 1-31, lower is better quality
+    timeOffset = '00:00:01',
+    size = '300x300'
   } = options;
 
-  return new Promise((resolve, reject) => {
-    ffmpeg(videoPath)
-      .screenshots({
-        timestamps: [timeOffset],
-        filename: path.basename(outputPath),
-        folder: path.dirname(outputPath),
-        size: size
-      })
-      .on('end', () => {
-        logger.info('Video thumbnail generated', { videoPath, outputPath });
-        resolve(outputPath);
-      })
-      .on('error', (err) => {
-        logger.error('Error generating video thumbnail', { error: err.message, videoPath });
-        reject(err);
-      });
-  });
+  const storage = getStorage();
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'picpeak-vidthumb-'));
+  const tmpFilename = `${crypto.randomBytes(4).toString('hex')}_${path.basename(thumbnailKey)}`;
+  const tmpPath = path.join(tmpDir, tmpFilename);
+
+  try {
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .screenshots({
+          timestamps: [timeOffset],
+          filename: tmpFilename,
+          folder: tmpDir,
+          size: size
+        })
+        .on('end', () => resolve())
+        .on('error', (err) => reject(err));
+    });
+
+    if (!fsSync.existsSync(tmpPath)) {
+      throw new Error('ffmpeg did not produce a thumbnail file');
+    }
+
+    await storage.putFromFile(thumbnailKey, tmpPath, { contentType: 'image/jpeg' });
+    logger.info('Video thumbnail generated', { videoPath, thumbnailKey });
+    return thumbnailKey;
+  } finally {
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 /**
@@ -108,37 +124,33 @@ async function getVideoDuration(videoPath) {
 }
 
 /**
- * Process uploaded video - extract metadata and generate thumbnail
- * @param {string} videoPath - Path to the video file
- * @param {string} thumbnailPath - Path for the thumbnail
- * @param {Object} options - Processing options
- * @returns {Promise<Object>} - Video metadata and processing result
+ * Process an uploaded video: extract metadata and produce a thumbnail through
+ * the storage backend.
+ *
+ * @param {string} videoPath - Local path to the source video (ffmpeg requires fs).
+ * @param {string} thumbnailKey - Relative storage key for the thumbnail.
+ * @returns {Promise<{success: boolean, metadata: Object, thumbnailKey: string}>}
  */
-async function processUploadedVideo(videoPath, thumbnailPath, options = {}) {
+async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
   try {
-    // Validate video
     const isValid = await isValidVideo(videoPath);
     if (!isValid) {
       throw new Error('Invalid video file');
     }
 
-    // Extract metadata
     const metadata = await extractVideoMetadata(videoPath);
+    await generateVideoThumbnail(videoPath, thumbnailKey, options);
 
-    // Generate thumbnail
-    await generateVideoThumbnail(videoPath, thumbnailPath, options);
-
-    // Verify thumbnail was created
-    try {
-      await fs.access(thumbnailPath);
-    } catch (err) {
-      throw new Error('Thumbnail generation failed');
+    const storage = getStorage();
+    const exists = await storage.exists(thumbnailKey);
+    if (!exists) {
+      throw new Error('Thumbnail generation failed (not in storage)');
     }
 
     return {
       success: true,
       metadata,
-      thumbnailPath
+      thumbnailKey
     };
   } catch (error) {
     logger.error('Error processing video', { error: error.message, videoPath });

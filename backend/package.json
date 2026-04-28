@@ -10,6 +10,7 @@
     "migrate:safe": "node migrations/run-migrations-safe.js",
     "generate:watermarks": "node scripts/generate-watermarks.js",
     "test": "jest",
+    "test:s3": "SKIP_S3_TESTS=false jest __tests__/integration/backup-s3",
     "lint": "eslint src/"
   },
   "dependencies": {

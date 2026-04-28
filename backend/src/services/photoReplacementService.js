@@ -13,9 +13,9 @@ const { db } = require('../database/db');
 const { generateThumbnail, extractCaptureDate } = require('./imageProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const watermarkGeneratorService = require('./watermarkGeneratorService');
+const { getStorage } = require('./storage');
+const { resolvePhotoStorageKey } = require('./photoResolver');
 const logger = require('../utils/logger');
-
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
 
 /**
  * Find a replacement candidate by matching original_filename (case-insensitive).
@@ -42,46 +42,21 @@ async function findReplacementCandidate(eventId, originalFilename) {
  * @returns {{ success: boolean, photo?: Object, error?: string }}
  */
 async function replacePhoto(existingPhoto, newFileTempPath, { originalFilename, mimeType, event }) {
-  const eventDir = path.join(getStoragePath(), 'events', 'active', event.slug);
   const categorySlug = existingPhoto.type === 'collage' ? 'collages' : 'individual';
-  const targetDir = path.join(eventDir, categorySlug);
 
   try {
-    // Generate new filename
+    // Generate new filename + storage key
     const ext = path.extname(originalFilename);
     const newFilename = generatePhotoFilename(event.event_name, categorySlug, Date.now(), ext);
-    const tempTargetPath = path.join(targetDir, `_replacing_${Date.now()}_${newFilename}`);
-    const finalPath = path.join(targetDir, newFilename);
-    const relativePath = path.join(event.slug, categorySlug, newFilename);
+    const relativePath = path.posix.join(event.slug, categorySlug, newFilename);
+    const finalKey = path.posix.join('events/active', relativePath);
+    const storage = getStorage();
 
-    // Write new file to temp name in target directory
-    await fsp.mkdir(targetDir, { recursive: true });
-    await fsp.copyFile(newFileTempPath, tempTargetPath);
-
-    // Delete old physical file
-    const oldFilePath = path.join(getStoragePath(), 'events', 'active', existingPhoto.path);
-    await fsp.unlink(oldFilePath).catch(() => {});
-
-    // Delete old thumbnail
-    if (existingPhoto.thumbnail_path) {
-      const oldThumbPath = path.join(getStoragePath(), existingPhoto.thumbnail_path);
-      await fsp.unlink(oldThumbPath).catch(() => {});
-    }
-
-    // Delete old watermark cache
-    try {
-      await watermarkGeneratorService.deleteForPhoto(existingPhoto.id);
-    } catch {
-      // Ignore — watermark may not exist
-    }
-
-    // Rename temp → final
-    await fsp.rename(tempTargetPath, finalPath);
-
-    // Extract metadata from new file
+    // Sharp/EXIF need a local file. The temp file from multer still satisfies
+    // that — we read metadata before uploading the original to storage.
     let capturedAt = null;
     try {
-      capturedAt = await extractCaptureDate(finalPath);
+      capturedAt = await extractCaptureDate(newFileTempPath);
     } catch {
       // No EXIF — keep null
     }
@@ -89,22 +64,40 @@ async function replacePhoto(existingPhoto, newFileTempPath, { originalFilename, 
     let width = null;
     let height = null;
     try {
-      const metadata = await sharp(finalPath).metadata();
+      const metadata = await sharp(newFileTempPath).metadata();
       width = metadata.width || null;
       height = metadata.height || null;
     } catch {
       // Non-image or corrupt
     }
 
-    const stats = await fsp.stat(finalPath);
+    const stats = await fsp.stat(newFileTempPath);
 
-    // Generate new thumbnail
+    // Generate new thumbnail FROM the local temp before uploading the original.
     let thumbnailPath = null;
     try {
-      thumbnailPath = await generateThumbnail(finalPath);
+      thumbnailPath = await generateThumbnail(newFileTempPath);
     } catch {
       logger.warn('Failed to generate thumbnail for replaced photo', { photoId: existingPhoto.id });
     }
+
+    // Delete old assets BEFORE uploading the new key — if they share the path
+    // (rare but possible if filename collision), we want the new content.
+    const oldOriginalKey = resolvePhotoStorageKey(event, existingPhoto);
+    if (oldOriginalKey && oldOriginalKey !== finalKey) {
+      await storage.delete(oldOriginalKey).catch(() => {});
+    }
+    if (existingPhoto.thumbnail_path && existingPhoto.thumbnail_path !== thumbnailPath) {
+      await storage.delete(existingPhoto.thumbnail_path).catch(() => {});
+    }
+    try {
+      await watermarkGeneratorService.deleteForPhoto(existingPhoto.id);
+    } catch {
+      // Ignore — watermark may not exist
+    }
+
+    // Upload the new original.
+    await storage.putFromFile(finalKey, newFileTempPath, { contentType: mimeType });
 
     // Update DB record — preserve id, event_id, category_id, type, visibility,
     // uploaded_at, sort_order, feedback counts, view/download counts
