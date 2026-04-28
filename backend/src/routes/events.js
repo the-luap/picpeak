@@ -190,6 +190,18 @@ router.post('/', adminAuth, [
       welcome_message: welcome_message || ''
     });
 
+    // Webhook lifecycle (#327). Legacy public endpoint — events go live
+    // immediately so created + published fire together.
+    try {
+      const webhookService = require('../services/webhookService');
+      await webhookService.fire('event.created', {
+        event: { id: eventId, slug, event_name, event_type, event_date, share_url: shareUrl },
+      });
+      await webhookService.fire('event.published', {
+        event: { id: eventId, slug, event_name, share_url: shareUrl },
+      });
+    } catch (e) { /* non-fatal */ }
+
     res.json({
       id: eventId,
       slug,

@@ -298,6 +298,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('enable_devtools_protection').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
+  // #328 follow-up: per-event opt-in for presigned-URL "Download All".
+  // Bypasses watermarks; admin must enable knowingly.
+  body('allow_presigned_download').optional().isBoolean(),
   body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
   // Hero logo settings
   body('hero_logo_visible').optional().isBoolean(),
@@ -344,6 +347,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       enable_devtools_protection: enableDevtoolsProtectionInput,
       watermark_downloads = false,
       watermark_text = null,
+      allow_presigned_download = false,
       require_password: requirePasswordInput,
       // Feedback settings
       feedback_enabled = false,
@@ -557,6 +561,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       enable_devtools_protection: formatBoolean(effectiveEnableDevtoolsProtection),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
+      allow_presigned_download: formatBoolean(allow_presigned_download === true || allow_presigned_download === 'true'),
       require_password: formatBoolean(requirePassword),
       css_template_id: css_template_id || null,
       hero_logo_visible: formatBoolean(effectiveHeroLogoVisible),
@@ -597,12 +602,21 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     }
     
     // Log activity
-    await logActivity('event_created', 
-      { event_type, expires_at, require_password: requirePassword, password_strength: passwordValidation?.score }, 
-      eventId, 
+    await logActivity('event_created',
+      { event_type, expires_at, require_password: requirePassword, password_strength: passwordValidation?.score },
+      eventId,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
-    
+
+    // Fire event.created webhook (#327). If the event is being published
+    // immediately (not a draft), event.published also fires below.
+    try {
+      const webhookService = require('../services/webhookService');
+      await webhookService.fire('event.created', {
+        event: { id: eventId, slug, event_name, event_type, event_date, is_draft: parseBooleanInput(is_draft, true) },
+      });
+    } catch (e) { /* webhookService.fire never throws but be defensive */ }
+
     // Queue creation email (only if there is a recipient and event is not a draft)
     // Language detection is handled by email processor
     const isDraft = parseBooleanInput(is_draft, true);
@@ -639,7 +653,19 @@ router.post('/', adminAuth, requirePermission('events.create'), [
         // scheduled_at will use default value
       });
     }
-    
+
+    // Fire event.published when the event is created NOT as a draft. The
+    // separate /publish endpoint fires it for the draft → live transition;
+    // this covers the "create-and-publish in one shot" path.
+    if (!isDraft) {
+      try {
+        const webhookService = require('../services/webhookService');
+        await webhookService.fire('event.published', {
+          event: { id: eventId, slug, event_name, share_url: shareUrl },
+        });
+      } catch (e) { /* non-fatal */ }
+    }
+
     res.json({
       id: eventId,
       slug,
@@ -875,6 +901,15 @@ router.post('/:id/publish', adminAuth, requirePermission('events.edit'), require
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    // Fire event.published webhook (#327) — draft → live transition.
+    try {
+      const webhookService = require('../services/webhookService');
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
+      await webhookService.fire('event.published', {
+        event: { id: parseInt(id, 10), slug: event.slug, event_name: event.event_name, share_url: shareUrl },
+      });
+    } catch (e) { /* non-fatal */ }
+
     res.json({ message: 'Event published successfully', is_draft: false });
   } catch (error) {
     logger.error('Error publishing event:', { error: error.message });
@@ -912,6 +947,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
+  body('allow_presigned_download').optional().isBoolean(),
   body('source_mode').optional().isIn(['managed', 'reference']),
   body('external_path').optional({ nullable: true }).isString().trim(),
   body('require_password').optional().isBoolean(),

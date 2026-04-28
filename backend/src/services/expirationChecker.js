@@ -84,7 +84,16 @@ async function handleExpiredEvent(event) {
   try {
     // Mark as inactive
     await db('events').where('id', event.id).update({ is_active: formatBoolean(false) });
-    
+
+    // Fire event.expired BEFORE the cascading archive call so receivers
+    // get the lifecycle in order (expired → archived).
+    try {
+      const webhookService = require('./webhookService');
+      await webhookService.fire('event.expired', {
+        event: { id: event.id, slug: event.slug, event_name: event.event_name, expires_at: event.expires_at },
+      });
+    } catch (e) { /* non-fatal */ }
+
     // Queue expiration emails
     const recipientEmail = event.customer_email || event.host_email;
     const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
