@@ -470,6 +470,13 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+// OG/Twitter-card preview endpoint for gallery share URLs. Crawlers (WhatsApp,
+// Slack, Facebook, etc.) don't execute JS, so the SPA's client-side meta tags
+// never reach them. nginx routes UA-detected crawlers from /gallery/:slug to
+// here; humans still get the SPA via try_files.
+const { isSocialCrawler, handleGalleryOgRequest } = require('./src/services/galleryOgService');
+app.get('/og/gallery/:slug', handleGalleryOgRequest);
+
 // robots.txt endpoint (dynamic, served from DB settings)
 const { generateRobotsTxt } = require('./src/services/robotsTxtService');
 app.get('/robots.txt', async (req, res) => {
@@ -576,7 +583,16 @@ try {
       res.sendFile(indexPath);
     });
 
-    // SPA fallback for admin + gallery routes
+    // SPA fallback for admin + gallery routes. For gallery URLs we intercept
+    // social-crawler User-Agents and serve OG/Twitter-card metadata so link
+    // previews show the event name + branding instead of the SPA stub.
+    app.get('/gallery/:slug/:token?', (req, res, next) => {
+      if (isSocialCrawler(req.get('user-agent'))) {
+        return handleGalleryOgRequest(req, res);
+      }
+      return next();
+    }, (req, res) => res.sendFile(indexPath));
+
     app.get(['/admin', '/admin/*', '/gallery/*'], (req, res) => {
       res.sendFile(indexPath);
     });

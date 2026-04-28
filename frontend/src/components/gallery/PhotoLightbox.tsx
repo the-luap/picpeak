@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
 import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star, Loader2 } from 'lucide-react';
 import type { Photo } from '../../types';
@@ -47,6 +47,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
+  // Ref (not state) so handleTouchEnd reads the value set by handleTouchStart
+  // even when both fire in the same render batch.
+  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const [showFeedback, setShowFeedback] = useState(initialShowFeedback);
   const [isSmallScreen, setIsSmallScreen] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [feedbackSettings, setFeedbackSettings] = useState<{
@@ -362,7 +365,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     }
   };
 
-  // Touch event handlers for pinch-to-zoom
+  // Touch event handlers: pinch-to-zoom (2 fingers) + single-finger swipe nav.
+  // Swipe is suppressed while zoomed in so the user can pan instead.
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const touch1 = e.touches[0];
@@ -372,6 +376,10 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientY - touch1.clientY
       );
       setTouchDistance(distance);
+      swipeStartRef.current = null;
+    } else if (e.touches.length === 1 && zoom <= 1) {
+      const t = e.touches[0];
+      swipeStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
     }
   };
 
@@ -383,7 +391,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientX - touch1.clientX,
         touch2.clientY - touch1.clientY
       );
-      
+
       const scale = newDistance / touchDistance;
       const newZoom = Math.max(1, Math.min(3, zoom * scale));
       setZoom(newZoom);
@@ -391,8 +399,21 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
     setTouchDistance(null);
+    const start = swipeStartRef.current;
+    if (start && e.changedTouches.length > 0) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      const dt = Date.now() - start.t;
+      // Horizontal swipe: > 50px and dominant over vertical, completed in < 600ms.
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2 && dt < 600) {
+        if (dx > 0) goToPrevious();
+        else goToNext();
+      }
+    }
+    swipeStartRef.current = null;
   };
 
   // Apply protection class to the lightbox container
@@ -405,12 +426,16 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
   return (
     <div className={lightboxClass}>
-      {/* Close button */}
+      {/* Close button. top respects iOS safe-area (notch) so it doesn't
+         disappear under the camera/dynamic-island. */}
       <button
         onClick={onClose}
-        className="absolute top-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
+        className="absolute p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
         aria-label="Close"
-        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : '1rem' }}
+        style={{
+          top: 'max(1rem, env(safe-area-inset-top))',
+          right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : 'max(1rem, env(safe-area-inset-right))'
+        }}
       >
         <X className="w-6 h-6 text-white" />
       </button>
@@ -435,19 +460,25 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </button>
       ) : null}
 
-      {/* Bottom toolbar */}
+      {/* Bottom toolbar. flex-wrap + reduced gap/padding on mobile prevent
+         the action row from clipping when feedback (likes / 5-star ratings /
+         comments) is enabled. pb-[env(safe-area-inset-bottom)] keeps the
+         buttons above the iOS home indicator. */}
       <div
-        className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-20"
-        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0 }}
+        className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent px-3 pt-3 pb-3 sm:p-4 z-20"
+        style={{
+          right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))'
+        }}
       >
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="text-white">
             <p className="text-sm opacity-75">
               {currentIndex + 1} / {photos.length}
             </p>
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
             <button
               onClick={handleZoomOut}
               disabled={zoom <= 1}
@@ -617,8 +648,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         )}
       </div>
 
-      {/* Touch/swipe indicators for mobile */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-white text-sm opacity-50 pointer-events-none md:hidden z-20">
+      {/* Touch/swipe hint for mobile. Sits above the bottom toolbar
+         (which can wrap to two rows when feedback controls are enabled). */}
+      <div className="absolute bottom-40 left-1/2 -translate-x-1/2 text-white text-sm opacity-50 pointer-events-none md:hidden z-20">
         Swipe to navigate
       </div>
 

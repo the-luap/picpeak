@@ -7,6 +7,7 @@ export interface Event {
   event_date: string | null;
   customer_name?: string;
   customer_email: string;
+  customer_phone?: string | null;
   admin_email: string;
   welcome_message?: string;
   color_theme?: string;
