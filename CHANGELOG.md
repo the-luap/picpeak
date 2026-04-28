@@ -5,6 +5,23 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.31.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.30.0-beta.0...v3.31.0-beta.0) (2026-04-28)
+
+
+### Features
+
+* **frontend:** dedupe /public/settings via shared usePublicSettings hook ([#325](https://github.com/the-luap/picpeak/issues/325)) ([3d4ae4d](https://github.com/the-luap/picpeak/commit/3d4ae4d7e9f9995d93563e8092e05215362afb3b))
+* native S3 storage backend ([#328](https://github.com/the-luap/picpeak/issues/328)) + presigned download follow-up ([1b717ce](https://github.com/the-luap/picpeak/commit/1b717ce5ededa343d2fbb7e1c3493b4434743565))
+* outbound webhooks for event/photo lifecycle ([#327](https://github.com/the-luap/picpeak/issues/327)) ([c488f48](https://github.com/the-luap/picpeak/commit/c488f481caacf0d63dafc47f509e8de2708bc30f))
+* presigned download UI + S3 prefix walker auto-importer (follow-ups) ([446d80a](https://github.com/the-luap/picpeak/commit/446d80a4cc5eb0389994e29585b2a98dad373db2))
+* S3 storage + webhooks + settings dedupe + backup fixes ([06d54be](https://github.com/the-luap/picpeak/commit/06d54bec4d0afc4a1b9ba6f2449ed7d79f1d3e8f))
+
+
+### Bug Fixes
+
+* **backup:** cron schedule mapping + manifest format detection + bigint coerce ([ab4095f](https://github.com/the-luap/picpeak/commit/ab4095f5928b1476009cddfd3444d6f5b58b034d))
+* **backup:** incremental backups against S3 + jsonb stats parsing ([e232f9f](https://github.com/the-luap/picpeak/commit/e232f9f2cf54aeba1e16d769397428206a0f1801))
+
 ## [3.30.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.29.1-beta.0...v3.30.0-beta.0) (2026-04-27)
 
 
