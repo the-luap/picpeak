@@ -6,7 +6,7 @@ import DOMPurify from 'dompurify';
 import { Card } from './Card';
 import { Loading } from './Loading';
 import { cmsService } from '../../services/cms.service';
-import { api } from '../../config/api';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { buildResourceUrl } from '../../utils/url';
 import '../../styles/prose-overrides.css';
 
@@ -33,14 +33,7 @@ const ALLOWED_ATTR = ['href', 'target', 'rel', 'class', 'style', 'src', 'alt', '
 export const CMSContentBlock: React.FC<CMSContentBlockProps> = ({ slug, fallback }) => {
   const { i18n } = useTranslation();
 
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: settings } = usePublicSettings();
 
   const lang = settings?.default_language || i18n.language || 'en';
 

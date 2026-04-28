@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Input, Card, ReCaptcha } from '../../components/common';
 import { useAdminAuth } from '../../contexts';
 import { authService } from '../../services/auth.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { api } from '../../config/api';
 
 export const AdminLoginPage: React.FC = () => {
@@ -25,15 +25,7 @@ export const AdminLoginPage: React.FC = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
-  // Fetch branding settings (unauthenticated)
-  const { data: settingsData } = useQuery({
-    queryKey: ['admin-login-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
 
   const companyName = settingsData?.branding_company_name?.trim() || 'PicPeak';
   const logoUrl = settingsData?.branding_logo_url?.trim();

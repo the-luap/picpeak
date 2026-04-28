@@ -4,7 +4,7 @@ import { AlertCircle, Clock } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../hooks/useLocalizedDate';
-import { useQuery } from '@tanstack/react-query';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 
 import { Card, CardContent, Input, Button, ReCaptcha, CMSContentBlock } from '../components/common';
 import { useGalleryAuth, useTheme } from '../contexts';
@@ -13,7 +13,6 @@ import { GalleryView } from '../components/gallery';
 import { GallerySkeleton } from '../components/gallery/GallerySkeleton';
 import { analyticsService } from '../services/analytics.service';
 import { galleryService } from '../services';
-import { api } from '../config/api';
 import { GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { buildResourceUrl } from '../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../utils/accessControl';
@@ -106,15 +105,7 @@ export const GalleryPage: React.FC = () => {
     setAutoLoginAttempted(false);
   }, [resolvedSlug]);
   
-  // Fetch branding settings
-  const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['gallery-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData, isLoading: isLoadingSettings } = usePublicSettings();
   
   // Set language from admin settings when on login page
   React.useEffect(() => {

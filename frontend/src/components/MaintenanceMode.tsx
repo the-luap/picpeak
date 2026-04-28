@@ -1,38 +1,13 @@
 import React, { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { api } from '../config/api';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 import { buildResourceUrl } from '../utils/url';
-
-interface BrandingSettings {
-  branding_company_name?: string;
-  branding_company_tagline?: string;
-  branding_support_email?: string;
-  branding_footer_text?: string;
-  branding_favicon_url?: string;
-  branding_logo_url?: string;
-  default_language?: string;
-}
 
 export const MaintenanceMode: React.FC = () => {
   const { t, i18n } = useTranslation();
-  
-  // Fetch branding settings
-  const { data: settings } = useQuery<BrandingSettings>({
-    queryKey: ['public-settings-maintenance'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/public/settings');
-        return response.data;
-      } catch {
-        // Return empty object if settings can't be fetched
-        return {};
-      }
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    retry: false, // Don't retry on failure
-  });
+
+  const { data: settings } = usePublicSettings({ retry: false });
 
   // Set language based on system settings
   useEffect(() => {
