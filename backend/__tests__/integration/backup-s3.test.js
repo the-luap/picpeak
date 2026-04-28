@@ -176,8 +176,9 @@ describe('S3 Backup Integration Tests', () => {
         .first();
 
       expect(backupRun.status).toBe('completed');
-      expect(backupRun.files_backed_up).toBeGreaterThan(0);
-      expect(backupRun.total_size_bytes).toBeGreaterThan(0);
+      // pg driver returns bigint columns as strings; coerce for the size assertion.
+      expect(Number(backupRun.files_backed_up)).toBeGreaterThan(0);
+      expect(Number(backupRun.total_size_bytes)).toBeGreaterThan(0);
 
       // Verify files in S3
       const s3Objects = await listS3Objects();

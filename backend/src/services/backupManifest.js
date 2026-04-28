@@ -181,8 +181,13 @@ class BackupManifestGenerator {
       const content = await fs.readFile(filePath, 'utf8');
       let manifest;
 
-      // Detect format and parse
-      if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
+      // Detect format from BOTH the extension and the content. Earlier code
+      // trusted the extension alone, which broke when callers stored a YAML
+      // manifest under a .json temp name (getBackupManifest does this when
+      // downloading the s3:// path to a tmp file).
+      const looksLikeJson = content.trimStart().startsWith('{')
+        || content.trimStart().startsWith('[');
+      if (filePath.endsWith('.yaml') || filePath.endsWith('.yml') || !looksLikeJson) {
         manifest = yaml.load(content);
       } else {
         manifest = JSON.parse(content);

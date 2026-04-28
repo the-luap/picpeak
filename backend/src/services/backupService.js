@@ -936,17 +936,41 @@ async function startBackupService() {
       backupJob = null;
     }
 
+    // Two settings cooperate here:
+    //   - backup_schedule           — UI label like "daily" / "weekly" / "custom"
+    //   - backup_schedule_cron      — actual cron expression
+    // The frontend writes both (BackupConfiguration.jsx). Older startup code
+    // here read backup_schedule and crashed when it found a label instead of
+    // a cron expression. Resolution order: explicit cron field, then map known
+    // labels, then fall back to default.
+    const NAMED_SCHEDULES = {
+      hourly: '0 * * * *',
+      daily: '0 2 * * *',
+      weekly: '0 3 * * 0',  // Sunday 03:00
+      monthly: '0 4 1 * *',
+    };
+    const isCronExpression = (s) => typeof s === 'string' && /^\s*\S+(\s+\S+){4}\s*$/.test(s);
+    const readSetting = (key) => {
+      if (config && Object.prototype.hasOwnProperty.call(config, key)) {
+        return String(config[key] ?? '').trim();
+      }
+      if (config?.__raw && Object.prototype.hasOwnProperty.call(config.__raw, key)) {
+        return String(parseSettingValue(config.__raw[key]) ?? '').trim();
+      }
+      return '';
+    };
+
     let schedule = '0 2 * * *';
-    if (Object.prototype.hasOwnProperty.call(config, 'backup_schedule')) {
-      const candidate = String(config.backup_schedule ?? '').trim();
-      if (candidate.length) {
-        schedule = candidate;
-      }
-    } else if (config.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_schedule')) {
-      const candidate = String(parseSettingValue(config.__raw.backup_schedule) ?? '').trim();
-      if (candidate.length) {
-        schedule = candidate;
-      }
+    const cronCandidate = readSetting('backup_schedule_cron');
+    const labelCandidate = readSetting('backup_schedule');
+    if (cronCandidate && isCronExpression(cronCandidate)) {
+      schedule = cronCandidate;
+    } else if (labelCandidate && NAMED_SCHEDULES[labelCandidate.toLowerCase()]) {
+      schedule = NAMED_SCHEDULES[labelCandidate.toLowerCase()];
+    } else if (labelCandidate && isCronExpression(labelCandidate)) {
+      // Back-compat: a deployment that wrote a cron expression directly into
+      // backup_schedule (no _cron field) still works.
+      schedule = labelCandidate;
     }
 
     backupJob = cron.schedule(schedule, async () => {
