@@ -86,11 +86,26 @@ async function handleExpiredEvent(event) {
     await db('events').where('id', event.id).update({ is_active: formatBoolean(false) });
 
     // Fire event.expired BEFORE the cascading archive call so receivers
-    // get the lifecycle in order (expired → archived).
+    // get the lifecycle in order (expired → archived). Canonical event
+    // subject (#341) so receivers see the same shape across all event.*
+    // types; expires_at retained as an event.expired-specific extra.
     try {
       const webhookService = require('./webhookService');
       await webhookService.fire('event.expired', {
-        event: { id: event.id, slug: event.slug, event_name: event.event_name, expires_at: event.expires_at },
+        event: {
+          ...webhookService.buildEventSubject({
+            id: event.id,
+            slug: event.slug,
+            event_name: event.event_name,
+            event_type: event.event_type,
+            event_date: event.event_date,
+            share_token: event.share_token,
+            customer_name: event.customer_name || event.host_name,
+            customer_email: event.customer_email || event.host_email,
+            customer_phone: event.customer_phone,
+          }),
+          expires_at: event.expires_at,
+        },
       });
     } catch (e) { /* non-fatal */ }
 

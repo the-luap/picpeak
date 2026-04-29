@@ -191,15 +191,24 @@ router.post('/', adminAuth, [
     });
 
     // Webhook lifecycle (#327). Legacy public endpoint — events go live
-    // immediately so created + published fire together.
+    // immediately so created + published fire together. Payload uses the
+    // canonical event subject (#341) — every event.* webhook now includes
+    // customer contact + share_token.
     try {
       const webhookService = require('../services/webhookService');
-      await webhookService.fire('event.created', {
-        event: { id: eventId, slug, event_name, event_type, event_date, share_url: shareUrl },
+      const eventSubject = webhookService.buildEventSubject({
+        id: eventId,
+        slug,
+        event_name,
+        event_type,
+        event_date,
+        share_url: shareUrl,
+        share_token: shareToken,
+        customer_name: customerName,
+        customer_email: customerEmail,
       });
-      await webhookService.fire('event.published', {
-        event: { id: eventId, slug, event_name, share_url: shareUrl },
-      });
+      await webhookService.fire('event.created', { event: eventSubject });
+      await webhookService.fire('event.published', { event: eventSubject });
     } catch (e) { /* non-fatal */ }
 
     res.json({

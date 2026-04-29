@@ -210,6 +210,29 @@ function parseJsonField(value, fallback) {
   try { return JSON.parse(value) ?? fallback; } catch { return fallback; }
 }
 
+/**
+ * Canonical event sub-object for outbound webhooks (#341). Always returns
+ * the full key set so receivers don't have to handle "field missing vs
+ * field null" — pass whatever the caller has in scope, missing fields
+ * become null. Adding a new field here propagates to every event.* type
+ * payload at once.
+ */
+function buildEventSubject(input = {}) {
+  const e = input || {};
+  return {
+    id: e.id ?? null,
+    slug: e.slug ?? null,
+    event_name: e.event_name ?? null,
+    event_type: e.event_type ?? null,
+    event_date: e.event_date ?? null,
+    share_url: e.share_url ?? null,
+    share_token: e.share_token ?? null,
+    customer_name: e.customer_name ?? null,
+    customer_email: e.customer_email ?? null,
+    customer_phone: e.customer_phone ?? null,
+  };
+}
+
 module.exports = {
   fire,
   generateSecret,
@@ -219,6 +242,7 @@ module.exports = {
   renderTemplate,
   validateTemplate,
   getByPath,
+  buildEventSubject,
   EVENT_TYPES,
   SECRET_PREFIX,
 };
