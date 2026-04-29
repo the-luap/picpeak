@@ -610,10 +610,26 @@ router.post('/', adminAuth, requirePermission('events.create'), [
 
     // Fire event.created webhook (#327). If the event is being published
     // immediately (not a draft), event.published also fires below.
+    // Payload uses canonical event subject (#341) so receivers always see
+    // the same shape (id/slug/event_name + customer contact + share_*).
     try {
       const webhookService = require('../services/webhookService');
       await webhookService.fire('event.created', {
-        event: { id: eventId, slug, event_name, event_type, event_date, is_draft: parseBooleanInput(is_draft, true) },
+        event: {
+          ...webhookService.buildEventSubject({
+            id: eventId,
+            slug,
+            event_name,
+            event_type,
+            event_date,
+            share_url: shareUrl,
+            share_token: shareToken,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+          }),
+          is_draft: parseBooleanInput(is_draft, true),
+        },
       });
     } catch (e) { /* webhookService.fire never throws but be defensive */ }
 
@@ -661,7 +677,18 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       try {
         const webhookService = require('../services/webhookService');
         await webhookService.fire('event.published', {
-          event: { id: eventId, slug, event_name, share_url: shareUrl },
+          event: webhookService.buildEventSubject({
+            id: eventId,
+            slug,
+            event_name,
+            event_type,
+            event_date,
+            share_url: shareUrl,
+            share_token: shareToken,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+          }),
         });
       } catch (e) { /* non-fatal */ }
     }
@@ -902,11 +929,23 @@ router.post('/:id/publish', adminAuth, requirePermission('events.edit'), require
     );
 
     // Fire event.published webhook (#327) — draft → live transition.
+    // Canonical payload (#341): includes customer contact + share_token.
     try {
       const webhookService = require('../services/webhookService');
       const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
       await webhookService.fire('event.published', {
-        event: { id: parseInt(id, 10), slug: event.slug, event_name: event.event_name, share_url: shareUrl },
+        event: webhookService.buildEventSubject({
+          id: parseInt(id, 10),
+          slug: event.slug,
+          event_name: event.event_name,
+          event_type: event.event_type,
+          event_date: event.event_date,
+          share_url: shareUrl,
+          share_token: event.share_token,
+          customer_name: event.customer_name || event.host_name,
+          customer_email: event.customer_email || event.host_email,
+          customer_phone: event.customer_phone,
+        }),
       });
     } catch (e) { /* non-fatal */ }
 

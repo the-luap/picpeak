@@ -183,15 +183,24 @@ router.post(
       });
 
       // Webhook lifecycle (#327). v1 events are not draft-aware, so they're
-      // both created AND published in the same call.
+      // both created AND published in the same call. Canonical event
+      // subject (#341) — customer contact + share_token always included.
       try {
         const webhookService = require('../../services/webhookService');
-        await webhookService.fire('event.created', {
-          event: { id, slug, event_name, event_type, event_date, share_url: shareUrl },
+        const eventSubject = webhookService.buildEventSubject({
+          id,
+          slug,
+          event_name,
+          event_type,
+          event_date,
+          share_url: shareUrl,
+          share_token: shareToken,
+          customer_name,
+          customer_email,
+          customer_phone,
         });
-        await webhookService.fire('event.published', {
-          event: { id, slug, event_name, share_url: shareUrl },
-        });
+        await webhookService.fire('event.created', { event: eventSubject });
+        await webhookService.fire('event.published', { event: eventSubject });
       } catch (e) { /* non-fatal */ }
 
       res.status(201).json({ id, slug, share_url: shareUrl, share_token: shareToken });

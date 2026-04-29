@@ -130,6 +130,20 @@ export const WebhooksTab: React.FC = () => {
           {t('settings.webhooks.subtitle', 'POST event notifications to your URL the moment something happens — gallery published, photo uploaded, event archived, etc. Signed with HMAC-SHA256 in the X-PicPeak-Signature header.')}
         </p>
 
+        {/* PII notice (#341). event.* payloads include customer contact
+           fields (name / email / phone) plus the share token. Make sure
+           admins know what flows to a webhook receiver before they wire
+           one up to a third-party automation tool. */}
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700/50 dark:bg-amber-900/20 p-3 mb-4 flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed">
+            {t(
+              'settings.webhooks.piiNotice',
+              'event.* payloads include customer contact info (name, email, phone) and the gallery share token if you have stored them. Only point webhooks at receivers you trust — they have everything needed to message the customer or open the gallery.'
+            )}
+          </p>
+        </div>
+
         {justCreatedSecret && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-4 mb-4">
             <div className="flex items-start gap-3">

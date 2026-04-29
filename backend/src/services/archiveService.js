@@ -99,10 +99,26 @@ async function archiveEvent(event) {
     // Fire event.archived webhook (#327). Receivers infer per-photo loss
     // from this event — we deliberately do NOT fire photo.deleted for each
     // archived photo to avoid flooding subscribers on bulk archives.
+    // Canonical event subject (#341) so the shape matches event.created /
+    // event.published / event.expired; archive_path is an event.archived-
+    // specific extra.
     try {
       const webhookService = require('./webhookService');
       await webhookService.fire('event.archived', {
-        event: { id: event.id, slug: event.slug, event_name: event.event_name, archive_path: archiveRelKey },
+        event: {
+          ...webhookService.buildEventSubject({
+            id: event.id,
+            slug: event.slug,
+            event_name: event.event_name,
+            event_type: event.event_type,
+            event_date: event.event_date,
+            share_token: event.share_token,
+            customer_name: event.customer_name || event.host_name,
+            customer_email: event.customer_email || event.host_email,
+            customer_phone: event.customer_phone,
+          }),
+          archive_path: archiveRelKey,
+        },
       });
     } catch (e) { /* non-fatal */ }
 
