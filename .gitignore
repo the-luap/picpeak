@@ -96,6 +96,12 @@ docs/FRONTEND_ARCHITECTURE.md
 docs/DEVELOPER_ONBOARDING.md
 docs/ENVIRONMENT_VARIABLES.md
 
+# Build artifact: OpenAPI spec generated locally + synced into the
+# picpeak-docs repo. Never tracked here — the docs site at
+# docs.picpeak.app is the source of truth.
+docs/openapi.json
+docs/openapi.yaml
+
 # Local backup directory (from testing)
 backup/
 

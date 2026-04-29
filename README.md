@@ -9,7 +9,7 @@
   [![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
   [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-theluap-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/theluap)
 
-  [Homepage](https://www.picpeak.app) · [Live Demo](https://demo.picpeak.app) · [Documentation](DEPLOYMENT_GUIDE.md) · [Support the project ☕](https://buymeacoffee.com/theluap)
+  [Homepage](https://www.picpeak.app) · [Live Demo](https://demo.picpeak.app) · [Documentation](https://docs.picpeak.app) · [Support the project ☕](https://buymeacoffee.com/theluap)
 </div>
 
 **PicPeak** is a powerful, self-hosted open-source alternative to commercial photo-sharing platforms like PicDrop.com and Scrapbook.de. Designed specifically for photographers and event organizers, PicPeak makes it simple to share beautiful, time-limited photo galleries with clients while maintaining full control over your data and branding.
@@ -143,10 +143,17 @@ UPDATE_CHECK_ENABLED=false
 
 ## 📖 Documentation
 
-- 📘 [**Deployment Guide**](DEPLOYMENT_GUIDE.md) - Detailed installation instructions
-  - Includes the new [External Media Library](DEPLOYMENT_GUIDE.md#external-media-library) reference mode
-- 📚 [**Admin API (OpenAPI)**](docs/picpeak-admin-api.openapi.yaml) - Machine-readable documentation for event automation endpoints
-- 🛠️ [**Admin API Quickstart**](docs/admin-api-quickstart.md) - Step-by-step authentication and testing guide for the documented endpoints
+Full documentation lives at **[docs.picpeak.app](https://docs.picpeak.app)** — deployment, admin settings reference, API docs, webhooks, archive lifecycle, branding, and everything else. Some quick links:
+
+- 🚀 [**Deployment**](https://docs.picpeak.app/deployment) - Docker, environment variables, reverse proxy, SSL
+- ⚙️ [**Admin Settings**](https://docs.picpeak.app/guides/admin-settings) - Every tab in the Settings panel
+- 🎯 [**Creating Events**](https://docs.picpeak.app/guides/creating-events) - Full event field reference
+- 💾 [**Backup & Restore**](https://docs.picpeak.app/guides/backup-restore) - Local, S3, rsync destinations
+- 🔌 [**API Reference**](https://docs.picpeak.app/api) - REST endpoints, OpenAPI spec, webhooks
+- 🪝 [**Webhooks**](https://docs.picpeak.app/features/webhooks) - Event payloads, signing, filters, templates
+
+Project meta:
+
 - 🤝 [**Contributing**](CONTRIBUTING.md) - How to contribute
 - 📜 [**License**](LICENSE) - MIT License
 - 🔒 [**Security**](SECURITY.md) - Security policies
@@ -447,7 +454,7 @@ PicPeak is released under the [MIT License](LICENSE). Use it freely for personal
 ## 🚀 Ready to Get Started?
 
 1. ⭐ **Star this repository** to show your support
-2. 📖 Read the [Deployment Guide](DEPLOYMENT_GUIDE.md)
+2. 📖 Read the [docs at docs.picpeak.app](https://docs.picpeak.app)
 3. 🐛 Report issues or request features
 4. 🤝 Join our community and contribute!
 
@@ -459,6 +466,6 @@ PicPeak is released under the [MIT License](LICENSE). Use it freely for personal
   <a href="https://www.picpeak.app">Homepage</a> •
   <a href="https://demo.picpeak.app">Live Demo</a> •
   <a href="https://github.com/the-luap/picpeak">GitHub</a> •
-  <a href="DEPLOYMENT_GUIDE.md">Documentation</a> •
+  <a href="https://docs.picpeak.app">Documentation</a> •
   <a href="https://github.com/the-luap/picpeak/issues">Support</a>
 </p>
