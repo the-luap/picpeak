@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.31.1-beta.0...v3.32.0-beta.0) (2026-04-29)
+
+
+### Features
+
+* **webhooks:** enrich event.* payloads with customer contact + share_token ([#341](https://github.com/the-luap/picpeak/issues/341)) ([7ea4801](https://github.com/the-luap/picpeak/commit/7ea4801544fd5cd8bca1907a71b5c4e96ee77649))
+* **webhooks:** enrich event.* payloads with customer contact + share_token ([#341](https://github.com/the-luap/picpeak/issues/341)) ([1e69d5f](https://github.com/the-luap/picpeak/commit/1e69d5ff71ac2d1d133b0e40637b437d7cc8bc4f))
+
 ## [3.31.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.31.0-beta.0...v3.31.1-beta.0) (2026-04-28)
 
 
