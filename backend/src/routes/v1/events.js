@@ -6,7 +6,8 @@
  * are admin-only via the UI for v1. Mounts under /api/v1 with apiTokenAuth.
  *
  * Each route is annotated with @openapi JSDoc that swagger-jsdoc picks
- * up to generate docs/openapi.yaml — the source of truth for picpeak-docs.
+ * up to generate docs/openapi.yaml (gitignored), which is then synced
+ * into the picpeak-docs site at docs.picpeak.app.
  */
 
 const express = require('express');

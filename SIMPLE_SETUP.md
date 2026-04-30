@@ -468,8 +468,8 @@ sudo -u picpeak node scripts/reset-admin-password.js
    - Installation: `/tmp/picpeak-setup-*.log`
 
 2. **Documentation:**
-   - [Full Documentation](https://github.com/the-luap/picpeak)
-   - [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+   - [Full Documentation](https://docs.picpeak.app)
+   - [Deployment Guide](https://docs.picpeak.app/deployment)
 
 3. **Support:**
    - [GitHub Issues](https://github.com/the-luap/picpeak/issues)
