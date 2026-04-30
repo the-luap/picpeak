@@ -100,8 +100,8 @@ export const EventsListPage: React.FC = () => {
 
   // Fetch events
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-events', apiStatus || 'all', debouncedSearchTerm],
-    queryFn: () => eventsService.getEvents(1, 100, apiStatus, debouncedSearchTerm || undefined),
+    queryKey: ['admin-events', apiStatus || 'all'],
+    queryFn: () => eventsService.getEvents(1, 100, apiStatus),
   });
 
   const { data: allEventsData } = useQuery({
