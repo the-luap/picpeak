@@ -20,7 +20,7 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, SkeletonTable, ErrorBoundary } from '../../components/common';
 import { BulkArchiveModal } from '../../components/admin';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { adminService } from '../../services/admin.service';
 import { isGalleryPublic } from '../../utils/accessControl';
@@ -98,10 +98,12 @@ export const EventsListPage: React.FC = () => {
     };
   }, [activeDropdown]);
 
-  // Fetch events
+  // Fetch events (server-side filter + search; backend supports `search` and `status`)
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-events', apiStatus || 'all'],
-    queryFn: () => eventsService.getEvents(1, 100, apiStatus),
+    queryKey: ['admin-events', apiStatus || 'all', debouncedSearchTerm],
+    queryFn: () =>
+      eventsService.getEvents(1, 100, apiStatus, debouncedSearchTerm || undefined),
+    placeholderData: keepPreviousData,
   });
 
   const { data: allEventsData } = useQuery({
