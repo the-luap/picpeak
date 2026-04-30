@@ -62,9 +62,15 @@ interface UpdateEventData {
 
 interface EventsListResponse {
   events: Event[];
-  total: number;
-  page: number;
-  limit: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  total?: number;
+  page?: number;
+  limit?: number;
 }
 
 export const eventsService = {
@@ -72,7 +78,8 @@ export const eventsService = {
   async getEvents(
     page: number = 1,
     limit: number = 20,
-    status?: 'active' | 'inactive' | 'archived'
+    status?: 'active' | 'inactive' | 'archived' | 'expiring',
+    search?: string
   ): Promise<EventsListResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -81,6 +88,10 @@ export const eventsService = {
     
     if (status) {
       params.append('status', status);
+    }
+
+    if (search && search.trim()) {
+      params.append('search', search.trim());
     }
 
     const response = await api.get<EventsListResponse>(`/admin/events?${params}`);

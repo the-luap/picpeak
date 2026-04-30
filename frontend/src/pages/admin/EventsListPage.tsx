@@ -22,6 +22,7 @@ import { Button, Input, Card, SkeletonTable, ErrorBoundary } from '../../compone
 import { BulkArchiveModal } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
+import { adminService } from '../../services/admin.service';
 import { isGalleryPublic } from '../../utils/accessControl';
 import type { Event } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +42,7 @@ export const EventsListPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedEvents, setSelectedEvents] = useState<number[]>([]);
   // const [showFilters, setShowFilters] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
@@ -50,6 +52,17 @@ export const EventsListPage: React.FC = () => {
   // Get filter from URL
   const statusFilter = searchParams.get('filter') as 'active' | 'archived' | null;
   const isExpiringFilter = searchParams.get('filter') === 'expiring';
+  const apiStatus = isExpiringFilter
+    ? 'expiring'
+    : ((statusFilter === 'archived' || statusFilter === 'active') ? statusFilter : undefined);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchTerm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -87,8 +100,18 @@ export const EventsListPage: React.FC = () => {
 
   // Fetch events
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-events', statusFilter],
-    queryFn: () => eventsService.getEvents(1, 100, (statusFilter === 'archived' || statusFilter === 'active') ? statusFilter : undefined),
+    queryKey: ['admin-events', apiStatus || 'all', debouncedSearchTerm],
+    queryFn: () => eventsService.getEvents(1, 100, apiStatus, debouncedSearchTerm || undefined),
+  });
+
+  const { data: allEventsData } = useQuery({
+    queryKey: ['admin-events-total-count'],
+    queryFn: () => eventsService.getEvents(1, 1),
+  });
+
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
+    queryFn: () => adminService.getDashboardStats(),
   });
 
   // Archive mutation
@@ -137,31 +160,8 @@ export const EventsListPage: React.FC = () => {
   // Filter and search events
   const filteredEvents = useMemo(() => {
     if (!data?.events) return [];
-    
-    let events = [...data.events];
-    
-    // Apply status filter
-    if (statusFilter === 'active') {
-      events = events.filter(e => e.is_active && !e.is_archived);
-    } else if (isExpiringFilter) {
-      events = events.filter(e => {
-        if (!e.is_active || e.is_archived) return false;
-        const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-        return days <= 7 && days > 0;
-      });
-    } else if (statusFilter === 'archived') {
-      events = events.filter(e => e.is_archived);
-    }
-    
-    // Apply search
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      events = events.filter(e => 
-        e.event_name.toLowerCase().includes(term) ||
-        e.event_type.toLowerCase().includes(term) ||
-        (e.customer_email || '').toLowerCase().includes(term)
-      );
-    }
+
+    const events = [...data.events];
     
     // Sort by creation date (newest first)
     events.sort((a, b) => {
@@ -171,7 +171,9 @@ export const EventsListPage: React.FC = () => {
     });
     
     return events;
-  }, [data?.events, statusFilter, searchTerm]);
+  }, [data?.events]);
+
+  const totalEventsCount = allEventsData?.pagination?.total ?? allEventsData?.total ?? 0;
 
   const handleSelectAll = () => {
     if (selectedEvents.length === filteredEvents.length) {
@@ -251,7 +253,7 @@ export const EventsListPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalEvents')}</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.events.length || 0}</p>
+              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{totalEventsCount}</p>
             </div>
             <Calendar className="w-8 h-8 text-primary-600" />
           </div>
@@ -262,7 +264,7 @@ export const EventsListPage: React.FC = () => {
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.activeEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => e.is_active && !e.is_archived).length || 0}
+                {dashboardStats?.activeEvents || 0}
               </p>
             </div>
             <Activity className="w-8 h-8 text-green-600" />
@@ -274,7 +276,7 @@ export const EventsListPage: React.FC = () => {
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalPhotos')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.reduce((sum, e) => sum + (e.photo_count || 0), 0) || 0}
+                {dashboardStats?.totalPhotos || 0}
               </p>
             </div>
             <Image className="w-8 h-8 text-blue-600" />
@@ -286,11 +288,7 @@ export const EventsListPage: React.FC = () => {
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.expiringEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => {
-                  if (!e.is_active || e.is_archived) return false;
-                  const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-                  return days <= 7 && days > 0;
-                }).length || 0}
+                {dashboardStats?.expiringEvents || 0}
               </p>
             </div>
             <AlertTriangle className="w-8 h-8 text-orange-600" />
@@ -322,7 +320,7 @@ export const EventsListPage: React.FC = () => {
                 setSearchParams(searchParams);
               }}
             >
-              {t('events.all')} ({data?.events.length || 0})
+              {t('events.all')} ({totalEventsCount})
             </Button>
             <Button
               variant={statusFilter === 'active' ? 'primary' : 'outline'}
