@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.0-beta.0...v3.32.1-beta.0) (2026-04-30)
+
+
+### Documentation
+
+* move documentation to docs.picpeak.app, drop in-repo copies ([02ed5d4](https://github.com/the-luap/picpeak/commit/02ed5d400736f966283a138dedde2455448067ff))
+* move documentation to docs.picpeak.app, drop in-repo copies ([0faf9b3](https://github.com/the-luap/picpeak/commit/0faf9b32816f5f94aa584d2336cdb1e0b7082239))
+
 ## [3.32.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.31.1-beta.0...v3.32.0-beta.0) (2026-04-29)
 
 
