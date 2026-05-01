@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.2-beta.0...v3.32.3-beta.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* **auth:** /auth/session must verify issuer claim like adminAuth ([#350](https://github.com/the-luap/picpeak/issues/350)) ([83dedbc](https://github.com/the-luap/picpeak/commit/83dedbcd45e34a924594dd83f6e3561f776576fb))
+* **auth:** make /auth/session verify the issuer claim like adminAuth ([#350](https://github.com/the-luap/picpeak/issues/350)) ([88a6c6a](https://github.com/the-luap/picpeak/commit/88a6c6a7fba7e1419a021f4870518f0b76ac6494))
+* **events:** coerce expires_in_days to Number before addDays ([e5712d8](https://github.com/the-luap/picpeak/commit/e5712d8ffe2f0ed980e1df5e1263876af7202b76))
+* **events:** coerce expires_in_days to Number before addDays ([db29d0e](https://github.com/the-luap/picpeak/commit/db29d0e2788f63cc9eb0a43ec58313387acb0c0d))
+
 ## [3.32.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.1-beta.0...v3.32.2-beta.0) (2026-05-01)
 
 
