@@ -97,7 +97,7 @@ Note on Docker file permissions (PUID/PGID)
   - `PGID=1000`
 - Without this, creating events, uploads, thumbnails, or logs can fail with "Permission denied".
 
-**ARM64 (aarch64) systems:** Pre-built images include native `linux/arm64`, no platform flags or emulation needed. If you're on an older image tag that's still amd64-only, see [docker-compose.mac.override.yml](docker-compose.mac.override.yml) for a transitional fallback.
+**ARM64 (aarch64) systems:** Pre-built images include native `linux/arm64`, no platform flags or emulation needed. If you're on an older image tag that's still amd64-only, see [docker-compose.amd64.override.yml](docker-compose.amd64.override.yml) for a transitional fallback.
 
 ## 🔄 Release Channels
 
