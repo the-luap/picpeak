@@ -49,10 +49,22 @@ services:
       - STORAGE_PATH=/app/storage
       - PHOTOS_DIR=/app/storage/events
       - PICPEAK_RELEASE_CHANNEL=${PICPEAK_CHANNEL:-stable}
+      # External Media Library (optional) — uncomment together with the
+      # matching volume mount below. This overrides the .env value so the
+      # backend reads the in-container path, while the volume line uses
+      # the host path from .env.
+      # - EXTERNAL_MEDIA_ROOT=/external-media
     volumes:
       - ${APP_STORAGE}:/app/storage
       - ${LOGS}:/app/logs
       - ${APP_DATA}:/app/data
+      # External Media Library (optional)
+      # Mount a host photo library read-only so events can reference photos
+      # in place instead of uploading them. Set EXTERNAL_MEDIA_ROOT in .env
+      # to the host path, then uncomment the line below AND the matching
+      # environment override above. Full setup guide:
+      # DEPLOYMENT_GUIDE.md#-external-media-library
+      # - ${EXTERNAL_MEDIA_ROOT}:/external-media:ro
     ports:
       - "${BACKEND_PORT:-3001}:3000"
     networks:

@@ -39,7 +39,7 @@ Admin panel: [demo.picpeak.app/admin](https://demo.picpeak.app/admin) — login 
 
 **Photo Protection** — Watermarking, right-click prevention, canvas rendering, DevTools detection. Configurable per gallery.
 
-**External Media** — Reference photos from a mounted folder instead of uploading. PicPeak reads originals in place and generates thumbnails on demand.
+**External Media** — Reference photos from a mounted folder instead of uploading. PicPeak reads originals in place and generates thumbnails on demand. [Setup →](DEPLOYMENT_GUIDE.md#-external-media-library)
 
 **Multi-Language** — Full UI translations for English, German, Dutch, Portuguese, and Russian. Email templates support all languages independently.
 
