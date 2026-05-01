@@ -780,7 +780,12 @@ export const CreateEventPage: React.FC = () => {
                 </div>
                 {formData.event_date && (
                   <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+                    {/* Coerce to Number — handleInputChange stores the
+                        <input type="number"> value as a string, and date-fns
+                        addDays does `_date.setDate(_date.getDate() + amount)`
+                        which string-concatenates (25 + "120" = "25120") and
+                        ends up ~68 years in the future. */}
+                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), Number(formData.expires_in_days)))}
                   </p>
                 )}
               </div>
