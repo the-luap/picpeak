@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.1-beta.0...v3.32.2-beta.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* events search/counters ([#346](https://github.com/the-luap/picpeak/issues/346)), lazy gallery skeleton ([#321](https://github.com/the-luap/picpeak/issues/321)), smooth lightbox swipe ([#348](https://github.com/the-luap/picpeak/issues/348)) ([6229b38](https://github.com/the-luap/picpeak/commit/6229b38bac90cc0c538a72688efae3be77a3bb08))
+* **events:** server-side search/pagination to remove first-100 cap ([#346](https://github.com/the-luap/picpeak/issues/346)) ([a5b20ca](https://github.com/the-luap/picpeak/commit/a5b20ca3fe77df665d4a9744413d7ee4054858f0))
+* **gallery:** lazy-render skeleton grid for fast loads ([#321](https://github.com/the-luap/picpeak/issues/321) follow-up) ([d9d8137](https://github.com/the-luap/picpeak/commit/d9d81372b80f7d44dca54b7993f52c36574048c9))
+* **lightbox:** smooth carousel swipe + drop instructional hint ([#348](https://github.com/the-luap/picpeak/issues/348)) ([743086d](https://github.com/the-luap/picpeak/commit/743086d3cb9100fb163bc9d04d968e5b611a1f99))
+
 ## [3.32.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.0-beta.0...v3.32.1-beta.0) (2026-04-30)
 
 
