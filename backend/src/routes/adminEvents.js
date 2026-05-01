@@ -138,14 +138,20 @@ const getDownloadProtectionDefaults = async () => {
   return { enable_devtools_protection: await readBooleanSetting('enable_devtools_protection') };
 };
 
-// Helper to get branding defaults for new events (Feature 7: Branding Inheritance)
+// Helper to get branding defaults for new events (Feature 7: Branding Inheritance).
+//
+// Note: `branding_logo_position` (header bar — left/center/right) is a
+// different concept from `hero_logo_position` (hero block — top/center/
+// bottom) and must NOT be mapped here. A previous version copied the
+// branding value over, which wrote 'left'/'right' into per-event
+// hero_logo_position columns and broke any subsequent PUT validation
+// (#357). Migration 084 heals existing rows.
 const getBrandingDefaults = async () => {
   try {
     const settings = await db('app_settings')
       .whereIn('setting_key', [
         'branding_logo_display_hero',
-        'branding_logo_size',
-        'branding_logo_position'
+        'branding_logo_size'
       ])
       .select('setting_key', 'setting_value');
 
@@ -165,9 +171,6 @@ const getBrandingDefaults = async () => {
       }
       if (s.setting_key === 'branding_logo_size' && value) {
         defaults.hero_logo_size = value;
-      }
-      if (s.setting_key === 'branding_logo_position' && value) {
-        defaults.hero_logo_position = value;
       }
     });
 
