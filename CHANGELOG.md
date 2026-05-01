@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.3-beta.0...v3.32.4-beta.0) (2026-05-01)
+
+
+### Bug Fixes
+
+* **events:** stop mapping branding_logo_position onto hero_logo_position ([af2b062](https://github.com/the-luap/picpeak/commit/af2b0628cb4f79a147366665d35c098012071216))
+* **events:** stop mapping branding_logo_position onto hero_logo_position ([ef1c875](https://github.com/the-luap/picpeak/commit/ef1c875f6ec1e02657006cb09cd0b1d868ec2fc0))
+* **theme:** pre-React bootstrap to kill white-flash on dark galleries ([#358](https://github.com/the-luap/picpeak/issues/358)) ([07b41e6](https://github.com/the-luap/picpeak/commit/07b41e691d2e8a71f775c667d805a2f9adc10590))
+* **theme:** pre-React bootstrap to kill white-flash on dark galleries ([#358](https://github.com/the-luap/picpeak/issues/358)) ([f81a872](https://github.com/the-luap/picpeak/commit/f81a8728e67b313ac43f55c94fb635abf9beca05))
+
 ## [3.32.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.2-beta.0...v3.32.3-beta.0) (2026-05-01)
 
 
