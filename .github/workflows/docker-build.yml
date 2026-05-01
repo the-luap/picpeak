@@ -59,9 +59,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    # Skip the arm64 leg for PRs and verify-only manual runs to keep CI cheap.
-    # Building amd64 alone is enough to catch Dockerfile/build regressions.
-    if: matrix.platform == 'linux/amd64' || (github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || github.event.inputs.push == 'true'))
 
     steps:
     - name: Checkout code
@@ -245,7 +242,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    if: matrix.platform == 'linux/amd64' || (github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || github.event.inputs.push == 'true'))
 
     steps:
     - name: Checkout code
