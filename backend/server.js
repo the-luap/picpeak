@@ -23,6 +23,7 @@ const { startExpirationChecker } = require('./src/services/expirationChecker');
 const { initializeTransporter, startEmailQueueProcessor } = require('./src/services/emailProcessor');
 const { startBackupService } = require('./src/services/backupService');
 const { startScheduledBackups } = require('./src/services/databaseBackup');
+const backgroundProcessor = require('./src/services/backgroundProcessor');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
@@ -660,10 +661,15 @@ async function startServer() {
 
     // Start backup service
     await startBackupService();
-    
+
     // Start database backup service
     await startScheduledBackups();
-    
+
+    // Start the async photo-processing worker pool. Picks up
+    // photos in 'pending' state (from POST /upload) and runs the
+    // sharp/ffmpeg/EXIF pipeline off the request thread.
+    backgroundProcessor.start();
+
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(`Admin interface: ${process.env.ADMIN_URL || 'http://localhost:3000'}`);

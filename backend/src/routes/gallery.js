@@ -212,6 +212,15 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
     const isClient = req.accessLevel === 'client';
     let photosQuery = db('photos')
       .where('photos.event_id', req.event.id)
+      // Guests/clients never see photos still being processed by the
+      // background worker — the original is on disk but the thumbnail
+      // / dimensions / EXIF haven't landed yet. Photos with a NULL
+      // processing_status are pre-async-migration rows and are treated
+      // as complete (the migration's column default is 'complete' so
+      // this is just defensive against partial migration states).
+      .where(function() {
+        this.where('photos.processing_status', 'complete').orWhereNull('photos.processing_status');
+      })
       .select('photos.*');
 
     // Guests only see visible photos; clients see all
@@ -1380,18 +1389,31 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No files uploaded' });
       }
-      
-      const { processUploadedPhotos } = require('../services/photoProcessor');
-      const categoryId = req.body.category_id || req.event.upload_category_id || null;
-      
+
+      const { queueFilesForProcessing } = require('../services/photoProcessor');
+      const rawCategory = req.body.category_id || req.event.upload_category_id || null;
+      const numericCategoryId = (() => {
+        if (rawCategory === null || rawCategory === undefined) return null;
+        const n = parseInt(rawCategory, 10);
+        return Number.isFinite(n) ? n : null;
+      })();
+
       try {
-        // Process uploaded photos
-        const results = await processUploadedPhotos(req.files, eventId, 'user', categoryId);
-        
-        res.json({ 
-          message: 'Photos uploaded successfully',
-          count: results.length,
-          photos: results
+        // Queue files as 'pending' — the background worker will process
+        // thumbnails / EXIF / dimensions off the request thread (#357).
+        const result = await queueFilesForProcessing(req.files, {
+          eventId,
+          photoType: 'individual',
+          categoryId: numericCategoryId,
+        });
+
+        res.status(202).json({
+          message: 'Photos queued for processing',
+          upload_id: result.uploadId,
+          count: result.photos.length,
+          photo_ids: result.photos.map((p) => p.id),
+          photos: result.photos,
+          errors: result.errors.length > 0 ? result.errors : undefined,
         });
       } catch (processError) {
         console.error('Photo processing error:', processError);
