@@ -62,6 +62,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     
     if (themeConfig.backgroundColor) {
       root.style.setProperty('--color-background', themeConfig.backgroundColor);
+
+      // Cache the resolved background by slug so the next visit can
+      // apply it from the inline bootstrap in index.html before React
+      // mounts (#358 — eliminates the white flash on dark-theme galleries).
+      try {
+        const m = window.location.pathname.match(/\/gallery\/([^/?#]+)/);
+        if (m && m[1]) {
+          localStorage.setItem(
+            `gallery-theme-bg-${decodeURIComponent(m[1])}`,
+            themeConfig.backgroundColor
+          );
+        }
+      } catch {
+        /* ignore — caching is best-effort */
+      }
     }
     
     if (themeConfig.textColor) {

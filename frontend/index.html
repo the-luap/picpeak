@@ -5,6 +5,43 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PicPeak - Photo Sharing Platform</title>
+    <script>
+      /*
+       * Pre-React theme bootstrap (#358).
+       *
+       * Without this, opening a dark-themed gallery flashes a white
+       * background between the HTML paint and React applying the gallery
+       * theme. We resolve a background colour synchronously from the URL
+       * slug (cached on previous visits) or the OS preference, and apply
+       * it to documentElement before any React render runs.
+       *
+       * Per-gallery cache is written by ThemeContext when the gallery
+       * theme actually loads, keyed by slug, so revisits never flash.
+       * First visits with no cache fall back to the OS preference.
+       */
+      (function () {
+        try {
+          var m = location.pathname.match(/\/gallery\/([^\/?#]+)/);
+          var bg = null;
+          if (m && m[1]) {
+            bg = localStorage.getItem('gallery-theme-bg-' + decodeURIComponent(m[1]));
+          }
+          if (!bg && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            bg = '#171717';
+          }
+          if (bg) {
+            var root = document.documentElement;
+            root.style.backgroundColor = bg;
+            root.style.setProperty('--color-background', bg);
+          }
+        } catch (e) { /* never block render on a cache miss */ }
+      })();
+    </script>
+    <style>
+      /* Smooth out the cache→API theme transition for the rare case where
+         the cached colour drifts from the freshly fetched theme (#358). */
+      html { transition: background-color 200ms ease; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
