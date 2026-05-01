@@ -483,7 +483,14 @@ router.get('/session', async (req, res) => {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Verify with the same `issuer` claim that adminAuth/galleryAuth
+      // require (#350 — without this, /auth/session accepted pre-issuer
+      // tokens and the frontend thought the user was authenticated, but
+      // every protected endpoint rejected them with 401, producing a
+      // /admin/login → /admin/dashboard → /admin/login redirect loop).
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        issuer: 'picpeak-auth'
+      });
 
       // Check if token has been revoked (e.g. after logout)
       const { isTokenRevoked } = require('../utils/tokenRevocation');
