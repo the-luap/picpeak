@@ -62,6 +62,13 @@ router.get('/stats', adminAuth, requirePermission('analytics.view'), async (req,
       .count('id as count')
       .first();
 
+    // Get total events count (all events regardless of status) — used by the
+    // events list page to render accurate "All (N)" / Total Events counters
+    // when the table is server-paginated (#346).
+    const totalEvents = await db('events')
+      .count('id as count')
+      .first();
+
     // Calculate trends (compare with previous 30 days)
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
@@ -98,7 +105,8 @@ router.get('/stats', adminAuth, requirePermission('analytics.view'), async (req,
       totalDownloads: totalDownloads.count || 0,
       viewsTrend: Math.round(viewsTrend * 10) / 10,
       downloadsTrend: Math.round(downloadsTrend * 10) / 10,
-      archivedEvents: archivedEvents.count || 0
+      archivedEvents: archivedEvents.count || 0,
+      totalEvents: totalEvents.count || 0
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);

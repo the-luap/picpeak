@@ -739,6 +739,7 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
       query = query.where((builder) => {
         builder.where('event_name', 'like', `%${escapedSearch}%`)
           .orWhere('admin_email', 'like', `%${escapedSearch}%`)
+          .orWhere('customer_email', 'like', `%${escapedSearch}%`)
           .orWhere('slug', 'like', `%${escapedSearch}%`);
       });
     }

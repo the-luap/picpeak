@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Archive,
   AlertTriangle,
   MoreVertical,
@@ -14,7 +14,9 @@ import {
   Image,
   Activity,
   Copy,
-  CheckCircle
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -23,11 +25,14 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { Button, Input, Card, SkeletonTable, ErrorBoundary } from '../../components/common';
 import { BulkArchiveModal } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { eventsService } from '../../services/events.service';
+import { eventsService, type EventStatusFilter } from '../../services/events.service';
+import { adminService } from '../../services/admin.service';
 import { isGalleryPublic } from '../../utils/accessControl';
 import { buildShareLinkUrl } from '../../utils/url';
 import type { Event } from '../../types';
 import { useTranslation } from 'react-i18next';
+
+const PAGE_SIZE = 20;
 
 export const EventsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -72,10 +77,31 @@ export const EventsListPage: React.FC = () => {
     }
   };
 
-  // Get filter from URL
-  const statusFilter = searchParams.get('filter') as 'active' | 'archived' | 'draft' | null;
-  const isExpiringFilter = searchParams.get('filter') === 'expiring';
-  const isDraftFilter = searchParams.get('filter') === 'draft';
+  // Get filter from URL — backend supports all of these as `status` values
+  const filterParam = searchParams.get('filter');
+  const statusFilter: EventStatusFilter | undefined =
+    filterParam === 'active' || filterParam === 'archived' ||
+    filterParam === 'draft' || filterParam === 'expiring' ||
+    filterParam === 'inactive'
+      ? filterParam
+      : undefined;
+  const isExpiringFilter = filterParam === 'expiring';
+  const isDraftFilter = filterParam === 'draft';
+
+  // Server-side pagination + debounced search
+  const [page, setPage] = useState(1);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Reset to page 1 whenever the filter or search changes so users don't
+  // get stuck on a page index that no longer exists in the new result set.
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, debouncedSearchTerm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -111,10 +137,20 @@ export const EventsListPage: React.FC = () => {
     };
   }, [activeDropdown]);
 
-  // Fetch events
+  // Fetch events — fully server-side: pagination, status filter, and search
+  // (#346 — counters and search were previously bounded to the first 100 rows).
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-events', statusFilter],
-    queryFn: () => eventsService.getEvents(1, 100, (statusFilter === 'archived' || statusFilter === 'active') ? statusFilter : undefined),
+    queryKey: ['admin-events', statusFilter ?? 'all', debouncedSearchTerm, page],
+    queryFn: () => eventsService.getEvents(page, PAGE_SIZE, statusFilter, debouncedSearchTerm || undefined),
+    placeholderData: (prev) => prev,
+  });
+
+  // Aggregate counters come from the dashboard stats endpoint so the cards
+  // and the "All (N)" filter button always reflect global totals, not the
+  // currently visible page.
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
+    queryFn: () => adminService.getDashboardStats(),
   });
 
   // Archive mutation
@@ -122,6 +158,7 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.archiveEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast.success(t('toast.eventArchived'));
     },
     onError: () => {
@@ -134,6 +171,7 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.deleteEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast.success(t('toast.deleteSuccess'));
     },
     onError: () => {
@@ -146,6 +184,7 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.bulkArchiveEvents,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       setSelectedEvents([]);
       setShowBulkArchiveModal(false);
       
@@ -160,52 +199,19 @@ export const EventsListPage: React.FC = () => {
     },
   });
 
-  // Filter and search events
-  const filteredEvents = useMemo(() => {
-    if (!data?.events) return [];
-    
-    let events = [...data.events];
-    
-    // Apply status filter
-    if (isDraftFilter) {
-      events = events.filter(e => e.is_draft);
-    } else if (statusFilter === 'active') {
-      events = events.filter(e => e.is_active && !e.is_archived && !e.is_draft);
-    } else if (isExpiringFilter) {
-      events = events.filter(e => {
-        if (!e.is_active || e.is_archived) return false;
-        const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-        return days <= 7 && days > 0;
-      });
-    } else if (statusFilter === 'archived') {
-      events = events.filter(e => e.is_archived);
-    }
-    
-    // Apply search
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      events = events.filter(e => 
-        e.event_name.toLowerCase().includes(term) ||
-        e.event_type.toLowerCase().includes(term) ||
-        (e.customer_email || '').toLowerCase().includes(term)
-      );
-    }
-    
-    // Sort by creation date (newest first)
-    events.sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateB - dateA;
-    });
-    
-    return events;
-  }, [data?.events, statusFilter, searchTerm]);
+  // Filtering and searching now happen server-side. Use the response directly,
+  // ordered as the backend returned them (created_at desc by default).
+  const events: Event[] = data?.events ?? [];
+  const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages ?? 1;
+  const filteredCount = pagination?.total ?? 0;
+  const isFilteringOrSearching = !!statusFilter || !!debouncedSearchTerm;
 
   const handleSelectAll = () => {
-    if (selectedEvents.length === filteredEvents.length) {
+    if (selectedEvents.length === events.length) {
       setSelectedEvents([]);
     } else {
-      setSelectedEvents(filteredEvents.map(e => e.id));
+      setSelectedEvents(events.map(e => e.id));
     }
   };
 
@@ -274,52 +280,49 @@ export const EventsListPage: React.FC = () => {
           </Button>
         </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards — fed from /admin/dashboard/stats so the totals
+          stay accurate regardless of the visible page (#346). */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalEvents')}</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.events.length || 0}</p>
+              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{dashboardStats?.totalEvents ?? 0}</p>
             </div>
             <Calendar className="w-8 h-8 text-primary-600" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.activeEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => e.is_active && !e.is_archived).length || 0}
+                {dashboardStats?.activeEvents ?? 0}
               </p>
             </div>
             <Activity className="w-8 h-8 text-green-600" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalPhotos')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.reduce((sum, e) => sum + (e.photo_count || 0), 0) || 0}
+                {dashboardStats?.totalPhotos ?? 0}
               </p>
             </div>
             <Image className="w-8 h-8 text-blue-600" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.expiringEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => {
-                  if (!e.is_active || e.is_archived) return false;
-                  const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-                  return days <= 7 && days > 0;
-                }).length || 0}
+                {dashboardStats?.expiringEvents ?? 0}
               </p>
             </div>
             <AlertTriangle className="w-8 h-8 text-orange-600" />
@@ -351,7 +354,7 @@ export const EventsListPage: React.FC = () => {
                 setSearchParams(searchParams);
               }}
             >
-              {t('events.all')} ({data?.events.length || 0})
+              {t('events.all')} ({dashboardStats?.totalEvents ?? 0})
             </Button>
             <Button
               variant={statusFilter === 'active' ? 'primary' : 'outline'}
@@ -417,7 +420,7 @@ export const EventsListPage: React.FC = () => {
                 <th className="px-6 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedEvents.length === filteredEvents.length && filteredEvents.length > 0}
+                    checked={selectedEvents.length === events.length && events.length > 0}
                     onChange={handleSelectAll}
                     className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
                   />
@@ -443,14 +446,14 @@ export const EventsListPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-700">
-              {filteredEvents.length === 0 ? (
+              {events.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
                     {t('events.noEventsFound')}
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((event) => {
+                events.map((event) => {
                   const status = getEventStatus(event);
 
                   return (
@@ -657,13 +660,57 @@ export const EventsListPage: React.FC = () => {
           </table>
         </div>
       </Card>
-      
+
+      {/* Pagination — only when the current filter has more than one page */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
+          <div>
+            {t('events.paginationLabel', {
+              from: events.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1,
+              to: (page - 1) * PAGE_SIZE + events.length,
+              total: filteredCount,
+              defaultValue: '{{from}}–{{to}} of {{total}}',
+            })}
+            {isFilteringOrSearching && (
+              <span className="ml-2 text-neutral-400">({t('events.filtered', 'filtered')})</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<ChevronLeft className="w-4 h-4" />}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              {t('common.previous', 'Previous')}
+            </Button>
+            <span>
+              {t('events.pageOf', {
+                page,
+                totalPages,
+                defaultValue: 'Page {{page}} of {{totalPages}}',
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              rightIcon={<ChevronRight className="w-4 h-4" />}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              {t('common.next', 'Next')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Archive Modal */}
       <BulkArchiveModal
         isOpen={showBulkArchiveModal}
         onClose={() => setShowBulkArchiveModal(false)}
         onConfirm={() => bulkArchiveMutation.mutate(selectedEvents)}
-        selectedEvents={filteredEvents.filter(e => selectedEvents.includes(e.id))}
+        selectedEvents={events.filter(e => selectedEvents.includes(e.id))}
         isLoading={bulkArchiveMutation.isPending}
       />
       </div>
