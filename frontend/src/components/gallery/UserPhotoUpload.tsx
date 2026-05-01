@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Upload, X, CheckCircle } from 'lucide-react';
+import { Upload, X, CheckCircle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Button } from '../common';
@@ -24,6 +24,10 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  // Per-file processing state — flips to true once axios reports
+  // bytes-on-wire for that file, so the UI can show "Processing…"
+  // instead of a static 100% bar while the backend works.
+  const [processingFiles, setProcessingFiles] = useState<{ [key: string]: boolean }>({});
 
   const { data: publicSettings } = usePublicSettings();
 
@@ -87,8 +91,17 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                 ...prev,
                 [file.name]: progress,
               }));
+              if (progress >= 100) {
+                setProcessingFiles(prev => ({ ...prev, [file.name]: true }));
+              }
             }
           },
+        });
+        // Request resolved → file fully processed by backend.
+        setProcessingFiles(prev => {
+          const next = { ...prev };
+          delete next[file.name];
+          return next;
         });
         successCount++;
       } catch (error: any) {
@@ -185,7 +198,13 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                     </div>
                     {uploadProgress[file.name] !== undefined ? (
                       <div className="flex items-center gap-2">
-                        {uploadProgress[file.name] === 100 ? (
+                        {processingFiles[file.name] ? (
+                          // Bytes are on the server; the request hasn't
+                          // resolved yet because the backend is still
+                          // generating thumbnails / reading EXIF. Show
+                          // a spinner so it doesn't look stuck at 100%.
+                          <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
+                        ) : uploadProgress[file.name] === 100 ? (
                           <CheckCircle className="w-5 h-5 text-green-600" />
                         ) : (
                           <div className="w-20">

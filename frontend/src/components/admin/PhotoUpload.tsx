@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Upload, X, Image, Loader2 } from 'lucide-react';
+import { Upload, X, Image, Loader2, Cog } from 'lucide-react';
 import { Button } from '../common';
 import { clsx } from 'clsx';
 import { api } from '../../config/api';
@@ -18,6 +18,15 @@ interface PhotoUploadProps {
 const DEFAULT_MAX_FILES_PER_UPLOAD = 500;
 const MAX_FILES_PER_UPLOAD_LIMIT = 2000;
 
+// Upload phase machine. The user perceives "frozen" during 'processing'
+// because the bytes are already on the server and we're waiting for
+// thumbnail/EXIF/etc. work — the explicit phase + hint message kills
+// that perception (#352 / contributor analysis on issue 357 review).
+type UploadPhase =
+  | { kind: 'idle' }
+  | { kind: 'transferring'; chunkIndex: number; totalChunks: number; bytePct: number }
+  | { kind: 'processing'; chunkIndex: number; totalChunks: number; filesInChunk: number };
+
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadComplete }) => {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
@@ -25,6 +34,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
+  const [phase, setPhase] = useState<UploadPhase>({ kind: 'idle' });
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [replaceByName, setReplaceByName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,11 +154,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         setCurrentChunk(chunkIndex + 1);
         const chunk = chunks[chunkIndex];
         const formData = new FormData();
-        
+
         chunk.forEach((file) => {
           formData.append('photos', file);
         });
-        
+
         if (selectedCategoryId) {
           formData.append('category_id', selectedCategoryId.toString());
         }
@@ -156,14 +166,44 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           formData.append('replace_by_name', 'true');
         }
 
+        setPhase({
+          kind: 'transferring',
+          chunkIndex,
+          totalChunks: chunks.length,
+          bytePct: 0,
+        });
+
         try {
           const response = await api.post(`/admin/events/${eventId}/upload`, formData, {
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
-                // Calculate overall progress across all chunks
                 const chunkProgress = progressEvent.loaded / progressEvent.total;
                 const overallProgress = ((chunkIndex + chunkProgress) / chunks.length) * 100;
                 setUploadProgress(Math.round(overallProgress));
+
+                // Once bytes have all left the browser, the request is
+                // sitting in the backend processing pipeline. Flip to
+                // 'processing' so the UI explains the wait instead of
+                // looking frozen at the chunk's max progress.
+                if (chunkProgress >= 1) {
+                  setPhase((prev) =>
+                    prev.kind === 'transferring' && prev.chunkIndex === chunkIndex
+                      ? {
+                          kind: 'processing',
+                          chunkIndex,
+                          totalChunks: chunks.length,
+                          filesInChunk: chunk.length,
+                        }
+                      : prev
+                  );
+                } else {
+                  setPhase({
+                    kind: 'transferring',
+                    chunkIndex,
+                    totalChunks: chunks.length,
+                    bytePct: Math.round(chunkProgress * 100),
+                  });
+                }
               }
             },
           });
@@ -173,7 +213,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         } catch (error: any) {
           console.error(`Error uploading chunk ${chunkIndex + 1}:`, error);
           failedFiles.push(...chunk.map(f => f.name));
-          
+
           // Continue with next chunk even if one fails
           continue;
         }
@@ -210,6 +250,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       setUploadProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
+      setPhase({ kind: 'idle' });
     }
   };
 
@@ -344,26 +385,48 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         </Button>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress display — two distinct phases. Bytes-on-wire ('transferring')
+          drives the determinate bar; the post-bytes wait ('processing') swaps
+          in an indeterminate spinner with an explanatory hint so users don't
+          assume the upload froze. */}
       {isUploading && (
         <div className="mt-4">
-          <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400 mb-1">
-            <span>
-              {t('upload.uploading')}
-              {totalChunks > 1 && ` (${t('common.chunk')} ${currentChunk}/${totalChunks})`}
-            </span>
-            <span>{uploadProgress}%</span>
-          </div>
-          <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
-            <div
-              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-          {totalChunks > 1 && (
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              {t('upload.uploadingChunks', { count: selectedFiles.length, total: totalChunks })}
-            </p>
+          {phase.kind === 'processing' ? (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+              <div className="flex items-start gap-3">
+                <Cog className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-spin shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                    {t('upload.processing')}
+                    {phase.totalChunks > 1 && ` (${t('common.chunk')} ${phase.chunkIndex + 1}/${phase.totalChunks})`}
+                  </p>
+                  <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">
+                    {t('upload.processingHint')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400 mb-1">
+                <span>
+                  {t('upload.transferring')}
+                  {totalChunks > 1 && ` (${t('common.chunk')} ${currentChunk}/${totalChunks})`}
+                </span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
+                <div
+                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              {totalChunks > 1 && (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('upload.uploadingChunks', { count: selectedFiles.length, total: totalChunks })}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

@@ -150,29 +150,39 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     next();
   });
 }, validateUploadContent, validateUploadedFiles, async (req, res) => {
+  // Single cleanup site for the multer temp directory — runs on every
+  // exit path (success, validation 4xx, server 5xx, multer error). The
+  // previous code had three inline cleanup blocks for individual early
+  // returns and missed the success path entirely, leaving an empty
+  // per-request directory behind on every successful upload (#357 review).
+  let tempCleanupDone = false;
+  const cleanupTempDir = async () => {
+    if (tempCleanupDone || !req.tempUploadPath) return;
+    tempCleanupDone = true;
+    try {
+      await fs.rm(req.tempUploadPath, { recursive: true, force: true });
+    } catch (e) {
+      console.error('Failed to clean up temp upload directory:', e);
+    }
+  };
+  res.on('finish', cleanupTempDir);
+  res.on('close', cleanupTempDir);
+
   try {
     const { eventId } = req.params;
     const { category_id, replace_by_name } = req.body;
     const replaceByName = replace_by_name === 'true' || replace_by_name === true;
-    
+
     console.log('Upload request received for event:', eventId);
     console.log('Body:', req.body);
     console.log('Files:', req.files ? req.files.length : 'none');
     console.log('File details:', req.files?.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype })));
     console.log('Category ID received:', category_id);
-    
+
     // Verify event exists and admin has access
     const event = await db('events').where({ id: eventId }).first();
     if (!event) {
       console.error('Event not found:', eventId);
-      // Clean up temp files
-      if (req.tempUploadPath) {
-        try {
-          await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        } catch (e) {
-          console.error('Failed to clean up temp path:', e);
-        }
-      }
       return res.status(404).json({ error: 'Event not found' });
     }
 
@@ -192,14 +202,6 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
         }
       }
       if (currentCount + newFilesCount > event.photo_cap) {
-        // Clean up temp files
-        if (req.tempUploadPath) {
-          try {
-            await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-          } catch (e) {
-            console.error('Failed to clean up temp path:', e);
-          }
-        }
         return res.status(400).json({
           error: `Photo cap exceeded. This event allows a maximum of ${event.photo_cap} photos. Currently ${currentCount} photos exist, and you are trying to upload ${newFilesCount} more.`
         });
@@ -209,14 +211,6 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     if (!req.files || req.files.length === 0) {
       console.error('No files in request. req.files:', req.files);
       console.error('Request body keys:', Object.keys(req.body));
-      // Clean up temp files
-      if (req.tempUploadPath) {
-        try {
-          await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        } catch (e) {
-          console.error('Failed to clean up temp path:', e);
-        }
-      }
       return res.status(400).json({ error: 'No files uploaded' });
     }
     
@@ -597,17 +591,8 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     res.json(response);
   } catch (error) {
     console.error('Error uploading photos:', error);
-
-    // Clean up temp upload directory on error
-    if (req.tempUploadPath) {
-      try {
-        await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        console.log(`Cleaned up temp upload directory after error: ${req.tempUploadPath}`);
-      } catch (e) {
-        console.error('Failed to clean up temp upload directory:', e);
-      }
-    }
-    
+    // Temp directory cleanup is handled by the response finish/close
+    // listeners above, regardless of which exit path fires.
     res.status(500).json({ error: 'Failed to upload photos' });
   }
 });
