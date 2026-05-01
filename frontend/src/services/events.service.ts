@@ -64,11 +64,16 @@ interface UpdateEventData {
   default_photo_sort?: string;
 }
 
+export type EventStatusFilter = 'active' | 'inactive' | 'archived' | 'draft' | 'expiring';
+
 interface EventsListResponse {
   events: Event[];
-  total: number;
-  page: number;
-  limit: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export const eventsService = {
@@ -76,15 +81,19 @@ export const eventsService = {
   async getEvents(
     page: number = 1,
     limit: number = 20,
-    status?: 'active' | 'inactive' | 'archived' | 'draft'
+    status?: EventStatusFilter,
+    search?: string
   ): Promise<EventsListResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    
+
     if (status) {
       params.append('status', status);
+    }
+    if (search) {
+      params.append('search', search);
     }
 
     const response = await api.get<EventsListResponse>(`/admin/events?${params}`);
