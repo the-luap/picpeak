@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Upload, X, Image, Loader2, Cog } from 'lucide-react';
 import { Button } from '../common';
 import { clsx } from 'clsx';
@@ -9,6 +9,7 @@ import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 import { extensionsToMimeTypes, extensionsToAcceptString } from '../../utils/fileTypes';
+import { useUploadProgress } from '../../hooks/useUploadProgress';
 
 interface PhotoUploadProps {
   eventId: number;
@@ -37,7 +38,15 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
   const [phase, setPhase] = useState<UploadPhase>({ kind: 'idle' });
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [replaceByName, setReplaceByName] = useState(false);
+  // Upload IDs returned from each chunk POST. The processing tracker
+  // hook merges status across all of them so the user sees one unified
+  // progress count even when the upload spans multiple HTTP requests.
+  const [uploadIds, setUploadIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { aggregate: processingAggregate } = useUploadProgress(uploadIds, {
+    enabled: phase.kind === 'processing' && uploadIds.length > 0,
+  });
   
   // Fetch categories for this event
   const { data: categories = [] } = useQuery({
@@ -117,6 +126,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadIds([]);
 
     // For large uploads, chunk the files by both count AND size to prevent memory/network issues
     const MAX_FILES_PER_CHUNK = Math.max(1, Math.min(50, maxFilesPerUpload)); // Max 50 files per chunk
@@ -210,6 +220,12 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
           totalUploaded += (response.data?.successCount || chunk.length);
           totalReplaced += (response.data?.replacedCount || 0);
+          // Backend returns a per-request upload_id. Track it so the
+          // processing-status hook can poll/stream live progress.
+          if (response.data?.upload_id) {
+            const newId = response.data.upload_id as string;
+            setUploadIds((prev) => (prev.includes(newId) ? prev : [...prev, newId]));
+          }
         } catch (error: any) {
           console.error(`Error uploading chunk ${chunkIndex + 1}:`, error);
           failedFiles.push(...chunk.map(f => f.name));
@@ -219,40 +235,78 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         }
       }
 
-      // Clear selected files
+      // Bytes are all on the server. Clear the file picker so the
+      // user can queue another batch — but DON'T dismiss the upload
+      // UI yet; we'll watch the processing aggregate (useEffect below)
+      // to know when the backend has finished generating thumbnails
+      // and metadata.
       setSelectedFiles([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
-      // Show appropriate message
       if (totalReplaced > 0) {
         toast.info(t('upload.replacedFiles', { count: totalReplaced }) || `${totalReplaced} photo(s) replaced`);
       }
-      if (failedFiles.length === 0) {
-        toast.success(t('upload.uploadComplete') || `Successfully uploaded ${totalUploaded} files`);
-      } else {
+      if (failedFiles.length > 0) {
         toast.warning(
-          t('upload.someFilesFailed') || 
-          `Uploaded ${totalUploaded} files. ${failedFiles.length} files failed.`
+          t('upload.someFilesFailed') ||
+          `Transferred ${totalUploaded} files. ${failedFiles.length} files failed to transfer.`
         );
       }
-      
-      // Call callback
+
+      // Refresh the grid early so the user sees their photos appearing
+      // as the worker processes them. The processing-aggregate effect
+      // below will refresh again on completion.
       if (onUploadComplete) {
         onUploadComplete();
       }
+
+      // If the backend never returned an upload_id (e.g. only failures
+      // or pre-async-backend deployment), we have nothing to wait for —
+      // fall through to the finally cleanup which resets state.
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error(error.response?.data?.error || t('toast.uploadError'));
-    } finally {
       setIsUploading(false);
       setUploadProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
       setPhase({ kind: 'idle' });
+      setUploadIds([]);
     }
   };
+
+  // When the background worker finishes processing every photo from
+  // this upload, dismiss the upload UI and surface the result.
+  useEffect(() => {
+    if (!isUploading) return;
+    if (uploadIds.length === 0) return;
+    if (!processingAggregate.isComplete) return;
+
+    if (processingAggregate.failed > 0) {
+      toast.warning(
+        t('upload.processingFailed', { count: processingAggregate.failed }) ||
+          `${processingAggregate.failed} photo(s) failed to process`
+      );
+    } else {
+      toast.success(
+        t('upload.uploadComplete') || `Successfully uploaded ${processingAggregate.complete} photo(s)`
+      );
+    }
+
+    if (onUploadComplete) onUploadComplete();
+    setIsUploading(false);
+    setUploadProgress(0);
+    setCurrentChunk(0);
+    setTotalChunks(0);
+    setPhase({ kind: 'idle' });
+    setUploadIds([]);
+    // We intentionally only react to processingAggregate.isComplete /
+    // .failed — the rest of the deps either don't move during this
+    // effect's lifetime or are stable callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processingAggregate.isComplete, processingAggregate.failed, isUploading]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -398,9 +452,34 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
                     {t('upload.processing')}
-                    {phase.totalChunks > 1 && ` (${t('common.chunk')} ${phase.chunkIndex + 1}/${phase.totalChunks})`}
                   </p>
-                  <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">
+                  {processingAggregate.total > 0 && (
+                    <>
+                      <p className="text-xs text-amber-900 dark:text-amber-100 font-medium mt-2">
+                        {t('upload.processingProgress', {
+                          complete: processingAggregate.complete + processingAggregate.failed,
+                          total: processingAggregate.total,
+                        })}
+                      </p>
+                      <div className="w-full bg-amber-100 dark:bg-amber-900/40 rounded-full h-2 mt-1">
+                        <div
+                          className="bg-amber-600 dark:bg-amber-500 h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${
+                              processingAggregate.total === 0
+                                ? 0
+                                : Math.round(
+                                    ((processingAggregate.complete + processingAggregate.failed) /
+                                      processingAggregate.total) *
+                                      100
+                                  )
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                  <p className="text-xs text-amber-800 dark:text-amber-200 mt-2">
                     {t('upload.processingHint')}
                   </p>
                 </div>
