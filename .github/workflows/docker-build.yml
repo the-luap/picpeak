@@ -39,8 +39,11 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  # BACKEND_IMAGE_NAME and FRONTEND_IMAGE_NAME are computed per job in the
+  # "Compute image names" step. GHCR requires all-lowercase repository names,
+  # but ${{ github.repository }} preserves the original case (e.g. "Luca-Timo/...").
+  # Computing them with bash parameter expansion (${VAR,,}) keeps the workflow
+  # working on forks regardless of the owner's name casing.
 
 jobs:
   # -----------------------------------------------------------------------------
@@ -63,6 +66,12 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
 
     - name: Prepare platform pair
       run: |
@@ -148,6 +157,12 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
 
     steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
     - name: Download digest artifacts
       uses: actions/download-artifact@v4
       with:
@@ -247,6 +262,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
     - name: Prepare platform pair
       run: |
         platform="${{ matrix.platform }}"
@@ -330,6 +351,12 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
 
     steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
     - name: Download digest artifacts
       uses: actions/download-artifact@v4
       with:
@@ -416,6 +443,12 @@ jobs:
       contents: read
 
     steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
     - name: Build Summary
       run: |
         echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
