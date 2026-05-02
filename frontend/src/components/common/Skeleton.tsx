@@ -16,8 +16,6 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   height,
   animation = 'pulse'
 }) => {
-  const baseClasses = 'bg-neutral-200';
-  
   const animationClasses = {
     pulse: 'animate-pulse',
     wave: 'animate-shimmer',
@@ -30,14 +28,21 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     rectangular: 'rounded-lg'
   };
 
-  const style: React.CSSProperties = {};
+  // Theme-aware placeholder colour. Without this the skeleton tiles
+  // rendered as bright bg-neutral-200 light grey on dark gallery
+  // themes — the "most annoying" frame in #358's screenshots. Using
+  // var(--color-surface-border) tracks whatever shade ThemeContext
+  // resolves for the current colour mode (light: #e5e5e5, dark:
+  // #2e2e2e by default; per-event themes can override).
+  const style: React.CSSProperties = {
+    backgroundColor: 'var(--color-surface-border, #e5e5e5)',
+  };
   if (width) style.width = typeof width === 'number' ? `${width}px` : width;
   if (height) style.height = typeof height === 'number' ? `${height}px` : height;
 
   return (
     <div
       className={cn(
-        baseClasses,
         animationClasses[animation],
         variantClasses[variant],
         className
@@ -74,9 +79,16 @@ export const SkeletonGroup: React.FC<SkeletonGroupProps> = ({
   );
 };
 
+// Theme-aware container surface — same reasoning as the Skeleton
+// itself. Reads var(--color-surface) so the card sits on the right
+// background regardless of the active theme's colour mode.
+const SURFACE_STYLE: React.CSSProperties = {
+  backgroundColor: 'var(--color-surface, #ffffff)',
+};
+
 // Common skeleton patterns
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn('bg-white rounded-lg shadow-sm p-6', className)}>
+  <div className={cn('rounded-lg shadow-sm p-6', className)} style={SURFACE_STYLE}>
     <Skeleton height={24} width="60%" className="mb-4" />
     <SkeletonGroup count={3} />
     <div className="flex gap-3 mt-6">
@@ -86,12 +98,12 @@ export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) =>
   </div>
 );
 
-export const SkeletonTable: React.FC<{ rows?: number; className?: string }> = ({ 
-  rows = 5, 
-  className 
+export const SkeletonTable: React.FC<{ rows?: number; className?: string }> = ({
+  rows = 5,
+  className
 }) => (
-  <div className={cn('bg-white rounded-lg shadow-sm overflow-hidden', className)}>
-    <div className="border-b border-neutral-200 p-4">
+  <div className={cn('rounded-lg shadow-sm overflow-hidden', className)} style={SURFACE_STYLE}>
+    <div className="border-b border-neutral-200 dark:border-neutral-700 p-4">
       <div className="flex gap-4">
         <Skeleton width="30%" height={20} />
         <Skeleton width="25%" height={20} />
@@ -99,7 +111,7 @@ export const SkeletonTable: React.FC<{ rows?: number; className?: string }> = ({
         <Skeleton width="25%" height={20} />
       </div>
     </div>
-    <div className="divide-y divide-neutral-100">
+    <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="p-4">
           <div className="flex gap-4">
