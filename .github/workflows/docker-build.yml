@@ -1,10 +1,22 @@
 name: Build and Push Docker Images
 
 # This workflow is triggered by:
-# - Push to main/develop branches (builds 'latest' or branch-tagged images)
+# - Push to main/beta branches (builds 'latest'/'stable' or 'beta' tagged images)
 # - Version tags from Release Please (e.g., v1.2.0 -> builds versioned images)
 # - GitHub Releases (created by Release Please)
+# - Pull requests (build verification only, no push by default)
 # - Manual workflow dispatch
+#
+# Multi-arch strategy:
+#   Each image (backend, frontend) is built once per architecture on a
+#   native runner — linux/amd64 on ubuntu-latest, linux/arm64 on
+#   ubuntu-24.04-arm. Each leg pushes by digest to GHCR. A follow-up
+#   merge job combines the digests into a multi-arch manifest and applies
+#   the human-readable tags. This is the pattern documented at
+#   https://docs.docker.com/build/ci/github-actions/multi-platform/
+#
+#   Native runners are used instead of QEMU because npm install under
+#   QEMU was previously too slow/unreliable for regular branch builds.
 
 on:
   push:
@@ -27,51 +39,44 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  # BACKEND_IMAGE_NAME and FRONTEND_IMAGE_NAME are computed per job in the
+  # "Compute image names" step. GHCR requires all-lowercase repository names,
+  # but ${{ github.repository }} preserves the original case (e.g. "Luca-Timo/...").
+  # Computing them with bash parameter expansion (${VAR,,}) keeps the workflow
+  # working on forks regardless of the owner's name casing.
 
 jobs:
+  # -----------------------------------------------------------------------------
+  # Backend: per-arch build, then merge into a multi-arch manifest
+  # -----------------------------------------------------------------------------
   build-backend:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
-      security-events: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Determine build context
-      id: context
+    - name: Compute image names (lowercase for GHCR)
       run: |
-        # Determine if this is a beta or stable release
-        if [[ "${{ github.ref }}" == refs/tags/v*-beta* ]] || [[ "${{ github.ref }}" == refs/heads/beta ]]; then
-          echo "channel=beta" >> $GITHUB_OUTPUT
-          echo "is_prerelease=true" >> $GITHUB_OUTPUT
-        else
-          echo "channel=stable" >> $GITHUB_OUTPUT
-          echo "is_prerelease=false" >> $GITHUB_OUTPUT
-        fi
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
 
-    - name: Determine build platforms
-      id: platforms
+    - name: Prepare platform pair
       run: |
-        # Only build ARM64 for tagged releases (v*.*.*)
-        # QEMU emulation is too slow/unreliable for npm operations on regular builds
-        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-          echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=false" >> $GITHUB_OUTPUT
-        else
-          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=true" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Set up QEMU
-      if: steps.platforms.outputs.skip_qemu != 'true'
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
+        platform="${{ matrix.platform }}"
+        echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -85,6 +90,108 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Determine if pushing
+      id: push-decision
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.inputs.push }}" != "true" ]]; then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        elif [[ "${{ steps.login-ghcr.outcome }}" != "success" ]]; then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "push=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Extract metadata for Backend (labels only)
+      id: meta-backend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+        labels: |
+          org.opencontainers.image.title=PicPeak Backend
+          org.opencontainers.image.description=PicPeak photo sharing platform backend service
+          org.opencontainers.image.vendor=PicPeak
+          maintainer=${{ github.repository_owner }}
+
+    - name: Build Backend image (push by digest)
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        platforms: ${{ matrix.platform }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
+        cache-from: type=gha,scope=backend-${{ env.PLATFORM_PAIR }}
+        cache-to: type=gha,mode=max,scope=backend-${{ env.PLATFORM_PAIR }}
+        outputs: ${{ steps.push-decision.outputs.push == 'true' && format('type=image,name={0}/{1},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.BACKEND_IMAGE_NAME) || 'type=cacheonly' }}
+        build-args: |
+          CACHEBUST=${{ github.run_number }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ steps.meta-backend.outputs.version }}
+
+    - name: Export digest
+      if: steps.push-decision.outputs.push == 'true'
+      run: |
+        mkdir -p /tmp/digests
+        digest="${{ steps.build.outputs.digest }}"
+        touch "/tmp/digests/${digest#sha256:}"
+
+    - name: Upload digest artifact
+      if: steps.push-decision.outputs.push == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-backend-${{ env.PLATFORM_PAIR }}
+        path: /tmp/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
+  merge-backend:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    # Only run when at least one digest was pushed (i.e. not on PRs without push intent).
+    if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
+
+    steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
+    - name: Download digest artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: /tmp/digests
+        pattern: digests-backend-*
+        merge-multiple: true
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      id: login-ghcr
+      continue-on-error: true
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Determine build context
+      id: context
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v*-beta* ]] || [[ "${{ github.ref }}" == refs/heads/beta ]]; then
+          echo "channel=beta" >> $GITHUB_OUTPUT
+          echo "is_prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "channel=stable" >> $GITHUB_OUTPUT
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Extract metadata for Backend
       id: meta-backend
@@ -107,23 +214,15 @@ jobs:
           type=raw,value=stable,enable=${{ github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && steps.context.outputs.is_prerelease == 'false') }}
           type=raw,value=beta,enable=${{ github.ref == 'refs/heads/beta' || steps.context.outputs.is_prerelease == 'true' }}
 
-    - name: Build and push Backend Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./backend
-        file: ./backend/Dockerfile
-        # Always build; only push when registry login succeeded
-        push: ${{ (github.event_name != 'pull_request' || github.event.inputs.push == 'true') && steps.login-ghcr.outcome == 'success' }}
-        tags: ${{ steps.meta-backend.outputs.tags }}
-        labels: ${{ steps.meta-backend.outputs.labels }}
-        platforms: ${{ steps.platforms.outputs.platforms }}
-        cache-from: type=gha,scope=backend
-        cache-to: type=gha,mode=max,scope=backend
-        build-args: |
-          CACHEBUST=${{ github.run_number }}
-          BUILD_DATE=${{ github.event.head_commit.timestamp }}
-          VCS_REF=${{ github.sha }}
-          VERSION=${{ steps.meta-backend.outputs.version }}
+    - name: Create and push multi-arch manifest
+      working-directory: /tmp/digests
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf "${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}@sha256:%s " *)
+
+    - name: Inspect manifest
+      run: |
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.meta-backend.outputs.version }}
 
     - name: Run Trivy vulnerability scanner
       if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
@@ -142,47 +241,37 @@ jobs:
         sarif_file: 'trivy-backend.sarif'
         category: 'backend-vulnerabilities'
 
+  # -----------------------------------------------------------------------------
+  # Frontend: per-arch build, then merge into a multi-arch manifest
+  # -----------------------------------------------------------------------------
   build-frontend:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
-      security-events: write
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Determine build context
-      id: context
+    - name: Compute image names (lowercase for GHCR)
       run: |
-        # Determine if this is a beta or stable release
-        if [[ "${{ github.ref }}" == refs/tags/v*-beta* ]] || [[ "${{ github.ref }}" == refs/heads/beta ]]; then
-          echo "channel=beta" >> $GITHUB_OUTPUT
-          echo "is_prerelease=true" >> $GITHUB_OUTPUT
-        else
-          echo "channel=stable" >> $GITHUB_OUTPUT
-          echo "is_prerelease=false" >> $GITHUB_OUTPUT
-        fi
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
 
-    - name: Determine build platforms
-      id: platforms
+    - name: Prepare platform pair
       run: |
-        # Only build ARM64 for tagged releases (v*.*.*)
-        # QEMU emulation is too slow/unreliable for npm operations on regular builds
-        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-          echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=false" >> $GITHUB_OUTPUT
-        else
-          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "skip_qemu=true" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Set up QEMU
-      if: steps.platforms.outputs.skip_qemu != 'true'
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
+        platform="${{ matrix.platform }}"
+        echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -196,6 +285,107 @@ jobs:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Determine if pushing
+      id: push-decision
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.inputs.push }}" != "true" ]]; then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        elif [[ "${{ steps.login-ghcr.outcome }}" != "success" ]]; then
+          echo "push=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "push=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Extract metadata for Frontend (labels only)
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+        labels: |
+          org.opencontainers.image.title=PicPeak Frontend
+          org.opencontainers.image.description=PicPeak photo sharing platform frontend application
+          org.opencontainers.image.vendor=PicPeak
+          maintainer=${{ github.repository_owner }}
+
+    - name: Build Frontend image (push by digest)
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        platforms: ${{ matrix.platform }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
+        cache-from: type=gha,scope=frontend-${{ env.PLATFORM_PAIR }}
+        cache-to: type=gha,mode=max,scope=frontend-${{ env.PLATFORM_PAIR }}
+        outputs: ${{ steps.push-decision.outputs.push == 'true' && format('type=image,name={0}/{1},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.FRONTEND_IMAGE_NAME) || 'type=cacheonly' }}
+        build-args: |
+          CACHEBUST=${{ github.run_number }}
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ steps.meta-frontend.outputs.version }}
+
+    - name: Export digest
+      if: steps.push-decision.outputs.push == 'true'
+      run: |
+        mkdir -p /tmp/digests
+        digest="${{ steps.build.outputs.digest }}"
+        touch "/tmp/digests/${digest#sha256:}"
+
+    - name: Upload digest artifact
+      if: steps.push-decision.outputs.push == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: digests-frontend-${{ env.PLATFORM_PAIR }}
+        path: /tmp/digests/*
+        if-no-files-found: error
+        retention-days: 1
+
+  merge-frontend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    if: github.event_name != 'pull_request' || github.event.inputs.push == 'true'
+
+    steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
+    - name: Download digest artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: /tmp/digests
+        pattern: digests-frontend-*
+        merge-multiple: true
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      id: login-ghcr
+      continue-on-error: true
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Determine build context
+      id: context
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v*-beta* ]] || [[ "${{ github.ref }}" == refs/heads/beta ]]; then
+          echo "channel=beta" >> $GITHUB_OUTPUT
+          echo "is_prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "channel=stable" >> $GITHUB_OUTPUT
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Extract metadata for Frontend
       id: meta-frontend
@@ -218,23 +408,15 @@ jobs:
           type=raw,value=stable,enable=${{ github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && steps.context.outputs.is_prerelease == 'false') }}
           type=raw,value=beta,enable=${{ github.ref == 'refs/heads/beta' || steps.context.outputs.is_prerelease == 'true' }}
 
-    - name: Build and push Frontend Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./frontend
-        file: ./frontend/Dockerfile
-        # Always build; only push when registry login succeeded
-        push: ${{ (github.event_name != 'pull_request' || github.event.inputs.push == 'true') && steps.login-ghcr.outcome == 'success' }}
-        tags: ${{ steps.meta-frontend.outputs.tags }}
-        labels: ${{ steps.meta-frontend.outputs.labels }}
-        platforms: ${{ steps.platforms.outputs.platforms }}
-        cache-from: type=gha,scope=frontend
-        cache-to: type=gha,mode=max,scope=frontend
-        build-args: |
-          CACHEBUST=${{ github.run_number }}
-          BUILD_DATE=${{ github.event.head_commit.timestamp }}
-          VCS_REF=${{ github.sha }}
-          VERSION=${{ steps.meta-frontend.outputs.version }}
+    - name: Create and push multi-arch manifest
+      working-directory: /tmp/digests
+      run: |
+        docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf "${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}@sha256:%s " *)
+
+    - name: Inspect manifest
+      run: |
+        docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.meta-frontend.outputs.version }}
 
     - name: Run Trivy vulnerability scanner
       if: github.event_name != 'pull_request' && steps.login-ghcr.outcome == 'success'
@@ -253,45 +435,69 @@ jobs:
         sarif_file: 'trivy-frontend.sarif'
         category: 'frontend-vulnerabilities'
 
-  # Note: The publish-manifest job is not needed since docker/build-push-action@v5
-  # automatically creates multi-arch manifests when building for multiple platforms.
-  # The images are already properly tagged and include all architectures.
-
   summary:
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, merge-backend, build-frontend, merge-frontend]
     if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    
+
     steps:
+    - name: Compute image names (lowercase for GHCR)
+      run: |
+        repo_lc="${GITHUB_REPOSITORY,,}"
+        echo "BACKEND_IMAGE_NAME=${repo_lc}/backend" >> "$GITHUB_ENV"
+        echo "FRONTEND_IMAGE_NAME=${repo_lc}/frontend" >> "$GITHUB_ENV"
+
     - name: Build Summary
       run: |
         echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         if [[ "${{ needs.build-backend.result }}" == "success" ]]; then
-          echo "✅ **Backend**: Successfully built" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Backend build (per-arch)**: Successfully built" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ **Backend**: Build failed" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Backend build (per-arch)**: ${{ needs.build-backend.result }}" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
+        if [[ "${{ needs.merge-backend.result }}" == "success" ]]; then
+          echo "✅ **Backend manifest merge**: Successfully published" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.merge-backend.result }}" == "skipped" ]]; then
+          echo "ℹ️ **Backend manifest merge**: Skipped (verify-only build)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Backend manifest merge**: ${{ needs.merge-backend.result }}" >> $GITHUB_STEP_SUMMARY
+        fi
+
         if [[ "${{ needs.build-frontend.result }}" == "success" ]]; then
-          echo "✅ **Frontend**: Successfully built" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Frontend build (per-arch)**: Successfully built" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ **Frontend**: Build failed" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Frontend build (per-arch)**: ${{ needs.build-frontend.result }}" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
+        if [[ "${{ needs.merge-frontend.result }}" == "success" ]]; then
+          echo "✅ **Frontend manifest merge**: Successfully published" >> $GITHUB_STEP_SUMMARY
+        elif [[ "${{ needs.merge-frontend.result }}" == "skipped" ]]; then
+          echo "ℹ️ **Frontend manifest merge**: Skipped (verify-only build)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Frontend manifest merge**: ${{ needs.merge-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+        fi
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📦 Images" >> $GITHUB_STEP_SUMMARY
         echo "- Backend: \`${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
         echo "- Frontend: \`${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-        
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏗️ Architectures" >> $GITHUB_STEP_SUMMARY
+        echo "Published manifests include both \`linux/amd64\` and \`linux/arm64\` (built natively, no QEMU)." >> $GITHUB_STEP_SUMMARY
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 🏷️ Tags" >> $GITHUB_STEP_SUMMARY
         echo "Images are tagged based on:" >> $GITHUB_STEP_SUMMARY
         echo "- Branch name (for branch pushes)" >> $GITHUB_STEP_SUMMARY
-        echo "- PR number (for pull requests)" >> $GITHUB_STEP_SUMMARY
+        echo "- PR number (for pull requests, when push is enabled)" >> $GITHUB_STEP_SUMMARY
         echo "- Version tags (for releases)" >> $GITHUB_STEP_SUMMARY
-        echo "- Short SHA with branch prefix" >> $GITHUB_STEP_SUMMARY
+        echo "- Short SHA" >> $GITHUB_STEP_SUMMARY
         echo "- \`latest\` (for main branch)" >> $GITHUB_STEP_SUMMARY
+        echo "- \`stable\` (for main branch and stable releases)" >> $GITHUB_STEP_SUMMARY
+        echo "- \`beta\` (for beta branch and pre-releases)" >> $GITHUB_STEP_SUMMARY
