@@ -302,11 +302,22 @@ export const EventDetailsPage: React.FC = () => {
     logic: feedbackFilters.logic,
   }), [photoFilters, feedbackFilters]);
 
-  // Fetch photos (needed for both photos tab and hero photo selector)
+  // Fetch photos (needed for both photos tab and hero photo selector).
+  // While any photo is still in pending/processing state we poll every
+  // 2s so the admin grid auto-updates as the background worker drains
+  // the queue. Once everything is complete/failed the polling stops.
   const { data: photos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
     queryKey: ['admin-event-photos', id, combinedPhotoFilters],
     queryFn: () => photosService.getEventPhotos(parseInt(id!), combinedPhotoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
+    refetchInterval: (query) => {
+      const data = query.state.data as AdminPhoto[] | undefined;
+      if (!Array.isArray(data)) return false;
+      const inFlight = data.some(
+        (p: any) => p.processing_status === 'pending' || p.processing_status === 'processing'
+      );
+      return inFlight ? 2000 : false;
+    },
   });
 
   // Fetch filter summary for feedback filters

@@ -5,8 +5,8 @@ const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const { generateThumbnail, ensureThumbnail, extractCaptureDate } = require('../services/imageProcessor');
-const { processUploadedVideo, isVideoMimeType } = require('../services/videoProcessor');
+const { ensureThumbnail } = require('../services/imageProcessor');
+const { isVideoMimeType } = require('../services/videoProcessor');
 const { generatePhotoFilename } = require('../utils/filenameSanitizer');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
@@ -150,29 +150,39 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     next();
   });
 }, validateUploadContent, validateUploadedFiles, async (req, res) => {
+  // Single cleanup site for the multer temp directory — runs on every
+  // exit path (success, validation 4xx, server 5xx, multer error). The
+  // previous code had three inline cleanup blocks for individual early
+  // returns and missed the success path entirely, leaving an empty
+  // per-request directory behind on every successful upload (#357 review).
+  let tempCleanupDone = false;
+  const cleanupTempDir = async () => {
+    if (tempCleanupDone || !req.tempUploadPath) return;
+    tempCleanupDone = true;
+    try {
+      await fs.rm(req.tempUploadPath, { recursive: true, force: true });
+    } catch (e) {
+      console.error('Failed to clean up temp upload directory:', e);
+    }
+  };
+  res.on('finish', cleanupTempDir);
+  res.on('close', cleanupTempDir);
+
   try {
     const { eventId } = req.params;
     const { category_id, replace_by_name } = req.body;
     const replaceByName = replace_by_name === 'true' || replace_by_name === true;
-    
+
     console.log('Upload request received for event:', eventId);
     console.log('Body:', req.body);
     console.log('Files:', req.files ? req.files.length : 'none');
     console.log('File details:', req.files?.map(f => ({ name: f.originalname, size: f.size, mimetype: f.mimetype })));
     console.log('Category ID received:', category_id);
-    
+
     // Verify event exists and admin has access
     const event = await db('events').where({ id: eventId }).first();
     if (!event) {
       console.error('Event not found:', eventId);
-      // Clean up temp files
-      if (req.tempUploadPath) {
-        try {
-          await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        } catch (e) {
-          console.error('Failed to clean up temp path:', e);
-        }
-      }
       return res.status(404).json({ error: 'Event not found' });
     }
 
@@ -192,14 +202,6 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
         }
       }
       if (currentCount + newFilesCount > event.photo_cap) {
-        // Clean up temp files
-        if (req.tempUploadPath) {
-          try {
-            await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-          } catch (e) {
-            console.error('Failed to clean up temp path:', e);
-          }
-        }
         return res.status(400).json({
           error: `Photo cap exceeded. This event allows a maximum of ${event.photo_cap} photos. Currently ${currentCount} photos exist, and you are trying to upload ${newFilesCount} more.`
         });
@@ -209,14 +211,6 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     if (!req.files || req.files.length === 0) {
       console.error('No files in request. req.files:', req.files);
       console.error('Request body keys:', Object.keys(req.body));
-      // Clean up temp files
-      if (req.tempUploadPath) {
-        try {
-          await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        } catch (e) {
-          console.error('Failed to clean up temp path:', e);
-        }
-      }
       return res.status(400).json({ error: 'No files uploaded' });
     }
     
@@ -289,262 +283,97 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
       filesToUpload = newFiles;
     }
 
-    // Process remaining new files in batches
-    const BATCH_SIZE = 25; // Increased batch size for better performance with large uploads
+    // Async-processing flow:
+    //   1. Move each file to its final storage location.
+    //   2. Insert a photo row with processing_status='pending' and a
+    //      shared upload_id. EXIF / sharp / thumbnails / ffmpeg /
+    //      watermark / webhook all happen in the background worker
+    //      (services/backgroundProcessor.js) so the request returns in
+    //      seconds even on NFS-backed storage.
+    //
+    // The previous code processed thumbnails+EXIF synchronously in
+    // batches of 25 inside this handler, which is why large uploads on
+    // slow storage looked frozen — see #357 review.
+    const crypto = require('crypto');
+    const uploadId = crypto.randomBytes(16).toString('hex');
 
-    for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
-      const batch = filesToUpload.slice(i, i + BATCH_SIZE);
-      
-      // Start a single transaction for the batch
-      const trx = await db.transaction();
-      
+    // Counter base — same approximation as before. Strict uniqueness is
+    // already enforced by the filename template + DB unique index, so a
+    // small race here just retries a counter on conflict (rare).
+    const existingCount = await db('photos')
+      .where({ event_id: eventId, type: photoType })
+      .count('id as count')
+      .first();
+    let counter = (parseInt(existingCount.count) || 0) + 1;
+    const storage = getStorage();
+
+    for (const file of filesToUpload) {
       try {
-        // Get initial counter for this batch based on photo type
-        const existingCount = await trx('photos')
-          .where({ event_id: eventId, type: photoType })
-          .count('id as count')
-          .first();
-        let batchCounter = (parseInt(existingCount.count) || 0) + 1;
-        
-        const batchPhotos = [];
-        const fileRenameOperations = []; // Store rename operations to do after commit
-        
-        // First pass: prepare data and move files from temp to final location
-        for (let fileIndex = 0; fileIndex < batch.length; fileIndex++) {
-          const file = batch[fileIndex];
-          const counter = batchCounter + fileIndex;
-          const tempPath = file.path; // Original temp path
-          
-          try {
-            // Verify file is complete before processing
-            const tempStats = await fs.stat(tempPath);
-            if (tempStats.size === 0) {
-              throw new Error('File is empty - upload may have been interrupted');
-            }
-            
-            // Generate new filename
-            const extension = path.extname(file.originalname);
-            const newFilename = generatePhotoFilename(
-              event.event_name,
-              categoryName,
-              counter,
-              extension
-            );
-            
-            // Storage key: events/active/{slug}/{newFilename}
-            const finalKey = path.posix.join(finalDestPathRel, newFilename);
-            // photo.path is stored relative to events/active so resolvePhotoStorageKey
-            // can rebuild the full key on read.
-            const relativePath = path.posix.join(event.slug, newFilename);
-
-            // Extract capture date from EXIF metadata
-            let capturedAt = null;
-            try {
-              capturedAt = await extractCaptureDate(tempPath);
-            } catch (exifError) {
-              // Non-fatal - just log and continue without capture date
-              console.log(`Could not extract EXIF date for ${file.originalname}`);
-            }
-
-            // Determine media type
-            const isVideo = isVideoMimeType(file.mimetype);
-            const mediaType = isVideo ? 'video' : 'image';
-
-            // Prepare photo data for batch insert
-            const photoData = {
-              event_id: parseInt(eventId),
-              filename: newFilename,
-              original_filename: file.originalname, // Preserve original filename for Lightroom export
-              path: relativePath,
-              thumbnail_path: null, // Will generate after successful commit
-              type: photoType,
-              category_id: parsedCategoryId, // Save the selected category
-              size_bytes: tempStats.size, // Use actual file size from stat
-              captured_at: capturedAt, // EXIF capture date (if available)
-              media_type: mediaType,
-              mime_type: file.mimetype
-            };
-            
-            batchPhotos.push(photoData);
-            
-            // Store upload operation for later (after DB commit)
-            fileRenameOperations.push({
-              tempPath: tempPath,
-              finalKey: finalKey,
-              filename: newFilename,
-              photoData: photoData
-            });
-          } catch (error) {
-            console.error(`Error preparing file ${file.originalname}:`, error);
-            errors.push({ filename: file.originalname, error: error.message });
-          }
+        const tempStats = await fs.stat(file.path);
+        if (tempStats.size === 0) {
+          throw new Error('File is empty - upload may have been interrupted');
         }
-        
-        // Insert all photos in this batch
-        if (batchPhotos.length > 0) {
-          console.log(`Inserting batch of ${batchPhotos.length} photos with type: ${photoType}`);
-          
-          const insertedIds = await trx('photos').insert(batchPhotos).returning('id');
-          
-          // No need to update counter as we calculate it dynamically
-          
-          // Commit the transaction first
-          await trx.commit();
-          console.log(`Successfully committed batch of ${batchPhotos.length} photos`);
-          
-          // Now upload files from temp into the storage backend after successful commit
-          const storage = getStorage();
-          for (let idx = 0; idx < fileRenameOperations.length; idx++) {
-            const operation = fileRenameOperations[idx];
-            try {
-              // Process source-dependent steps (sharp/ffmpeg) FIRST while the
-              // tmp file is still on local disk, then upload the original and
-              // unlink the tmp.
-              const photoId = insertedIds[idx]?.id || insertedIds[idx];
-              const isVideoFile = isVideoMimeType(operation.photoData.mime_type);
-              let thumbnailPath = null;
 
-              try {
-                if (isVideoFile) {
-                  const videoThumbnailKey = path.posix.join(
-                    'thumbnails',
-                    `thumb_${operation.filename.replace(/\.[^.]+$/, '.jpg')}`
-                  );
-                  const result = await processUploadedVideo(operation.tempPath, videoThumbnailKey);
-                  thumbnailPath = result.thumbnailKey;
+        const extension = path.extname(file.originalname);
+        const newFilename = generatePhotoFilename(
+          event.event_name,
+          categoryName,
+          counter,
+          extension
+        );
+        counter += 1;
 
-                  if (photoId && result.metadata) {
-                    await db('photos')
-                      .where({ id: photoId })
-                      .update({
-                        thumbnail_path: thumbnailPath,
-                        duration: result.metadata.duration,
-                        video_codec: result.metadata.videoCodec,
-                        audio_codec: result.metadata.audioCodec,
-                        width: result.metadata.width,
-                        height: result.metadata.height
-                      });
-                  }
-                } else {
-                  thumbnailPath = await generateThumbnail(operation.tempPath);
+        const finalKey = path.posix.join(finalDestPathRel, newFilename);
+        const relativePath = path.posix.join(event.slug, newFilename);
+        const isVideo = isVideoMimeType(file.mimetype);
 
-                  // Update the database with thumbnail path and image dimensions
-                  if (photoId) {
-                    const updateData = {};
-                    if (thumbnailPath) updateData.thumbnail_path = thumbnailPath;
+        // 1. Move file to its final storage key first. If the worker
+        //    later picks up the photo row, the file is guaranteed to
+        //    exist at the recorded path.
+        await storage.putFromFile(finalKey, file.path, {
+          contentType: file.mimetype,
+        });
+        await fs.unlink(file.path).catch(() => {});
 
-                    try {
-                      const sharp = require('sharp');
-                      const metadata = await sharp(operation.tempPath).metadata();
-                      if (metadata.width && metadata.height) {
-                        updateData.width = metadata.width;
-                        updateData.height = metadata.height;
-                      }
-                    } catch (metadataError) {
-                      console.warn(`Could not extract image dimensions for ${operation.filename}:`, metadataError.message);
-                    }
-
-                    if (Object.keys(updateData).length > 0) {
-                      await db('photos')
-                        .where({ id: photoId })
-                        .update(updateData);
-                    }
-                  }
-                }
-              } catch (thumbError) {
-                console.error(`Thumbnail/metadata processing failed for ${operation.filename}:`, thumbError.message);
-              }
-
-              // Upload the original through the storage backend, then drop the
-              // local tmp file. We do this AFTER thumbnail/metadata processing
-              // so sharp/ffmpeg still have a local source to work from.
-              await storage.putFromFile(operation.finalKey, operation.tempPath, {
-                contentType: operation.photoData.mime_type,
-              });
-              await fs.unlink(operation.tempPath).catch(() => {});
-
-              // Sanity check: round-trip the size we just wrote.
-              const stat = await storage.stat(operation.finalKey);
-              if (!stat || stat.size !== operation.photoData.size_bytes) {
-                throw new Error(`Size mismatch after upload: expected ${operation.photoData.size_bytes}, got ${stat ? stat.size : 'null'}`);
-              }
-
-              // Queue watermark generation in background (non-blocking, images only)
-              if (photoId && !isVideoFile) {
-                watermarkGeneratorService.generateForPhoto(photoId)
-                  .catch(err => console.warn(`Watermark generation queued failed for photo ${photoId}:`, err.message));
-              }
-
-              // Webhook (#327): per-photo upload event.
-              try {
-                const webhookService = require('../services/webhookService');
-                await webhookService.fire('photo.uploaded', {
-                  event: { id: parseInt(eventId, 10), slug: event.slug, event_name: event.event_name },
-                  photo: {
-                    id: insertedIds[idx]?.id || insertedIds[idx],
-                    filename: operation.filename,
-                    original_filename: operation.photoData.original_filename,
-                    size_bytes: operation.photoData.size_bytes,
-                  },
-                });
-              } catch (e) { /* non-fatal */ }
-
-              // Add to successful uploads
-              uploadedPhotos.push({
-                id: insertedIds[idx]?.id || insertedIds[idx],
-                filename: operation.filename,
-                size: operation.photoData.size_bytes,
-                category_id: operation.photoData.category_id
-              });
-            } catch (moveError) {
-              console.error(`Failed to upload ${operation.tempPath} → ${operation.finalKey}:`, moveError);
-              errors.push({
-                filename: operation.filename,
-                error: `File upload failed: ${moveError.message}`
-              });
-              
-              // Try to clean up the database entry if file move failed
-              if (insertedIds[idx]) {
-                const photoId = insertedIds[idx]?.id || insertedIds[idx];
-                try {
-                  await db('photos').where({ id: photoId }).delete();
-                  console.log(`Cleaned up database entry for failed photo ${photoId}`);
-                } catch (cleanupError) {
-                  console.error(`Failed to clean up database entry:`, cleanupError);
-                }
-              }
-            }
-          }
-        } else {
-          // No photos to insert, just rollback
-          await trx.rollback();
+        // Sanity check the round-tripped size — same guard as before.
+        const stat = await storage.stat(finalKey);
+        if (!stat || stat.size !== tempStats.size) {
+          throw new Error(
+            `Size mismatch after upload: expected ${tempStats.size}, got ${stat ? stat.size : 'null'}`
+          );
         }
-      } catch (error) {
-        console.error(`Error processing batch starting at index ${i}:`, error);
-        console.error('Stack trace:', error.stack);
-        
-        // Rollback if not already committed
-        if (!trx.isCompleted()) {
-          await trx.rollback();
-        }
-        
-        // Add all files in this batch to errors
-        for (const file of batch) {
-          errors.push({ 
-            filename: file.originalname, 
-            error: `Batch processing failed: ${error.message}` 
-          });
-        }
-      }
-    }
-    
-    // Clean up temp upload directory
-    if (req.tempUploadPath) {
-      try {
-        await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        console.log(`Cleaned up temp upload directory: ${req.tempUploadPath}`);
-      } catch (e) {
-        console.error('Failed to clean up temp upload directory:', e);
+
+        // 2. Insert a pending photo row. The background processor
+        //    will pick it up, generate thumbnail/dimensions/EXIF, and
+        //    flip status to 'complete' (or 'failed' with the error).
+        const inserted = await db('photos')
+          .insert({
+            event_id: parseInt(eventId, 10),
+            filename: newFilename,
+            original_filename: file.originalname,
+            path: relativePath,
+            thumbnail_path: null,
+            type: photoType,
+            category_id: parsedCategoryId,
+            size_bytes: tempStats.size,
+            captured_at: null,
+            media_type: isVideo ? 'video' : 'image',
+            mime_type: file.mimetype,
+            processing_status: 'pending',
+            upload_id: uploadId,
+          })
+          .returning('id');
+        const photoId = inserted[0]?.id || inserted[0];
+
+        uploadedPhotos.push({
+          id: photoId,
+          filename: newFilename,
+          size: tempStats.size,
+          category_id: parsedCategoryId,
+        });
+      } catch (err) {
+        console.error(`Error queuing file ${file.originalname}:`, err);
+        errors.push({ filename: file.originalname, error: err.message });
       }
     }
     
@@ -567,12 +396,20 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
     // Include any files that were invalid from the validation middleware
     const totalInvalidFiles = (req.invalidFiles || []).concat(errors);
 
-    // Prepare response
+    // Prepare response. The new fields (upload_id, count, photo_ids)
+    // are what the new frontend uses to poll for processing status; the
+    // existing fields (successCount, replacedCount, ...) are kept for
+    // back-compat with older clients that haven't upgraded yet.
     const totalAttempted = req.files.length + (req.invalidFiles ? req.invalidFiles.length : 0);
-    const uploadMsg = uploadedPhotos.length > 0 ? `${uploadedPhotos.length} uploaded` : '';
+    const uploadMsg = uploadedPhotos.length > 0 ? `${uploadedPhotos.length} queued` : '';
     const replaceMsg = replacedPhotos.length > 0 ? `${replacedPhotos.length} replaced` : '';
     const parts = [uploadMsg, replaceMsg].filter(Boolean).join(', ');
     const response = {
+      // New async-processing fields
+      upload_id: uploadId,
+      count: uploadedPhotos.length,
+      photo_ids: uploadedPhotos.map((p) => p.id),
+      // Existing back-compat fields
       message: parts ? `Successfully ${parts}` : 'No photos processed',
       photos: uploadedPhotos,
       replaced: replacedPhotos,
@@ -580,37 +417,199 @@ router.post('/:eventId/upload', adminAuth, requirePermission('photos.upload'), r
       skippedReplacements,
       totalFiles: totalAttempted,
       successCount: uploadedPhotos.length + replacedPhotos.length,
-      failureCount: totalInvalidFiles.length
+      failureCount: totalInvalidFiles.length,
     };
-    
+
     // Include error details if any files failed
     if (totalInvalidFiles.length > 0) {
       response.errors = totalInvalidFiles;
-      response.message = `Uploaded ${uploadedPhotos.length} of ${totalAttempted} photos. ${totalInvalidFiles.length} failed.`;
+      response.message = `Queued ${uploadedPhotos.length} of ${totalAttempted} photos. ${totalInvalidFiles.length} failed.`;
     }
-    
+
     // Invalidate download zip cache after successful upload or replacement
     if (uploadedPhotos.length > 0 || replacedPhotos.length > 0) {
       downloadZipService.invalidate(parseInt(eventId));
     }
 
-    res.json(response);
+    // 202 Accepted — files stored, processing happens in background.
+    res.status(202).json(response);
   } catch (error) {
     console.error('Error uploading photos:', error);
-
-    // Clean up temp upload directory on error
-    if (req.tempUploadPath) {
-      try {
-        await fs.rm(req.tempUploadPath, { recursive: true, force: true });
-        console.log(`Cleaned up temp upload directory after error: ${req.tempUploadPath}`);
-      } catch (e) {
-        console.error('Failed to clean up temp upload directory:', e);
-      }
-    }
-    
+    // Temp directory cleanup is handled by the response finish/close
+    // listeners above, regardless of which exit path fires.
     res.status(500).json({ error: 'Failed to upload photos' });
   }
 });
+
+// Helper — load the upload group + verify the requesting admin owns the
+// underlying event. Returns { event, photos } or sends a 4xx response.
+async function loadUploadGroup(req, res) {
+  const { upload_id: uploadId } = req.params;
+  if (!uploadId || typeof uploadId !== 'string' || uploadId.length > 64) {
+    res.status(400).json({ error: 'Invalid upload_id' });
+    return null;
+  }
+
+  const photos = await db('photos').where({ upload_id: uploadId });
+  if (photos.length === 0) {
+    res.status(404).json({ error: 'Upload group not found' });
+    return null;
+  }
+
+  const eventId = photos[0].event_id;
+  let eventQuery = db('events').where('id', eventId);
+  if (req.admin.roleName === 'editor') {
+    eventQuery = eventQuery.where('created_by', req.admin.id);
+  }
+  const event = await eventQuery.first();
+  if (!event) {
+    res.status(404).json({ error: 'Event not found' });
+    return null;
+  }
+  return { event, photos, uploadId };
+}
+
+function summariseUpload(photos) {
+  const summary = {
+    total: photos.length,
+    pending: 0,
+    processing: 0,
+    complete: 0,
+    failed: 0,
+    photos: photos.map((p) => ({
+      id: p.id,
+      filename: p.filename,
+      original_filename: p.original_filename,
+      status: p.processing_status,
+      error: p.processing_error || null,
+    })),
+  };
+  for (const p of photos) {
+    summary[p.processing_status] = (summary[p.processing_status] || 0) + 1;
+  }
+  return summary;
+}
+
+// JSON snapshot of upload status — frontends poll this every 1.5s while
+// any photo in the group is still pending or processing.
+router.get(
+  '/uploads/:upload_id/status',
+  adminAuth,
+  requirePermission('photos.view'),
+  async (req, res) => {
+    try {
+      const group = await loadUploadGroup(req, res);
+      if (!group) return;
+      res.json({
+        upload_id: group.uploadId,
+        event_id: group.event.id,
+        ...summariseUpload(group.photos),
+      });
+    } catch (error) {
+      console.error('Error reading upload status:', error);
+      res.status(500).json({ error: 'Failed to read upload status' });
+    }
+  }
+);
+
+// Server-Sent Events stream for upload progress. Optional upgrade over
+// the polling endpoint above. Streams the current snapshot on connect,
+// then re-emits whenever the snapshot changes (debounced) until all
+// photos in the group reach a terminal state.
+router.get(
+  '/uploads/:upload_id/stream',
+  adminAuth,
+  requirePermission('photos.view'),
+  async (req, res) => {
+    const group = await loadUploadGroup(req, res);
+    if (!group) return;
+
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders();
+
+    let lastJson = '';
+    let closed = false;
+    let timer = null;
+
+    const send = async () => {
+      if (closed) return;
+      try {
+        const photos = await db('photos').where({ upload_id: group.uploadId });
+        const summary = summariseUpload(photos);
+        const payload = JSON.stringify({
+          upload_id: group.uploadId,
+          event_id: group.event.id,
+          ...summary,
+        });
+        if (payload !== lastJson) {
+          lastJson = payload;
+          res.write(`data: ${payload}\n\n`);
+        }
+        // Stop streaming once everything has reached a terminal state.
+        if (summary.pending === 0 && summary.processing === 0) {
+          closed = true;
+          clearInterval(timer);
+          res.end();
+          return;
+        }
+      } catch (e) {
+        console.error('Upload stream poll error:', e);
+      }
+    };
+
+    await send();
+    timer = setInterval(send, 1500);
+
+    req.on('close', () => {
+      closed = true;
+      if (timer) clearInterval(timer);
+    });
+  }
+);
+
+// Retry a failed photo — flip back to 'pending' so the worker picks it
+// up again. Used by the admin grid's "Retry" button when a previous run
+// hit a transient sharp/ffmpeg error.
+router.post(
+  '/photos/:photoId/retry',
+  adminAuth,
+  requirePermission('photos.edit'),
+  async (req, res) => {
+    try {
+      const photo = await db('photos').where({ id: req.params.photoId }).first();
+      if (!photo) return res.status(404).json({ error: 'Photo not found' });
+
+      // Editor role: only allow retry on photos in events they own.
+      if (req.admin.roleName === 'editor') {
+        const event = await db('events')
+          .where({ id: photo.event_id, created_by: req.admin.id })
+          .first();
+        if (!event) return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      if (photo.processing_status !== 'failed') {
+        return res.status(409).json({
+          error: `Photo is in '${photo.processing_status}' state and cannot be retried`,
+        });
+      }
+
+      await db('photos').where({ id: photo.id }).update({
+        processing_status: 'pending',
+        processing_error: null,
+        processing_started_at: null,
+      });
+      res.json({ id: photo.id, status: 'pending' });
+    } catch (error) {
+      console.error('Error retrying photo processing:', error);
+      res.status(500).json({ error: 'Failed to retry photo processing' });
+    }
+  }
+);
 
 // Delete a photo
 router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.delete'), requireEventOwnership, async (req, res) => {
@@ -1070,15 +1069,25 @@ router.get('/:eventId/photos', adminAuth, requirePermission('photos.view'), requ
 router.get('/:eventId/photo/:photoId', adminAuth, requirePermission('photos.view'), requireEventOwnership, async (req, res) => {
   try {
     const { eventId, photoId } = req.params;
-    
+
     const photo = await db('photos')
       .where({ id: photoId, event_id: eventId })
       .first();
-    
+
     if (!photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Photos still in async processing don't have all metadata in the DB
+    // yet; serving the original is fine, but downstream consumers (admin
+    // grid lightbox) read width/height which won't be set until processing
+    // completes. We let the original through here — the file is on disk —
+    // but tell the caller it's not done yet via a header so they can
+    // poll /uploads/:upload_id/status if they care.
+    if (photo.processing_status && photo.processing_status !== 'complete') {
+      res.setHeader('X-PicPeak-Photo-Status', photo.processing_status);
+    }
+
     const { resolvePhotoFilePath, resolvePhotoStorageKey } = require('../services/photoResolver');
     const event = await db('events').where('id', eventId).first();
     const storageKey = resolvePhotoStorageKey(event, photo);
@@ -1121,12 +1130,28 @@ router.get('/:eventId/thumbnail/:photoId', adminAuth, requirePermission('photos.
     const photo = await db('photos')
       .where({ id: photoId, event_id: eventId })
       .first();
-    
+
     if (!photo) {
       console.error(`Photo not found: ${photoId}, event ${eventId}`);
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Async processing is still working on this one — no thumbnail yet.
+    // Return 503 with Retry-After so the admin grid (which auto-refreshes
+    // every 2s while any photo is non-complete) keeps the placeholder
+    // until the worker catches up.
+    if (photo.processing_status === 'pending' || photo.processing_status === 'processing') {
+      res.setHeader('Retry-After', '2');
+      return res.status(503).json({ error: 'Thumbnail not ready', status: photo.processing_status });
+    }
+    if (photo.processing_status === 'failed') {
+      return res.status(422).json({
+        error: 'Photo processing failed',
+        status: 'failed',
+        details: photo.processing_error || null,
+      });
+    }
+
     // Ensure thumbnail exists and is valid, regenerate if needed
     const thumbnailPath = await ensureThumbnail(photo);
 
