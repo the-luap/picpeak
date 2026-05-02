@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.5-beta.0...v3.33.0-beta.0) (2026-05-02)
+
+
+### Features
+
+* native multi-arch Docker images (Apple Silicon, ARM64 Linux) ([df30618](https://github.com/the-luap/picpeak/commit/df3061893d154152b75b8ab0d07e0b1e0078431d))
+
 ## [3.32.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.4-beta.0...v3.32.5-beta.0) (2026-05-02)
 
 
