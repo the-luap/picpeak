@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.4-beta.0...v3.32.5-beta.0) (2026-05-02)
+
+
+### Bug Fixes
+
+* **theme:** kill initial white frame + theme-aware skeleton tiles ([#358](https://github.com/the-luap/picpeak/issues/358) follow-up) ([f529c9e](https://github.com/the-luap/picpeak/commit/f529c9e3d72f0e3496951dfa5d160afda9a1ac51))
+* **theme:** kill initial white frame + theme-aware skeleton tiles ([#358](https://github.com/the-luap/picpeak/issues/358) follow-up) ([1a530ae](https://github.com/the-luap/picpeak/commit/1a530aeaa2d61b34d9721a555b71631c7101c58e))
+
 ## [3.32.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.3-beta.0...v3.32.4-beta.0) (2026-05-01)
 
 
