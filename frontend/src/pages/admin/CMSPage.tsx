@@ -182,6 +182,31 @@ export const CMSPage: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
+  const handleUseExternalUrlChange = (val: boolean) => {
+    setEditForm(prev => ({ ...prev, use_external_url: val }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleExternalUrlChange = (val: string) => {
+    setEditForm(prev => ({ ...prev, external_url: val }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Inline URL validation. Empty input while typing is not an error
+  // (avoid flagging mid-edit). Backend re-validates on save regardless.
+  const externalUrlError = useMemo(() => {
+    if (!editForm.use_external_url) return null;
+    const v = (editForm.external_url || '').trim();
+    if (!v) return null;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'https:') return t('cms.externalUrlInvalid');
+      return null;
+    } catch {
+      return t('cms.externalUrlInvalid');
+    }
+  }, [editForm.use_external_url, editForm.external_url, t]);
+
   // Per-page logo upload (#324). Only meaningful for the customisable
   // error pages right now, but harmless if exposed for any slug.
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -607,6 +632,41 @@ export const CMSPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              {/* External URL override */}
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800/40">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    checked={!!editForm.use_external_url}
+                    onChange={(e) => handleUseExternalUrlChange(e.target.checked)}
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {t('cms.useExternalUrl')}
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {t('cms.useExternalUrlHelp')}
+                    </span>
+                  </span>
+                </label>
+                {editForm.use_external_url && (
+                  <div className="mt-3">
+                    <Input
+                      type="url"
+                      label={t('cms.externalUrl')}
+                      value={editForm.external_url || ''}
+                      onChange={(e) => handleExternalUrlChange(e.target.value)}
+                      placeholder={t('cms.externalUrlPlaceholder')}
+                      error={externalUrlError || undefined}
+                    />
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                      {t('cms.externalUrlActive')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

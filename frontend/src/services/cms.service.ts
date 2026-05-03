@@ -8,6 +8,8 @@ export interface CMSPage {
   content_en: string;
   content_de: string;
   logo_url: string | null;
+  use_external_url: boolean;
+  external_url: string | null;
   updated_at: string;
 }
 
@@ -16,6 +18,8 @@ export interface PublicCMSPage {
   content: string;
   slug: string;
   logo_url: string | null;
+  use_external_url: boolean;
+  external_url: string | null;
   updated_at: string;
 }
 
