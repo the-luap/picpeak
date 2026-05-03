@@ -464,14 +464,30 @@ async function ensureGlobalCategories() {
       table.text('content_en');
       table.text('content_de');
       table.string('logo_url').nullable();
+      table.boolean('use_external_url').notNullable().defaultTo(false);
+      table.string('external_url').nullable();
       table.timestamp('updated_at').defaultTo(db.fn.now());
     });
-  } else if (!(await db.schema.hasColumn('cms_pages', 'logo_url'))) {
-    // Online migration for existing deployments — see issue #324, per-page
-    // logo override for admin-customisable error pages.
-    await db.schema.alterTable('cms_pages', (table) => {
-      table.string('logo_url').nullable();
-    });
+  } else {
+    if (!(await db.schema.hasColumn('cms_pages', 'logo_url'))) {
+      // Online migration for existing deployments — see issue #324, per-page
+      // logo override for admin-customisable error pages.
+      await db.schema.alterTable('cms_pages', (table) => {
+        table.string('logo_url').nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('cms_pages', 'use_external_url'))) {
+      // Per-page toggle to redirect visitors to an external imprint /
+      // privacy-policy URL instead of rendering the internal CMS content.
+      await db.schema.alterTable('cms_pages', (table) => {
+        table.boolean('use_external_url').notNullable().defaultTo(false);
+      });
+    }
+    if (!(await db.schema.hasColumn('cms_pages', 'external_url'))) {
+      await db.schema.alterTable('cms_pages', (table) => {
+        table.string('external_url').nullable();
+      });
+    }
   }
 
   const categoryCountRow = await db('photo_categories').count({ count: 'id' }).first();
