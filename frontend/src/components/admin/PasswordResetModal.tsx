@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Key, Copy, CheckCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { Button, Card, Input, PasswordGenerator } from '../common';
 
 interface PasswordResetModalProps {
@@ -18,6 +19,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
   onConfirm,
   onClose
 }) => {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,10 +35,10 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
     // Empty is allowed → server auto-generates. Only validate when typed.
     if (password) {
       if (password.length < 6) {
-        next.password = 'Password must be at least 6 characters';
+        next.password = t('events.passwordReset.errorMinLength');
       }
       if (password !== confirmPassword) {
-        next.confirmPassword = 'Passwords do not match';
+        next.confirmPassword = t('events.passwordReset.errorMismatch');
       }
     }
     setErrors(next);
@@ -52,14 +54,14 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
       setResultPassword(result.newPassword);
       setResultWasGenerated(!supplied);
       if (supplied) {
-        toast.success('Password reset successfully');
+        toast.success(t('events.passwordReset.toastSuccess'));
       }
     } catch (error: any) {
       const serverError = error?.response?.data;
       if (serverError?.error === 'Password does not meet security requirements') {
-        setErrors({ password: serverError.feedback?.join?.(' ') || 'Password does not meet security requirements' });
+        setErrors({ password: serverError.feedback?.join?.(' ') || t('events.passwordReset.errorMinLength') });
       } else {
-        toast.error(serverError?.error || 'Failed to reset password');
+        toast.error(serverError?.error || t('events.passwordReset.toastError'));
       }
     } finally {
       setIsResetting(false);
@@ -70,7 +72,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
     if (resultPassword) {
       await navigator.clipboard.writeText(resultPassword);
       setCopied(true);
-      toast.success('Password copied to clipboard');
+      toast.success(t('events.passwordReset.toastCopied'));
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -86,7 +88,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
       <Card className="max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-neutral-900">
-            {resultPassword ? 'New Password' : 'Reset Gallery Password'}
+            {resultPassword ? t('events.passwordReset.newTitle') : t('events.passwordReset.title')}
           </h2>
           <button
             onClick={onClose}
@@ -99,22 +101,22 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
         {!resultPassword ? (
           <>
             <p className="text-neutral-600 mb-4">
-              Set a new password for <strong>{eventName}</strong>, or leave both fields empty to have one auto-generated.
+              {t('events.passwordReset.description', { eventName })}
             </p>
 
             <div className="space-y-4 mb-4">
               <div>
                 <Input
                   type={showPassword ? 'text' : 'password'}
-                  label="New password"
-                  placeholder="Leave empty to auto-generate"
+                  label={t('events.passwordReset.newPasswordLabel')}
+                  placeholder={t('events.passwordReset.placeholder')}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
                   }}
                   error={errors.password}
-                  helperText="Use 6+ characters, or leave blank to auto-generate"
+                  helperText={t('events.passwordReset.helperText')}
                   leftIcon={<Lock className="w-5 h-5" />}
                   rightIcon={
                     <button
@@ -142,8 +144,8 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
               {password.length > 0 && (
                 <Input
                   type={showPassword ? 'text' : 'password'}
-                  label="Confirm password"
-                  placeholder="Confirm password"
+                  label={t('events.passwordReset.confirmLabel')}
+                  placeholder={t('events.passwordReset.confirmLabel')}
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
@@ -167,11 +169,11 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-neutral-500" />
                     <span className="text-sm font-medium text-neutral-700">
-                      Send email notification
+                      {t('events.passwordReset.sendEmail')}
                     </span>
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Notify the host about the password change
+                    {t('events.passwordReset.sendEmailHelp')}
                   </p>
                 </div>
               </label>
@@ -179,8 +181,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
               <p className="text-sm text-amber-800">
-                <strong>Note:</strong> The old password will no longer work.
-                Make sure to share the new password with the host.
+                {t('events.passwordReset.warning')}
               </p>
             </div>
 
@@ -191,7 +192,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                 disabled={isResetting}
                 className="flex-1"
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -201,7 +202,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                 leftIcon={<Key className="w-4 h-4" />}
                 className="flex-1"
               >
-                Reset Password
+                {t('events.passwordReset.submit')}
               </Button>
             </div>
           </>
@@ -210,11 +211,11 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-3 mb-2">
                 <CheckCircle className="w-5 h-5 text-green-600" />
-                <p className="font-medium text-green-900">Password reset successfully!</p>
+                <p className="font-medium text-green-900">{t('events.passwordReset.successHeading')}</p>
               </div>
               {sendEmail && (
                 <p className="text-sm text-green-700">
-                  An email notification has been sent to the host.
+                  {t('events.passwordReset.emailSentNote')}
                 </p>
               )}
             </div>
@@ -223,7 +224,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
               <>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Auto-generated gallery password
+                    {t('events.passwordReset.generatedLabel')}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -237,14 +238,14 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                       onClick={handleCopy}
                       leftIcon={copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     >
-                      {copied ? 'Copied!' : 'Copy'}
+                      {copied ? t('events.copied') : t('events.copy')}
                     </Button>
                   </div>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
                   <p className="text-sm text-blue-800">
-                    <strong>Important:</strong> Save this password securely. It cannot be recovered once you close this window.
+                    {t('events.passwordReset.saveSecurelyNote')}
                   </p>
                 </div>
               </>
@@ -255,7 +256,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
               onClick={onClose}
               className="w-full"
             >
-              Done
+              {t('events.passwordReset.done')}
             </Button>
           </>
         )}
