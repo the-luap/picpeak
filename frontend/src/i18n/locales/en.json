@@ -1759,7 +1759,13 @@
     "lastUpdated": "Last updated:",
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
-    "pageUpdated": "Page updated successfully"
+    "pageUpdated": "Page updated successfully",
+    "useExternalUrl": "Use external URL",
+    "useExternalUrlHelp": "Redirect visitors to an external page instead of showing the internal content. The internal title and content stay saved as a fallback.",
+    "externalUrl": "External URL",
+    "externalUrlPlaceholder": "https://example.com/impressum",
+    "externalUrlInvalid": "Must be a valid https:// URL",
+    "externalUrlActive": "External URL is active — internal content is preserved but not shown to visitors."
   },
   "eventTypes": {
     "title": "Event Types",

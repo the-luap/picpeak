@@ -25,6 +25,11 @@ router.get('/pages/:slug', async (req, res) => {
       // Per-page logo override (#324). Null means "fall back to global
       // branding logo" — the consumer decides.
       logo_url: page.logo_url || null,
+      // Per-page external-URL override. When use_external_url is true and
+      // external_url is set, consumers should redirect / link out instead
+      // of rendering the internal title/content.
+      use_external_url: !!page.use_external_url,
+      external_url: page.external_url || null,
       updated_at: page.updated_at
     });
   } catch (error) {

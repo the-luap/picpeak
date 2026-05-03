@@ -2210,7 +2210,13 @@
     "lastUpdated": "Zuletzt aktualisiert:",
     "impressum": "Impressum",
     "datenschutz": "Datenschutzerklärung",
-    "pageUpdated": "Seite erfolgreich aktualisiert"
+    "pageUpdated": "Seite erfolgreich aktualisiert",
+    "useExternalUrl": "Externe URL verwenden",
+    "useExternalUrlHelp": "Besucher werden auf eine externe Seite weitergeleitet, anstatt die internen Inhalte anzuzeigen. Titel und Inhalt bleiben als Fallback gespeichert.",
+    "externalUrl": "Externe URL",
+    "externalUrlPlaceholder": "https://example.com/impressum",
+    "externalUrlInvalid": "Muss eine gültige https://-URL sein",
+    "externalUrlActive": "Externe URL ist aktiv — interne Inhalte bleiben gespeichert, werden Besuchern aber nicht angezeigt."
   },
   "validation": {
     "eventNameRequired": "Veranstaltungsname ist erforderlich",

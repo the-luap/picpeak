@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Calendar, Clock, Download, LogOut } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +10,7 @@ import { DynamicFavicon } from '../common/DynamicFavicon';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 import { buildResourceUrl } from '../../utils/url';
+import { cmsService, type PublicCMSPage } from '../../services/cms.service';
 import type { HeaderStyleType } from '../../types/theme.types';
 
 interface GalleryLayoutProps {
@@ -61,6 +63,22 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
   const guestIdentity = useGuestIdentityOptional();
+
+  // Footer legal-link config. Cached aggressively because the toggle state
+  // changes rarely and the gallery footer renders on every page view.
+  // Failures fall back to the internal /impressum and /datenschutz routes.
+  const { data: impressumPage } = useQuery<PublicCMSPage>({
+    queryKey: ['public-cms', 'impressum'],
+    queryFn: () => cmsService.getPublicPage('impressum'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const { data: datenschutzPage } = useQuery<PublicCMSPage>({
+    queryKey: ['public-cms', 'datenschutz'],
+    queryFn: () => cmsService.getPublicPage('datenschutz'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
   const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
@@ -592,19 +610,41 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           )}
           {/* Legal Links */}
           <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
-            <Link
-              to="/impressum"
-              className="text-xs text-muted-theme hover:text-theme transition-colors"
-            >
-              {t('legal.impressum')}
-            </Link>
+            {impressumPage?.use_external_url && impressumPage.external_url ? (
+              <a
+                href={impressumPage.external_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.impressum')}
+              </a>
+            ) : (
+              <Link
+                to="/impressum"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.impressum')}
+              </Link>
+            )}
             <span className="text-xs text-muted-theme">|</span>
-            <Link
-              to="/datenschutz"
-              className="text-xs text-muted-theme hover:text-theme transition-colors"
-            >
-              {t('legal.datenschutz')}
-            </Link>
+            {datenschutzPage?.use_external_url && datenschutzPage.external_url ? (
+              <a
+                href={datenschutzPage.external_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.datenschutz')}
+              </a>
+            ) : (
+              <Link
+                to="/datenschutz"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.datenschutz')}
+              </Link>
+            )}
             {guestIdentity?.identity && (
               <>
                 <span className="text-xs text-muted-theme">|</span>

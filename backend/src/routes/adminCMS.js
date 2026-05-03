@@ -71,7 +71,9 @@ router.put('/pages/:slug', adminAuth, requirePermission('cms.edit'), [
   body('title_de').optional().isString(),
   body('content_en').optional().isString(),
   body('content_de').optional().isString(),
-  body('logo_url').optional({ nullable: true }).isString()
+  body('logo_url').optional({ nullable: true }).isString(),
+  body('use_external_url').optional().isBoolean(),
+  body('external_url').optional({ nullable: true }).isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -80,7 +82,26 @@ router.put('/pages/:slug', adminAuth, requirePermission('cms.edit'), [
     }
 
     const { slug } = req.params;
-    const { title_en, title_de, content_en, content_de, logo_url } = req.body;
+    const { title_en, title_de, content_en, content_de, logo_url, use_external_url, external_url } = req.body;
+
+    // When the external-URL toggle is on, the URL must parse and use https://.
+    // express-validator's isURL() is too permissive (allows http:, ftp:, etc.) —
+    // an explicit protocol check is the security-relevant gate.
+    if (use_external_url === true) {
+      const candidate = typeof external_url === 'string' ? external_url.trim() : '';
+      if (!candidate) {
+        return res.status(400).json({ error: 'external_url is required when use_external_url is true' });
+      }
+      let parsed;
+      try {
+        parsed = new URL(candidate);
+      } catch (_err) {
+        return res.status(400).json({ error: 'external_url must be a valid URL' });
+      }
+      if (parsed.protocol !== 'https:') {
+        return res.status(400).json({ error: 'external_url must use https://' });
+      }
+    }
 
     const page = await db('cms_pages').where('slug', slug).first();
     if (!page) {
@@ -98,6 +119,13 @@ router.put('/pages/:slug', adminAuth, requirePermission('cms.edit'), [
     // (e.g. text-only edits) don't accidentally clear the upload.
     if (Object.prototype.hasOwnProperty.call(req.body, 'logo_url')) {
       updateFields.logo_url = logo_url || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'use_external_url')) {
+      updateFields.use_external_url = !!use_external_url;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'external_url')) {
+      const trimmed = typeof external_url === 'string' ? external_url.trim() : '';
+      updateFields.external_url = trimmed || null;
     }
 
     await db('cms_pages').where('slug', slug).update(updateFields);
