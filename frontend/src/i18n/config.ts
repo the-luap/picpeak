@@ -8,6 +8,7 @@ import deTranslations from './locales/de.json';
 import ruTranslations from './locales/ru.json';
 import ptTranslations from './locales/pt.json';
 import nlTranslations from './locales/nl.json';
+import ptBrTranslations from './locales/pt-br.json';
 
 i18n
   .use(HttpBackend)
@@ -33,15 +34,18 @@ i18n
       nl: {
         translation: nlTranslations,
       },
+      'pt-BR': {
+        translation: ptBrTranslations,
+      },
     },
-    
+
     interpolation: {
       escapeValue: false,
     },
 
     // Use v4 format for pluralization (_one/_other instead of _plural suffix)
     compatibilityJSON: 'v4',
-    
+
     detection: {
       order: ['localStorage', 'cookie', 'navigator', 'htmlTag'],
       caches: ['localStorage', 'cookie'],
