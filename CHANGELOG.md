@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.34.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.0-beta.0...v3.34.1-beta.0) (2026-05-03)
+
+
+### Bug Fixes
+
+* **cms:** nl/pt/ru i18n + gate external_url in public response ([08d0462](https://github.com/the-luap/picpeak/commit/08d046276bf259e8511b01415141f51b8484f967))
+* **cms:** nl/pt/ru i18n + gate external_url in public response ([bce5c1f](https://github.com/the-luap/picpeak/commit/bce5c1f725043965c2499515f18e93e9578bd204))
+
 ## [3.34.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.33.2-beta.0...v3.34.0-beta.0) (2026-05-03)
 
 
