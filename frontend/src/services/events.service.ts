@@ -162,9 +162,17 @@ export const eventsService = {
     return response.data || [];
   },
 
-  // Reset event password
-  async resetPassword(eventId: number, sendEmail: boolean = true): Promise<{ message: string; newPassword: string; emailSent: boolean }> {
-    const response = await api.post(`/admin/events/${eventId}/reset-password`, { sendEmail });
+  // Reset event password. Pass `password` to set a specific value (validated
+  // server-side with the same rules as create-event); omit it to have the
+  // server auto-generate one.
+  async resetPassword(
+    eventId: number,
+    sendEmail: boolean = true,
+    password?: string
+  ): Promise<{ message: string; newPassword: string; emailSent: boolean }> {
+    const body: { sendEmail: boolean; password?: string } = { sendEmail };
+    if (password) body.password = password;
+    const response = await api.post(`/admin/events/${eventId}/reset-password`, body);
     return response.data;
   },
 
