@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.33.0-beta.0...v3.33.1-beta.0) (2026-05-03)
+
+
+### Bug Fixes
+
+* **email:** render conditionals, localise password placeholders, fix caller/template variable drift ([0767203](https://github.com/the-luap/picpeak/commit/07672038d4ac31fc601adfb2338104223856ba71))
+* **email:** render conditionals, localise password placeholders, fix caller/template variable drift ([e8052ad](https://github.com/the-luap/picpeak/commit/e8052adf1d2f1717652ac5d6b8cd8bcc01787189))
+
 ## [3.33.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.32.5-beta.0...v3.33.0-beta.0) (2026-05-02)
 
 
