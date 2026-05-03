@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { db } = require('../database/db');
-const { queueEmail } = require('./emailProcessor');
+const { queueEmail, getSupportEmail } = require('./emailProcessor');
 const logger = require('../utils/logger');
 const feedbackService = require('./feedbackService');
 const { getStorage } = require('./storage');
@@ -146,10 +146,20 @@ async function archiveEvent(event) {
 
     // Queue completion email — admin_email is nullable on events (migration 073);
     // skip queueing rather than violating email_queue.recipient_email NOT NULL.
+    //
+    // The shipped EN/DE templates (legacy 028) and NL/PT/RU (core 075) reference
+    // {{host_name}}, {{photo_count}}, {{archive_date}} and {{support_email}};
+    // without these the recipient saw literal {{...}} placeholders.
     if (event.admin_email) {
+      const supportEmail = await getSupportEmail();
       await queueEmail(event.id, event.admin_email, 'archive_complete', {
+        host_name: event.customer_name || event.host_name || 'Admin',
         event_name: event.event_name,
+        event_date: event.event_date,
+        photo_count: photoEntries.length,
         archive_size: (totalBytes / 1024 / 1024).toFixed(2) + ' MB',
+        archive_date: new Date(),
+        support_email: supportEmail
       });
     } else {
       logger.info(`Skipping archive_complete email for event ${event.slug}: no admin_email set`);

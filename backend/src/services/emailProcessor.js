@@ -1,5 +1,4 @@
 const nodemailer = require('nodemailer');
-const Handlebars = require('handlebars');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
 const { getFrontendBaseUrl } = require('../utils/frontendUrl');
@@ -62,6 +61,39 @@ async function initializeTransporter(forceReinit = false) {
     lastConfigHash = null;
     return null;
   }
+}
+
+// Read the support contact email used in customer-facing notifications
+// (gallery_expired, archive_complete, …). Looks up `branding_support_email`
+// from app_settings (JSON-encoded), falling back to the SMTP from-address
+// so templates that reference {{support_email}} never render the literal
+// placeholder. Returns '' when neither is configured — templates should
+// degrade by hiding the line via a {{#if support_email}} block.
+async function getSupportEmail() {
+  try {
+    const row = await db('app_settings')
+      .where('setting_key', 'branding_support_email')
+      .first();
+    if (row && row.setting_value) {
+      try {
+        const parsed = JSON.parse(row.setting_value);
+        if (typeof parsed === 'string' && parsed.trim()) return parsed.trim();
+      } catch (e) {
+        if (typeof row.setting_value === 'string' && row.setting_value.trim()) {
+          return row.setting_value.trim();
+        }
+      }
+    }
+  } catch (err) {
+    logger.debug('getSupportEmail: app_settings lookup failed', { error: err.message });
+  }
+  try {
+    const config = await db('email_configs').first();
+    if (config && config.from_email) return config.from_email;
+  } catch (err) {
+    logger.debug('getSupportEmail: email_configs lookup failed', { error: err.message });
+  }
+  return '';
 }
 
 // Get the appropriate language for a recipient
@@ -302,6 +334,83 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
 </html>`;
 }
 
+// Convert an HTML body to a plain-text fallback. The naive
+// `html.replace(/<[^>]*>/g, '')` strips angle-bracket tags but leaves the
+// *contents* of <style> and <script> intact — so any HTML wrapped by
+// wrapEmailHtml() (which embeds a 100+ line <style> block) produced a
+// "plain-text" email starting with `body { margin: 0; padding: 0; … }`.
+// Strip those blocks first, then drop the rest of the markup, then collapse
+// runs of whitespace so the result is presentable in a plain-text reader.
+function htmlToText(html) {
+  if (typeof html !== 'string' || html.length === 0) return '';
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, '\'')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Keys whose values are already HTML or are server-generated URLs and so
+// must NOT be HTML-escaped on substitution into the HTML body. Everything
+// else (event_name, host_name, customer_name, …) is admin-supplied free
+// text and gets escaped to prevent stored-HTML injection in customer mail.
+const HTML_PASSTHROUGH_KEYS = new Set([
+  'welcome_message', // already HTML (formatWelcomeMessage escapes + nl2br)
+  'gallery_link',    // server-generated URL (adminEvents.js)
+  'client_link',     // server-generated URL (adminEvents.js)
+]);
+
+const { escapeHtml } = require('../utils/formatters');
+
+// Render a template string against a flat variables map.
+// Supports two constructs only — no code execution:
+//   - {{var}}              → variables[var] if defined, else left as-is
+//   - {{#if var}}…{{/if}}  → inner content if variables[var] is truthy,
+//                            else dropped entirely
+//
+// Conditionals are resolved before variable substitution so {{var}} inside
+// a kept block still gets filled in. Nested {{#if}} blocks are not
+// supported — the non-greedy match closes on the first {{/if}} and the
+// outer block would be left malformed; switch to a real template engine
+// if nesting is ever needed.
+//
+// Pass `{ escapeHtml: true }` for the HTML body so admin-supplied text is
+// HTML-escaped on substitution; subject/textBody bodies should leave it off.
+function safeTemplateReplace(template, variables, options = {}) {
+  if (typeof template !== 'string' || template.length === 0) {
+    return template;
+  }
+  const escapeOnSubstitute = options.escapeHtml === true;
+  const conditionalsResolved = template.replace(
+    /\{\{#if\s+(\w+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/g,
+    (_match, key, inner) => {
+      const v = variables ? variables[key] : undefined;
+      const truthy = v !== undefined && v !== null && v !== '' && v !== false && v !== 0;
+      return truthy ? inner : '';
+    }
+  );
+  return conditionalsResolved.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    if (!variables || !Object.prototype.hasOwnProperty.call(variables, key)) {
+      return match;
+    }
+    const raw = String(variables[key]);
+    if (escapeOnSubstitute && !HTML_PASSTHROUGH_KEYS.has(key)) {
+      return escapeHtml(raw);
+    }
+    return raw;
+  });
+}
+
 // Process email template with variables
 async function processTemplate(template, variables, language = 'en') {
   // Import date formatter and text formatters
@@ -368,6 +477,17 @@ async function processTemplate(template, variables, language = 'en') {
     pt: 'Nenhuma senha necessária',
     ru: 'Пароль не требуется',
   };
+  // Sent by the publish-from-draft flow (adminEvents.js): by the time the
+  // event is published, only the bcrypt hash is stored, so the plaintext
+  // password can't be re-included in the email. The route emits the literal
+  // sentinel '(set at creation)' which we localise here.
+  const passwordSetAtCreationI18n = {
+    en: 'The password you set when creating the gallery',
+    de: 'Das bei der Erstellung der Galerie gesetzte Passwort',
+    nl: 'Het wachtwoord dat u bij het aanmaken van de galerij hebt ingesteld',
+    pt: 'A senha definida ao criar a galeria',
+    ru: 'Пароль, заданный при создании галереи',
+  };
 
   if (processedVariables.gallery_password === '{{password_security_message}}') {
     processedVariables.gallery_password = passwordSecurityI18n[language] || passwordSecurityI18n.en;
@@ -375,6 +495,10 @@ async function processTemplate(template, variables, language = 'en') {
 
   if (processedVariables.gallery_password === 'No password required') {
     processedVariables.gallery_password = noPasswordI18n[language] || noPasswordI18n.en;
+  }
+
+  if (processedVariables.gallery_password === '(set at creation)') {
+    processedVariables.gallery_password = passwordSetAtCreationI18n[language] || passwordSetAtCreationI18n.en;
   }
 
   // Format dates if they exist
@@ -396,15 +520,8 @@ async function processTemplate(template, variables, language = 'en') {
     processedVariables.welcome_message = formatWelcomeMessage(processedVariables.welcome_message);
   }
 
-  // Safe template replacement (no code execution, only simple variable substitution)
-  function safeTemplateReplace(template, variables) {
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key) =>
-      variables.hasOwnProperty(key) ? String(variables[key]) : match
-    );
-  }
-
   subject = safeTemplateReplace(subject, processedVariables);
-  htmlBody = safeTemplateReplace(htmlBody, processedVariables);
+  htmlBody = safeTemplateReplace(htmlBody, processedVariables, { escapeHtml: true });
   textBody = safeTemplateReplace(textBody, processedVariables);
 
   // Inject client access section if client_link is provided (#172)
@@ -415,49 +532,55 @@ async function processTemplate(template, variables, language = 'en') {
         desc: 'Fotos überprüfen und deren Sichtbarkeit festlegen, bevor die Galerie geteilt wird:',
         link: 'Kundenzugang öffnen',
         warning: 'Diesen Link nicht teilen — er ermöglicht das Ausblenden von Fotos in der Gästegalerie.',
+        pin: 'PIN',
       },
       ru: {
         label: 'Доступ клиента (Личный)',
         desc: 'Просмотрите и управляйте видимостью фотографий перед тем, как поделиться галереей с гостями:',
         link: 'Открыть доступ клиента',
         warning: 'Не делитесь этой ссылкой — она позволяет скрывать фотографии из гостевой галереи.',
+        pin: 'ПИН-код',
       },
       nl: {
         label: 'Klanttoegang (Privé)',
         desc: 'Bekijk en beheer de zichtbaarheid van foto\'s voordat u deelt met gasten:',
         link: 'Klanttoegang openen',
         warning: 'Deel deze link niet — hiermee kunnen foto\'s worden verborgen in de gastengalerij.',
+        pin: 'PIN',
       },
       pt: {
         label: 'Acesso do Cliente (Privado)',
         desc: 'Revise e gerencie a visibilidade das fotos antes de compartilhar com os convidados:',
         link: 'Abrir Acesso do Cliente',
         warning: 'Não compartilhe este link — ele permite ocultar fotos da galeria de convidados.',
+        pin: 'PIN',
       },
       en: {
         label: 'Client Access (Private)',
         desc: 'Review and manage photo visibility before sharing with guests:',
         link: 'Open Client Access',
         warning: 'Do not share this link — it allows hiding photos from the guest gallery.',
+        pin: 'PIN',
       },
     };
     const ci18n = clientAccessI18n[language] || clientAccessI18n.en;
-    const clientAccessLabel = ci18n.label;
-    const clientAccessDesc = ci18n.desc;
-    const clientAccessLink = ci18n.link;
-    const clientAccessWarning = ci18n.warning;
-    const pinLabel = 'PIN';
 
     htmlBody += `
       <div style="margin-top: 24px; padding: 20px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-        <strong style="font-size: 15px;">&#128274; ${clientAccessLabel}</strong>
-        <p style="margin: 10px 0 8px;">${clientAccessDesc}</p>
+        <strong style="font-size: 15px;">&#128274; ${ci18n.label}</strong>
+        <p style="margin: 10px 0 8px;">${ci18n.desc}</p>
         <p style="margin: 8px 0;">
-          <a href="${processedVariables.client_link}" style="display: inline-block; padding: 10px 20px; background-color: #5C8762; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">${clientAccessLink}</a>
+          <a href="${processedVariables.client_link}" style="display: inline-block; padding: 10px 20px; background-color: #5C8762; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">${ci18n.link}</a>
         </p>
-        <p style="margin: 8px 0;">${pinLabel}: <strong>${processedVariables.client_password}</strong></p>
-        <p style="color: #856404; font-size: 12px; margin: 8px 0 0;">&#9888;&#65039; ${clientAccessWarning}</p>
+        <p style="margin: 8px 0;">${ci18n.pin}: <strong>${processedVariables.client_password}</strong></p>
+        <p style="color: #856404; font-size: 12px; margin: 8px 0 0;">&#9888;&#65039; ${ci18n.warning}</p>
       </div>`;
+
+    // Mirror the same section in the plain-text body — without this, recipients
+    // on a text-only mail client never saw the client link or PIN.
+    if (textBody) {
+      textBody += `\n\n${ci18n.label}\n${ci18n.desc}\n${processedVariables.client_link}\n${ci18n.pin}: ${processedVariables.client_password}\n${ci18n.warning}\n`;
+    }
   }
 
   // Wrap HTML body in styled template
@@ -502,7 +625,7 @@ async function sendTemplateEmail(to, templateKey, variables) {
       to: to,
       subject: subject,
       html: htmlBody,
-      text: textBody || htmlBody.replace(/<[^>]*>/g, '') // Strip HTML if no text version
+      text: textBody || htmlToText(htmlBody)
     });
 
     logger.info(`Email sent successfully: ${info.messageId} (${language})`);
@@ -683,5 +806,8 @@ module.exports = {
   queueEmail,
   stopEmailQueueProcessor,
   testEmailConnection,
-  wrapEmailHtml
+  wrapEmailHtml,
+  safeTemplateReplace,
+  getSupportEmail,
+  htmlToText
 };
