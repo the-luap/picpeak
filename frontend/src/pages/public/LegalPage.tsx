@@ -44,7 +44,17 @@ export const LegalPage: React.FC = () => {
     }
   }, [page?.title]);
 
-  if (isLoading) {
+  // External-URL override: full-page redirect so the visitor lands on the
+  // operator's own canonical legal page. Use replace() so the back button
+  // returns to the gallery instead of looping back through the redirect.
+  const willRedirect = !!(page?.use_external_url && page?.external_url);
+  useEffect(() => {
+    if (willRedirect && page?.external_url) {
+      window.location.replace(page.external_url);
+    }
+  }, [willRedirect, page?.external_url]);
+
+  if (isLoading || willRedirect) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <Loading size="lg" text="Loading..." />
