@@ -5,6 +5,16 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.34.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.33.2-beta.0...v3.34.0-beta.0) (2026-05-03)
+
+
+### Features
+
+* **cms:** add external URL toggle for imprint and privacy pages ([b2c8161](https://github.com/the-luap/picpeak/commit/b2c8161a43c2d0b09d6783e791b3f26862254824))
+* **cms:** add per-page external URL override — backend ([66423bb](https://github.com/the-luap/picpeak/commit/66423bb65e83b6204509c9a98d783ba8255c3364))
+* **cms:** admin UI for external imprint/privacy URL ([a4e3d10](https://github.com/the-luap/picpeak/commit/a4e3d10fb0c97ea07c4b08d16c0947945d8a7576))
+* **cms:** redirect legal links to external URL when configured ([c5bba50](https://github.com/the-luap/picpeak/commit/c5bba505ac92b5257f6bb1c069b8bc23ea6a5a1b))
+
 ## [3.33.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.33.1-beta.0...v3.33.2-beta.0) (2026-05-03)
 
 
