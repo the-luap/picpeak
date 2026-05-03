@@ -1753,7 +1753,13 @@
     "lastUpdated": "Última atualização:",
     "impressum": "Aviso Legal",
     "datenschutz": "Política de Privacidade",
-    "pageUpdated": "Página atualizada com sucesso"
+    "pageUpdated": "Página atualizada com sucesso",
+    "useExternalUrl": "Usar URL externa",
+    "useExternalUrlHelp": "Redirecione os visitantes para uma página externa em vez de mostrar o conteúdo interno. O título e o conteúdo internos permanecem salvos como fallback.",
+    "externalUrl": "URL externa",
+    "externalUrlPlaceholder": "https://example.com/impressum",
+    "externalUrlInvalid": "Deve ser uma URL https:// válida",
+    "externalUrlActive": "URL externa está ativa — o conteúdo interno é preservado, mas não é exibido aos visitantes."
   },
   "eventTypes": {
     "title": "Tipos de Evento",

@@ -1753,7 +1753,13 @@
     "lastUpdated": "Laatst bijgewerkt:",
     "impressum": "Colofon",
     "datenschutz": "Privacybeleid",
-    "pageUpdated": "Pagina succesvol bijgewerkt"
+    "pageUpdated": "Pagina succesvol bijgewerkt",
+    "useExternalUrl": "Externe URL gebruiken",
+    "useExternalUrlHelp": "Bezoekers worden doorgestuurd naar een externe pagina in plaats van de interne inhoud te zien. De interne titel en inhoud blijven als fallback opgeslagen.",
+    "externalUrl": "Externe URL",
+    "externalUrlPlaceholder": "https://example.com/impressum",
+    "externalUrlInvalid": "Moet een geldige https://-URL zijn",
+    "externalUrlActive": "Externe URL is actief — interne inhoud blijft bewaard maar wordt niet aan bezoekers getoond."
   },
   "eventTypes": {
     "title": "Evenementtypes",
