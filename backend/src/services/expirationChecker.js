@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { db } = require('../database/db');
 const { archiveEvent } = require('./archiveService');
 const { queueEmail, getSupportEmail } = require('./emailProcessor');
+const { buildShareLinkVariants } = require('./shareLinkService');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
 
@@ -62,6 +63,9 @@ async function queueExpirationWarning(event) {
 
   const recipientEmail = event.customer_email || event.host_email;
   const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+  // event.share_link is the path-only form; use the full URL so the
+  // recipient's mail client renders a clickable absolute link.
+  const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
   // Date formatting + language detection happen inside processTemplate using
   // the recipient's resolved language — pass the raw ISO date and let the
@@ -79,7 +83,7 @@ async function queueExpirationWarning(event) {
     event_date: event.event_date,
     days_remaining: daysRemaining.toString(),
     expiry_date: event.expires_at,
-    gallery_link: event.share_link,
+    gallery_link: shareUrl,
     gallery_password: '{{password_security_message}}'
   });
 

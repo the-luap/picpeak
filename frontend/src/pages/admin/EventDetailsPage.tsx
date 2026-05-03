@@ -2194,8 +2194,10 @@ export const EventDetailsPage: React.FC = () => {
       {showPasswordReset && (
         <PasswordResetModal
           eventName={event.event_name}
-          onConfirm={async (sendEmail) => {
-            const result = await eventsService.resetPassword(event.id, sendEmail);
+          eventDate={event.event_date}
+          eventType={event.event_type}
+          onConfirm={async (sendEmail, password) => {
+            const result = await eventsService.resetPassword(event.id, sendEmail, password);
             return result;
           }}
           onClose={() => setShowPasswordReset(false)}

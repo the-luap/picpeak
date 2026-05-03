@@ -1369,7 +1369,7 @@ router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), r
 router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
-    const { sendEmail = true } = req.body;
+    const { sendEmail = true, password: clientPassword } = req.body;
 
     let eventQuery = db('events').where('id', id);
     // Editor role can only edit their own events
@@ -1385,10 +1385,29 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
       return res.status(400).json({ error: 'Cannot reset password for archived event' });
     }
 
-    // Generate new password
-    const { generateReadablePassword } = require('../utils/passwordGenerator');
-    const newPassword = generateReadablePassword();
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    // Use the admin-supplied password when provided; otherwise auto-generate
+    // (preserves the previous one-click behaviour for callers/cron that don't
+    // pass a body). Validation matches the create-event flow so the same
+    // strength rules apply both ways.
+    let newPassword;
+    if (typeof clientPassword === 'string' && clientPassword.length > 0) {
+      const passwordValidation = await validatePasswordInContext(clientPassword, 'gallery', {
+        eventName: event.event_name
+      });
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          error: 'Password does not meet security requirements',
+          details: passwordValidation.errors,
+          score: passwordValidation.score,
+          feedback: passwordValidation.feedback
+        });
+      }
+      newPassword = clientPassword;
+    } else {
+      const { generateReadablePassword } = require('../utils/passwordGenerator');
+      newPassword = generateReadablePassword();
+    }
+    const passwordHash = await bcrypt.hash(newPassword, getBcryptRounds());
 
     // Update event with new password
     await db('events')
@@ -1408,6 +1427,9 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
     if (sendEmail) {
       const recipientEmail = event.customer_email || event.host_email;
       const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+      // event.share_link is the path-only form (`/gallery/<slug>/<token>`).
+      // Use the full URL so customers can click straight from the email.
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
       await queueEmail(id, recipientEmail, 'gallery_created', {
         customer_name: recipientName,
@@ -1415,13 +1437,13 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
         host_name: recipientName,
         event_name: event.event_name,
         event_date: event.event_date,  // Pass raw date - will be formatted by email processor
-        gallery_link: event.share_link,
+        gallery_link: shareUrl,
         gallery_password: newPassword,
         expiry_date: event.expires_at  // Pass raw date - will be formatted by email processor
       });
     }
 
-    res.json({ 
+    res.json({
       message: 'Password reset successfully',
       newPassword: newPassword,
       emailSent: sendEmail
@@ -1473,6 +1495,9 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), re
     // Queue the email
     const recipientEmail = event.customer_email || event.host_email;
     const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+    // event.share_link is the path-only form; use the full URL so the
+    // customer's mail client renders a clickable absolute link.
+    const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
     await queueEmail(id, recipientEmail, 'gallery_created', {
       customer_name: recipientName,
@@ -1480,7 +1505,7 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), re
       host_name: recipientName,
       event_name: event.event_name,
       event_date: event.event_date,  // Pass raw date - will be formatted by email processor
-      gallery_link: event.share_link,
+      gallery_link: shareUrl,
       gallery_password: galleryPassword,
       expiry_date: event.expires_at,  // Pass raw date - will be formatted by email processor
       welcome_message: event.welcome_message || '',
