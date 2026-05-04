@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.38.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.37.0-beta.0...v3.38.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **events:** bulk delete with password confirmation ([#384](https://github.com/the-luap/picpeak/issues/384)) ([647aea2](https://github.com/the-luap/picpeak/commit/647aea21ae42fe0d089bf45568702617a25b98e4))
+
 ## [3.37.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.36.0-beta.0...v3.37.0-beta.0) (2026-05-04)
 
 
