@@ -1288,7 +1288,7 @@
     },
     "headerStyleDescriptions": {
       "hero": "Afbeelding op volledige hoogte met evenementinfo-overlay",
-      "standard": "Compacte inline-header met evenementdetails",
+      "standard": "Compacte koptekst met evenementdetails",
       "banner": "Standaard-header met een gekleurde banner erboven",
       "minimal": "Compacte header met essentiele info",
       "none": "Header volledig verbergen"
