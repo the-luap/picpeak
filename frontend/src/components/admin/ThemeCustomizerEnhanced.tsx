@@ -146,28 +146,6 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     staleTime: 5 * 60 * 1000,
   });
 
-  // Preload the lightest weight of every available family so each <option>
-  // in the font dropdowns can render in its own face. Total payload is small
-  // (~80 KB per family × 8 families ≈ 600 KB), cached 7 days by the static
-  // handler. Browser de-dups @font-face blocks across <style> elements, so
-  // overlap with ThemeContext's lazy-injection on the active family is fine.
-  useEffect(() => {
-    if (!availableFonts || availableFonts.length === 0) return;
-    const styleId = 'theme-customizer-font-previews';
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = styleId;
-      document.head.appendChild(styleEl);
-    }
-    const blocks = availableFonts.map((f) => {
-      const folder = f.family.replace(/ /g, '-');
-      const weight = f.weights.includes(400) ? 400 : f.weights[0];
-      return `@font-face{font-family:'${f.family}';font-style:normal;font-weight:${weight};font-display:swap;src:url('/fonts/${encodeURIComponent(folder)}/${weight}.woff2') format('woff2');}`;
-    });
-    styleEl.textContent = blocks.join('\n');
-  }, [availableFonts]);
-
   const thumbnailWidth = parseInt(allSettings?.thumbnail_width) || 300;
   const thumbnailHeight = parseInt(allSettings?.thumbnail_height) || 300;
   const isBetaLayout = BETA_LAYOUTS.includes(localTheme.galleryLayout as GalleryLayoutType);
@@ -1006,14 +984,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="system-ui, sans-serif">System UI</option>
-                {(availableFonts || []).map((f) => {
-                  const cssValue = buildFontFamilyValue(f.family);
-                  return (
-                    <option key={f.family} value={cssValue} style={{ fontFamily: cssValue }}>
-                      {f.family}
-                    </option>
-                  );
-                })}
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1032,14 +1007,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               >
                 <option value="">{t('branding.sameAsBody')}</option>
                 <option value="system-ui, sans-serif">System UI</option>
-                {(availableFonts || []).map((f) => {
-                  const cssValue = buildFontFamilyValue(f.family);
-                  return (
-                    <option key={f.family} value={cssValue} style={{ fontFamily: cssValue }}>
-                      {f.family}
-                    </option>
-                  );
-                })}
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

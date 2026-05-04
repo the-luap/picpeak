@@ -82,6 +82,7 @@ Refresh the admin customizer; the new family appears in the body and heading dro
 - **Removing the `Inter/` folder** → the very-first-paint bootstrap CSS in `index.css` will 404 the font requests; browsers fall back to the next family in `--font-family` (Noto Sans → system-ui). Cosmetic only; no other breakage.
 - **Variable fonts** are not supported in v1. Each weight must be a separate file.
 - **Italics** are not exposed in the picker.
+- **Per-option dropdown previews** (each font name rendered in its own face inside the picker) are not supported in v1. Browser support for styling `<option>` elements is inconsistent — Safari ignores it in the popup entirely, and Chrome/Firefox were unreliable in testing. A future improvement is to replace the native `<select>` with a custom dropdown component or to render a separate "preview text" box below the picker.
 
 ## License
 
