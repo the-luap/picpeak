@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film, AlertTriangle } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, LayoutTemplate, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film, AlertTriangle } from 'lucide-react';
 import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
@@ -35,6 +35,7 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
 const headerStyleIcons: Record<HeaderStyleType, React.ReactNode> = {
   hero: <Image className="w-5 h-5" />,
   standard: <Layout className="w-5 h-5" />,
+  banner: <LayoutTemplate className="w-5 h-5" />,
   minimal: <Minimize2 className="w-5 h-5" />,
   none: <EyeOff className="w-5 h-5" />
 };
@@ -626,7 +627,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
             {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
               <button
                 type="button"

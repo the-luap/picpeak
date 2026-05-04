@@ -1295,13 +1295,15 @@
     "headerStyleDescription": "Escolha como o cabeçalho da galeria é exibido. O estilo do cabeçalho é independente do layout das fotos.",
     "headerStyleOptions": {
       "hero": "Imagem Hero",
-      "standard": "Banner Padrão",
+      "standard": "Padrão",
+      "banner": "Banner",
       "minimal": "Minimalista",
       "none": "Sem Cabeçalho"
     },
     "headerStyleDescriptions": {
       "hero": "Imagem em altura total com sobreposição de informações do evento",
-      "standard": "Banner clássico com detalhes do evento",
+      "standard": "Cabeçalho compacto com detalhes do evento",
+      "banner": "Cabeçalho padrão com banner colorido acima",
       "minimal": "Cabeçalho compacto com informações essenciais",
       "none": "Ocultar cabeçalho completamente"
     },

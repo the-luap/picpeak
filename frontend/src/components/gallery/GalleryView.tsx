@@ -606,15 +606,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
-  // Determine controls style (sidebar vs classic inline filter bar)
-  // If controlsStyle is explicitly set in theme, use that
-  // Otherwise: use sidebar for non-grid layouts OR hero headers (prevents filter bar above hero)
+  // Determine controls style (sidebar vs classic inline filter bar).
+  // Decoupled from layout — only an explicit controlsStyle === 'sidebar' on
+  // the theme renders the sidebar. Default (unset or 'classic') is the inline
+  // filter bar for every layout, so the gallery header/filters look identical
+  // regardless of whether the photos render as grid, masonry, carousel, etc.
   const headerStyle = data?.event?.header_style || theme.headerStyle || 'standard';
   const isHeroHeader = headerStyle === 'hero';
-  const controlsStyle = theme.controlsStyle;
-  const showSidebar = controlsStyle
-    ? controlsStyle === 'sidebar'
-    : (theme.galleryLayout !== 'grid' || isHeroHeader);
+  const showSidebar = theme.controlsStyle === 'sidebar';
 
   // Full-page layouts (gallery-premium, gallery-story) have their own integrated UI
   // Skip all wrapper elements (header, footer, sidebar, filters) for these layouts

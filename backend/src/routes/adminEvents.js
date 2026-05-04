@@ -382,7 +382,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
-  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('header_style').optional().isIn(['hero', 'standard', 'banner', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
   body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
@@ -1088,7 +1088,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
-  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('header_style').optional().isIn(['hero', 'standard', 'banner', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
   body('hero_image_anchor').optional().custom(validateHeroImageAnchor),

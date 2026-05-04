@@ -1730,13 +1730,15 @@
     "headerStyleDescription": "Wählen Sie, wie die Galerie-Kopfzeile aussieht. Der Kopfzeilen-Stil ist unabhängig vom Foto-Layout.",
     "headerStyleOptions": {
       "hero": "Hero-Bild",
-      "standard": "Standard-Banner",
+      "standard": "Standard",
+      "banner": "Banner",
       "minimal": "Minimal",
       "none": "Keine Kopfzeile"
     },
     "headerStyleDescriptions": {
       "hero": "Bild in voller Höhe mit Event-Info-Overlay",
-      "standard": "Klassisches Banner mit Veranstaltungsdetails",
+      "standard": "Kompakte Kopfzeile mit Veranstaltungsdetails",
+      "banner": "Standard-Kopfzeile mit farbigem Banner darüber",
       "minimal": "Kompakte Kopfzeile mit wesentlichen Infos",
       "none": "Kopfzeile komplett ausblenden"
     },

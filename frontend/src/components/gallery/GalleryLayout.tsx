@@ -83,11 +83,9 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
   const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
   const isHeroHeader = headerStyle === 'hero';
+  const isBannerHeader = headerStyle === 'banner';
   const isMinimalHeader = headerStyle === 'minimal';
   const isNoHeader = headerStyle === 'none';
-
-  // Non-grid layouts that need the sidebar (excluding layouts using hero header)
-  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid';
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   const headingFontFamily = theme.headingFontFamily || fontFamily;
   
@@ -153,55 +151,9 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <DynamicFavicon />
 
       {/* Header structure */}
-      <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isNonGridLayout || isHeroHeader ? 'shadow-sm' : ''}`}>
-        {/* For non-grid layouts - keep the current structure (standard and minimal/none) */}
-        {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
-          <div className="bg-surface border-b border-surface">
-            <div className="container py-2">
-              <div className="flex items-center justify-between">
-                {/* Left side - Menu button and other header extras */}
-                <div className="flex items-center gap-3">
-                  {menuButton}
-                  {headerExtra}
-                </div>
-                
-                {/* Right side - Download and Logout */}
-                <div className="flex items-center gap-3">
-                  {/* Download all button */}
-                  {showDownloadAll && onDownloadAll && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<Download className="w-4 h-4" />}
-                      onClick={onDownloadAll}
-                      isLoading={isDownloading}
-                      className="gallery-btn gallery-btn-download"
-                    >
-                      <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
-                      <span className="sm:hidden">{t('common.download')}</span>
-                    </Button>
-                  )}
-
-                  {/* Logout button */}
-                  {showLogout && onLogout && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<LogOut className="w-4 h-4" />}
-                      onClick={onLogout}
-                      className="gallery-btn gallery-btn-logout sm:min-w-0"
-                    >
-                      <span className="hidden sm:inline">{t('common.logout')}</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* For grid layout - everything in one bar (standard header) */}
-        {!isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
+      <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isHeroHeader || isBannerHeader ? 'shadow-sm' : ''}`}>
+        {/* Standard / Banner header - full bar with logo, event info, and actions (all layouts) */}
+        {!isHeroHeader && !isMinimalHeader && !isNoHeader && (
           <div className="container py-3">
             <div className="flex items-center justify-between gap-2 sm:gap-4">
               {/* Left side - Menu button, Logo */}
@@ -322,56 +274,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For minimal/none header + non-grid layouts - compact menu bar */}
-        {isNonGridLayout && (isMinimalHeader || isNoHeader) && (
-          <div className="bg-surface border-b border-surface">
-            <div className="container py-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {menuButton}
-                  {headerExtra}
-                  {isMinimalHeader && (
-                    <h1
-                      className="text-sm font-semibold text-theme truncate"
-                      style={{ fontFamily: headingFontFamily }}
-                    >
-                      {event.event_name}
-                    </h1>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  {showDownloadAll && onDownloadAll && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<Download className="w-4 h-4" />}
-                      onClick={onDownloadAll}
-                      isLoading={isDownloading}
-                      className="gallery-btn gallery-btn-download"
-                    >
-                      <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
-                      <span className="sm:hidden">{t('common.download')}</span>
-                    </Button>
-                  )}
-                  {showLogout && onLogout && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<LogOut className="w-4 h-4" />}
-                      onClick={onLogout}
-                      className="gallery-btn gallery-btn-logout sm:min-w-0"
-                    >
-                      <span className="hidden sm:inline">{t('common.logout')}</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* For minimal header + grid layout - compact bar with event name */}
-        {!isNonGridLayout && isMinimalHeader && (
+        {/* Minimal header - compact bar with event name (all layouts) */}
+        {isMinimalHeader && (
           <div className="container py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -413,8 +317,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For none header + grid layout - just functional buttons, no event info */}
-        {!isNonGridLayout && isNoHeader && (
+        {/* No-header style - just functional buttons, no event info (all layouts) */}
+        {isNoHeader && (
           <div className="container py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -495,8 +399,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
         )}
       </header>
 
-      {/* Colored banner for non-grid layouts when using standard header style */}
-      {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
+      {/* Colored banner — only when headerStyle === 'banner', regardless of layout */}
+      {isBannerHeader && (
         <div
           className="gallery-hero relative text-white overflow-hidden"
           style={{

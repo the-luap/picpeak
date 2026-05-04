@@ -2,7 +2,7 @@
 export type GalleryLayoutType = 'grid' | 'masonry' | 'carousel' | 'timeline' | 'mosaic' | 'gallery-premium' | 'gallery-story';
 
 // Header Style Types (decoupled from layout)
-export type HeaderStyleType = 'hero' | 'standard' | 'minimal' | 'none';
+export type HeaderStyleType = 'hero' | 'standard' | 'banner' | 'minimal' | 'none';
 
 // Hero Divider Styles
 export type HeroDividerStyle = 'wave' | 'straight' | 'angle' | 'curve' | 'none';
@@ -201,7 +201,7 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
         carouselInterval: 5000,
         carouselShowThumbnails: true
       },
-      headerStyle: 'standard',
+      headerStyle: 'banner',
       footerStyle: 'standard',
       backgroundPattern: 'dots'
     },
@@ -225,7 +225,7 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
         timelineGrouping: 'day',
         timelineShowDates: true
       },
-      headerStyle: 'standard',
+      headerStyle: 'banner',
       footerStyle: 'full',
       buttonStyle: 'outline'
     },
