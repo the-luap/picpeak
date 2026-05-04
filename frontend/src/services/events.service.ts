@@ -148,6 +148,23 @@ export const eventsService = {
     return response.data;
   },
 
+  // Bulk delete events (admin) — destructive. Requires the calling admin's
+  // password as a server-side confirmation gate. On 401 the server returns
+  // { error, code: 'INVALID_PASSWORD' } and no events are touched.
+  async bulkDeleteEvents(eventIds: number[], password: string): Promise<{
+    message: string;
+    results: {
+      successful: Array<{ id: number; name: string }>;
+      failed: Array<{ id: number; name: string | null; error: string }>;
+    };
+  }> {
+    const response = await api.post('/admin/events/bulk-delete', {
+      eventIds,
+      password,
+    });
+    return response.data;
+  },
+
   // Extend event expiration (admin)
   async extendExpiration(id: number, days: number): Promise<Event> {
     const response = await api.post<Event>(`/events/${id}/extend`, {
