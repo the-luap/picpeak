@@ -1281,13 +1281,15 @@
     "headerStyleDescription": "Kies hoe de galerijheader wordt weergegeven. De headerstijl is onafhankelijk van de fotolay-out.",
     "headerStyleOptions": {
       "hero": "Hero-afbeelding",
-      "standard": "Standaardbanner",
+      "standard": "Standaard",
+      "banner": "Banner",
       "minimal": "Minimaal",
       "none": "Geen header"
     },
     "headerStyleDescriptions": {
       "hero": "Afbeelding op volledige hoogte met evenementinfo-overlay",
-      "standard": "Klassieke banner met evenementdetails",
+      "standard": "Compacte inline-header met evenementdetails",
+      "banner": "Standaard-header met een gekleurde banner erboven",
       "minimal": "Compacte header met essentiele info",
       "none": "Header volledig verbergen"
     },

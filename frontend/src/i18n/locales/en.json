@@ -1287,13 +1287,15 @@
     "headerStyleDescription": "Choose how the gallery header appears. The header style is independent of the photo layout.",
     "headerStyleOptions": {
       "hero": "Hero Image",
-      "standard": "Standard Banner",
+      "standard": "Standard",
+      "banner": "Banner",
       "minimal": "Minimal",
       "none": "No Header"
     },
     "headerStyleDescriptions": {
       "hero": "Full-height image with event info overlay",
-      "standard": "Classic banner with event details",
+      "standard": "Compact inline header with event details",
+      "banner": "Standard header plus a colored banner above",
       "minimal": "Compact header with essential info",
       "none": "Hide header completely"
     },
