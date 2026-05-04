@@ -101,7 +101,12 @@ jest.mock('../../src/utils/tokenUtils', () => ({
 }));
 
 jest.mock('../../src/services/recaptcha', () => ({ verifyRecaptcha: () => Promise.resolve(true) }));
-jest.mock('../../src/middleware/sessionTimeout', () => ({ endSession: jest.fn() }));
+// Mock sessionTimeout's isSessionExpired so each test controls the return.
+// Default: not expired (so existing tests keep passing without setup).
+jest.mock('../../src/middleware/sessionTimeout', () => ({
+  endSession: jest.fn(),
+  isSessionExpired: jest.fn(() => Promise.resolve(false)),
+}));
 jest.mock('../../src/utils/logger', () => ({
   info: jest.fn(),
   warn: jest.fn(),
@@ -298,5 +303,93 @@ describe('GET /auth/session — symmetry with protected middleware', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(401);
     expect(res.body.valid).toBe(false);
+  });
+
+  // Session-timeout symmetry — issue #350 recurrence on v3.39.1-beta.0.
+  // sessionTimeoutMiddleware (mounted on /api/admin) rejects idle/old-iat
+  // tokens with 401 SESSION_TIMEOUT, but /auth/session previously didn't.
+  // The new isSessionExpired helper closes that asymmetry.
+  describe('session-timeout symmetry', () => {
+    const { isSessionExpired } = require('../../src/middleware/sessionTimeout');
+
+    beforeEach(() => {
+      isSessionExpired.mockReset();
+      // Default to "active session" so the other admin checks above also
+      // pass when this branch runs.
+      isSessionExpired.mockResolvedValue(false);
+    });
+
+    it('returns valid:false when isSessionExpired reports the token has timed out', async () => {
+      fakeDb.adminUsers.push({
+        id: 1,
+        username: 'admin',
+        is_active: true,
+        password_changed_at: null,
+      });
+      isSessionExpired.mockResolvedValue(true);
+      const token = signAdminToken({ id: 1 });
+
+      const res = await request(makeApp())
+        .get('/auth/session')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.valid).toBe(false);
+      expect(res.body.error).toBe('Session expired');
+    });
+
+    it('returns valid:true for an active admin token (helper says not expired)', async () => {
+      fakeDb.adminUsers.push({
+        id: 1,
+        username: 'admin',
+        is_active: true,
+        password_changed_at: null,
+      });
+      isSessionExpired.mockResolvedValue(false);
+      const token = signAdminToken({ id: 1 });
+
+      const res = await request(makeApp())
+        .get('/auth/session')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.valid).toBe(true);
+      expect(isSessionExpired).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call isSessionExpired for gallery tokens', async () => {
+      fakeDb.events.push({
+        id: 100,
+        slug: 'wedding',
+        is_active: true,
+        is_archived: false,
+        expires_at: new Date(Date.now() + 86400_000),
+      });
+      const token = signGalleryToken();
+
+      const res = await request(makeApp())
+        .get('/auth/session?slug=wedding')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.valid).toBe(true);
+      expect(isSessionExpired).not.toHaveBeenCalled();
+    });
+
+    it('falls through (treats as valid) if the helper itself throws', async () => {
+      // Defensive: the require() in auth.js is wrapped in try/catch so a
+      // missing/broken helper doesn't fail-closed during early bootstrap.
+      fakeDb.adminUsers.push({
+        id: 1,
+        username: 'admin',
+        is_active: true,
+        password_changed_at: null,
+      });
+      isSessionExpired.mockRejectedValue(new Error('boom'));
+      const token = signAdminToken({ id: 1 });
+
+      const res = await request(makeApp())
+        .get('/auth/session')
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.valid).toBe(true);
+    });
   });
 });

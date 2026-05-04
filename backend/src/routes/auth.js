@@ -534,6 +534,22 @@ router.get('/session', async (req, res) => {
             return res.json({ valid: false, error: 'Token invalid due to password change' });
           }
         }
+
+        // Mirror the session-timeout check that sessionTimeoutMiddleware
+        // enforces on every /api/admin endpoint. Without this, /auth/session
+        // returns valid:true for an idle/old-iat token that protected
+        // endpoints reject with 401 SESSION_TIMEOUT — the same redirect-loop
+        // shape as the issuer-claim and password-change asymmetries (issue
+        // #350 recurrence on v3.39.1-beta.0).
+        try {
+          const { isSessionExpired } = require('../middleware/sessionTimeout');
+          if (await isSessionExpired(token, decoded)) {
+            return res.json({ valid: false, error: 'Session expired' });
+          }
+        } catch (timeoutErr) {
+          // Helper lookup failed (test stub may not export it) — fall through
+          // and trust the token. Real deployments always have the middleware.
+        }
       } else if (decoded.type === 'gallery') {
         try {
           const event = await db('events')
