@@ -34,8 +34,13 @@ RUN apk upgrade --no-cache
 # Pin to 10.x to stay compatible with Node 22 Alpine (npm 11.x has dependency issues)
 RUN npm install -g npm@10
 
-# Install dumb-init for proper signal handling and postgresql-client for database checks
-RUN apk add --no-cache dumb-init postgresql-client
+# Install dumb-init for proper signal handling, postgresql-client for database
+# checks, and ffmpeg for video upload support. Alpine's ffmpeg package ships
+# both `ffmpeg` and `ffprobe` built natively against musl libc — the npm
+# `@ffmpeg-installer/ffmpeg` binary is glibc-built and (a) doesn't reliably
+# run on Alpine and (b) only includes ffmpeg, not ffprobe (which the video
+# pipeline calls via fluent-ffmpeg.ffprobe()).
+RUN apk add --no-cache dumb-init postgresql-client ffmpeg
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001

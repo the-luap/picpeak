@@ -1,5 +1,4 @@
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
@@ -8,8 +7,12 @@ const crypto = require('crypto');
 const logger = require('../utils/logger');
 const { getStorage } = require('./storage');
 
-// Set FFmpeg path
-ffmpeg.setFfmpegPath(ffmpegPath);
+// Use system ffmpeg/ffprobe (apk-installed in the Docker image, brew/apt on
+// dev hosts). The npm `@ffmpeg-installer/ffmpeg` binary is glibc-built and
+// (a) doesn't run reliably on Alpine and (b) only ships ffmpeg, not ffprobe
+// — but `ffmpeg.ffprobe()` below needs both. Letting fluent-ffmpeg fall
+// back to PATH lookup picks up the apk-installed binaries inside the
+// container and the developer's locally-installed ones outside it.
 
 /**
  * Extract video metadata using FFmpeg
