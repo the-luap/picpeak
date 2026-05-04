@@ -66,7 +66,7 @@ import { api } from '../../config/api';
 import { buildResourceUrl, buildShareLinkUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
-import { externalMediaService } from '../../services/externalMedia.service';
+import { externalMediaService, type ExternalEntry } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
@@ -92,7 +92,7 @@ const FolderTreeNode: React.FC<{
     staleTime: 30_000
   });
 
-  const dirs = (data?.entries || []).filter((e: any) => e.type === 'dir');
+  const dirs: ExternalEntry[] = (data?.entries || []).filter((e: ExternalEntry) => e.type === 'dir');
   const showEmpty = isExpanded && !isLoading && !isError && dirs.length === 0;
   const indentStyle = { paddingLeft: depth * 16 + 4 };
   const childIndentStyle = { paddingLeft: (depth + 1) * 16 + 4 };
@@ -158,7 +158,7 @@ const FolderTreeNode: React.FC<{
               {t('events.externalFolderEmpty', 'No subfolders')}
             </div>
           )}
-          {dirs.map((d: any) => {
+          {dirs.map((d) => {
             const childPath = path ? `${path}/${d.name}` : d.name;
             return (
               <FolderTreeNode
