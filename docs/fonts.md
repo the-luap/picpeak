@@ -34,7 +34,8 @@ storage/fonts/
 └── <Family-Name>/
     ├── 400.woff2
     ├── 600.woff2
-    └── 700.woff2
+    ├── 700.woff2
+    └── meta.json     (optional)
 ```
 
 Rules:
@@ -43,6 +44,7 @@ Rules:
 - **File names** are `<weight>.woff2` where `<weight>` is an integer (100-900). Other names are ignored. The picker doesn't expose individual weights, but the runtime injects all available weights in the `@font-face` block so headings (semibold/bold) render correctly.
 - **Format** must be `.woff2`. Other formats are ignored. WOFF2 is universally supported and the smallest on the wire.
 - **No italics** in v1 (the picker doesn't expose them). Italic files in the folder are silently ignored.
+- **`meta.json`** (optional) tells the picker which CSS generic family to fall back to while the font file is loading (and permanently if the file ever 404s). Shape: `{ "generic": "sans-serif" | "serif" | "cursive" | "monospace" }`. Defaults to `sans-serif` if absent. Add this for serif fonts (e.g. Playfair Display) and cursive/display fonts (e.g. Comic Neue, Lobster) so visitors don't briefly see Helvetica during the font fetch.
 
 ### 3. Where to download fonts
 
@@ -66,11 +68,13 @@ Either:
 
 Refresh the admin customizer; the new family appears in the body and heading dropdowns.
 
+> **Note:** The admin customizer caches the fonts list separately for 5 minutes (React Query staleTime). After the backend picks up a new family, hard-reload the customizer page (⌘+Shift+R / Ctrl+Shift+R) to see it immediately, or wait up to 5 minutes for the frontend cache to expire on its own. The two caches serve different purposes — the backend avoids disk hits per request; the frontend avoids network hits per re-render — so we keep them independent and document the worst case rather than try to synchronise them.
+
 ## How it works
 
 - **Scanner**: `backend/src/services/fontsService.js` reads two locations and merges them: `backend/assets/fonts/` (bundled) + `STORAGE_PATH/fonts/` (user). User additions override bundled families of the same name. Cached for 30 s.
-- **Listing endpoint**: `GET /api/public/fonts` returns `{ fonts: [{ family, weights }, ...] }`.
-- **Static serving**: `GET /fonts/<Family-Name>/<weight>.woff2` returns the actual file. Path-traversal protected. `Cache-Control: max-age=7d, immutable`.
+- **Listing endpoint**: `GET /api/public/fonts` returns `{ fonts: [{ family, weights, generic }, ...] }`.
+- **Static serving**: `GET /fonts/<Family-Name>/<weight>.woff2` returns the actual file. Path-traversal protected. `Cache-Control: max-age=7d` — clients revalidate via `If-Modified-Since` after expiry, so replacing a file on disk eventually rolls out without admin action (see "Replacing an existing font" below).
 - **Lazy injection**: `frontend/src/contexts/ThemeContext.tsx` watches `theme.fontFamily` / `theme.headingFontFamily` and injects exactly one `@font-face` block per family the page actually uses, into a single `<style id="self-hosted-fonts">` element. Other families are not loaded for that visitor.
 - **Bootstrap**: `frontend/src/index.css` ships static `@font-face` blocks for Inter so the very first paint already has the default body font.
 
@@ -83,6 +87,17 @@ Refresh the admin customizer; the new family appears in the body and heading dro
 - **Variable fonts** are not supported in v1. Each weight must be a separate file.
 - **Italics** are not exposed in the picker.
 - **Per-option dropdown previews** (each font name rendered in its own face inside the picker) are not supported in v1. Browser support for styling `<option>` elements is inconsistent — Safari ignores it in the popup entirely, and Chrome/Firefox were unreliable in testing. A future improvement is to replace the native `<select>` with a custom dropdown component or to render a separate "preview text" box below the picker.
+
+### Replacing an existing font
+
+Browsers cache font files for up to 7 days. When you overwrite an existing weight file (e.g. swap your `Inter/400.woff2` for a different cut), some visitors may keep seeing the old face for up to a week, even after a backend restart.
+
+Two ways to roll out a replacement:
+
+1. **Wait it out.** Without `immutable` on the cache header, browsers send `If-Modified-Since` once the 7-day window expires; the backend responds based on file mtime, so the new file gets picked up automatically the next time each client revisits the gallery.
+2. **Force-bust the cache by renaming the family folder.** Move `Inter/` → `Inter-v2/` (with the new file inside) and update the affected event themes to use `Inter v2`. The new folder is served from a new URL, so caches don't apply and every client picks up the new face on next page load. This is the right approach when you need an immediate, gallery-wide rollout.
+
+The first option is fine for cosmetic touch-ups; the second is what to do when a font replacement is genuinely urgent.
 
 ## License
 
