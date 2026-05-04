@@ -13,10 +13,35 @@ jest.mock('../../src/utils/logger', () => ({
 }));
 
 const logger = require('../../src/utils/logger');
+// Required ONCE at module top so the jest.mock factory above applies to
+// the logger reference that fontsService captures. A previous version
+// re-required it inside beforeEach() with jest.resetModules() — that
+// silently bypassed the mock (logger calls went to the real logger),
+// so the "warning logged" assertions would resolve as 0 calls and
+// silently pass-as-noop. Module-level state in fontsService is just
+// the cache, which clearFontsCache() resets between tests.
+const fontsService = require('../../src/services/fontsService');
+
+// Probe at load time: is the host filesystem case-sensitive?
+// macOS APFS and Windows NTFS treat "Inter" and "INTER" as the same
+// directory entry, which means the "two folders, same lowercase key"
+// dedup test below can't be set up via real folders on those platforms —
+// the second mkdir is a no-op. Skip that one test conditionally.
+const FS_IS_CASE_SENSITIVE = (() => {
+  const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'picpeak-fs-probe-'));
+  fs.writeFileSync(path.join(probeDir, 'casetest'), '');
+  let sensitive = true;
+  try {
+    fs.accessSync(path.join(probeDir, 'CASETEST'));
+    sensitive = false;
+  } catch { /* file not found → case-sensitive FS */ }
+  fs.rmSync(probeDir, { recursive: true, force: true });
+  return sensitive;
+})();
+const testCaseSensitiveFS = FS_IS_CASE_SENSITIVE ? test : test.skip;
 
 let bundledRoot;
 let userRoot;
-let fontsService;
 
 /**
  * Create a font family folder with the given weights (and optional meta.json).
@@ -56,10 +81,11 @@ beforeEach(async () => {
   userRoot = path.join(storageParent, 'fonts');
   process.env.STORAGE_PATH = storageParent;
 
-  // Re-require fresh after env is set so module-level constants (none here,
-  // but cache state is module-level) start clean.
-  jest.resetModules();
-  fontsService = require('../../src/services/fontsService');
+  // Reset the module-level cache so each test sees a fresh scan.
+  // (Both getBundledFontsRoot and getUserFontsRoot read process.env at
+  // call-time, so the env vars set above are picked up without needing
+  // to re-require the module — see fontsService.js getBundledFontsRoot /
+  // getUserFontsRoot.)
   fontsService.clearFontsCache();
 });
 
@@ -170,11 +196,12 @@ describe('fontsService.listFonts', () => {
       expect(fonts.map((f) => f.family)).toEqual(['Lobster']);
     });
 
-    test('case-insensitive duplicate within the same root → second skipped, warning', async () => {
-      // Two different folder names both producing the family "Inter".
-      // On case-insensitive filesystems (APFS) this can't actually happen at
-      // the FS layer; we simulate by using two different display names that
-      // normalize identically. "Inter" and "INTER" lowercase to the same key.
+    testCaseSensitiveFS('case-insensitive duplicate within the same root → second skipped, warning', async () => {
+      // Two folder names whose lowercase keys collide. On a case-sensitive
+      // FS (Linux ext4) we can create both `Inter/` and `INTER/`; on a
+      // case-insensitive FS (macOS APFS, Windows NTFS) the second mkdir
+      // resolves to the same directory as the first and the dedup branch
+      // is unreachable from this test setup — see testCaseSensitiveFS above.
       await makeFamily(bundledRoot, 'Inter', [400]);
       await makeFamily(bundledRoot, 'INTER', [700]);
       const fonts = await fontsService.listFonts();
