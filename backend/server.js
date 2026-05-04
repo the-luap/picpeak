@@ -458,7 +458,14 @@ app.use('/uploads', setCorsHeaders, secureStatic(path.join(storagePath, 'uploads
 //   1. STORAGE_PATH/fonts/ — runtime user additions (drop a folder, restart)
 //   2. backend/assets/fonts/ — bundled defaults baked into the image
 // Express evaluates handlers in order, so user-supplied files win on overlap.
-const fontStaticOpts = { maxAge: '7d', immutable: true };
+//
+// We deliberately do NOT set `immutable` on these responses. The filenames
+// are stable (e.g. Inter/400.woff2), so an admin replacing the file on disk
+// must be able to roll out the change to clients. With max-age + Last-Modified
+// (set by express.static from file mtime), browsers send If-Modified-Since
+// after expiry and pick up the new version automatically. See docs/fonts.md
+// "Replacing an existing font" for the documented rollout strategy.
+const fontStaticOpts = { maxAge: '7d' };
 app.use(
   '/fonts',
   setCorsHeaders,
