@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.37.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.36.0-beta.0...v3.37.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **events:** add Photos column to admin events list ([#384](https://github.com/the-luap/picpeak/issues/384)) ([d561db8](https://github.com/the-luap/picpeak/commit/d561db802b04db8fbb38819a22e840532e775ef0))
+* **events:** add Photos column to admin events list ([#384](https://github.com/the-luap/picpeak/issues/384)) ([ffb4318](https://github.com/the-luap/picpeak/commit/ffb4318a1f667e273cd59805673b125d2f17699b))
+
 ## [3.36.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.35.0-beta.0...v3.36.0-beta.0) (2026-05-04)
 
 
