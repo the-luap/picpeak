@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.39.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.39.0-beta.0...v3.39.1-beta.0) (2026-05-04)
+
+
+### Documentation
+
+* **readme:** add Contributors section with @Luca-Timo and @Rekoo-PS ([c60ab74](https://github.com/the-luap/picpeak/commit/c60ab74ae2daabc4b11fea1f1b2df728294b03c8))
+* **readme:** add Contributors section with @Luca-Timo and @Rekoo-PS ([dbe0a30](https://github.com/the-luap/picpeak/commit/dbe0a3055bd2c71981cb7d9cf43c2b22b9e3276c))
+
 ## [3.39.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.38.0-beta.0...v3.39.0-beta.0) (2026-05-04)
 
 
