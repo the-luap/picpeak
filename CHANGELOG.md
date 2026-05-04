@@ -5,6 +5,24 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.40.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.39.1-beta.0...v3.40.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **branding:** per-family generic fallback via meta.json ([dcff451](https://github.com/the-luap/picpeak/commit/dcff4515721482e06c2ef1c1eb34f9e12754c07c))
+* **branding:** self-hosted webfonts with filesystem scanner ([d04bf28](https://github.com/the-luap/picpeak/commit/d04bf288084144bf53ef0ba988fa32ed703d7351))
+
+
+### Bug Fixes
+
+* **fonts:** drop immutable Cache-Control to allow font replacement rollout ([5703fcb](https://github.com/the-luap/picpeak/commit/5703fcb80680155e3b637dd5fc15c430de963c40))
+
+
+### Documentation
+
+* **fonts:** cache rollout, stale-list note, meta.json ([bd0e052](https://github.com/the-luap/picpeak/commit/bd0e052b1a1847718151a16117dacc6c42a2178e))
+
 ## [3.39.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.39.0-beta.0...v3.39.1-beta.0) (2026-05-04)
 
 
