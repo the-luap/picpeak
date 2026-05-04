@@ -439,6 +439,15 @@ Other ways to support without spending anything: ⭐ star the repo, share it wit
 
 PicPeak is inspired by the best features of commercial platforms while remaining completely open source. Special thanks to all contributors who make this project possible.
 
+### 👥 Contributors
+
+A huge thank you to the people whose code, reports, and feedback have shaped PicPeak:
+
+- [**@Luca-Timo**](https://github.com/Luca-Timo) — native Apple Silicon multi-arch images, external-URL toggle for legal CMS pages, the lazy-loaded folder tree picker, the admin-email picker on event creation, the data-driven self-hosted webfont system, the gallery header/banner decoupling, and several typed-API refactors. Consistently raises the bar with thoughtful PRs.
+- [**@Rekoo-PS**](https://github.com/Rekoo-PS) — sharp-eyed bug reporter and product feedback. Filed the issues that drove the login-loop fix, the gallery-loading skeleton work, the redirection cleanup, the mobile-lightbox overhaul, the admin-events search-counter fix, the photo-count column, and the bulk-delete workflow. Also a [BuyMeACoffee](https://buymeacoffee.com/theluap) supporter — the kind of feedback loop that keeps the project useful for real deployments.
+
+If you've contributed and aren't listed here, please open a PR — this list is meant to grow.
+
 ### 🤖 AI-Assisted Development
 
 This project was generated with the assistance of AI technology, but has been:
