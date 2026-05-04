@@ -66,7 +66,7 @@ import { api } from '../../config/api';
 import { buildResourceUrl, buildShareLinkUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
-import { externalMediaService } from '../../services/externalMedia.service';
+import { externalMediaService, type ExternalEntry } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';

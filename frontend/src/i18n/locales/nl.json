@@ -350,6 +350,8 @@
     "welcomeMessagePlaceholder": "Welkom bij onze bijzondere dag! Voel u vrij om deze herinneringen te downloaden en te delen...",
     "hostEmailPlaceholder": "klant@voorbeeld.nl",
     "adminEmailPlaceholder": "admin@voorbeeld.nl",
+    "adminEmailPickFromAdmins": "Kies uit beheerders:",
+    "adminEmailCustom": "Aangepast e-mailadres",
     "securityAndAccess": "Beveiliging & Toegang",
     "accessAndSecurity": "Toegang & Beveiliging",
     "enterPassword": "Voer wachtwoord in",

@@ -356,6 +356,8 @@
     "welcomeMessagePlaceholder": "Welcome to our special day! Feel free to download and share these memories...",
     "hostEmailPlaceholder": "customer@example.com",
     "adminEmailPlaceholder": "admin@example.com",
+    "adminEmailPickFromAdmins": "Pick from admins:",
+    "adminEmailCustom": "Custom email",
     "securityAndAccess": "Security & Access",
     "accessAndSecurity": "Access & Security",
     "enterPassword": "Enter password",

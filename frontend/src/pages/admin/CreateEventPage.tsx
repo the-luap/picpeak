@@ -25,6 +25,8 @@ import { settingsService } from '../../services/settings.service';
 import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { cssTemplatesService } from '../../services/cssTemplates.service';
 import { eventTypesService } from '../../services/eventTypes.service';
+import { userManagementService } from '../../services/userManagement.service';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { useTranslation } from 'react-i18next';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { Code } from 'lucide-react';
@@ -171,6 +173,41 @@ export const CreateEventPage: React.FC = () => {
   });
 
   const { data: publicSettings } = usePublicSettings();
+
+  // Current logged-in admin (used to prefill the admin email field)
+  const { user: currentAdmin } = useAdminAuth();
+
+  // Optional: list of admin users — used to populate the email picker when
+  // there are multiple admins. Falls back to an empty list silently if the
+  // current user lacks `users.view` permission, so basic admins still get
+  // the auto-prefill from `currentAdmin` without errors surfacing.
+  const { data: adminUsers } = useQuery({
+    queryKey: ['admin-users-list'],
+    queryFn: async () => {
+      try {
+        return await userManagementService.getUsers();
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false
+  });
+
+  const activeAdmins = useMemo(
+    () => (adminUsers || []).filter(u => u.isActive !== false && !!u.email),
+    [adminUsers]
+  );
+
+  // Auto-prefill admin email with the current user's email exactly once,
+  // and only if the field is still empty (don't clobber typed input).
+  const didPrefillAdminEmailRef = useRef(false);
+  useEffect(() => {
+    if (didPrefillAdminEmailRef.current) return;
+    if (!currentAdmin?.email) return;
+    didPrefillAdminEmailRef.current = true;
+    setFormData(prev => (prev.admin_email ? prev : { ...prev, admin_email: currentAdmin.email }));
+  }, [currentAdmin?.email]);
 
   // Get field requirements (default to true if not set)
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
@@ -673,6 +710,31 @@ export const CreateEventPage: React.FC = () => {
                 error={errors.admin_email}
                 leftIcon={<Mail className="w-5 h-5" />}
               />
+              {activeAdmins.length > 1 && (
+                <div className="flex items-center gap-2 -mt-1">
+                  <label htmlFor="admin-email-picker" className="text-xs text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
+                    {t('events.adminEmailPickFromAdmins', 'Pick from admins:')}
+                  </label>
+                  <select
+                    id="admin-email-picker"
+                    value={activeAdmins.some(a => a.email === formData.admin_email) ? formData.admin_email : ''}
+                    onChange={(e) => {
+                      const email = e.target.value;
+                      if (email) {
+                        setFormData(prev => ({ ...prev, admin_email: email }));
+                      }
+                    }}
+                    className="text-xs px-2 py-1 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">{t('events.adminEmailCustom', 'Custom email')}</option>
+                    {activeAdmins.map(a => (
+                      <option key={a.id} value={a.email}>
+                        {a.username} ({a.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
