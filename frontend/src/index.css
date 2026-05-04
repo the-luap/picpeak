@@ -1,4 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+/*
+ * Self-hosted Inter is bootstrapped here so the very first paint —
+ * before React mounts and runs the dynamic @font-face injector — has
+ * the default body font available. Replaces the previous Google Fonts
+ * @import that leaked visitor IPs to fonts.googleapis.com (LG München
+ * 2022 GDPR ruling). All other families are injected on-demand by
+ * frontend/src/contexts/ThemeContext.tsx based on the active theme.
+ */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/Inter/400.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Inter/600.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/Inter/700.woff2') format('woff2'); }
 
 /* Import image protection styles */
 @import './styles/image-protection.css';
