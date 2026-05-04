@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.40.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.40.0-beta.0...v3.40.1-beta.0) (2026-05-04)
+
+
+### Bug Fixes
+
+* **auth:** /auth/session must enforce session timeout symmetrically ([#350](https://github.com/the-luap/picpeak/issues/350) recurrence) ([c8e09c2](https://github.com/the-luap/picpeak/commit/c8e09c2a2a7d0920901560317eecd773b83251c0))
+* **auth:** /auth/session must enforce session timeout symmetrically ([#350](https://github.com/the-luap/picpeak/issues/350) recurrence) ([b106da1](https://github.com/the-luap/picpeak/commit/b106da1ededa27fc8727f2c0e74a9182e6e9c895))
+
 ## [3.40.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.39.1-beta.0...v3.40.0-beta.0) (2026-05-04)
 
 
