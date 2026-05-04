@@ -865,6 +865,8 @@
     "externalFolder": "Externer Ordner",
     "externalFolderHint": "Diese Ordner stammen aus dem /external-media Mount innerhalb des Containers oder Hosts.",
     "externalFolderRequired": "Bitte wählen Sie vor dem Speichern einen externen Ordner aus.",
+    "externalFolderEmpty": "Keine Unterordner",
+    "clearSelection": "Löschen",
     "welcomeMessage": "Willkommensnachricht",
     "noWelcomeMessage": "Keine Willkommensnachricht festgelegt",
     "noWelcomeMessageSet": "Keine Willkommensnachricht festgelegt",
