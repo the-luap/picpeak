@@ -21,11 +21,17 @@ const logger = require('../utils/logger');
  * Folder layout in either location:
  *
  *   <Family-Name>/<weight>.woff2
+ *   <Family-Name>/meta.json    (optional)
  *
  *   - Folder name → display family with hyphens replaced by spaces:
  *       "Playfair-Display" → "Playfair Display"
  *   - Weight files must be named "<integer>.woff2" (e.g. 400.woff2).
  *     Other names are ignored, family entry still includes its other weights.
+ *   - Optional meta.json: { "generic": "sans-serif" | "serif" | "cursive" | "monospace" }
+ *     Tells the picker which CSS generic family to use as a fallback when
+ *     building the font-family string. Defaults to "sans-serif" if absent
+ *     or invalid. Avoids hardcoding family-name → generic lookups in the
+ *     frontend, so any new family folder works without code changes.
  *
  * Result is cached in memory for FONTS_CACHE_TTL_MS so frequent
  * /api/public/fonts hits don't hit disk per request. New folders dropped
@@ -35,11 +41,18 @@ const logger = require('../utils/logger');
  */
 
 const FONTS_CACHE_TTL_MS = 30_000;
+const VALID_GENERICS = new Set(['sans-serif', 'serif', 'cursive', 'monospace']);
+const DEFAULT_GENERIC = 'sans-serif';
 
 let cachedFonts = null;
 let fontsCacheExpiresAt = 0;
 
 function getBundledFontsRoot() {
+  // Test seam: the unit test suite points this at an isolated temp dir so it
+  // can populate fixtures without polluting the real backend/assets tree.
+  if (process.env.PICPEAK_BUNDLED_FONTS_ROOT) {
+    return process.env.PICPEAK_BUNDLED_FONTS_ROOT;
+  }
   // backend/src/services/fontsService.js → backend/assets/fonts
   return path.resolve(__dirname, '../../assets/fonts');
 }
@@ -54,8 +67,45 @@ function familyDisplayName(folderName) {
 }
 
 /**
- * Read one family folder and return { family, weights } or null if the
- * folder has no usable .woff2 files.
+ * Try to read meta.json from the family folder. Returns the validated
+ * generic class or DEFAULT_GENERIC. Missing file → silent default.
+ * Unreadable / malformed / invalid value → warning + default.
+ */
+async function readFamilyMeta(folderAbs, folderName) {
+  const metaPath = path.join(folderAbs, 'meta.json');
+  let raw;
+  try {
+    raw = await fs.readFile(metaPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return DEFAULT_GENERIC;
+    logger.warn(`[fonts] Could not read meta.json for ${folderName}: ${err.message}`);
+    return DEFAULT_GENERIC;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    logger.warn(`[fonts] meta.json for ${folderName} is not valid JSON: ${err.message}`);
+    return DEFAULT_GENERIC;
+  }
+
+  const generic = parsed && typeof parsed.generic === 'string' ? parsed.generic : null;
+  if (generic && VALID_GENERICS.has(generic)) {
+    return generic;
+  }
+  if (generic) {
+    logger.warn(
+      `[fonts] meta.json for ${folderName} has invalid generic "${generic}"; ` +
+      `expected one of ${Array.from(VALID_GENERICS).join(', ')}. Falling back to ${DEFAULT_GENERIC}.`
+    );
+  }
+  return DEFAULT_GENERIC;
+}
+
+/**
+ * Read one family folder and return { family, weights, generic } or null
+ * if the folder has no usable .woff2 files.
  */
 async function readFamilyFolder(rootAbs, folderName) {
   const folderAbs = path.join(rootAbs, folderName);
@@ -84,7 +134,8 @@ async function readFamilyFolder(rootAbs, folderName) {
   }
 
   weights.sort((a, b) => a - b);
-  return { family: familyDisplayName(folderName), weights };
+  const generic = await readFamilyMeta(folderAbs, folderName);
+  return { family: familyDisplayName(folderName), weights, generic };
 }
 
 /**
@@ -129,7 +180,7 @@ async function scanRoot(rootAbs) {
  * List all available font families (bundled + user additions, merged).
  * Cached for FONTS_CACHE_TTL_MS.
  *
- * @returns {Promise<Array<{ family: string, weights: number[] }>>}
+ * @returns {Promise<Array<{ family: string, weights: number[], generic: string }>>}
  */
 async function listFonts() {
   if (Date.now() < fontsCacheExpiresAt && cachedFonts !== null) {

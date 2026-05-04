@@ -3,6 +3,10 @@ import { api } from '../config/api';
 export interface FontDefinition {
   family: string;
   weights: number[];
+  // CSS generic to use as a fallback when building font-family strings.
+  // Optional in the type so older backends without this field still work;
+  // callers must default to 'sans-serif' when undefined.
+  generic?: 'sans-serif' | 'serif' | 'cursive' | 'monospace';
 }
 
 export interface FontsListResponse {

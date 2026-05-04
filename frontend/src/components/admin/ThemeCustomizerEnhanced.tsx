@@ -8,20 +8,16 @@ import { fontsService, extractFamilyName, type FontDefinition } from '../../serv
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-// Generic CSS fallback per family. Sans by default; serif for known serif
-// families; cursive for handwriting/display families. Used when building
-// the dropdown <option value> from a scanned family name.
-const SERIF_FAMILIES = new Set(['Playfair Display', 'Georgia']);
-const CURSIVE_FAMILIES = new Set(['Comic Neue']);
-
-function buildFontFamilyValue(family: string): string {
-  const generic = SERIF_FAMILIES.has(family)
-    ? 'serif'
-    : CURSIVE_FAMILIES.has(family)
-      ? 'cursive'
-      : 'sans-serif';
+/**
+ * Build the CSS font-family value for a scanned font, using the generic
+ * fallback the backend supplied (from each family's optional meta.json).
+ * Defaults to 'sans-serif' when the backend doesn't report one — keeps
+ * compatibility with backends that predate the generic field.
+ */
+function buildFontFamilyValue(font: FontDefinition): string {
+  const generic = font.generic ?? 'sans-serif';
   // Always quote the family name (covers multi-word like 'Playfair Display').
-  return `'${family}', ${generic}`;
+  return `'${font.family}', ${generic}`;
 }
 
 /**
@@ -42,7 +38,7 @@ function resolveFontDropdownValue(
   const match = (available || []).find(
     (f) => f.family.toLowerCase() === family.toLowerCase()
   );
-  return match ? buildFontFamilyValue(match.family) : saved;
+  return match ? buildFontFamilyValue(match) : saved;
 }
 
 interface ThemeCustomizerEnhancedProps {
@@ -978,14 +974,21 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 value={resolveFontDropdownValue(
                   localTheme.fontFamily,
                   availableFonts,
-                  buildFontFamilyValue('Inter')
+                  // Fallback when no fontFamily is saved yet: prefer the
+                  // scanned Inter (with its real generic), else a bare CSS
+                  // string when the backend hasn't loaded yet.
+                  (availableFonts || []).find((f) => f.family === 'Inter')
+                    ? buildFontFamilyValue(
+                        (availableFonts || []).find((f) => f.family === 'Inter')!
+                      )
+                    : "'Inter', sans-serif"
                 )}
                 onChange={(e) => handleChange('fontFamily', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="system-ui, sans-serif">System UI</option>
                 {(availableFonts || []).map((f) => (
-                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                  <option key={f.family} value={buildFontFamilyValue(f)}>
                     {f.family}
                   </option>
                 ))}
@@ -1008,7 +1011,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 <option value="">{t('branding.sameAsBody')}</option>
                 <option value="system-ui, sans-serif">System UI</option>
                 {(availableFonts || []).map((f) => (
-                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                  <option key={f.family} value={buildFontFamilyValue(f)}>
                     {f.family}
                   </option>
                 ))}
