@@ -250,6 +250,78 @@ const hasCustomerContactColumns = async () => {
   }
 };
 
+// Cascade-delete a single event: photos, audit/access logs, queued emails,
+// the event row itself (in one transaction), then the on-disk folder /
+// archive zip / hero logo (best-effort — file failures don't unwind the DB
+// changes since the source of truth is the database). Used by both the
+// per-event DELETE /:id route and the bulk-delete route to avoid drift.
+//
+// Throws { code: 'EVENT_NOT_FOUND' } if the event id doesn't exist so the
+// bulk-delete loop can report it as a per-id failure without aborting the
+// whole batch. Any other error propagates and is the caller's problem.
+async function deleteEventCascade(eventId, adminContext) {
+  const event = await db('events').where('id', eventId).first();
+  if (!event) {
+    const err = new Error('Event not found');
+    err.code = 'EVENT_NOT_FOUND';
+    throw err;
+  }
+
+  await db.transaction(async (trx) => {
+    // 1. Delete activity logs (audit trail)
+    await trx('activity_logs').where('event_id', eventId).del();
+    // 2. Delete access logs
+    await trx('access_logs').where('event_id', eventId).del();
+    // 3. Delete email queue entries
+    await trx('email_queue').where('event_id', eventId).del();
+    // 4. Delete photos (also handles hero_photo_id foreign key)
+    await trx('photos').where('event_id', eventId).del();
+    // 5. Finally delete the event row
+    await trx('events').where('id', eventId).del();
+
+    // Best-effort filesystem cleanup. Failures are logged but don't unwind
+    // the transaction — the canonical state lives in the DB; orphan files
+    // are recoverable noise, a half-deleted DB row is a permanent mess.
+    if (event.folder_path) {
+      const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+      const eventFolderPath = path.join(storagePath, 'events', 'active', event.folder_path);
+      try {
+        await fs.rm(eventFolderPath, { recursive: true, force: true });
+      } catch (fsErr) {
+        logger.warn('Failed to delete event folder during cascade delete', { eventId, path: eventFolderPath, error: fsErr.message });
+      }
+    }
+
+    if (event.archive_path) {
+      const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+      const archiveFile = path.join(storagePath, event.archive_path);
+      try {
+        await fs.unlink(archiveFile);
+      } catch (fsErr) {
+        logger.warn('Failed to delete archive file during cascade delete', { eventId, path: archiveFile, error: fsErr.message });
+      }
+    }
+
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+      } catch (fsErr) {
+        logger.warn('Failed to delete event logo during cascade delete', { eventId, path: event.hero_logo_path, error: fsErr.message });
+      }
+    }
+  });
+
+  // Audit trail (outside the transaction so a logging failure can't undo
+  // the actual delete).
+  await logActivity('event_deleted',
+    { event_name: event.event_name },
+    null,
+    { type: 'admin', id: adminContext.id, name: adminContext.username }
+  );
+
+  return { id: event.id, name: event.event_name };
+}
+
 // Create new event
 router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_type').notEmpty().trim().custom(async (value) => {
@@ -1238,90 +1310,19 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
 router.delete('/:id', adminAuth, requirePermission('events.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Check if event exists
-    const event = await db('events').where('id', id).first();
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    // Start a transaction to ensure all deletions succeed or fail together
-    await db.transaction(async (trx) => {
-      // 1. Delete activity logs (audit trail)
-      await trx('activity_logs').where('event_id', id).del();
-
-      // 2. Delete access logs
-      await trx('access_logs').where('event_id', id).del();
-
-      // 3. Delete email queue entries
-      await trx('email_queue').where('event_id', id).del();
-
-      // 4. Delete photos (this will also handle hero_photo_id foreign key)
-      await trx('photos').where('event_id', id).del();
-
-      // 5. Finally delete the event
-      await trx('events').where('id', id).del();
-
-      // Delete event folder from storage if it exists
-      if (event.folder_path) {
-        const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-        const eventFolderPath = path.join(storagePath, 'events', 'active', event.folder_path);
-        
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.rm(eventFolderPath, { recursive: true, force: true });
-        } catch (err) {
-          console.error('Failed to delete event folder:', err);
-          // Don't fail the transaction if folder deletion fails
-        }
-      }
-
-      // Delete archive if exists
-      if (event.archive_path) {
-        const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-        const archivePath = path.join(storagePath, event.archive_path);
-
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.unlink(archivePath);
-        } catch (err) {
-          console.error('Failed to delete archive file:', err);
-          // Don't fail the transaction if file deletion fails
-        }
-      }
-
-      // Delete custom event logo if exists
-      if (event.hero_logo_path) {
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.unlink(event.hero_logo_path);
-        } catch (err) {
-          logger.warn('Failed to delete event logo file during event deletion', { path: event.hero_logo_path, error: err.message });
-        }
-      }
-    });
-
-    // Log activity (outside transaction)
-    await logActivity('event_deleted',
-      { event_name: event.event_name },
-      null,
-      { type: 'admin', id: req.admin.id, name: req.admin.username }
-    );
-
+    await deleteEventCascade(id, { id: req.admin.id, username: req.admin.username });
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
-    console.error('Error deleting event:', error);
-    
-    // Provide more specific error messages
+    if (error.code === 'EVENT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    logger.error('Error deleting event', { eventId: req.params.id, error: error.message });
     if (error.message && error.message.includes('foreign key constraint')) {
-      res.status(500).json({ 
+      return res.status(500).json({
         error: 'Cannot delete event due to existing references. Please contact support.'
       });
-    } else {
-      res.status(500).json({ 
-        error: 'Failed to delete event'
-      });
     }
+    res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 
@@ -1648,6 +1649,82 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   } catch (error) {
     console.error('Error in bulk archive:', error);
     res.status(500).json({ error: 'Failed to perform bulk archive' });
+  }
+});
+
+// Bulk delete — destructive, irreversible. Requires the calling admin to
+// re-enter their password as a confirmation gate (verified against the
+// stored bcrypt hash, same pattern as /auth/admin/change-password). Caps at
+// 100 events per request to keep request time bounded; the per-event
+// cascade touches 5 DB tables + 3 filesystem paths so 1000 events would
+// risk timing out the request. Loops via deleteEventCascade so the per-
+// event delete behaviour stays in lock-step with DELETE /:id.
+const BULK_DELETE_MAX = 100;
+router.post('/bulk-delete', adminAuth, requirePermission('events.delete'), [
+  body('eventIds').isArray({ min: 1, max: BULK_DELETE_MAX }).withMessage(`eventIds must be an array of 1-${BULK_DELETE_MAX} ids`),
+  body('eventIds.*').isInt().withMessage('Each eventId must be an integer'),
+  body('password').isString().notEmpty().withMessage('Password is required for confirmation')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { eventIds, password } = req.body;
+
+    // Verify the admin's password before doing anything destructive.
+    // Same pattern as /auth/admin/change-password (auth.js).
+    const admin = await db('admin_users').where({ id: req.admin.id }).first();
+    if (!admin) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const validPassword = await bcrypt.compare(password, admin.password_hash);
+    if (!validPassword) {
+      logger.warn('Incorrect password on bulk-delete attempt', { adminId: req.admin.id, eventCount: eventIds.length });
+      return res.status(401).json({ error: 'Incorrect password', code: 'INVALID_PASSWORD' });
+    }
+
+    // Editor-role events.delete permission is already gated by the route
+    // middleware. We do NOT additionally filter to created_by here because
+    // the per-event delete-cascade is global (matches DELETE /:id which
+    // also has no role-based filter — that's why events.delete is a
+    // sensitive permission).
+
+    const results = { successful: [], failed: [] };
+    const adminContext = { id: req.admin.id, username: req.admin.username };
+
+    for (const eventId of eventIds) {
+      try {
+        const deleted = await deleteEventCascade(eventId, adminContext);
+        results.successful.push(deleted);
+      } catch (err) {
+        results.failed.push({
+          id: eventId,
+          name: null,
+          error: err.code === 'EVENT_NOT_FOUND' ? 'Event not found' : 'Failed to delete event'
+        });
+        logger.warn('Bulk-delete: per-event failure', { eventId, error: err.message });
+      }
+    }
+
+    await logActivity('bulk_delete_completed',
+      {
+        totalEvents: eventIds.length,
+        successfulCount: results.successful.length,
+        failedCount: results.failed.length
+      },
+      null,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({
+      message: `Bulk delete completed: ${results.successful.length} succeeded, ${results.failed.length} failed`,
+      results
+    });
+  } catch (error) {
+    logger.error('Error in bulk delete', { error: error.message });
+    res.status(500).json({ error: 'Failed to perform bulk delete' });
   }
 });
 

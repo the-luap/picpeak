@@ -10,6 +10,7 @@ export { EventCategoryManager } from './EventCategoryManager';
 export { CMSEditor } from './CMSEditor';
 export { WelcomeMessageEditor } from './WelcomeMessageEditor';
 export { BulkArchiveModal } from './BulkArchiveModal';
+export { BulkDeleteModal } from './BulkDeleteModal';
 export { MaintenanceBanner } from './MaintenanceBanner';
 export { EmailPreviewModal } from './EmailPreviewModal';
 export { AdminPhotoGrid } from './AdminPhotoGrid';
