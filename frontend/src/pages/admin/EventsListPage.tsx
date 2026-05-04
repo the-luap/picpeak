@@ -434,6 +434,9 @@ export const EventsListPage: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('events.date')}
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                  {t('events.photos', 'Photos')}
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('events.status')}
                 </th>
@@ -448,7 +451,7 @@ export const EventsListPage: React.FC = () => {
             <tbody className="bg-white dark:bg-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-700">
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
                     {t('events.noEventsFound')}
                   </td>
                 </tr>
@@ -492,6 +495,9 @@ export const EventsListPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-300">
                         {event.event_date ? format(parseISO(event.event_date), 'MMM d, yyyy') : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right tabular-nums text-neutral-700 dark:text-neutral-300">
+                        {event.photo_count ?? 0}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
