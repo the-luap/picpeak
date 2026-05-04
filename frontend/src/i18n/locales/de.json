@@ -1019,6 +1019,8 @@
     "welcomeMessagePlaceholder": "Willkommen zu unserem besonderen Tag! Laden Sie diese Erinnerungen gerne herunter und teilen Sie sie...",
     "hostEmailPlaceholder": "kunde@beispiel.de",
     "adminEmailPlaceholder": "admin@beispiel.de",
+    "adminEmailPickFromAdmins": "Aus Admins wählen:",
+    "adminEmailCustom": "Eigene E-Mail",
     "securityAndAccess": "Sicherheit & Zugriff",
     "accessAndSecurity": "Zugriff & Sicherheit",
     "enterPassword": "Passwort eingeben",

@@ -350,6 +350,8 @@
     "welcomeMessagePlaceholder": "Bem-vindo(a) ao nosso dia especial! Sinta-se à vontade para baixar e compartilhar essas memórias...",
     "hostEmailPlaceholder": "cliente@exemplo.com",
     "adminEmailPlaceholder": "admin@exemplo.com",
+    "adminEmailPickFromAdmins": "Escolher entre administradores:",
+    "adminEmailCustom": "E-mail personalizado",
     "securityAndAccess": "Segurança e Acesso",
     "accessAndSecurity": "Acesso e Segurança",
     "enterPassword": "Digite a senha",

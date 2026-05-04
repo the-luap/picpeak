@@ -350,6 +350,8 @@
     "welcomeMessagePlaceholder": "Добро пожаловать на наш особый день! Скачивайте и делитесь этими воспоминаниями...",
     "hostEmailPlaceholder": "client@example.com",
     "adminEmailPlaceholder": "admin@example.com",
+    "adminEmailPickFromAdmins": "Выбрать из админов:",
+    "adminEmailCustom": "Произвольный e-mail",
     "securityAndAccess": "Безопасность и доступ",
     "accessAndSecurity": "Доступ и безопасность",
     "enterPassword": "Введите пароль",
