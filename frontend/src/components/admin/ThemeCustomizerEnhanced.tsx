@@ -627,7 +627,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
             {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
               <button
                 type="button"
