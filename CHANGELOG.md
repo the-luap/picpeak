@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.34.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.1-beta.0...v3.34.2-beta.0) (2026-05-04)
+
+
+### Bug Fixes
+
+* **docker:** install system ffmpeg on Alpine, drop broken bundled binary ([3ab8a64](https://github.com/the-luap/picpeak/commit/3ab8a64a24f1600e674f77d39139e33857b4dfc8))
+* **docker:** install system ffmpeg on Alpine, drop broken bundled binary ([96818c7](https://github.com/the-luap/picpeak/commit/96818c7ae8de0d8fd478cd901ea25a3272eee85d))
+
 ## [3.34.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.0-beta.0...v3.34.1-beta.0) (2026-05-03)
 
 
