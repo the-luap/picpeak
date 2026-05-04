@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.36.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.35.0-beta.0...v3.36.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **events:** prefill admin email + admin picker on event creation ([3fe8e61](https://github.com/the-luap/picpeak/commit/3fe8e61bd1175e35dcb61604447e5d9c2e902ec5))
+
 ## [3.35.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.2-beta.0...v3.35.0-beta.0) (2026-05-04)
 
 
