@@ -449,6 +449,27 @@ app.use('/thumbnails', require('./src/middleware/photoAuth'), setCorsHeaders, se
 // Static file serving for uploads (public - logos, favicons)
 app.use('/uploads', setCorsHeaders, secureStatic(path.join(storagePath, 'uploads')));
 
+// Static file serving for self-hosted webfonts (public — gallery visitors
+// load these via @font-face). Replaces the previous Google Fonts CDN
+// dependency, which leaked visitor IPs to a third party (LG München 2022
+// GDPR ruling).
+//
+// Two mounts in priority order:
+//   1. STORAGE_PATH/fonts/ — runtime user additions (drop a folder, restart)
+//   2. backend/assets/fonts/ — bundled defaults baked into the image
+// Express evaluates handlers in order, so user-supplied files win on overlap.
+const fontStaticOpts = { maxAge: '7d', immutable: true };
+app.use(
+  '/fonts',
+  setCorsHeaders,
+  secureStatic(path.join(storagePath, 'fonts'), fontStaticOpts)
+);
+app.use(
+  '/fonts',
+  setCorsHeaders,
+  secureStatic(path.resolve(__dirname, 'assets/fonts'), fontStaticOpts)
+);
+
 // Debug endpoint to check IP detection (only in development)
 if (process.env.NODE_ENV === 'development') {
   app.get('/api/debug/ip', (req, res) => {
@@ -563,6 +584,7 @@ app.use('/api/v1', require('./src/routes/v1/events'));
 
 app.use('/api/invite', require('./src/routes/acceptInvite'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
+app.use('/api/public/fonts', require('./src/routes/publicFonts'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
 app.use('/api/secure-images', secureImagesRoutes);

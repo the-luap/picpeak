@@ -4,8 +4,46 @@ import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
 import { settingsService } from '../../services/settings.service';
+import { fontsService, extractFamilyName, type FontDefinition } from '../../services/fonts.service';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+
+// Generic CSS fallback per family. Sans by default; serif for known serif
+// families; cursive for handwriting/display families. Used when building
+// the dropdown <option value> from a scanned family name.
+const SERIF_FAMILIES = new Set(['Playfair Display', 'Georgia']);
+const CURSIVE_FAMILIES = new Set(['Comic Neue']);
+
+function buildFontFamilyValue(family: string): string {
+  const generic = SERIF_FAMILIES.has(family)
+    ? 'serif'
+    : CURSIVE_FAMILIES.has(family)
+      ? 'cursive'
+      : 'sans-serif';
+  // Always quote the family name (covers multi-word like 'Playfair Display').
+  return `'${family}', ${generic}`;
+}
+
+/**
+ * Match a saved CSS font-family string against the available scanned families
+ * and return the canonical option value the dropdown renders. Handles both
+ * legacy unquoted strings ("Inter, sans-serif") and the new quoted format
+ * ("'Inter', sans-serif"), so events saved before this change still show the
+ * right option as selected.
+ */
+function resolveFontDropdownValue(
+  saved: string | undefined,
+  available: FontDefinition[] | undefined,
+  fallback: string
+): string {
+  if (!saved) return fallback;
+  const family = extractFamilyName(saved);
+  if (!family) return saved; // generic family like "system-ui, sans-serif"
+  const match = (available || []).find(
+    (f) => f.family.toLowerCase() === family.toLowerCase()
+  );
+  return match ? buildFontFamilyValue(match.family) : saved;
+}
 
 interface ThemeCustomizerEnhancedProps {
   value: ThemeConfig;
@@ -97,6 +135,15 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
     queryKey: ['admin-settings'],
     queryFn: () => settingsService.getAllSettings(),
     staleTime: 60000,
+  });
+
+  // Fetch the list of self-hosted font families discovered by the backend
+  // scanner. Used to populate the body / heading font dropdowns. Cached
+  // 5 minutes — fonts rarely change without a backend restart.
+  const { data: availableFonts } = useQuery<FontDefinition[]>({
+    queryKey: ['fonts'],
+    queryFn: () => fontsService.list(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const thumbnailWidth = parseInt(allSettings?.thumbnail_width) || 300;
@@ -928,17 +975,20 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 {t('branding.bodyFont')}
               </label>
               <select
-                value={localTheme.fontFamily || 'Inter, sans-serif'}
+                value={resolveFontDropdownValue(
+                  localTheme.fontFamily,
+                  availableFonts,
+                  buildFontFamilyValue('Inter')
+                )}
                 onChange={(e) => handleChange('fontFamily', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
-                <option value="Inter, sans-serif">Inter</option>
                 <option value="system-ui, sans-serif">System UI</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'Playfair Display', serif">Playfair Display</option>
-                <option value="'Montserrat', sans-serif">Montserrat</option>
-                <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
-                <option value="'Comic Neue', cursive">Comic Neue</option>
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -947,15 +997,21 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 {t('branding.headingFont')}
               </label>
               <select
-                value={localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'}
+                value={resolveFontDropdownValue(
+                  localTheme.headingFontFamily,
+                  availableFonts,
+                  ''
+                )}
                 onChange={(e) => handleChange('headingFontFamily', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="">{t('branding.sameAsBody')}</option>
-                <option value="'Playfair Display', serif">Playfair Display</option>
-                <option value="'Montserrat', sans-serif">Montserrat</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+                <option value="system-ui, sans-serif">System UI</option>
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f.family)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
