@@ -410,6 +410,8 @@
     "externalFolder": "Pasta Externa",
     "externalFolderHint": "Essas pastas são lidas do ponto de montagem /external-media dentro do seu container ou host.",
     "externalFolderRequired": "Selecione uma pasta externa antes de salvar.",
+    "externalFolderEmpty": "Sem subpastas",
+    "clearSelection": "Limpar",
     "welcomeMessage": "Mensagem de Boas-Vindas",
     "noWelcomeMessage": "Nenhuma mensagem de boas-vindas definida",
     "created": "Criado",

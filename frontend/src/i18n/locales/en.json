@@ -416,6 +416,8 @@
     "externalFolder": "External Folder",
     "externalFolderHint": "These folders are read from the /external-media mount inside your container or host.",
     "externalFolderRequired": "Please select an external folder before saving.",
+    "externalFolderEmpty": "No subfolders",
+    "clearSelection": "Clear",
     "welcomeMessage": "Welcome Message",
     "noWelcomeMessage": "No welcome message set",
     "created": "Created",

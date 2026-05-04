@@ -410,6 +410,8 @@
     "externalFolder": "Externe map",
     "externalFolderHint": "Deze mappen worden gelezen vanuit de /external-media mount in uw container of host.",
     "externalFolderRequired": "Selecteer een externe map voordat u opslaat.",
+    "externalFolderEmpty": "Geen submappen",
+    "clearSelection": "Wissen",
     "welcomeMessage": "Welkomstbericht",
     "noWelcomeMessage": "Geen welkomstbericht ingesteld",
     "created": "Aangemaakt",

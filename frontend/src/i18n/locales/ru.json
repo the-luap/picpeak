@@ -410,6 +410,8 @@
     "externalFolder": "Внешняя папка",
     "externalFolderHint": "Эти папки считываются из монтирования /external-media внутри контейнера или на хосте.",
     "externalFolderRequired": "Выберите внешнюю папку перед сохранением.",
+    "externalFolderEmpty": "Нет вложенных папок",
+    "clearSelection": "Очистить",
     "welcomeMessage": "Приветственное сообщение",
     "noWelcomeMessage": "Приветственное сообщение не задано",
     "created": "Создано",

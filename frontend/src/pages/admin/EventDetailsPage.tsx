@@ -28,7 +28,12 @@ import {
   MousePointer,
   Layout,
   Trash2,
-  Send
+  Send,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Loader2
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -67,60 +72,166 @@ import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../..
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
+const FolderTreeNode: React.FC<{
+  path: string;
+  name: string;
+  depth: number;
+  value: string;
+  onChange: (p: string) => void;
+  expandedPaths: Set<string>;
+  toggleExpand: (p: string) => void;
+}> = ({ path, name, depth, value, onChange, expandedPaths, toggleExpand }) => {
+  const { t } = useTranslation();
+  const isExpanded = expandedPaths.has(path);
+  const isSelected = value === path;
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['external-folder-children', path],
+    queryFn: () => externalMediaService.list(path),
+    enabled: isExpanded,
+    staleTime: 30_000
+  });
+
+  const dirs = (data?.entries || []).filter((e: any) => e.type === 'dir');
+  const showEmpty = isExpanded && !isLoading && !isError && dirs.length === 0;
+  const indentStyle = { paddingLeft: depth * 16 + 4 };
+  const childIndentStyle = { paddingLeft: (depth + 1) * 16 + 4 };
+  const rowClass =
+    'flex items-center gap-1 py-1 pr-1 rounded ' +
+    (isSelected
+      ? 'bg-primary-50 dark:bg-primary-900/30'
+      : 'hover:bg-neutral-50 dark:hover:bg-neutral-700');
+
+  return (
+    <div>
+      <div className={rowClass} style={indentStyle}>
+        <button
+          type="button"
+          onClick={() => toggleExpand(path)}
+          className="p-0.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+          aria-label={isExpanded ? t('common.collapse', 'Collapse') : t('common.expand', 'Expand')}
+        >
+          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(path)}
+          className={
+            'flex items-center gap-1.5 flex-1 min-w-0 text-left text-sm ' +
+            (isSelected
+              ? 'text-primary-700 dark:text-primary-300 font-medium'
+              : 'text-neutral-900 dark:text-neutral-100')
+          }
+        >
+          {isExpanded ? (
+            <FolderOpen className="w-4 h-4 flex-shrink-0 text-primary-500" />
+          ) : (
+            <Folder className="w-4 h-4 flex-shrink-0 text-neutral-500" />
+          )}
+          <span className="truncate">{name}</span>
+        </button>
+      </div>
+      {isExpanded && (
+        <div>
+          {isLoading && (
+            <div
+              className="flex items-center gap-2 py-1 text-xs text-neutral-500 dark:text-neutral-400"
+              style={childIndentStyle}
+            >
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>{t('common.loading', 'Loading...')}</span>
+            </div>
+          )}
+          {isError && (
+            <div
+              className="py-1 text-xs text-red-600 dark:text-red-400"
+              style={childIndentStyle}
+            >
+              {t('errors.somethingWentWrong', 'Something went wrong')}
+            </div>
+          )}
+          {showEmpty && (
+            <div
+              className="py-1 text-xs italic text-neutral-500 dark:text-neutral-400"
+              style={childIndentStyle}
+            >
+              {t('events.externalFolderEmpty', 'No subfolders')}
+            </div>
+          )}
+          {dirs.map((d: any) => {
+            const childPath = path ? `${path}/${d.name}` : d.name;
+            return (
+              <FolderTreeNode
+                key={childPath}
+                path={childPath}
+                name={d.name}
+                depth={depth + 1}
+                value={value}
+                onChange={onChange}
+                expandedPaths={expandedPaths}
+                toggleExpand={toggleExpand}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
-  const [entries, setEntries] = useState<{ path: string; entries: any[]; canNavigateUp: boolean } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [currentPath, setCurrentPath] = useState<string>(value || '');
 
-  const load = async (p: string) => {
-    try {
-      setLoading(true);
-      const res = await externalMediaService.list(p);
-      setEntries(res);
-      setCurrentPath(res.path);
-    } finally {
-      setLoading(false);
+  // Seed expanded paths so the current selection (and the synthetic root) is visible on mount.
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
+    const set = new Set<string>(['']);
+    if (value) {
+      const parts = value.split('/').filter(Boolean);
+      let acc = '';
+      for (const seg of parts) {
+        acc = acc ? `${acc}/${seg}` : seg;
+        set.add(acc);
+      }
     }
-  };
+    return set;
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(currentPath || ''); }, []);
-
-  const navigateUp = () => {
-    if (!entries?.canNavigateUp) return;
-    const parts = (entries.path || '').split('/').filter(Boolean);
-    parts.pop();
-    load(parts.join('/'));
+  const toggleExpand = (p: string) => {
+    setExpandedPaths(prev => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
   };
 
   return (
-    <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-neutral-600 dark:text-neutral-400">/external-media/{entries?.path || ''}</div>
-        <div className="flex gap-2">
-          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={navigateUp} disabled={!entries?.canNavigateUp}>{t('common.up', 'Up')}</button>
-          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={() => onChange(entries?.path || '')}>{t('common.select', 'Select')}</button>
+    <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2">
+      <div className="flex items-center justify-between gap-2 mb-2 px-1">
+        <div className="text-xs text-neutral-600 dark:text-neutral-400 truncate">
+          {t('common.selected', 'Selected')}: /external-media/{value}
         </div>
+        {value && (
+          <button
+            type="button"
+            className="text-xs underline text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 flex-shrink-0"
+            onClick={() => onChange('')}
+          >
+            {t('events.clearSelection', 'Clear')}
+          </button>
+        )}
       </div>
-      {loading ? (
-        <div className="text-sm text-neutral-500 dark:text-neutral-400">{t('common.loading', 'Loading...')}</div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {entries?.entries?.filter((e: any) => e.type === 'dir').map((e: any) => (
-            <button
-              key={e.name}
-              onClick={() => load([entries?.path, e.name].filter(Boolean).join('/'))}
-              className="px-3 py-2 border border-neutral-200 dark:border-neutral-600 rounded text-left text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700"
-            >
-              📁 {e.name}
-            </button>
-          ))}
-        </div>
-      )}
-      {value && (
-        <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{t('common.selected', 'Selected')}: /external-media/{value}</div>
-      )}
+      <div className="max-h-80 overflow-auto [color-scheme:light] dark:[color-scheme:dark]">
+        <FolderTreeNode
+          path=""
+          name="/external-media"
+          depth={0}
+          value={value}
+          onChange={onChange}
+          expandedPaths={expandedPaths}
+          toggleExpand={toggleExpand}
+        />
+      </div>
     </div>
   );
 };
