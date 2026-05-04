@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.39.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.38.0-beta.0...v3.39.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **gallery:** decouple header style from layout, add banner option ([1f1a856](https://github.com/the-luap/picpeak/commit/1f1a856083b1966ed4b32a23a14442f1727cecef))
+
 ## [3.38.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.37.0-beta.0...v3.38.0-beta.0) (2026-05-04)
 
 
