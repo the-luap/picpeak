@@ -221,7 +221,7 @@ const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => v
           </button>
         )}
       </div>
-      <div className="max-h-80 overflow-auto">
+      <div className="max-h-80 overflow-auto [color-scheme:light] dark:[color-scheme:dark]">
         <FolderTreeNode
           path=""
           name="/external-media"
