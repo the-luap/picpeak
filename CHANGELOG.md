@@ -5,6 +5,19 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.35.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.2-beta.0...v3.35.0-beta.0) (2026-05-04)
+
+
+### Features
+
+* **events:** tree view for external media folder picker ([cdd40ac](https://github.com/the-luap/picpeak/commit/cdd40acb4591d4eb8f80a79c69201556eab1bfd0))
+* **events:** tree view for external media folder picker ([f927b09](https://github.com/the-luap/picpeak/commit/f927b09c70f3b6a5c81c3726609a29680b96b6fc))
+
+
+### Bug Fixes
+
+* **events:** match scrollbar to theme in external folder tree picker ([bd42ee1](https://github.com/the-luap/picpeak/commit/bd42ee1ce03b8f6e7b011b53f2c71453be931cc6))
+
 ## [3.34.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.34.1-beta.0...v3.34.2-beta.0) (2026-05-04)
 
 
