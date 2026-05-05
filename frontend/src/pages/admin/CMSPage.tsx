@@ -487,7 +487,7 @@ export const CMSPage: React.FC = () => {
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">{t('settings.publicSite.previewSandboxed')}</span>
                 </div>
                 {publicSiteEnabled ? (
-                  <div className="rounded-xl border border-neutral-200 overflow-hidden shadow-sm bg-white">
+                  <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm bg-white dark:bg-neutral-800">
                     <iframe
                       title="public-site-preview"
                       sandbox="allow-same-origin"
@@ -576,7 +576,7 @@ export const CMSPage: React.FC = () => {
             <Card padding="md" className="mt-4">
               <div className="text-sm">
                 {isAutoSaving && (
-                  <div className="flex items-center gap-2 text-neutral-600">
+                  <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-300">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     Auto-saving...
                   </div>
@@ -637,7 +637,7 @@ export const CMSPage: React.FC = () => {
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
                     checked={!!editForm.use_external_url}
                     onChange={(e) => handleUseExternalUrlChange(e.target.checked)}
                   />

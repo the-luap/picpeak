@@ -231,7 +231,7 @@ export const PasswordResetModal: React.FC<PasswordResetModalProps> = ({
                       type="text"
                       value={resultPassword}
                       readOnly
-                      className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-300 rounded-lg font-mono text-sm"
+                      className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 rounded-lg font-mono text-sm"
                     />
                     <Button
                       variant="outline"
