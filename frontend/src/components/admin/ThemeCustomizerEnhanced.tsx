@@ -60,6 +60,12 @@ interface ThemeCustomizerEnhancedProps {
   // props are omitted (e.g. event-level theme editor), the section is hidden.
   forceColorMode?: 'dark' | 'light' | null;
   onForceColorModeChange?: (mode: 'dark' | 'light' | null) => void;
+  // Sync palette from Branding. When provided, a small button appears in
+  // the colour-pickers section header. The caller resolves the active
+  // Branding theme and fires onChange with the merged 8-token values —
+  // only the colour tokens swap, layout/header/typography stay put so an
+  // admin who's already arranged the structure can pull just the palette.
+  onSyncFromBranding?: () => void;
 }
 
 /**
@@ -167,7 +173,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   cssTemplateId,
   onCssTemplateChange,
   forceColorMode,
-  onForceColorModeChange
+  onForceColorModeChange,
+  onSyncFromBranding
 }) => {
   const { t } = useTranslation();
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
@@ -878,10 +885,26 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Color Customization */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
-          <Palette className="w-5 h-5" />
-          {t('branding.colors')}
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <Palette className="w-5 h-5" />
+            {t('branding.colors')}
+          </h3>
+          {/* "Sync from Branding" — caller-supplied so the customizer
+              doesn't have to know how to resolve the Branding theme.
+              Used in event create/edit to reset palette to site colours. */}
+          {onSyncFromBranding && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+              onClick={onSyncFromBranding}
+            >
+              {t('branding.syncFromBranding', 'Sync from Branding')}
+            </Button>
+          )}
+        </div>
 
         {/* Color Mode Selector */}
         <div className="mb-6">

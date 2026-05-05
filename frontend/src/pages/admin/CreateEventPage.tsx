@@ -242,6 +242,9 @@ export const CreateEventPage: React.FC = () => {
 
   // Apply the global Branding default theme on first load so admins who set a
   // site-wide default in Branding actually see it on new events (#323).
+  // This is the "always inherit colours from Branding" guarantee — every new
+  // gallery starts with the site palette unless the admin then picks a preset
+  // or hits Sync from Branding inside the customizer to re-pull it later.
   const brandingThemeApplied = useRef(false);
   useEffect(() => {
     if (brandingThemeApplied.current) return;
@@ -597,6 +600,36 @@ export const CreateEventPage: React.FC = () => {
                     onPresetChange={handlePresetChange}
                     showGalleryLayouts={true}
                     hideActions={true}
+                    onSyncFromBranding={() => {
+                      // Pull the 8 colour tokens (+ legacy primary alias) from
+                      // the global Branding theme into the current event theme.
+                      // Layout / header / typography are kept untouched so an
+                      // admin who has already arranged structure can refresh
+                      // just the palette.
+                      const branding = settings?.theme_config as ThemeConfig | undefined;
+                      if (!branding) {
+                        toast.error(t('toast.brandingThemeMissing', 'No branding theme has been saved yet.'));
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        theme_preset: 'custom',
+                        theme_config: {
+                          ...prev.theme_config,
+                          primaryColor: branding.primaryColor,
+                          accentColor: branding.accentColor,
+                          accentDarkColor: branding.accentDarkColor,
+                          backgroundColor: branding.backgroundColor,
+                          surfaceColor: branding.surfaceColor,
+                          elevatedColor: branding.elevatedColor,
+                          surfaceBorderColor: branding.surfaceBorderColor,
+                          textColor: branding.textColor,
+                          mutedTextColor: branding.mutedTextColor,
+                          colorMode: branding.colorMode ?? prev.theme_config.colorMode,
+                        },
+                      }));
+                      toast.success(t('toast.brandingPaletteSynced', 'Palette synced from Branding.'));
+                    }}
                   />
                   
                   {/* Gallery Preview */}

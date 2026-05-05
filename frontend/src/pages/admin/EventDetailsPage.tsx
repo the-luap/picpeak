@@ -2095,6 +2095,34 @@ export const EventDetailsPage: React.FC = () => {
                     }
                   }
                 }}
+                onSyncFromBranding={() => {
+                  // Reset only the 8 colour tokens to the site Branding —
+                  // layout, header, typography all stay so the admin doesn't
+                  // lose tweaks made for this specific event.
+                  const branding = publicSettings?.theme_config as ThemeConfig | undefined;
+                  if (!branding) {
+                    toast.error(t('toast.brandingThemeMissing', 'No branding theme has been saved yet.'));
+                    return;
+                  }
+                  const base = currentTheme || GALLERY_THEME_PRESETS.default.config;
+                  const merged: ThemeConfig = {
+                    ...base,
+                    primaryColor: branding.primaryColor,
+                    accentColor: branding.accentColor,
+                    accentDarkColor: branding.accentDarkColor,
+                    backgroundColor: branding.backgroundColor,
+                    surfaceColor: branding.surfaceColor,
+                    elevatedColor: branding.elevatedColor,
+                    surfaceBorderColor: branding.surfaceBorderColor,
+                    textColor: branding.textColor,
+                    mutedTextColor: branding.mutedTextColor,
+                    colorMode: branding.colorMode ?? base.colorMode,
+                  };
+                  setCurrentTheme(merged);
+                  setCurrentPresetName('custom');
+                  setEditForm(prev => ({ ...prev, color_theme: JSON.stringify(merged) }));
+                  toast.success(t('toast.brandingPaletteSynced', 'Palette synced from Branding.'));
+                }}
                 isPreviewMode={true}
                 showGalleryLayouts={true}
                 hideActions={true}
