@@ -80,7 +80,11 @@ const ColorPickerRow: React.FC<{
   <div>
     <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
       {label}
-      <span className="cursor-help text-neutral-400 dark:text-neutral-500" title={help}>
+      <span
+        className="info-tooltip text-neutral-400 dark:text-neutral-500"
+        data-tooltip={help}
+        tabIndex={0}
+      >
         <Info className="w-3.5 h-3.5" />
       </span>
     </label>
@@ -301,7 +305,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 selectedPreset === key
-                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -390,7 +394,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   localTheme.galleryLayout === layout
-                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -737,7 +741,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => handleChange('headerStyle', style)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   (localTheme.headerStyle || 'standard') === style
-                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -776,7 +780,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                     onClick={() => handleChange('heroDividerStyle', divider)}
                     className={`relative p-3 rounded-lg border-2 transition-all ${
                       (localTheme.heroDividerStyle || 'wave') === divider
-                        ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -816,7 +820,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handleChange('controlsStyle', 'classic')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 (localTheme.controlsStyle || 'classic') === 'classic'
-                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -840,7 +844,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handleChange('controlsStyle', 'sidebar')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 localTheme.controlsStyle === 'sidebar'
-                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -922,7 +926,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                   (localTheme.colorMode || 'light') === mode
-                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30 text-accent-dark'
+                    ? 'border-accent-dark bg-accent-dark text-white'
                     : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                 }`}
               >
@@ -969,7 +973,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       onClick={() => onForceColorModeChange(value)}
                       className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                         active
-                          ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30 text-accent-dark'
+                          ? 'border-accent-dark bg-accent-dark text-white'
                           : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                       }`}
                     >
@@ -1004,11 +1008,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupSurfaces', 'Surfaces')}
               <span
-                className="cursor-help text-neutral-400 dark:text-neutral-500"
-                title={t(
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
                   'branding.colorGroupSurfacesHelp',
                   'The neutral layers behind your content. Background sits furthest back; Surface and Elevated stack on top.'
                 )}
+                tabIndex={0}
               >
                 <Info className="w-3.5 h-3.5" />
               </span>
@@ -1057,11 +1062,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupText', 'Text')}
               <span
-                className="cursor-help text-neutral-400 dark:text-neutral-500"
-                title={t(
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
                   'branding.colorGroupTextHelp',
                   'Foreground text colours. Primary is for everything readers focus on; Secondary is for supporting copy.'
                 )}
+                tabIndex={0}
               >
                 <Info className="w-3.5 h-3.5" />
               </span>
@@ -1098,11 +1104,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupAccent', 'Accent')}
               <span
-                className="cursor-help text-neutral-400 dark:text-neutral-500"
-                title={t(
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
                   'branding.colorGroupAccentHelp',
                   'Brand colours that highlight interactive elements. Use a strong colour pair — Accent is for outlines/text, Accent Dark is for filled buttons.'
                 )}
+                tabIndex={0}
               >
                 <Info className="w-3.5 h-3.5" />
               </span>
@@ -1293,7 +1300,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
-                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -1315,7 +1322,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                   cssTemplateId === template.id
-                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >

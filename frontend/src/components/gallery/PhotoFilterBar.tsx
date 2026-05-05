@@ -97,7 +97,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   setShowSortMenu(false);
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
-                  sortBy === 'date' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                  sortBy === 'date' ? 'bg-accent-dark text-white' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByDate')}
@@ -108,7 +108,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   setShowSortMenu(false);
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
-                  sortBy === 'capture_date' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                  sortBy === 'capture_date' ? 'bg-accent-dark text-white' : 'text-muted-theme'
                 }`}
               >
                 {t('photoSort.dateTaken', 'Date Taken')}
@@ -119,7 +119,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   setShowSortMenu(false);
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
-                  sortBy === 'name' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                  sortBy === 'name' ? 'bg-accent-dark text-white' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByName')}
@@ -130,7 +130,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   setShowSortMenu(false);
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
-                  sortBy === 'size' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                  sortBy === 'size' ? 'bg-accent-dark text-white' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortBySize')}
@@ -141,7 +141,7 @@ export const PhotoFilterBar: React.FC<PhotoFilterBarProps> = ({
                   setShowSortMenu(false);
                 }}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-black/10 ${
-                  sortBy === 'rating' ? 'text-primary-600 bg-primary-50' : 'text-muted-theme'
+                  sortBy === 'rating' ? 'bg-accent-dark text-white' : 'text-muted-theme'
                 }`}
               >
                 {t('gallery.sortByRating', 'Sort by Rating')}

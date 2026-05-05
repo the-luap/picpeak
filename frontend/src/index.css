@@ -298,6 +298,73 @@
     color: var(--color-accent);
   }
 
+  /*
+   * Selected-tile state for picker grids (Gallery Layout, Filter Bar Style,
+   * Header Style, Hero Divider, Theme Presets). Used in place of the dim
+   * "border + light tint + accent text" pattern which had poor contrast on
+   * dark themes (accent text on dim accent bg). The full accent-dark fill
+   * with white descendants gives a strong, accessible selection cue and
+   * follows the user's CI palette.
+   */
+  .tile-selected {
+    background-color: var(--color-accent-dark) !important;
+    border-color: var(--color-accent-dark) !important;
+    color: #ffffff !important;
+  }
+
+  .tile-selected *,
+  .tile-selected svg {
+    color: #ffffff !important;
+  }
+
+  /*
+   * Inline hover tooltip used by the colour-picker info icons.
+   * Pure CSS — no library, no JS state. Wrap an `<Info>` icon (or any
+   * trigger) in <span class="info-tooltip" data-tooltip="..."> and a
+   * positioned bubble fades in on hover/focus. The native HTML `title`
+   * attribute has a ~1.5s delay and is suppressed in some browsers, which
+   * is why earlier iterations appeared not to work for users.
+   */
+  .info-tooltip {
+    position: relative;
+    display: inline-flex;
+    cursor: help;
+  }
+
+  .info-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    min-width: 200px;
+    max-width: 320px;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    background-color: #171717;
+    color: #fafafa;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    font-weight: 400;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease-out;
+  }
+
+  .info-tooltip:hover::after,
+  .info-tooltip:focus-visible::after {
+    opacity: 1;
+  }
+
+  .dark .info-tooltip::after {
+    background-color: #fafafa;
+    color: #171717;
+  }
+
   /* Image loading skeleton */
   .skeleton {
     @apply animate-pulse rounded-lg bg-neutral-200;
