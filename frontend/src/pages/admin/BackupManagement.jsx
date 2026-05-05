@@ -197,7 +197,7 @@ export const BackupManagement = () => {
                 className={`
                   py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2
                   ${activeTab === tab.id
-                    ? 'border-primary-600 dark:border-primary-400 text-primary-600 dark:text-primary-400'
+                    ? 'border-accent-dark text-accent-dark'
                     : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
                   }
                 `}

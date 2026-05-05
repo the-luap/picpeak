@@ -497,7 +497,7 @@ export const CreateEventPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, event_type: type.value })}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       formData.event_type === type.value
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -627,7 +627,7 @@ export const CreateEventPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, css_template_id: null })}
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
                       formData.css_template_id === null
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -645,7 +645,7 @@ export const CreateEventPage: React.FC = () => {
                       onClick={() => setFormData({ ...formData, css_template_id: template.id })}
                       className={`p-4 rounded-lg border-2 transition-all text-left ${
                         formData.css_template_id === template.id
-                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                          ? 'tile-selected'
                           : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                       }`}
                     >
@@ -724,7 +724,7 @@ export const CreateEventPage: React.FC = () => {
                         setFormData(prev => ({ ...prev, admin_email: email }));
                       }
                     }}
-                    className="text-xs px-2 py-1 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="text-xs px-2 py-1 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="">{t('events.adminEmailCustom', 'Custom email')}</option>
                     {activeAdmins.map(a => (
@@ -741,7 +741,7 @@ export const CreateEventPage: React.FC = () => {
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   checked={formData.require_password}
                   onChange={(e) => {
                     const checked = e.target.checked;
@@ -892,7 +892,7 @@ export const CreateEventPage: React.FC = () => {
               <select
                 value={formData.default_photo_sort}
                 onChange={(e) => setFormData({ ...formData, default_photo_sort: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
               >
                 <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
                 <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
@@ -908,7 +908,7 @@ export const CreateEventPage: React.FC = () => {
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   checked={formData.client_access_enabled}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
@@ -948,7 +948,7 @@ export const CreateEventPage: React.FC = () => {
                   type="checkbox"
                   checked={formData.allow_user_uploads}
                   onChange={(e) => setFormData({ ...formData, allow_user_uploads: e.target.checked })}
-                  className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                 />
                 <div>
                   <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">

@@ -527,7 +527,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_header !== false}
                     onChange={(e) => handleBrandingChange('logo_display_header', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -544,7 +544,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_hero !== false}
                     onChange={(e) => handleBrandingChange('logo_display_hero', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -567,7 +567,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.hide_powered_by === true}
                 onChange={(e) => handleBrandingChange('hide_powered_by', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -586,7 +586,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.watermark_enabled}
                 onChange={(e) => handleBrandingChange('watermark_enabled', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{t('branding.enableWatermarks')}</span>
@@ -748,7 +748,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={isPreviewMode}
                 onChange={(e) => setIsPreviewMode(e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('branding.applyLivePreview')}</span>
             </label>

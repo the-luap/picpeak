@@ -85,7 +85,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
           <select
             value={filters.minRating ?? ''}
             onChange={(e) => handleRatingChange(e.target.value === '' ? null : parseFloat(e.target.value))}
-            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
             disabled={isLoading}
           >
             {RATING_OPTIONS.map(option => (
@@ -103,7 +103,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               type="checkbox"
               checked={filters.hasLikes || false}
               onChange={() => handleCheckboxChange('hasLikes')}
-              className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+              className="rounded border-neutral-300 text-accent focus:ring-primary-500"
               disabled={isLoading}
             />
             <Heart className="w-4 h-4 text-red-500" />
@@ -120,7 +120,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               type="checkbox"
               checked={filters.hasFavorites || false}
               onChange={() => handleCheckboxChange('hasFavorites')}
-              className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+              className="rounded border-neutral-300 text-accent focus:ring-primary-500"
               disabled={isLoading}
             />
             <Bookmark className="w-4 h-4 text-yellow-500" />
@@ -137,7 +137,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
               type="checkbox"
               checked={filters.hasComments || false}
               onChange={() => handleCheckboxChange('hasComments')}
-              className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+              className="rounded border-neutral-300 text-accent focus:ring-primary-500"
               disabled={isLoading}
             />
             <MessageCircle className="w-4 h-4 text-blue-500" />

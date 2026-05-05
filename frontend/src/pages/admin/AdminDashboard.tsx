@@ -225,7 +225,7 @@ export const AdminDashboard: React.FC = () => {
             {expiringTotal > 5 && (
               <button
                 onClick={() => navigate('/admin/events?filter=expiring')}
-                className="w-full mt-4 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                className="w-full mt-4 text-sm text-accent hover:opacity-80 font-medium"
               >
                 {t('admin.viewAllExpiringEvents', { count: expiringTotal })} →
               </button>

@@ -138,7 +138,7 @@ export const WebhookDeliveriesPage: React.FC = () => {
     return (
       <div className="p-6">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">Webhook not found.</p>
-        <Link to="/admin/settings" className="text-primary-600 hover:underline">← Back to settings</Link>
+        <Link to="/admin/settings" className="text-accent hover:underline">← Back to settings</Link>
       </div>
     );
   }

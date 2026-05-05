@@ -27,7 +27,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center gap-3">
-            <Mail className="w-6 h-6 text-primary-600" />
+            <Mail className="w-6 h-6 text-accent" />
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">Email Preview</h2>
           </div>
           <button

@@ -191,7 +191,7 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
             {pendingComments.length > maxItems && !showAll && (
               <button
                 onClick={() => setShowAll(true)}
-                className="w-full text-center py-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                className="w-full text-center py-2 text-sm text-accent hover:opacity-80 font-medium"
               >
                 {t('feedback.showAll', 'Show all {{count}} pending comments', { count: pendingComments.length })}
               </button>
@@ -203,7 +203,7 @@ export const FeedbackModerationPanel: React.FC<FeedbackModerationPanelProps> = (
         <div className="mt-4 pt-4 border-t border-neutral-200">
           <a
             href={`/admin/events/${eventId}/feedback`}
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+            className="text-sm text-accent hover:opacity-80 font-medium flex items-center gap-1"
           >
             <MessageSquare className="w-4 h-4" />
             {t('feedback.viewAllFeedback', 'View all feedback & settings')}

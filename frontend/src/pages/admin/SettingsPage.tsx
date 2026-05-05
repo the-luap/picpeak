@@ -202,14 +202,14 @@ export const SettingsPage: React.FC = () => {
                           aria-current={isActive ? 'page' : undefined}
                           className={`group w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                             isActive
-                              ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                              ? 'bg-accent-dark text-white'
                               : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                           }`}
                         >
                           <Icon
                             className={`w-4 h-4 flex-shrink-0 ${
                               isActive
-                                ? 'text-primary-600 dark:text-primary-400'
+                                ? 'text-accent'
                                 : 'text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200'
                             }`}
                           />
@@ -229,7 +229,7 @@ export const SettingsPage: React.FC = () => {
              after they switch, especially after a mobile select change. */}
           <div className="mb-4 lg:mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700">
             <div className="flex items-center gap-2">
-              <activeItem.icon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              <activeItem.icon className="w-5 h-5 text-accent" />
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 {activeItem.label}
               </h2>

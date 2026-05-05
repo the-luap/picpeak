@@ -196,7 +196,7 @@ export const RestoreWizard = () => {
           onClick={() => setRestoreData(prev => ({ ...prev, source: 'local' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 'local'
-              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              ? 'border-primary bg-accent-dark/15'
               : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
@@ -211,7 +211,7 @@ export const RestoreWizard = () => {
           onClick={() => setRestoreData(prev => ({ ...prev, source: 's3' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 's3'
-              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              ? 'border-primary bg-accent-dark/15'
               : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
@@ -226,7 +226,7 @@ export const RestoreWizard = () => {
           onClick={() => setRestoreData(prev => ({ ...prev, source: 'upload' }))}
           className={`p-6 rounded-lg border-2 transition-all ${
             restoreData.source === 'upload'
-              ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+              ? 'border-primary bg-accent-dark/15'
               : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
           }`}
         >
@@ -312,7 +312,7 @@ export const RestoreWizard = () => {
               key={backup.id}
               className={`p-4 cursor-pointer transition-all ${
                 restoreData.selectedBackup?.id === backup.id
-                  ? 'ring-2 ring-primary bg-primary-50 dark:bg-primary-900/30'
+                  ? 'ring-2 ring-primary bg-accent-dark/15'
                   : 'hover:shadow-md'
               }`}
               onClick={() => setRestoreData(prev => ({ ...prev, selectedBackup: backup }))}
@@ -388,7 +388,7 @@ export const RestoreWizard = () => {
               onClick={() => setRestoreData(prev => ({ ...prev, restoreType: type.id }))}
               className={`p-4 rounded-lg border-2 text-left transition-all ${
                 restoreData.restoreType === type.id
-                  ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+                  ? 'border-primary bg-accent-dark/15'
                   : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
               }`}
             >

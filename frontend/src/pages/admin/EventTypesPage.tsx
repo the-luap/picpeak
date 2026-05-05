@@ -153,7 +153,7 @@ export const EventTypesPage: React.FC = () => {
               type="checkbox"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+              className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
             />
             <span className="text-sm text-neutral-700 dark:text-neutral-300">
               {t('eventTypes.showInactive', 'Show inactive')}
@@ -241,7 +241,7 @@ export const EventTypesPage: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingType(type)}
-                          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-primary-600"
+                          className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-accent"
                           title={t('common.edit', 'Edit')}
                         >
                           <Edit className="w-4 h-4" />
@@ -432,7 +432,7 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                       onClick={() => setForm({ ...form, emoji })}
                       className={`p-2 text-xl rounded-lg border-2 transition-all ${
                         form.emoji === emoji
-                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                          ? 'tile-selected'
                           : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
                       }`}
                     >
@@ -450,7 +450,7 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                 <select
                   value={form.theme_preset}
                   onChange={(e) => setForm({ ...form, theme_preset: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                 >
                   {Object.entries(GALLERY_THEME_PRESETS).map(([key, preset]) => (
                     <option key={key} value={key}>
@@ -467,7 +467,7 @@ const EventTypeModal: React.FC<EventTypeModalProps> = ({
                     type="checkbox"
                     checked={eventType?.is_active}
                     onChange={(e) => onSubmit({ is_active: e.target.checked })}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <span className="text-sm text-neutral-700 dark:text-neutral-300">
                     {t('eventTypes.form.isActive', 'Active (visible in event creation)')}

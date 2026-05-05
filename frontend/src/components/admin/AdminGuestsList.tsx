@@ -245,7 +245,7 @@ export const AdminGuestsList: React.FC<AdminGuestsListProps> = ({ eventId, event
                           type="checkbox"
                           checked={mergeSelection.includes(guest.id)}
                           onChange={() => toggleMergeSelection(guest.id)}
-                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                          className="w-4 h-4 text-accent rounded focus:ring-primary-500"
                         />
                       </td>
                     )}
@@ -278,7 +278,7 @@ export const AdminGuestsList: React.FC<AdminGuestsListProps> = ({ eventId, event
                         <button
                           type="button"
                           onClick={() => setSelectedGuest(guest)}
-                          className="p-1 text-neutral-500 hover:text-primary-600"
+                          className="p-1 text-neutral-500 hover:text-accent"
                           title={t('admin.guests.view', 'View details')}
                         >
                           <Eye className="w-4 h-4" />
@@ -286,7 +286,7 @@ export const AdminGuestsList: React.FC<AdminGuestsListProps> = ({ eventId, event
                         <div className="relative group">
                           <button
                             type="button"
-                            className="p-1 text-neutral-500 hover:text-primary-600"
+                            className="p-1 text-neutral-500 hover:text-accent"
                             title={t('admin.guests.export', 'Export')}
                           >
                             <Download className="w-4 h-4" />

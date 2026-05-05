@@ -84,7 +84,7 @@ export const LanguageSelector: React.FC = () => {
               onClick={() => handleLanguageChange(language.code)}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-3 ${
                 language.code === i18n.language
-                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'text-accent bg-accent-dark/15'
                   : 'text-neutral-700 dark:text-neutral-300'
               }`}
             >

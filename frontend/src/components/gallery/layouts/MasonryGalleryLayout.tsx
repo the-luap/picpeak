@@ -102,7 +102,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         <div className="absolute top-2 left-2 flex gap-1 z-10">
           {(photo.comment_count ?? 0) > 0 && (
             <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count ?? 0} comments`}>
-              <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+              <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
               <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
             </div>
           )}
@@ -245,7 +245,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         }`}
         onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
       >
-        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
           {isSelected && <Check className="w-4 h-4 text-white" />}
         </div>
       </button>
@@ -486,7 +486,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -542,7 +542,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
@@ -602,7 +602,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -658,7 +658,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
@@ -727,7 +727,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -783,7 +783,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>

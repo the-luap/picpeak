@@ -169,7 +169,7 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
                         onClick={() => setPreviewLayout(layout)}
                         className={`relative p-3 rounded-lg border-2 transition-all ${
                           (previewLayout || theme.galleryLayout || 'grid') === layout
-                            ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/40'
+                            ? 'tile-selected'
                             : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600 bg-white dark:bg-neutral-900'
                         }`}
                       >
@@ -185,7 +185,7 @@ export const ThemeEditorModal: React.FC<ThemeEditorModalProps> = ({
                           </span>
                         </div>
                         {(previewLayout || theme.galleryLayout || 'grid') === layout && (
-                          <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />
+                          <Check className="absolute top-1 right-1 w-3 h-3 text-accent" />
                         )}
                       </button>
                     ))}

@@ -149,7 +149,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                       {unreadCount > 0 && (
                         <button
                           onClick={() => markAllAsReadMutation.mutate()}
-                          className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
+                          className="text-xs text-accent hover:opacity-80 flex items-center gap-1"
                           title={t('admin.markAllRead')}
                         >
                           <CheckCircle className="w-3 h-3" />
@@ -178,7 +178,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                           <div
                             key={notification.id}
                             className={`px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer border-l-4 ${
-                              notification.isRead ? 'border-transparent opacity-75' : 'border-primary-500'
+                              notification.isRead ? 'border-transparent opacity-75' : 'border-accent-dark'
                             }`}
                           >
                             <div className="flex items-start gap-3">
@@ -203,7 +203,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                     <div className="px-4 py-2 border-t border-neutral-100 dark:border-neutral-700 text-center">
                       <button
                         onClick={() => setShowNotifications(false)}
-                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                        className="text-sm text-accent hover:opacity-80"
                       >
                         {t('admin.close')}
                       </button>
@@ -223,7 +223,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                   <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.username}</p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</p>
                 </div>
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-accent-dark rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-white" />
                 </div>
               </button>

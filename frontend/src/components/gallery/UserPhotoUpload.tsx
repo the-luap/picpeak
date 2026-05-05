@@ -157,7 +157,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
             {/* Upload Area */}
             <div className="mb-4 sm:mb-6">
               <label className="block">
-                <div className="border-2 border-dashed border-surface rounded-lg p-6 sm:p-8 text-center hover:border-primary-500 transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-surface rounded-lg p-6 sm:p-8 text-center hover:border-accent-dark transition-colors cursor-pointer">
                   <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 mx-auto mb-3" />
                   <p className="text-sm font-medium text-muted-theme mb-1">
                     {t('upload.clickToUpload')}
@@ -210,7 +210,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                           <div className="w-20">
                             <div className="bg-neutral-200 rounded-full h-2">
                               <div
-                                className="bg-primary-600 h-2 rounded-full transition-all"
+                                className="bg-accent-dark h-2 rounded-full transition-all"
                                 style={{ width: `${uploadProgress[file.name]}%` }}
                               />
                             </div>

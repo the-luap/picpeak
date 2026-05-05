@@ -353,7 +353,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('smtp')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'smtp'
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-accent-dark text-accent-dark'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
@@ -363,7 +363,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('templates')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'templates'
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-accent-dark text-accent-dark'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
@@ -412,7 +412,7 @@ export const EmailConfigPage: React.FC = () => {
                   <select
                     value={smtpConfig.smtp_secure ? 'ssl' : 'tls'}
                     onChange={(e) => setSmtpConfig(prev => ({ ...prev, smtp_secure: e.target.value === 'ssl' }))}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="tls">TLS</option>
                     <option value="ssl">SSL</option>
@@ -427,7 +427,7 @@ export const EmailConfigPage: React.FC = () => {
                     type="checkbox"
                     checked={!smtpConfig.tls_reject_unauthorized}
                     onChange={(e) => setSmtpConfig(prev => ({ ...prev, tls_reject_unauthorized: !e.target.checked }))}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                    className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t('email.ignoreSslErrors')}
@@ -664,7 +664,7 @@ export const EmailConfigPage: React.FC = () => {
                     }}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedTemplateKey === template.template_key
-                        ? 'bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-600'
+                        ? 'tile-selected'
                         : 'bg-neutral-50 dark:bg-neutral-700 border-2 border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-600'
                     }`}
                   >
@@ -720,7 +720,7 @@ export const EmailConfigPage: React.FC = () => {
                       onClick={() => setEditingLang(lang.code)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
                         editingLang === lang.code
-                          ? 'bg-white dark:bg-neutral-800 text-primary-700 dark:text-primary-300 shadow-sm'
+                          ? 'bg-white dark:bg-neutral-800 text-accent-dark shadow-sm'
                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                       }`}
                     >

@@ -100,14 +100,14 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 selectedPreset === key
-                  ? 'border-primary-600 bg-primary-50'
+                  ? 'tile-selected'
                   : 'border-neutral-200 hover:border-neutral-300'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="font-medium text-sm">{theme.name}</span>
                 {selectedPreset === key && (
-                  <Check className="w-4 h-4 text-primary-600" />
+                  <Check className="w-4 h-4 text-accent" />
                 )}
               </div>
               <div className="flex gap-2">
@@ -247,7 +247,7 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                   onClick={() => handleChange('borderRadius', radius)}
                   className={`px-4 py-2 rounded-lg border-2 transition-all ${
                     localTheme.borderRadius === radius
-                      ? 'border-primary-600 bg-primary-50'
+                      ? 'tile-selected'
                       : 'border-neutral-200 hover:border-neutral-300'
                   }`}
                 >
