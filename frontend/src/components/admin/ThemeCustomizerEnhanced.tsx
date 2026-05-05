@@ -54,6 +54,12 @@ interface ThemeCustomizerEnhancedProps {
   cssTemplates?: EnabledTemplate[];
   cssTemplateId?: number | null;
   onCssTemplateChange?: (templateId: number | null) => void;
+  // Force color mode is an instance-level branding setting (not part of the
+  // per-theme config), but it lives next to the per-theme Color Mode picker
+  // so the Branding admin can find both controls in one place. When these
+  // props are omitted (e.g. event-level theme editor), the section is hidden.
+  forceColorMode?: 'dark' | 'light' | null;
+  onForceColorModeChange?: (mode: 'dark' | 'light' | null) => void;
 }
 
 const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
@@ -116,7 +122,9 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   isApplying = false,
   cssTemplates,
   cssTemplateId,
-  onCssTemplateChange
+  onCssTemplateChange,
+  forceColorMode,
+  onForceColorModeChange
 }) => {
   const { t } = useTranslation();
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
@@ -875,7 +883,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                   (localTheme.colorMode || 'light') === mode
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30 text-accent-dark'
                     : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                 }`}
               >
@@ -888,6 +896,51 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             {t('branding.colorModeHelp', 'Auto follows the visitor\'s system preference.')}
           </p>
+
+          {/*
+           * Force color mode (instance-wide). Lives next to the per-theme
+           * Color Mode picker so the admin can find both controls in one
+           * place. The data flows through props from BrandingPage which
+           * persists it to branding settings; only renders when the
+           * onForceColorModeChange handler is provided (i.e. only on the
+           * Branding admin page, not in event-level theme editors).
+           */}
+          {onForceColorModeChange && (
+            <div className="mt-5 pt-5 border-t border-neutral-200 dark:border-neutral-700">
+              <h4 className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                {t('branding.forceColorMode', 'Force color mode')}
+              </h4>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                {t(
+                  'branding.forceColorModeHelp',
+                  'Lock the entire admin and public site to dark or light. The user-facing dark/light toggle is hidden whenever a lock is active. Per-event themes that try to override the colour mode are also forced to follow.'
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { value: null, label: t('branding.forceColorModeNone', 'No force (user choice)') },
+                  { value: 'dark', label: t('branding.forceColorModeDark', 'Force dark') },
+                  { value: 'light', label: t('branding.forceColorModeLight', 'Force light') },
+                ] as const).map(({ value, label }) => {
+                  const active = (forceColorMode ?? null) === value;
+                  return (
+                    <button
+                      type="button"
+                      key={String(value)}
+                      onClick={() => onForceColorModeChange(value)}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                        active
+                          ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30 text-accent-dark'
+                          : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/*
@@ -901,15 +954,41 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <div className="space-y-6">
           {/* Surfaces */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
               {t('branding.colorGroupSurfaces', 'Surfaces')}
             </h4>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+              {t(
+                'branding.colorGroupSurfacesHelp',
+                'The neutral layers behind your content. Background sits furthest back; Surface and Elevated stack on top.'
+              )}
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { key: 'backgroundColor', label: t('branding.backgroundColor', 'Background'), help: t('branding.backgroundColorHelp', 'Page base'), fallback: '#fafafa' },
-                { key: 'surfaceColor', label: t('branding.surfaceColor', 'Surface'), help: t('branding.surfaceColorHelp', 'Cards, navigation'), fallback: '#ffffff' },
-                { key: 'elevatedColor', label: t('branding.elevatedColor', 'Elevated'), help: t('branding.elevatedColorHelp', 'Raised panels, placeholders'), fallback: '#f5f5f5' },
-                { key: 'surfaceBorderColor', label: t('branding.borderColor', 'Border'), help: t('branding.borderColorHelp', 'Dividers, grid lines'), fallback: '#e5e5e5' },
+                {
+                  key: 'backgroundColor',
+                  label: t('branding.backgroundColor', 'Background'),
+                  help: t('branding.backgroundColorHelp', 'The page itself — body background of every gallery, admin page and CMS page.'),
+                  fallback: '#fafafa',
+                },
+                {
+                  key: 'surfaceColor',
+                  label: t('branding.surfaceColor', 'Surface'),
+                  help: t('branding.surfaceColorHelp', 'Cards, sidebar, header bar and navigation. The first layer above Background.'),
+                  fallback: '#ffffff',
+                },
+                {
+                  key: 'elevatedColor',
+                  label: t('branding.elevatedColor', 'Elevated'),
+                  help: t('branding.elevatedColorHelp', 'Panels that float above cards: image placeholders, hover/active rows, modal headers, code blocks.'),
+                  fallback: '#f5f5f5',
+                },
+                {
+                  key: 'surfaceBorderColor',
+                  label: t('branding.borderColor', 'Border'),
+                  help: t('branding.borderColorHelp', 'Dividers, table grid lines, card outlines, input borders.'),
+                  fallback: '#e5e5e5',
+                },
               ].map(({ key, label, help, fallback }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -937,13 +1016,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
           {/* Text */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
               {t('branding.colorGroupText', 'Text')}
             </h4>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+              {t(
+                'branding.colorGroupTextHelp',
+                'Foreground text colours. Primary is for everything readers focus on; Secondary is for supporting copy.'
+              )}
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { key: 'textColor', label: t('branding.textColor', 'Primary text'), help: t('branding.textColorHelp', 'Headlines, body'), fallback: '#171717' },
-                { key: 'mutedTextColor', label: t('branding.mutedTextColor', 'Secondary text'), help: t('branding.mutedTextColorHelp', 'Captions, labels, meta'), fallback: '#737373' },
+                {
+                  key: 'textColor',
+                  label: t('branding.textColor', 'Primary text'),
+                  help: t('branding.textColorHelp', 'Headlines, body copy, table cells, form input values, navigation labels — the main text colour.'),
+                  fallback: '#171717',
+                },
+                {
+                  key: 'mutedTextColor',
+                  label: t('branding.mutedTextColor', 'Secondary text'),
+                  help: t('branding.mutedTextColorHelp', 'Captions, helper text under inputs, table column headers, footer links, dates and metadata.'),
+                  fallback: '#737373',
+                },
               ].map(({ key, label, help, fallback }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -971,13 +1066,35 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
           {/* Accent */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
               {t('branding.colorGroupAccent', 'Accent')}
             </h4>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+              {t(
+                'branding.colorGroupAccentHelp',
+                'Brand colours that highlight interactive elements. Use a strong colour pair — Accent is for outlines/text, Accent Dark is for filled buttons.'
+              )}
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { key: 'accentColor', label: t('branding.accentColor', 'Accent'), help: t('branding.accentColorHelp', 'Links, focus rings, hover'), fallback: '#22c55e' },
-                { key: 'accentDarkColor', label: t('branding.accentDarkColor', 'Accent (filled)'), help: t('branding.accentDarkColorHelp', 'Primary CTA fill'), fallback: '#5C8762' },
+                {
+                  key: 'accentColor',
+                  label: t('branding.accentColor', 'Accent'),
+                  help: t(
+                    'branding.accentColorHelp',
+                    'Links, icons, focus rings, hover states on primary buttons, active sidebar item underline. Should read clearly on both Background and Surface.'
+                  ),
+                  fallback: '#22c55e',
+                },
+                {
+                  key: 'accentDarkColor',
+                  label: t('branding.accentDarkColor', 'Accent (filled)'),
+                  help: t(
+                    'branding.accentDarkColorHelp',
+                    'Filled CTA buttons, active sidebar item background, badges and tags. Needs enough contrast for white text to be readable on top.'
+                  ),
+                  fallback: '#5C8762',
+                },
               ].map(({ key, label, help, fallback }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

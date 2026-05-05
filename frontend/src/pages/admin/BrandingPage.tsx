@@ -129,6 +129,21 @@ export const BrandingPage: React.FC = () => {
     setBrandingSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  /**
+   * Force color mode is the only branding setting that auto-saves on click —
+   * users expect a toggle that takes effect immediately, not a setting they
+   * have to remember to click "Save" for. We keep all other branding fields
+   * on the bulk-save flow because typing in a text input shouldn't trigger
+   * a network round-trip per keystroke. Auto-save here invalidates the
+   * public-settings query so AdminDarkModeContext reapplies live without
+   * waiting for its 30-second poll.
+   */
+  const handleForceColorModeChange = (value: 'dark' | 'light' | null) => {
+    const next = { ...brandingSettings, force_color_mode: value };
+    setBrandingSettings(next);
+    brandingMutation.mutate(next);
+  };
+
   const handleThemeChange = (newTheme: ThemeConfig) => {
     // Preset configs don't carry a logoUrl, so a preset change inside the
     // customizer arrives here with newTheme.logoUrl=undefined. Keep the
@@ -565,47 +580,6 @@ export const BrandingPage: React.FC = () => {
             </label>
           </div>
 
-          {/*
-           * Force color mode: instance-wide lock for dark or light theme.
-           * When set, the user-facing dark/light toggle is hidden in the
-           * admin header and any per-event/per-theme colorMode is overridden.
-           * Three states: none (user choice), dark, light. Mutually exclusive.
-           */}
-          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
-            <h3 className="text-md font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
-              {t('branding.forceColorMode', 'Force color mode')}
-            </h3>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-3">
-              {t(
-                'branding.forceColorModeHelp',
-                'Lock the entire admin and public site to dark or light. The user-facing toggle is hidden when active.'
-              )}
-            </p>
-            <div className="flex gap-2">
-              {([
-                { value: null, label: t('branding.forceColorModeNone', 'No force (user choice)') },
-                { value: 'dark', label: t('branding.forceColorModeDark', 'Force dark') },
-                { value: 'light', label: t('branding.forceColorModeLight', 'Force light') },
-              ] as const).map(({ value, label }) => {
-                const active = (brandingSettings.force_color_mode ?? null) === value;
-                return (
-                  <button
-                    type="button"
-                    key={String(value)}
-                    onClick={() => handleBrandingChange('force_color_mode', value)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                      active
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
@@ -789,6 +763,8 @@ export const BrandingPage: React.FC = () => {
                 onPresetChange={handlePresetChange}
                 showGalleryLayouts={true}
                 hideActions={true}
+                forceColorMode={brandingSettings.force_color_mode ?? null}
+                onForceColorModeChange={handleForceColorModeChange}
               />
             </div>
             

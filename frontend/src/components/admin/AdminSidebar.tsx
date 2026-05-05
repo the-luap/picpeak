@@ -90,12 +90,15 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
                 onClick={() => onClose()}
                 className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    ? 'bg-primary-50 dark:bg-primary-900/30 text-accent-dark'
                     : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
                 }`}
               >
+                {/* Active icon/text use the theme's accent-dark token so the
+                    sidebar follows the user's CI palette (LBM teal, custom
+                    branding, etc.) instead of the legacy primary green. */}
                 <item.icon className={`w-5 h-5 mr-3 ${
-                  isActive ? 'text-primary-600' : 'text-neutral-400'
+                  isActive ? 'text-accent-dark' : 'text-neutral-400'
                 }`} />
                 {t(item.nameKey)}
               </NavLink>
