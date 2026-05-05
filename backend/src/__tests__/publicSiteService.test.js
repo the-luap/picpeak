@@ -104,4 +104,59 @@ describe('publicSiteService', () => {
     expect(payload.branding.logoUrl).toBe('/uploads/logos/aurora.png');
     expect(payload.branding.colors.primary).toBe('#5C8762');
   });
+
+  it('exposes the 8-token CI palette through branding.colors', async () => {
+    const publicSiteRows = buildPublicSiteRows({});
+    const brandingRows = buildBrandingRows({
+      themeConfig: {
+        // LBM CI palette (charcoal + teal).
+        primaryColor: '#014E4E',
+        accentColor: '#017C7C',
+        accentDarkColor: '#014E4E',
+        backgroundColor: '#0D0D0D',
+        surfaceColor: '#111414',
+        elevatedColor: '#182222',
+        surfaceBorderColor: '#1E2E2E',
+        textColor: '#EBEBEB',
+        mutedTextColor: '#4A6060'
+      }
+    });
+
+    db.mockImplementationOnce(() => ({ whereIn: () => Promise.resolve(publicSiteRows) }));
+    db.mockImplementationOnce(() => ({ whereIn: () => Promise.resolve(brandingRows) }));
+
+    const payload = await getPublicSitePayload({ bypassCache: true });
+
+    // Legacy 4 colors still mapped.
+    expect(payload.branding.colors.primary).toBe('#014E4E');
+    expect(payload.branding.colors.accent).toBe('#017C7C');
+    expect(payload.branding.colors.background).toBe('#0D0D0D');
+    expect(payload.branding.colors.text).toBe('#EBEBEB');
+    // 8-token CI palette additions.
+    expect(payload.branding.colors.accentDark).toBe('#014E4E');
+    expect(payload.branding.colors.surface).toBe('#111414');
+    expect(payload.branding.colors.elevated).toBe('#182222');
+    expect(payload.branding.colors.border).toBe('#1E2E2E');
+    expect(payload.branding.colors.mutedText).toBe('#4A6060');
+  });
+
+  it('falls back accentDark to legacy primaryColor when the new key is absent', async () => {
+    const publicSiteRows = buildPublicSiteRows({});
+    const brandingRows = buildBrandingRows({
+      themeConfig: {
+        primaryColor: '#5C8762',
+        accentColor: '#22c55e',
+        backgroundColor: '#fafafa',
+        textColor: '#171717'
+        // accentDarkColor intentionally omitted to simulate a legacy theme.
+      }
+    });
+
+    db.mockImplementationOnce(() => ({ whereIn: () => Promise.resolve(publicSiteRows) }));
+    db.mockImplementationOnce(() => ({ whereIn: () => Promise.resolve(brandingRows) }));
+
+    const payload = await getPublicSitePayload({ bypassCache: true });
+
+    expect(payload.branding.colors.accentDark).toBe('#5C8762');
+  });
 });

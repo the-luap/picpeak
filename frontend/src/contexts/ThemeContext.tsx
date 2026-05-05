@@ -102,16 +102,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const applyTheme = useCallback((themeConfig: ThemeConfig) => {
     const root = document.documentElement;
     
-    // Apply CSS variables
+    // Apply CSS variables — 8-token CI palette.
+    // Legacy --color-primary / --color-primary-light / --color-primary-dark
+    // are kept for any consumer still reading them; they mirror accent-dark.
     if (themeConfig.primaryColor) {
       root.style.setProperty('--color-primary', themeConfig.primaryColor);
-      // Generate primary color shades
       root.style.setProperty('--color-primary-light', lightenColor(themeConfig.primaryColor, 20));
       root.style.setProperty('--color-primary-dark', darkenColor(themeConfig.primaryColor, 20));
     }
-    
+
     if (themeConfig.accentColor) {
       root.style.setProperty('--color-accent', themeConfig.accentColor);
+    }
+
+    // Accent-dark: filled CTA background. Falls back to primaryColor for
+    // legacy themes that pre-date the explicit token (matches the previous
+    // implicit behavior where .btn-primary used --color-primary).
+    const accentDark = themeConfig.accentDarkColor || themeConfig.primaryColor;
+    if (accentDark) {
+      root.style.setProperty('--color-accent-dark', accentDark);
     }
     
     if (themeConfig.backgroundColor) {
@@ -192,6 +201,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       root.style.setProperty('--color-surface', '#1a1a1a');
     } else {
       root.style.setProperty('--color-surface', '#ffffff');
+    }
+
+    // Elevated: raised panels, image placeholders. Falls back to a slight
+    // shift from surface so the layering still reads on legacy themes.
+    if (themeConfig.elevatedColor) {
+      root.style.setProperty('--color-elevated', themeConfig.elevatedColor);
+    } else if (effectiveMode === 'dark') {
+      root.style.setProperty('--color-elevated', '#242424');
+    } else {
+      root.style.setProperty('--color-elevated', '#f5f5f5');
     }
 
     if (themeConfig.surfaceBorderColor) {

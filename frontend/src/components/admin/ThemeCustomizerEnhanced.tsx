@@ -158,7 +158,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   }, [presetName]);
 
   const handleChange = (key: keyof ThemeConfig, newValue: any) => {
-    const updated = { ...localTheme, [key]: newValue };
+    const updated: ThemeConfig = { ...localTheme, [key]: newValue };
+    // Legacy alias: keep primaryColor in lockstep with accentDarkColor so
+    // any consumer that still reads --color-primary or themeConfig.primaryColor
+    // doesn't drift after the 8-token migration.
+    if (key === 'accentDarkColor') {
+      updated.primaryColor = newValue;
+    }
     setLocalTheme(updated);
 
     // When any change is made, mark it as custom
@@ -265,17 +271,23 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <div className="flex gap-1">
+                  {/* Preview swatches: background, surface, accent-dark, accent
+                      — gives a quick read of the preset's full palette. */}
                   <div
                     className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
-                    style={{ backgroundColor: theme.config.primaryColor }}
+                    style={{ backgroundColor: theme.config.backgroundColor }}
+                  />
+                  <div
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
+                    style={{ backgroundColor: theme.config.surfaceColor || theme.config.backgroundColor }}
+                  />
+                  <div
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
+                    style={{ backgroundColor: theme.config.accentDarkColor || theme.config.primaryColor }}
                   />
                   <div
                     className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
                     style={{ backgroundColor: theme.config.accentColor }}
-                  />
-                  <div
-                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
-                    style={{ backgroundColor: theme.config.backgroundColor }}
                   />
                 </div>
                 {theme.config.galleryLayout && layoutIcons[theme.config.galleryLayout] && (
@@ -834,25 +846,27 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   handleChange('colorMode', mode);
                   // When switching to dark, auto-populate dark defaults if colors are still light
                   if (mode === 'dark' && (!localTheme.backgroundColor || localTheme.backgroundColor === '#fafafa' || localTheme.backgroundColor === '#ffffff')) {
-                    const updated = {
+                    const updated: ThemeConfig = {
                       ...localTheme,
                       colorMode: mode,
                       backgroundColor: '#0f0f0f',
-                      textColor: '#e5e5e5',
                       surfaceColor: '#1a1a1a',
+                      elevatedColor: '#242424',
                       surfaceBorderColor: '#2e2e2e',
+                      textColor: '#e5e5e5',
                       mutedTextColor: '#a3a3a3',
                     };
                     setLocalTheme(updated);
                     onChange({ ...updated, customCss });
                   } else if (mode === 'light' && localTheme.colorMode === 'dark') {
-                    const updated = {
+                    const updated: ThemeConfig = {
                       ...localTheme,
                       colorMode: mode,
                       backgroundColor: '#fafafa',
-                      textColor: '#171717',
                       surfaceColor: '#ffffff',
+                      elevatedColor: '#f5f5f5',
                       surfaceBorderColor: '#e5e5e5',
+                      textColor: '#171717',
                       mutedTextColor: '#737373',
                     };
                     setLocalTheme(updated);
@@ -876,85 +890,119 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/*
+         * 8-token CI palette pickers, grouped by role.
+         * Each token writes directly to the same field name on ThemeConfig
+         * (kebab → camel mapping happens via handleChange's first arg).
+         * Translation keys fall back to inline strings — German/English
+         * coverage only (per user language profile); other locales will
+         * show the fallback until reviewed by a native speaker.
+         */}
+        <div className="space-y-6">
+          {/* Surfaces */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.primaryColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.primaryColor || '#5C8762'}
-                onChange={(e) => handleChange('primaryColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.primaryColor || '#5C8762'}
-                onChange={(e) => handleChange('primaryColor', e.target.value)}
-                placeholder="#5C8762"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+              {t('branding.colorGroupSurfaces', 'Surfaces')}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { key: 'backgroundColor', label: t('branding.backgroundColor', 'Background'), help: t('branding.backgroundColorHelp', 'Page base'), fallback: '#fafafa' },
+                { key: 'surfaceColor', label: t('branding.surfaceColor', 'Surface'), help: t('branding.surfaceColorHelp', 'Cards, navigation'), fallback: '#ffffff' },
+                { key: 'elevatedColor', label: t('branding.elevatedColor', 'Elevated'), help: t('branding.elevatedColorHelp', 'Raised panels, placeholders'), fallback: '#f5f5f5' },
+                { key: 'surfaceBorderColor', label: t('branding.borderColor', 'Border'), help: t('branding.borderColorHelp', 'Dividers, grid lines'), fallback: '#e5e5e5' },
+              ].map(({ key, label, help, fallback }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {label}
+                  </label>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                    />
+                    <Input
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      placeholder={fallback}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* Text */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.accentColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.accentColor || '#22c55e'}
-                onChange={(e) => handleChange('accentColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.accentColor || '#22c55e'}
-                onChange={(e) => handleChange('accentColor', e.target.value)}
-                placeholder="#22c55e"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+              {t('branding.colorGroupText', 'Text')}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { key: 'textColor', label: t('branding.textColor', 'Primary text'), help: t('branding.textColorHelp', 'Headlines, body'), fallback: '#171717' },
+                { key: 'mutedTextColor', label: t('branding.mutedTextColor', 'Secondary text'), help: t('branding.mutedTextColorHelp', 'Captions, labels, meta'), fallback: '#737373' },
+              ].map(({ key, label, help, fallback }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {label}
+                  </label>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                    />
+                    <Input
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      placeholder={fallback}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* Accent */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.backgroundColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.backgroundColor || '#fafafa'}
-                onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.backgroundColor || '#fafafa'}
-                onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                placeholder="#fafafa"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3">
+              {t('branding.colorGroupAccent', 'Accent')}
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { key: 'accentColor', label: t('branding.accentColor', 'Accent'), help: t('branding.accentColorHelp', 'Links, focus rings, hover'), fallback: '#22c55e' },
+                { key: 'accentDarkColor', label: t('branding.accentDarkColor', 'Accent (filled)'), help: t('branding.accentDarkColorHelp', 'Primary CTA fill'), fallback: '#5C8762' },
+              ].map(({ key, label, help, fallback }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {label}
+                  </label>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                    />
+                    <Input
+                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
+                      placeholder={fallback}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.textColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.textColor || '#171717'}
-                onChange={(e) => handleChange('textColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.textColor || '#171717'}
-                onChange={(e) => handleChange('textColor', e.target.value)}
-                placeholder="#171717"
-                className="flex-1"
-              />
-            </div>
+            {/* primaryColor is kept in sync with accentDarkColor inside
+                handleChange() — no dedicated picker. */}
           </div>
         </div>
       </Card>
@@ -1179,10 +1227,14 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   {t('branding.cssInstructions.variablesDesc', 'Use these CSS variables to match your theme presets:')}
                 </p>
                 <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
-{`--primary-color: ${localTheme.primaryColor || '#5C8762'};
---accent-color: ${localTheme.accentColor || '#22c55e'};
---background-color: ${localTheme.backgroundColor || '#fafafa'};
---text-color: ${localTheme.textColor || '#171717'};
+{`--color-background: ${localTheme.backgroundColor || '#fafafa'};
+--color-surface: ${localTheme.surfaceColor || '#ffffff'};
+--color-elevated: ${localTheme.elevatedColor || '#f5f5f5'};
+--color-surface-border: ${localTheme.surfaceBorderColor || '#e5e5e5'};
+--color-text: ${localTheme.textColor || '#171717'};
+--color-muted-text: ${localTheme.mutedTextColor || '#737373'};
+--color-accent: ${localTheme.accentColor || '#22c55e'};
+--color-accent-dark: ${localTheme.accentDarkColor || localTheme.primaryColor || '#5C8762'};
 --font-family: ${localTheme.fontFamily || 'Inter, sans-serif'};
 --heading-font: ${localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'};`}
                 </code>

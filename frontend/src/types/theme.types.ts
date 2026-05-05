@@ -53,13 +53,27 @@ export interface GalleryLayoutSettings {
 }
 
 export interface ThemeConfig {
-  // Colors
+  // Colors — 8-token CI palette.
+  // Naming kept for backward-compat with existing settings rows; semantics:
+  //   backgroundColor   → page base
+  //   surfaceColor      → cards / nav / alternating sections
+  //   elevatedColor     → raised panels / image placeholders
+  //   surfaceBorderColor→ dividers, borders, grid lines (a.k.a. "border" token)
+  //   textColor         → primary text (Text 1°)
+  //   mutedTextColor    → secondary text (Text 2°)
+  //   accentColor       → links, icons, focus rings, hover
+  //   accentDarkColor   → primary CTA fill / filled states
+  //
+  // primaryColor is retained as a legacy alias and migrated to accentDarkColor
+  // by frontend/src/utils/themeMigration.ts. Do not surface it in new UI.
   primaryColor?: string;
   accentColor?: string;
+  accentDarkColor?: string;
   backgroundColor?: string;
-  textColor?: string;
   surfaceColor?: string;
+  elevatedColor?: string;
   surfaceBorderColor?: string;
+  textColor?: string;
   mutedTextColor?: string;
 
   // Color Mode
@@ -115,8 +129,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#5C8762',
       accentColor: '#22c55e',
+      accentDarkColor: '#5C8762',
       backgroundColor: '#fafafa',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#f5f5f5',
+      surfaceBorderColor: '#e5e5e5',
       textColor: '#171717',
+      mutedTextColor: '#737373',
       borderRadius: 'md',
       galleryLayout: 'grid',
       gallerySettings: {
@@ -136,8 +155,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#c9a961',
       accentColor: '#e6ddd4',
+      accentDarkColor: '#c9a961',
       backgroundColor: '#fdfcfb',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#faf6f0',
+      surfaceBorderColor: '#e8e0d4',
       textColor: '#3f3f3f',
+      mutedTextColor: '#7a7a7a',
       fontFamily: 'Playfair Display, serif',
       headingFontFamily: 'Playfair Display, serif',
       borderRadius: 'lg',
@@ -163,8 +187,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#3b82f6',
       accentColor: '#1e40af',
+      accentDarkColor: '#3b82f6',
       backgroundColor: '#ffffff',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#f8fafc',
+      surfaceBorderColor: '#e2e8f0',
       textColor: '#0f172a',
+      mutedTextColor: '#64748b',
       fontFamily: 'Inter, sans-serif',
       borderRadius: 'sm',
       galleryLayout: 'masonry',
@@ -189,8 +218,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#ec4899',
       accentColor: '#fbbf24',
+      accentDarkColor: '#ec4899',
       backgroundColor: '#fef3c7',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#fef9e3',
+      surfaceBorderColor: '#fde68a',
       textColor: '#451a03',
+      mutedTextColor: '#92400e',
       fontFamily: 'Comic Neue, cursive',
       borderRadius: 'lg',
       galleryLayout: 'carousel',
@@ -214,8 +248,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#1f2937',
       accentColor: '#059669',
+      accentDarkColor: '#1f2937',
       backgroundColor: '#f9fafb',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#f3f4f6',
+      surfaceBorderColor: '#e5e7eb',
       textColor: '#111827',
+      mutedTextColor: '#6b7280',
       fontFamily: 'IBM Plex Sans, sans-serif',
       borderRadius: 'sm',
       galleryLayout: 'timeline',
@@ -238,8 +277,13 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#7c3aed',
       accentColor: '#f59e0b',
+      accentDarkColor: '#7c3aed',
       backgroundColor: '#faf5ff',
+      surfaceColor: '#ffffff',
+      elevatedColor: '#f3e8ff',
+      surfaceBorderColor: '#e9d5ff',
       textColor: '#1e1b4b',
+      mutedTextColor: '#6b7280',
       fontFamily: 'Montserrat, sans-serif',
       borderRadius: 'none',
       galleryLayout: 'mosaic',
@@ -261,9 +305,11 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#5C8762',
       accentColor: '#22c55e',
+      accentDarkColor: '#5C8762',
       backgroundColor: '#0f0f0f',
       textColor: '#e5e5e5',
       surfaceColor: '#1a1a1a',
+      elevatedColor: '#242424',
       surfaceBorderColor: '#2e2e2e',
       mutedTextColor: '#a3a3a3',
       colorMode: 'dark',
@@ -287,9 +333,11 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#c9a961',
       accentColor: '#e6ddd4',
+      accentDarkColor: '#c9a961',
       backgroundColor: '#121212',
       textColor: '#f0ebe5',
       surfaceColor: '#1e1e1e',
+      elevatedColor: '#262626',
       surfaceBorderColor: '#333333',
       mutedTextColor: '#a3a3a3',
       colorMode: 'dark',
@@ -317,9 +365,11 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#3b82f6',
       accentColor: '#1e40af',
+      accentDarkColor: '#3b82f6',
       backgroundColor: '#0a0a0a',
       textColor: '#f5f5f5',
       surfaceColor: '#171717',
+      elevatedColor: '#1f1f1f',
       surfaceBorderColor: '#262626',
       mutedTextColor: '#a3a3a3',
       colorMode: 'dark',
@@ -345,9 +395,11 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#18181b',
       accentColor: '#ef4444',
+      accentDarkColor: '#18181b',
       backgroundColor: '#ffffff',
       textColor: '#18181b',
       surfaceColor: '#ffffff',
+      elevatedColor: '#fafafa',
       surfaceBorderColor: '#f4f4f5',
       mutedTextColor: '#71717a',
       colorMode: 'light',
@@ -372,9 +424,11 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
     config: {
       primaryColor: '#c9a961',
       accentColor: '#c9a961',
+      accentDarkColor: '#a88c4a',
       backgroundColor: '#0d0d0d',
       textColor: '#f2f2f2',
       surfaceColor: '#1a1a1a',
+      elevatedColor: '#222222',
       surfaceBorderColor: '#262626',
       mutedTextColor: '#a3a3a3',
       colorMode: 'dark',
@@ -387,6 +441,37 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
         photoAnimation: 'fade'
       },
       headerStyle: 'none',
+      footerStyle: 'minimal',
+      shadowStyle: 'subtle'
+    },
+    isPreset: true
+  },
+
+  lbmDark: {
+    name: 'LBM Dark',
+    description: 'Charcoal base with pure teal — Luca Bresch Media CI palette',
+    config: {
+      // Mapped from LBM_Brand_Identity.docx core system
+      primaryColor: '#014E4E',      // legacy alias of accentDarkColor
+      accentColor: '#017C7C',       // links, focus rings, hover
+      accentDarkColor: '#014E4E',   // primary CTA fill
+      backgroundColor: '#0D0D0D',   // page base
+      surfaceColor: '#111414',      // cards, nav
+      elevatedColor: '#182222',     // raised panels
+      surfaceBorderColor: '#1E2E2E',// dividers, borders
+      textColor: '#EBEBEB',         // Text 1°
+      mutedTextColor: '#4A6060',    // Text 2°
+      colorMode: 'dark',
+      fontFamily: 'Jost, sans-serif',
+      headingFontFamily: 'Jost, sans-serif',
+      borderRadius: 'md',
+      galleryLayout: 'grid',
+      gallerySettings: {
+        spacing: 'normal',
+        photoAnimation: 'fade',
+        gridColumns: { mobile: 2, tablet: 3, desktop: 4 }
+      },
+      headerStyle: 'standard',
       footerStyle: 'minimal',
       shadowStyle: 'subtle'
     },
