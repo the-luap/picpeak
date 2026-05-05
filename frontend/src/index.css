@@ -134,14 +134,16 @@
   /*
    * Button styles.
    *
-   * Migration note: .btn-primary / .btn-secondary / .btn-outline keep the
-   * exact same visual contract they had before the 8-token migration —
-   * --color-primary still drives .btn-primary's background, white text on
-   * primary, and the legacy --color-primary-dark hover. This guarantees
-   * existing themes render identically after upgrade. The new .btn-alt
-   * implements the LBM "Alternative" button (outlined, inverts on hover)
-   * and the focus ring switches to var(--color-accent) so it reads on
-   * every surface (light, dark, branded).
+   * Migration note: .btn-primary now binds to --color-accent-dark instead
+   * of --color-primary. The two tokens are kept in lockstep by the
+   * customizer (handleChange syncs primaryColor → accentDarkColor) and by
+   * the migration helper (legacy themes get accentDarkColor = primaryColor),
+   * so existing instances render identically after upgrade — but new themes
+   * that set only accentDarkColor (the 8-token CI flow) now drive primary
+   * buttons correctly. White text + accent-dark fill matches the rest of
+   * the selected-state visual language (sidebar, tile-selected, segmented
+   * buttons). Hover stays on --color-primary-dark for the auto-darkened
+   * legacy behaviour.
    */
   .btn {
     @apply inline-flex items-center justify-center font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
@@ -151,7 +153,7 @@
   }
 
   .btn-primary {
-    background-color: var(--color-primary);
+    background-color: var(--color-accent-dark);
     color: white;
     @apply hover:opacity-90;
   }
