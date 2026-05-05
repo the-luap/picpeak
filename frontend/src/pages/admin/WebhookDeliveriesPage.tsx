@@ -195,7 +195,7 @@ export const WebhookDeliveriesPage: React.FC = () => {
               onClick={() => setFilter(s)}
               className={`text-xs px-3 py-1 rounded-full ${
                 filter === s
-                  ? 'bg-primary-600 text-white'
+                  ? 'bg-accent-dark text-white'
                   : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200'
               }`}
             >

@@ -360,7 +360,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
           />
           <button
             onClick={addLink}
-            className="px-3 py-1 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            className="px-3 py-1 text-sm bg-accent-dark text-white rounded-md hover:bg-primary-700"
             type="button"
           >
             {t('email.editor.addLink')}

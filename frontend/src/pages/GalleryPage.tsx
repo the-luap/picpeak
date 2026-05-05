@@ -14,6 +14,7 @@ import { GallerySkeleton } from '../components/gallery/GallerySkeleton';
 import { analyticsService } from '../services/analytics.service';
 import { galleryService } from '../services';
 import { GALLERY_THEME_PRESETS } from '../types/theme.types';
+import { applyForceColorMode } from '../utils/themeMigration';
 import { buildResourceUrl } from '../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../utils/accessControl';
 
@@ -158,10 +159,11 @@ export const GalleryPage: React.FC = () => {
       }
 
       // Honor instance-wide force color mode (Branding > Force color mode).
-      // When set, override per-event/per-theme colorMode so no gallery can
-      // render light against a force-dark instance.
-      if (themeToApply && settingsData.branding_force_color_mode) {
-        themeToApply = { ...themeToApply, colorMode: settingsData.branding_force_color_mode };
+      // applyForceColorMode pins colorMode AND swaps surface/text tokens
+      // when the active theme doesn't natively support the locked mode,
+      // so the gallery actually flips visually (#397 follow-up).
+      if (themeToApply) {
+        themeToApply = applyForceColorMode(themeToApply, settingsData.branding_force_color_mode);
       }
 
       // Apply theme

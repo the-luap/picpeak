@@ -160,7 +160,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
                 onClick={() => handleLogicChange('AND')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   filters.logic === 'AND' || !filters.logic
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-accent-dark text-white'
                     : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                 }`}
                 disabled={isLoading}
@@ -172,7 +172,7 @@ export const PhotoFilterPanel: React.FC<PhotoFilterPanelProps> = ({
                 onClick={() => handleLogicChange('OR')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   filters.logic === 'OR'
-                    ? 'bg-primary-600 text-white'
+                    ? 'bg-accent-dark text-white'
                     : 'bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                 }`}
                 disabled={isLoading}

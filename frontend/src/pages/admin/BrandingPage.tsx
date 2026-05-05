@@ -494,7 +494,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('logo_position', position)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         brandingSettings.logo_position === position
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-accent-dark text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                       }`}
                     >
@@ -665,7 +665,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('watermark_position', position.value)}
                       className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                         brandingSettings.watermark_position === position.value
-                          ? 'bg-primary-600 text-white border-primary-600'
+                          ? 'bg-accent-dark text-white border-accent-dark'
                           : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                       }`}
                     >

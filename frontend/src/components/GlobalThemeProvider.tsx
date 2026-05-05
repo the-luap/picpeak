@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePublicSettings } from '../hooks/usePublicSettings';
+import { applyForceColorMode } from '../utils/themeMigration';
 
 interface GlobalThemeProviderProps {
   children: React.ReactNode;
@@ -18,14 +19,10 @@ export const GlobalThemeProvider: React.FC<GlobalThemeProviderProps> = ({ childr
 
     if (!themeAppliedRef.current && settingsData?.theme_config && !isGalleryPage) {
       themeAppliedRef.current = true;
-      // Honor instance-wide force color mode: when set, override the
-      // theme's own colorMode so legacy themes can't render light against
-      // a force-dark instance (or vice-versa).
-      const forced = settingsData.branding_force_color_mode;
-      const themeWithForce = forced
-        ? { ...settingsData.theme_config, colorMode: forced }
-        : settingsData.theme_config;
-      setTheme(themeWithForce);
+      // Honor instance-wide force color mode: when set, applyForceColorMode
+      // also swaps the surface/text tokens so the page actually flips
+      // visually (not just the colorMode flag — see #397 follow-up).
+      setTheme(applyForceColorMode(settingsData.theme_config, settingsData.branding_force_color_mode));
     }
   }, [settingsData, setTheme]);
 

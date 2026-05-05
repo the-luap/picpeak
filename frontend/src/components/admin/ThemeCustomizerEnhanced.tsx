@@ -62,6 +62,45 @@ interface ThemeCustomizerEnhancedProps {
   onForceColorModeChange?: (mode: 'dark' | 'light' | null) => void;
 }
 
+/**
+ * Compact color-picker row used by the 8-token palette.
+ * Renders [Label + Info icon (tooltip)] / [color swatch + hex input].
+ * Help text is hidden in the static layout (lives on the Info icon's title
+ * attribute) so all rows are the same height — keeps the four Surfaces
+ * pickers and the two Accent pickers grid-aligned without forcing the user
+ * to read every help string up front.
+ */
+const ColorPickerRow: React.FC<{
+  label: string;
+  help: string;
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+}> = ({ label, help, value, fallback, onChange }) => (
+  <div>
+    <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+      {label}
+      <span className="cursor-help text-neutral-400 dark:text-neutral-500" title={help}>
+        <Info className="w-3.5 h-3.5" />
+      </span>
+    </label>
+    <div className="flex gap-2">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={fallback}
+        className="flex-1"
+      />
+    </div>
+  </div>
+);
+
 const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   grid: <Grid3X3 className="w-5 h-5" />,
   masonry: <Layers className="w-5 h-5" />,
@@ -262,7 +301,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 selectedPreset === key
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -274,7 +313,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   )}
                 </div>
                 {selectedPreset === key && (
-                  <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                 )}
               </div>
               <div className="flex items-center gap-2 mt-3">
@@ -351,7 +390,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   localTheme.galleryLayout === layout
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -370,7 +409,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </span>
                 </div>
                 {localTheme.galleryLayout === layout && (
-                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
                 )}
               </button>
             ))}
@@ -698,7 +737,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => handleChange('headerStyle', style)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   (localTheme.headerStyle || 'standard') === style
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -714,7 +753,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </span>
                 </div>
                 {(localTheme.headerStyle || 'standard') === style && (
-                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
                 )}
               </button>
             ))}
@@ -737,7 +776,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                     onClick={() => handleChange('heroDividerStyle', divider)}
                     className={`relative p-3 rounded-lg border-2 transition-all ${
                       (localTheme.heroDividerStyle || 'wave') === divider
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -751,7 +790,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       </span>
                     </div>
                     {(localTheme.heroDividerStyle || 'wave') === divider && (
-                      <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />
+                      <Check className="absolute top-1 right-1 w-3 h-3 text-accent-dark" />
                     )}
                   </button>
                 ))}
@@ -777,7 +816,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handleChange('controlsStyle', 'classic')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 (localTheme.controlsStyle || 'classic') === 'classic'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -793,7 +832,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 </span>
               </div>
               {(localTheme.controlsStyle || 'classic') === 'classic' && (
-                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
               )}
             </button>
             <button
@@ -801,7 +840,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => handleChange('controlsStyle', 'sidebar')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 localTheme.controlsStyle === 'sidebar'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -817,7 +856,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 </span>
               </div>
               {localTheme.controlsStyle === 'sidebar' && (
-                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
               )}
             </button>
           </div>
@@ -951,18 +990,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
          * coverage only (per user language profile); other locales will
          * show the fallback until reviewed by a native speaker.
          */}
+        {/*
+         * 8-token CI palette pickers, grouped by role. Each picker label
+         * carries an Info icon whose `title` attribute renders the
+         * descriptive help text on hover (or long-press on touch). Keeping
+         * the help out of the static layout means every picker row is the
+         * same height so the four Surfaces and the two Accent rows align
+         * cleanly side-by-side.
+         */}
         <div className="space-y-6">
           {/* Surfaces */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupSurfaces', 'Surfaces')}
+              <span
+                className="cursor-help text-neutral-400 dark:text-neutral-500"
+                title={t(
+                  'branding.colorGroupSurfacesHelp',
+                  'The neutral layers behind your content. Background sits furthest back; Surface and Elevated stack on top.'
+                )}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
             </h4>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
-              {t(
-                'branding.colorGroupSurfacesHelp',
-                'The neutral layers behind your content. Background sits furthest back; Surface and Elevated stack on top.'
-              )}
-            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 {
@@ -990,41 +1040,32 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   fallback: '#e5e5e5',
                 },
               ].map(({ key, label, help, fallback }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    {label}
-                  </label>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-                    />
-                    <Input
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      placeholder={fallback}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
               ))}
             </div>
           </div>
 
           {/* Text */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupText', 'Text')}
+              <span
+                className="cursor-help text-neutral-400 dark:text-neutral-500"
+                title={t(
+                  'branding.colorGroupTextHelp',
+                  'Foreground text colours. Primary is for everything readers focus on; Secondary is for supporting copy.'
+                )}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
             </h4>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
-              {t(
-                'branding.colorGroupTextHelp',
-                'Foreground text colours. Primary is for everything readers focus on; Secondary is for supporting copy.'
-              )}
-            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 {
@@ -1040,41 +1081,32 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   fallback: '#737373',
                 },
               ].map(({ key, label, help, fallback }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    {label}
-                  </label>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-                    />
-                    <Input
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      placeholder={fallback}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
               ))}
             </div>
           </div>
 
           {/* Accent */}
           <div>
-            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-1">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
               {t('branding.colorGroupAccent', 'Accent')}
+              <span
+                className="cursor-help text-neutral-400 dark:text-neutral-500"
+                title={t(
+                  'branding.colorGroupAccentHelp',
+                  'Brand colours that highlight interactive elements. Use a strong colour pair — Accent is for outlines/text, Accent Dark is for filled buttons.'
+                )}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
             </h4>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
-              {t(
-                'branding.colorGroupAccentHelp',
-                'Brand colours that highlight interactive elements. Use a strong colour pair — Accent is for outlines/text, Accent Dark is for filled buttons.'
-              )}
-            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 {
@@ -1096,26 +1128,14 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   fallback: '#5C8762',
                 },
               ].map(({ key, label, help, fallback }) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    {label}
-                  </label>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{help}</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-                    />
-                    <Input
-                      value={(localTheme as Record<string, string | undefined>)[key] || fallback}
-                      onChange={(e) => handleChange(key as keyof ThemeConfig, e.target.value)}
-                      placeholder={fallback}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
               ))}
             </div>
             {/* primaryColor is kept in sync with accentDarkColor inside
@@ -1273,14 +1293,14 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{t('branding.noTemplate', 'No Template')}</span>
                 {!cssTemplateId && (
-                  <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                 )}
               </div>
               <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
@@ -1295,14 +1315,14 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                   cssTemplateId === template.id
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'border-accent-dark bg-primary-50 dark:bg-primary-900/30'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{template.name}</span>
                   {cssTemplateId === template.id && (
-                    <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                   )}
                 </div>
                 <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
@@ -1326,7 +1346,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <button
             type="button"
             onClick={() => setShowCssInstructions(!showCssInstructions)}
-            className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+            className="flex items-center gap-2 text-sm text-accent hover:opacity-80 font-medium"
           >
             <Info className="w-4 h-4" />
             {t('branding.cssInstructions.title', 'How to use Custom CSS')}
