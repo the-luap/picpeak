@@ -157,6 +157,13 @@ export const GalleryPage: React.FC = () => {
         }
       }
 
+      // Honor instance-wide force color mode (Branding > Force color mode).
+      // When set, override per-event/per-theme colorMode so no gallery can
+      // render light against a force-dark instance.
+      if (themeToApply && settingsData.branding_force_color_mode) {
+        themeToApply = { ...themeToApply, colorMode: settingsData.branding_force_color_mode };
+      }
+
       // Apply theme
       if (themeToApply) {
         setTheme(themeToApply);

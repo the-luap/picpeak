@@ -341,6 +341,13 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         themeToApply = settingsData.theme_config;
       }
 
+      // Honor instance-wide force color mode (Branding > Force color mode).
+      // The branding-level lock wins over per-event themes so a force-dark
+      // instance never accidentally renders a light gallery (and vice-versa).
+      if (themeToApply && settingsData.branding_force_color_mode) {
+        themeToApply = { ...themeToApply, colorMode: settingsData.branding_force_color_mode };
+      }
+
       // Apply theme with a small delay to ensure it overrides any global theme
       if (themeToApply) {
         // Use setTimeout to ensure this runs after any global theme application

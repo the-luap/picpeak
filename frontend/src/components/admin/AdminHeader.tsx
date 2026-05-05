@@ -23,7 +23,7 @@ interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
-  const { isDark, toggle: toggleDarkMode } = useAdminDarkMode();
+  const { isDark, toggle: toggleDarkMode, forcedMode } = useAdminDarkMode();
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { formatTimeAgo } = useLocalizedTimeAgo();
@@ -116,14 +116,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
             {/* Language Selector */}
             <LanguageSelector />
 
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-              title={isDark ? t('admin.lightMode', 'Switch to light mode') : t('admin.darkMode', 'Switch to dark mode')}
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            {/* Dark Mode Toggle — hidden entirely when an admin has locked
+                the instance to a specific mode via Branding > Force color mode. */}
+            {!forcedMode && (
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                title={isDark ? t('admin.lightMode', 'Switch to light mode') : t('admin.darkMode', 'Switch to dark mode')}
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            )}
 
             {/* Notifications */}
             <div className="relative" ref={notificationRef}>

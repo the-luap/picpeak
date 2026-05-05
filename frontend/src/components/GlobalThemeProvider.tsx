@@ -18,7 +18,14 @@ export const GlobalThemeProvider: React.FC<GlobalThemeProviderProps> = ({ childr
 
     if (!themeAppliedRef.current && settingsData?.theme_config && !isGalleryPage) {
       themeAppliedRef.current = true;
-      setTheme(settingsData.theme_config);
+      // Honor instance-wide force color mode: when set, override the
+      // theme's own colorMode so legacy themes can't render light against
+      // a force-dark instance (or vice-versa).
+      const forced = settingsData.branding_force_color_mode;
+      const themeWithForce = forced
+        ? { ...settingsData.theme_config, colorMode: forced }
+        : settingsData.theme_config;
+      setTheme(themeWithForce);
     }
   }, [settingsData, setTheme]);
 
