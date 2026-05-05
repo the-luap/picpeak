@@ -162,29 +162,52 @@ function darkenColor(hex, amount = 0.15) {
 
 // Wrap HTML body in the styled email template with header, footer, and logo
 async function wrapEmailHtml(htmlBody, subject, language = 'en') {
-  // Get branding settings for logo and email colors
+  // Email colour palette. The two original settings (email_primary_color and
+  // email_secondary_color) keep their existing semantics so emails sent by
+  // upgraded instances render byte-for-byte identically until an admin
+  // touches the new fields. The six new tokens unlock full email theming
+  // (body bg, container card, list panel, body text, muted text, button text)
+  // and default to the previously hard-coded literals when absent.
   let logoUrl = '';
   let companyName = 'PicPeak';
   let primaryColor = '#5C8762';
   let secondaryColor = '#f9f9f9';
+  let bodyBgColor = '#f5f5f5';        // outer wrapper + body background
+  let containerBgColor = '#ffffff';    // email card
+  let listBgColor = '#f9f9f9';         // <ul> info panel inside content
+  let bodyTextColor = '#333333';       // paragraph text + <strong>
+  let mutedTextColor = '#666666';      // footer text
+  let buttonTextColor = '#ffffff';     // CTA text on primary button
   try {
     const brandingSettings = await db('app_settings')
       .whereIn('setting_key', [
         'branding_logo_url', 'branding_company_name',
-        'email_primary_color', 'email_secondary_color'
+        'email_primary_color', 'email_secondary_color',
+        'email_body_bg_color', 'email_container_bg_color',
+        'email_list_bg_color', 'email_body_text_color',
+        'email_muted_text_color', 'email_button_text_color'
       ])
       .select('setting_key', 'setting_value');
 
+    const readSetting = (val, fallback) => {
+      if (!val) return fallback;
+      try { return JSON.parse(val); } catch (e) { return val; }
+    };
+
     brandingSettings.forEach(setting => {
       const val = setting.setting_value;
-      if (setting.setting_key === 'branding_logo_url' && val) {
-        try { logoUrl = JSON.parse(val); } catch (e) { logoUrl = val; }
-      } else if (setting.setting_key === 'branding_company_name' && val) {
-        try { companyName = JSON.parse(val); } catch (e) { companyName = val; }
-      } else if (setting.setting_key === 'email_primary_color' && val) {
-        try { primaryColor = JSON.parse(val); } catch (e) { primaryColor = val; }
-      } else if (setting.setting_key === 'email_secondary_color' && val) {
-        try { secondaryColor = JSON.parse(val); } catch (e) { secondaryColor = val; }
+      switch (setting.setting_key) {
+      case 'branding_logo_url':       logoUrl = readSetting(val, logoUrl); break;
+      case 'branding_company_name':   companyName = readSetting(val, companyName); break;
+      case 'email_primary_color':     primaryColor = readSetting(val, primaryColor); break;
+      case 'email_secondary_color':   secondaryColor = readSetting(val, secondaryColor); break;
+      case 'email_body_bg_color':     bodyBgColor = readSetting(val, bodyBgColor); break;
+      case 'email_container_bg_color': containerBgColor = readSetting(val, containerBgColor); break;
+      case 'email_list_bg_color':     listBgColor = readSetting(val, listBgColor); break;
+      case 'email_body_text_color':   bodyTextColor = readSetting(val, bodyTextColor); break;
+      case 'email_muted_text_color':  mutedTextColor = readSetting(val, mutedTextColor); break;
+      case 'email_button_text_color': buttonTextColor = readSetting(val, buttonTextColor); break;
+      default: break;
       }
     });
   } catch (error) {
@@ -211,17 +234,17 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background-color: #f5f5f5;
-      color: #333;
+      background-color: ${bodyBgColor};
+      color: ${bodyTextColor};
     }
     .email-wrapper {
-      background-color: #f5f5f5;
+      background-color: ${bodyBgColor};
       padding: 40px 20px;
     }
     .email-container {
       max-width: 600px;
       margin: 0 auto;
-      background-color: #ffffff;
+      background-color: ${containerBgColor};
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       overflow: hidden;
@@ -250,7 +273,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       margin-bottom: 15px;
     }
     .email-content ul {
-      background-color: #f9f9f9;
+      background-color: ${listBgColor};
       padding: 20px 20px 20px 40px;
       border-radius: 5px;
       margin: 20px 0;
@@ -262,7 +285,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       display: inline-block;
       padding: 12px 30px;
       background-color: ${primaryColor};
-      color: white !important;
+      color: ${buttonTextColor} !important;
       text-decoration: none;
       border-radius: 5px;
       font-weight: 500;
@@ -284,7 +307,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       opacity: 0.8;
     }
     .email-footer p {
-      color: #666;
+      color: ${mutedTextColor};
       font-size: 14px;
       margin: 5px 0;
     }
@@ -296,7 +319,7 @@ async function wrapEmailHtml(htmlBody, subject, language = 'en') {
       color: ${hoverColor};
     }
     strong {
-      color: #333;
+      color: ${bodyTextColor};
     }
     @media only screen and (max-width: 600px) {
       .email-wrapper {
@@ -565,12 +588,34 @@ async function processTemplate(template, variables, language = 'en') {
     };
     const ci18n = clientAccessI18n[language] || clientAccessI18n.en;
 
+    // The client-access CTA used to be a hard-coded #5C8762 fill; now it
+    // mirrors the configurable email_primary_color so the brand colour is
+    // consistent across every button in the email. Defaults match the
+    // historical literal so unchanged installs render identically.
+    let cli_primary = '#5C8762';
+    let cli_buttonText = '#ffffff';
+    try {
+      const rows = await db('app_settings')
+        .whereIn('setting_key', ['email_primary_color', 'email_button_text_color'])
+        .select('setting_key', 'setting_value');
+      rows.forEach((row) => {
+        if (!row.setting_value) return;
+        let parsed;
+        try { parsed = JSON.parse(row.setting_value); } catch (e) { parsed = row.setting_value; }
+        if (row.setting_key === 'email_primary_color') cli_primary = parsed || cli_primary;
+        if (row.setting_key === 'email_button_text_color') cli_buttonText = parsed || cli_buttonText;
+      });
+    } catch (e) {
+      // Non-fatal — fall back to literals so the email still renders.
+      logger.warn('Failed to read email colours for client-access block', { error: e.message });
+    }
+
     htmlBody += `
       <div style="margin-top: 24px; padding: 20px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
         <strong style="font-size: 15px;">&#128274; ${ci18n.label}</strong>
         <p style="margin: 10px 0 8px;">${ci18n.desc}</p>
         <p style="margin: 8px 0;">
-          <a href="${processedVariables.client_link}" style="display: inline-block; padding: 10px 20px; background-color: #5C8762; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">${ci18n.link}</a>
+          <a href="${processedVariables.client_link}" style="display: inline-block; padding: 10px 20px; background-color: ${cli_primary}; color: ${cli_buttonText}; text-decoration: none; border-radius: 6px; font-weight: 600;">${ci18n.link}</a>
         </p>
         <p style="margin: 8px 0;">${ci18n.pin}: <strong>${processedVariables.client_password}</strong></p>
         <p style="color: #856404; font-size: 12px; margin: 8px 0 0;">&#9888;&#65039; ${ci18n.warning}</p>
