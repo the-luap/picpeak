@@ -1006,7 +1006,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'overview'
-                ? 'border-accent-dark text-accent-dark'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1016,7 +1016,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('photos')}
             className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
               activeTab === 'photos'
-                ? 'border-accent-dark text-accent-dark'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1032,7 +1032,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('categories')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'categories'
-                ? 'border-accent-dark text-accent-dark'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1043,7 +1043,7 @@ export const EventDetailsPage: React.FC = () => {
               onClick={() => setActiveTab('guests')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'guests'
-                  ? 'border-accent-dark text-accent-dark'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >

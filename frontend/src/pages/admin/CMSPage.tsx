@@ -523,10 +523,10 @@ export const CMSPage: React.FC = () => {
                     }
                     setSelectedPage(page.slug);
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 border ${
                     selectedPage === page.slug
-                      ? 'bg-accent-dark/15 text-accent-dark border border-accent-dark/30'
-                      : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
+                      ? 'tile-selected'
+                      : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
                   }`}
                 >
                   <FileText className="w-5 h-5 flex-shrink-0" />

@@ -664,7 +664,7 @@ export const UserManagementPage: React.FC = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
                 activeTab === tab.key
-                  ? 'border-accent-dark text-accent-dark'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
               }`}
             >

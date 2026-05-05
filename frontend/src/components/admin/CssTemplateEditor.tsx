@@ -108,7 +108,7 @@ export const CssTemplateEditor: React.FC = () => {
                 onClick={() => setActiveSlot(slot)}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeSlot === slot
-                    ? 'border-accent-dark text-accent-dark'
+                    ? 'border-accent text-accent'
                     : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >

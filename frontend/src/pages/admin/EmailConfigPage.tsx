@@ -353,7 +353,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('smtp')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'smtp'
-                ? 'border-accent-dark text-accent-dark'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
@@ -363,7 +363,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('templates')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'templates'
-                ? 'border-accent-dark text-accent-dark'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
