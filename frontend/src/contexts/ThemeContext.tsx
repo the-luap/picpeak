@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import type { ReactNode } from 'react';
 import { ThemeConfig, EventTheme, GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { fontsService, extractFamilyName, type FontDefinition } from '../services/fonts.service';
+import { applyForceColorMode } from '../utils/themeMigration';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 
 // Self-hosted font loader. Resolves the available-fonts list once (cached for
 // 5 minutes) and lazily injects @font-face blocks into <head> only for the
@@ -90,8 +92,8 @@ interface ThemeProviderProps {
   initialThemeName?: string;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
-  children, 
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({
+  children,
   initialTheme = GALLERY_THEME_PRESETS.default.config,
   initialThemeName = 'default'
 }) => {
@@ -99,9 +101,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const [themeName, setThemeName] = useState(initialThemeName);
   const [resolvedColorMode, setResolvedColorMode] = useState<'light' | 'dark'>(() => resolveColorMode(initialTheme.colorMode));
 
-  const applyTheme = useCallback((themeConfig: ThemeConfig) => {
+  // Subscribe to the instance-wide force color mode setting. When an admin
+  // toggles "Force dark / light" in Branding, all open admin and gallery
+  // tabs re-apply the active theme through applyForceColorMode within the
+  // refetch interval so the lock takes effect without a full reload.
+  // Refetch is best-effort — a stale cached value just means a delayed flip,
+  // not a broken state.
+  const { data: publicSettings } = usePublicSettings({ refetchInterval: 30_000 });
+  const forcedMode = publicSettings?.branding_force_color_mode === 'dark'
+    ? 'dark'
+    : publicSettings?.branding_force_color_mode === 'light'
+      ? 'light'
+      : null;
+
+  const applyTheme = useCallback((rawThemeConfig: ThemeConfig) => {
     const root = document.documentElement;
-    
+
+    // Honour the instance-wide force color mode at the chokepoint so every
+    // call site (gallery, admin, preview iframe, branding live preview) is
+    // forced to follow without each one having to remember to do it.
+    // applyForceColorMode is a no-op when forcedMode is null, and only
+    // swaps surface/text tokens when the active theme doesn't natively
+    // support the locked mode — accent CI colours are preserved either way.
+    const themeConfig = applyForceColorMode(rawThemeConfig, forcedMode);
+
     // Apply CSS variables — 8-token CI palette.
     // Legacy --color-primary / --color-primary-light / --color-primary-dark
     // are kept for any consumer still reading them; they mirror accent-dark.
@@ -271,7 +294,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       }
       styleElement.textContent = themeConfig.customCss;
     }
-  }, []);
+  }, [forcedMode]);
 
   const setThemeConfig = useCallback((newTheme: ThemeConfig) => {
     setTheme(newTheme);
@@ -291,15 +314,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     setThemeByName('default');
   }, [setThemeByName]);
 
-  // Apply theme when it changes, but skip if it's the same
+  // Apply theme when it changes, OR when force-mode changes (so an admin
+  // toggling Force dark / light in Branding flips every open tab on the
+  // next public-settings refetch tick — no reload needed).
   useEffect(() => {
-    const root = document.documentElement;
-    const currentPrimary = root.style.getPropertyValue('--color-primary');
-    
-    // Only apply if the theme has actually changed
-    if (currentPrimary !== theme.primaryColor) {
-      applyTheme(theme);
-    }
+    applyTheme(theme);
   }, [theme, applyTheme]);
 
   // Load theme from localStorage on mount (skip if in gallery view)

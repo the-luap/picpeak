@@ -28,7 +28,6 @@ import { useGalleryCustomCss } from '../../hooks/useGalleryCustomCss';
 import { usePublicSettings } from '../../hooks/usePublicSettings';
 import type { Photo } from '../../types';
 import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
-import { applyForceColorMode } from '../../utils/themeMigration';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface GalleryViewProps {
@@ -342,15 +341,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         themeToApply = settingsData.theme_config;
       }
 
-      // Honor instance-wide force color mode (Branding > Force color mode).
-      // applyForceColorMode pins colorMode AND swaps surface/text tokens
-      // when the active theme doesn't natively support the locked mode,
-      // so the gallery actually flips visually (#397 follow-up).
-      if (themeToApply) {
-        themeToApply = applyForceColorMode(themeToApply, settingsData.branding_force_color_mode);
-      }
-
-      // Apply theme with a small delay to ensure it overrides any global theme
+      // Apply theme with a small delay to ensure it overrides any global theme.
+      // Instance-wide force color mode is enforced inside ThemeContext.applyTheme,
+      // so callers don't have to wrap the theme themselves.
       if (themeToApply) {
         // Use setTimeout to ensure this runs after any global theme application
         const timer = setTimeout(() => {
