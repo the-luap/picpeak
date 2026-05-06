@@ -445,36 +445,5 @@ export const GALLERY_THEME_PRESETS: Record<string, EventTheme> = {
       shadowStyle: 'subtle'
     },
     isPreset: true
-  },
-
-  lbmDark: {
-    name: 'LBM Dark',
-    description: 'Charcoal base with pure teal — Luca Bresch Media CI palette',
-    config: {
-      // Mapped from LBM_Brand_Identity.docx core system
-      primaryColor: '#014E4E',      // legacy alias of accentDarkColor
-      accentColor: '#017C7C',       // links, focus rings, hover
-      accentDarkColor: '#014E4E',   // primary CTA fill
-      backgroundColor: '#0D0D0D',   // page base
-      surfaceColor: '#111414',      // cards, nav
-      elevatedColor: '#182222',     // raised panels
-      surfaceBorderColor: '#1E2E2E',// dividers, borders
-      textColor: '#EBEBEB',         // Text 1°
-      mutedTextColor: '#4A6060',    // Text 2°
-      colorMode: 'dark',
-      fontFamily: 'Jost, sans-serif',
-      headingFontFamily: 'Jost, sans-serif',
-      borderRadius: 'md',
-      galleryLayout: 'grid',
-      gallerySettings: {
-        spacing: 'normal',
-        photoAnimation: 'fade',
-        gridColumns: { mobile: 2, tablet: 3, desktop: 4 }
-      },
-      headerStyle: 'standard',
-      footerStyle: 'minimal',
-      shadowStyle: 'subtle'
-    },
-    isPreset: true
   }
 };

@@ -104,7 +104,7 @@ describe('applyForceColorMode', () => {
     colorMode: 'light',
   };
 
-  const lbmDark: ThemeConfig = {
+  const customDark: ThemeConfig = {
     primaryColor: '#014E4E',
     accentColor: '#017C7C',
     accentDarkColor: '#014E4E',
@@ -123,9 +123,9 @@ describe('applyForceColorMode', () => {
   });
 
   it('only pins colorMode when the theme already matches the forced mode', () => {
-    const result = applyForceColorMode(lbmDark, 'dark');
+    const result = applyForceColorMode(customDark, 'dark');
     expect(result.colorMode).toBe('dark');
-    // LBM surfaces preserved.
+    // Custom surfaces preserved.
     expect(result.backgroundColor).toBe('#0D0D0D');
     expect(result.surfaceColor).toBe('#111414');
     expect(result.accentColor).toBe('#017C7C');
@@ -147,12 +147,12 @@ describe('applyForceColorMode', () => {
   });
 
   it('swaps surface tokens when forcing a dark theme to light', () => {
-    const result = applyForceColorMode(lbmDark, 'light');
+    const result = applyForceColorMode(customDark, 'light');
     expect(result.colorMode).toBe('light');
     expect(result.backgroundColor).toBe('#fafafa');
     expect(result.surfaceColor).toBe('#ffffff');
     expect(result.textColor).toBe('#171717');
-    // LBM accent colours survive the flip.
+    // Custom accent colours survive the flip.
     expect(result.accentColor).toBe('#017C7C');
     expect(result.accentDarkColor).toBe('#014E4E');
   });
