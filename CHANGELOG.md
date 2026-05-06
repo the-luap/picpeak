@@ -5,6 +5,31 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.41.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.40.1-beta.0...v3.41.0-beta.0) (2026-05-06)
+
+
+### Features
+
+* **branding:** 8-token CI palette + force color mode + dark-mode consistency ([8050927](https://github.com/the-luap/picpeak/commit/80509276074b8125b6d676839afabb0b6f89206f))
+* **branding:** force color mode (dark or light) site-wide ([5a162fc](https://github.com/the-luap/picpeak/commit/5a162fc8bec47a49cb1bcaa92ff72e197e8d2e42))
+* **branding:** inline force color mode with auto-save + clearer palette help text ([67d7d8d](https://github.com/the-luap/picpeak/commit/67d7d8d3fa25ceab0eda02b291f2e220b222f84a))
+* **email:** expand email palette to 8 tokens + Sync from Branding button ([47b6b39](https://github.com/the-luap/picpeak/commit/47b6b39f3a942aee93b970031d95a952cb769d09))
+* **events:** Sync from Branding button in gallery theme customizer + clarified default inheritance ([bdbe7b8](https://github.com/the-luap/picpeak/commit/bdbe7b80a13b8b215ac544ba9105100e792eeda2))
+* **i18n:** add Brazilian Portuguese (pt-BR) locale ([375f512](https://github.com/the-luap/picpeak/commit/375f51285b5db9c0dfcc04761d24927282e57796))
+* **i18n:** improve pt locale with pt-BR phrasings, remove duplicate pt-BR file ([f25559c](https://github.com/the-luap/picpeak/commit/f25559c0e76776f7cfe8d187e1fea05e751bbafe))
+* **theme:** expand color settings to 8-token CI palette + alt button ([114aab5](https://github.com/the-luap/picpeak/commit/114aab57771a4bba03a9e5c616c75a37c9b25969))
+
+
+### Bug Fixes
+
+* **admin:** tab underlines use accent (not accent-dark) for proper highlight color ([565ae45](https://github.com/the-luap/picpeak/commit/565ae45ca71e46166c8bbfc0eb0b6da92d74f120))
+* **branding:** admin sidebar uses accent-dark, primary buttons follow CI token ([fc2bce3](https://github.com/the-luap/picpeak/commit/fc2bce3a01f02b2d131ca4ce1c8e81fc9dc62755))
+* **branding:** comprehensive sweep — replace remaining primary-* legacy colors with accent tokens ([578a174](https://github.com/the-luap/picpeak/commit/578a1745b8d010eeeb261d3452fd192b1ec7bcf8))
+* **branding:** selected-state accent colors, force-mode actually flips galleries, compact color picker layout ([5b410ed](https://github.com/the-luap/picpeak/commit/5b410ed9f87daad8e96345a86897f2a9e9419802))
+* **branding:** working tooltips, high-contrast selected states, gallery chrome follows accent ([b19bb0c](https://github.com/the-luap/picpeak/commit/b19bb0c6208744f329cb3e99f4e26a83f191710a))
+* **cms:** apply dark mode to CMS editor, public CMS, and admin modals ([d2a10f6](https://github.com/the-luap/picpeak/commit/d2a10f6523655488267d6f68835d7adb46dcf962))
+* **theme:** centralise force-mode enforcement inside ThemeContext so every gallery flips ([21188f4](https://github.com/the-luap/picpeak/commit/21188f48d76dd29bc1251bcc6faf9d6d96c805b5))
+
 ## [3.40.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.40.0-beta.0...v3.40.1-beta.0) (2026-05-04)
 
 
