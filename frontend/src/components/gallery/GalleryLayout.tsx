@@ -495,7 +495,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               {t('gallery.needHelp')}{' '}
               <a 
                 href={`mailto:${brandingSettings.support_email}`}
-                className="text-primary-600 hover:text-primary-700 break-all"
+                className="text-accent hover:opacity-80 break-all"
               >
                 {brandingSettings.support_email}
               </a>

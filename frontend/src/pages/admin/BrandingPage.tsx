@@ -31,6 +31,7 @@ export const BrandingPage: React.FC = () => {
     logo_display_hero: true,
     logo_display_mode: 'logo_and_text',
     hide_powered_by: false,
+    force_color_mode: null,
   });
 
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(theme);
@@ -126,6 +127,21 @@ export const BrandingPage: React.FC = () => {
 
   const handleBrandingChange = (key: string, value: any) => {
     setBrandingSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  /**
+   * Force color mode is the only branding setting that auto-saves on click —
+   * users expect a toggle that takes effect immediately, not a setting they
+   * have to remember to click "Save" for. We keep all other branding fields
+   * on the bulk-save flow because typing in a text input shouldn't trigger
+   * a network round-trip per keystroke. Auto-save here invalidates the
+   * public-settings query so AdminDarkModeContext reapplies live without
+   * waiting for its 30-second poll.
+   */
+  const handleForceColorModeChange = (value: 'dark' | 'light' | null) => {
+    const next = { ...brandingSettings, force_color_mode: value };
+    setBrandingSettings(next);
+    brandingMutation.mutate(next);
   };
 
   const handleThemeChange = (newTheme: ThemeConfig) => {
@@ -478,7 +494,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('logo_position', position)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         brandingSettings.logo_position === position
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-accent-dark text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                       }`}
                     >
@@ -511,7 +527,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_header !== false}
                     onChange={(e) => handleBrandingChange('logo_display_header', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -528,7 +544,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_hero !== false}
                     onChange={(e) => handleBrandingChange('logo_display_hero', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -551,7 +567,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.hide_powered_by === true}
                 onChange={(e) => handleBrandingChange('hide_powered_by', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -570,7 +586,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.watermark_enabled}
                 onChange={(e) => handleBrandingChange('watermark_enabled', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{t('branding.enableWatermarks')}</span>
@@ -649,7 +665,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('watermark_position', position.value)}
                       className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                         brandingSettings.watermark_position === position.value
-                          ? 'bg-primary-600 text-white border-primary-600'
+                          ? 'bg-accent-dark text-white border-accent-dark'
                           : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                       }`}
                     >
@@ -732,7 +748,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={isPreviewMode}
                 onChange={(e) => setIsPreviewMode(e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('branding.applyLivePreview')}</span>
             </label>
@@ -747,6 +763,8 @@ export const BrandingPage: React.FC = () => {
                 onPresetChange={handlePresetChange}
                 showGalleryLayouts={true}
                 hideActions={true}
+                forceColorMode={brandingSettings.force_color_mode ?? null}
+                onForceColorModeChange={handleForceColorModeChange}
               />
             </div>
             

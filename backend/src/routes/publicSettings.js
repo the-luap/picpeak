@@ -65,6 +65,14 @@ router.get('/', async (req, res) => {
       branding_logo_display_hero: settingsObject.branding_logo_display_hero !== false,
       branding_logo_display_mode: settingsObject.branding_logo_display_mode || 'logo_and_text',
       branding_hide_powered_by: settingsObject.branding_hide_powered_by === true,
+      // Force a specific color mode site-wide. When set, the user toggle
+      // is hidden and the value overrides per-theme/system preference.
+      // Allowed values: 'dark' | 'light' | null (null = no force).
+      branding_force_color_mode: settingsObject.branding_force_color_mode === 'dark'
+        ? 'dark'
+        : settingsObject.branding_force_color_mode === 'light'
+          ? 'light'
+          : null,
       theme_config: settingsObject.theme_config || null,
       default_language: settingsObject.general_default_language || 'en',
       enable_analytics: settingsObject.general_enable_analytics !== false,

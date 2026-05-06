@@ -168,7 +168,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{t('gallery.liked', 'Liked')}</span>
               {likeCount > 0 && (
-                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
+                <span className="bg-accent-dark/15 text-accent-dark px-1.5 rounded">
                   {likeCount}
                 </span>
               )}
@@ -183,7 +183,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               <Bookmark className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{t('gallery.favorited', 'Saved')}</span>
               {favoriteCount > 0 && (
-                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
+                <span className="bg-accent-dark/15 text-accent-dark px-1.5 rounded">
                   {favoriteCount}
                 </span>
               )}
@@ -198,7 +198,7 @@ export const GalleryFilter: React.FC<GalleryFilterProps> = ({
               <Star className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">{t('gallery.rated', 'Rated')}</span>
               {ratedCount > 0 && (
-                <span className="bg-primary-100 text-primary-700 px-1.5 rounded">
+                <span className="bg-accent-dark/15 text-accent-dark px-1.5 rounded">
                   {ratedCount}
                 </span>
               )}

@@ -166,7 +166,7 @@ export const GalleryPreview: React.FC<GalleryPreviewProps> = ({
             </div>
             <div className="flex justify-center gap-1 mt-3">
               {[0, 1, 2, 3].map((idx) => (
-                <div key={idx} className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-primary-600' : 'bg-neutral-300'}`} />
+                <div key={idx} className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-accent-dark' : 'bg-neutral-300'}`} />
               ))}
             </div>
           </div>

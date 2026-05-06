@@ -370,7 +370,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
           >
             <div
               className={`w-6 h-6 rounded-full border-2 ${
-                isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'
+                isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'
               } flex items-center justify-center transition-colors`}
             >
               {isSelected && <Check className="w-4 h-4 text-white" />}
@@ -403,7 +403,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
                   className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm"
                   title="Commented"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                  <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                 </span>
               )}
             </div>

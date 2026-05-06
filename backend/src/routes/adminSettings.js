@@ -219,8 +219,16 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_header,
       logo_display_hero,
       logo_display_mode,
-      hide_powered_by
+      hide_powered_by,
+      force_color_mode
     } = req.body;
+
+    // Normalize force_color_mode: only 'dark' | 'light' | null are valid.
+    const normalizedForceColorMode = force_color_mode === 'dark'
+      ? 'dark'
+      : force_color_mode === 'light'
+        ? 'light'
+        : null;
 
     // Get current watermark settings hash for change detection
     const oldSettingsHash = await watermarkService.getSettingsHash();
@@ -243,7 +251,8 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_header,
       logo_display_hero,
       logo_display_mode,
-      hide_powered_by
+      hide_powered_by,
+      force_color_mode: normalizedForceColorMode
     };
 
     // Handle favicon deletion if empty string or null is provided

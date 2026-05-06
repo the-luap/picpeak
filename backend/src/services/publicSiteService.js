@@ -87,11 +87,19 @@ async function fetchBrandingContext() {
     supportEmail: null,
     logoUrl: null,
     footerText: null,
+    // 8-token CI palette mirrored from frontend ThemeConfig.
+    // primary/accent are kept as legacy aliases (primary == accent-dark);
+    // new tokens are surface, elevated, border, mutedText, accentDark.
     colors: {
       primary: '#16a34a',
       accent: '#0f766e',
+      accentDark: '#16a34a',
       background: '#f4fbf6',
-      text: '#0f172a'
+      surface: '#ffffff',
+      elevated: '#f5f5f5',
+      border: '#e5e5e5',
+      text: '#0f172a',
+      mutedText: '#737373'
     }
   };
 
@@ -117,10 +125,17 @@ async function fetchBrandingContext() {
       try {
         const themeConfig = typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
         if (themeConfig && typeof themeConfig === 'object') {
+          // Legacy 4 colors
           context.colors.primary = themeConfig.primaryColor || context.colors.primary;
           context.colors.accent = themeConfig.accentColor || context.colors.accent;
           context.colors.background = themeConfig.backgroundColor || context.colors.background;
           context.colors.text = themeConfig.textColor || context.colors.text;
+          // 8-token CI palette additions
+          context.colors.accentDark = themeConfig.accentDarkColor || themeConfig.primaryColor || context.colors.accentDark;
+          context.colors.surface = themeConfig.surfaceColor || context.colors.surface;
+          context.colors.elevated = themeConfig.elevatedColor || context.colors.elevated;
+          context.colors.border = themeConfig.surfaceBorderColor || context.colors.border;
+          context.colors.mutedText = themeConfig.mutedTextColor || context.colors.mutedText;
         }
       } catch (error) {
         logger.warn('Failed to parse theme configuration for public site', { error: error.message });

@@ -342,7 +342,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           id="replace-by-name"
           checked={replaceByName}
           onChange={(e) => setReplaceByName(e.target.checked)}
-          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+          className="rounded border-neutral-300 text-accent focus:ring-primary-500"
         />
         <label htmlFor="replace-by-name" className="text-sm text-neutral-700 dark:text-neutral-300">
           {t('upload.replaceByName', 'Replace existing photos with same name')}
@@ -353,8 +353,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       <div
         className={clsx(
           "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-          "hover:border-primary-400 hover:bg-primary-50/50",
-          selectedFiles.length > 0 ? "border-primary-400 bg-primary-50/30 dark:bg-primary-900/20" : "border-neutral-300 dark:border-neutral-600"
+          "hover:border-accent-dark hover:bg-accent-dark/15",
+          selectedFiles.length > 0 ? "border-accent-dark bg-accent-dark/15" : "border-neutral-300 dark:border-neutral-600"
         )}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -496,7 +496,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
               </div>
               <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">
                 <div
-                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-accent-dark h-2 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

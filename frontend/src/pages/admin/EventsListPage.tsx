@@ -321,7 +321,7 @@ export const EventsListPage: React.FC = () => {
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{dashboardStats?.totalEvents ?? 0}</p>
             </div>
-            <Calendar className="w-8 h-8 text-primary-600" />
+            <Calendar className="w-8 h-8 text-accent" />
           </div>
         </Card>
 
@@ -423,8 +423,8 @@ export const EventsListPage: React.FC = () => {
 
         {/* Bulk Actions */}
         {selectedEvents.length > 0 && (
-          <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-primary-900 dark:text-primary-100">
+          <div className="mt-4 p-3 bg-accent-dark/15 rounded-lg flex items-center justify-between">
+            <span className="text-sm text-accent-dark">
               {t('events.eventsSelected', { count: selectedEvents.length })}
             </span>
             <div className="flex gap-2">
@@ -465,7 +465,7 @@ export const EventsListPage: React.FC = () => {
                     type="checkbox"
                     checked={selectedEvents.length === events.length && events.length > 0}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
+                    className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
@@ -513,7 +513,7 @@ export const EventsListPage: React.FC = () => {
                           type="checkbox"
                           checked={selectedEvents.includes(event.id)}
                           onChange={() => handleSelectEvent(event.id)}
-                          className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
+                          className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
                         />
                       </td>
                       <td className="px-6 py-4">

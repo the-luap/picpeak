@@ -132,7 +132,7 @@ export const HeroPhotoSelector: React.FC<HeroPhotoSelectorProps> = ({
                       onClick={() => handleSelect(photo.id)}
                       className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                         photo.id === selectedPhotoId
-                          ? 'border-primary-500 ring-2 ring-primary-500 ring-offset-2'
+                          ? 'border-accent-dark ring-2 ring-primary-500 ring-offset-2'
                           : 'border-transparent hover:border-neutral-300'
                       }`}
                     >
@@ -144,7 +144,7 @@ export const HeroPhotoSelector: React.FC<HeroPhotoSelectorProps> = ({
                         />
                       </div>
                       {photo.id === selectedPhotoId && (
-                        <div className="absolute top-2 right-2 bg-primary-500 text-white rounded-full p-1">
+                        <div className="absolute top-2 right-2 bg-accent-dark/150 text-white rounded-full p-1">
                           <Check className="w-4 h-4" />
                         </div>
                       )}

@@ -284,7 +284,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
             >
               <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
                 selectedPhotos.has(photo.id)
-                  ? 'bg-primary-600 border-primary-600'
+                  ? 'bg-accent-dark border-accent-dark'
                   : 'bg-white/90 border-white'
               }`}>
                 {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
@@ -419,7 +419,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                 )}
                 {commentCount > 0 && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${commentCount} comments`}>
-                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                    <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                     <span className="text-xs font-medium text-neutral-700">{commentCount}</span>
                   </div>
                 )}

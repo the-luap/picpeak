@@ -145,7 +145,7 @@ export const GuestNamePromptModal: React.FC<GuestNamePromptModalProps> = ({
               closePrompt();
               openRecovery();
             }}
-            className="text-sm text-primary-600 hover:underline w-full text-center pt-2"
+            className="text-sm text-accent hover:underline w-full text-center pt-2"
           >
             {t('gallery.guestPrompt.alreadyHere', "I've been here before")}
           </button>

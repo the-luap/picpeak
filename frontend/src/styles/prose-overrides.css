@@ -27,9 +27,14 @@
   margin-bottom: 0;
 }
 
-/* Code block styling */
+/*
+ * Code block styling — uses the 8-token CI palette so blocks read against
+ * both light and dark surfaces. The variables fall back to the previous
+ * #f5f5f5 if a host page hasn't loaded the theme yet.
+ */
 .prose pre {
-  background-color: #f5f5f5;
+  background-color: var(--color-elevated, #f5f5f5);
+  border: 1px solid var(--color-surface-border, #e5e5e5);
   border-radius: 0.375rem;
   padding: 1rem;
   overflow-x: auto;
@@ -45,11 +50,18 @@
 
 /* Inline code styling */
 .prose code {
-  background-color: #f5f5f5;
+  background-color: var(--color-elevated, #f5f5f5);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
   font-weight: 400;
+}
+
+/* Blockquote styling — themed left rule that flips with dark mode. */
+.prose blockquote {
+  border-left: 3px solid var(--color-accent, #017C7C);
+  padding-left: 1rem;
+  color: var(--color-muted-text, #737373);
 }
 
 /* Text alignment classes */

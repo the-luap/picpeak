@@ -157,7 +157,9 @@ export const GalleryPage: React.FC = () => {
         }
       }
 
-      // Apply theme
+      // Apply theme. Force color mode is enforced inside ThemeContext.applyTheme
+      // (it subscribes to public settings) so callers don't have to wrap the
+      // theme themselves — keeps the lock consistent across every entry point.
       if (themeToApply) {
         setTheme(themeToApply);
       }

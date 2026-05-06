@@ -18,7 +18,7 @@ import { toast } from 'react-toastify';
 import { Button, Input, Card, Loading } from '../../components/common';
 import { EmailPreviewModal } from '../../components/admin/EmailPreviewModal';
 import { EmailTemplateEditor } from '../../components/admin/EmailTemplateEditor';
-import { Palette } from 'lucide-react';
+import { Palette, RefreshCw, Info } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emailService, type EmailConfig, type EmailTemplate, type EmailTemplateTranslation } from '../../services/email.service';
 import { settingsService } from '../../services/settings.service';
@@ -110,8 +110,19 @@ export const EmailConfigPage: React.FC = () => {
     htmlContent: '',
     textContent: ''
   });
+  // 8-token email palette. The first two are the historical settings —
+  // upgraded installs keep their saved values. The last six are new and
+  // default to the literals previously hard-coded into emailProcessor.js,
+  // which means an admin who never opens this card sees emails render
+  // exactly as before. Touching any picker enables full email theming.
   const [emailPrimaryColor, setEmailPrimaryColor] = useState('#5C8762');
   const [emailSecondaryColor, setEmailSecondaryColor] = useState('#f9f9f9');
+  const [emailBodyBgColor, setEmailBodyBgColor] = useState('#f5f5f5');
+  const [emailContainerBgColor, setEmailContainerBgColor] = useState('#ffffff');
+  const [emailListBgColor, setEmailListBgColor] = useState('#f9f9f9');
+  const [emailBodyTextColor, setEmailBodyTextColor] = useState('#333333');
+  const [emailMutedTextColor, setEmailMutedTextColor] = useState('#666666');
+  const [emailButtonTextColor, setEmailButtonTextColor] = useState('#ffffff');
   const queryClient = useQueryClient();
 
   // SMTP Configuration state
@@ -142,6 +153,12 @@ export const EmailConfigPage: React.FC = () => {
     if (allSettings) {
       if (allSettings.email_primary_color) setEmailPrimaryColor(allSettings.email_primary_color);
       if (allSettings.email_secondary_color) setEmailSecondaryColor(allSettings.email_secondary_color);
+      if (allSettings.email_body_bg_color) setEmailBodyBgColor(allSettings.email_body_bg_color);
+      if (allSettings.email_container_bg_color) setEmailContainerBgColor(allSettings.email_container_bg_color);
+      if (allSettings.email_list_bg_color) setEmailListBgColor(allSettings.email_list_bg_color);
+      if (allSettings.email_body_text_color) setEmailBodyTextColor(allSettings.email_body_text_color);
+      if (allSettings.email_muted_text_color) setEmailMutedTextColor(allSettings.email_muted_text_color);
+      if (allSettings.email_button_text_color) setEmailButtonTextColor(allSettings.email_button_text_color);
     }
   }, [allSettings]);
 
@@ -213,7 +230,7 @@ export const EmailConfigPage: React.FC = () => {
   });
 
   const saveEmailColorsMutation = useMutation({
-    mutationFn: (colors: { email_primary_color: string; email_secondary_color: string }) =>
+    mutationFn: (colors: Record<string, string>) =>
       settingsService.updateSettings(colors),
     onSuccess: () => {
       toast.success(t('toast.saveSuccess'));
@@ -228,7 +245,51 @@ export const EmailConfigPage: React.FC = () => {
     saveEmailColorsMutation.mutate({
       email_primary_color: emailPrimaryColor,
       email_secondary_color: emailSecondaryColor,
+      email_body_bg_color: emailBodyBgColor,
+      email_container_bg_color: emailContainerBgColor,
+      email_list_bg_color: emailListBgColor,
+      email_body_text_color: emailBodyTextColor,
+      email_muted_text_color: emailMutedTextColor,
+      email_button_text_color: emailButtonTextColor,
     });
+  };
+
+  /**
+   * Sync email colours from the active Branding theme so admins can hit one
+   * button and have email + site share an identical palette.
+   *
+   * Mapping (Branding token → email token):
+   *   accentDarkColor   → email_primary_color    (header bg, H2, button bg, link)
+   *   surfaceColor      → email_secondary_color  (footer bg)
+   *   backgroundColor   → email_body_bg_color    (outer wrapper)
+   *   surfaceColor      → email_container_bg_color (email card)
+   *   elevatedColor     → email_list_bg_color    (info <ul> panel)
+   *   textColor         → email_body_text_color
+   *   mutedTextColor    → email_muted_text_color
+   *   (constant)        → email_button_text_color (#ffffff — no Branding equivalent)
+   *
+   * Just updates local state — admin still has to click Save to persist.
+   * That two-step keeps the flow predictable and avoids surprise saves.
+   */
+  const handleSyncFromBranding = () => {
+    const theme = allSettings?.theme_config || {};
+    const accentDark = theme.accentDarkColor || theme.primaryColor || '#5C8762';
+    const surface = theme.surfaceColor || '#ffffff';
+    const background = theme.backgroundColor || '#fafafa';
+    const elevated = theme.elevatedColor || '#f5f5f5';
+    const textColor = theme.textColor || '#171717';
+    const mutedText = theme.mutedTextColor || '#737373';
+
+    setEmailPrimaryColor(accentDark);
+    setEmailSecondaryColor(surface);
+    setEmailBodyBgColor(background);
+    setEmailContainerBgColor(surface);
+    setEmailListBgColor(elevated);
+    setEmailBodyTextColor(textColor);
+    setEmailMutedTextColor(mutedText);
+    // Button text stays #ffffff — needs to read on accent-dark fill regardless
+    // of branding accent choice. Admins can still override it manually.
+    toast.info(t('email.syncedFromBranding', 'Email colours synced from Branding. Click Save to apply.'));
   };
 
   const handleSaveSmtp = () => {
@@ -353,7 +414,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('smtp')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'smtp'
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
@@ -363,7 +424,7 @@ export const EmailConfigPage: React.FC = () => {
             onClick={() => setActiveTab('templates')}
             className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'templates'
-                ? 'border-primary-600 text-primary-600'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
             }`}
           >
@@ -412,7 +473,7 @@ export const EmailConfigPage: React.FC = () => {
                   <select
                     value={smtpConfig.smtp_secure ? 'ssl' : 'tls'}
                     onChange={(e) => setSmtpConfig(prev => ({ ...prev, smtp_secure: e.target.value === 'ssl' }))}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="tls">TLS</option>
                     <option value="ssl">SSL</option>
@@ -427,7 +488,7 @@ export const EmailConfigPage: React.FC = () => {
                     type="checkbox"
                     checked={!smtpConfig.tls_reject_unauthorized}
                     onChange={(e) => setSmtpConfig(prev => ({ ...prev, tls_reject_unauthorized: !e.target.checked }))}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                    className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   />
                   <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                     {t('email.ignoreSslErrors')}
@@ -579,56 +640,66 @@ export const EmailConfigPage: React.FC = () => {
       {activeTab === 'smtp' && (
         <div className="mt-6">
           <Card padding="md">
-            <div className="flex items-center gap-2 mb-4">
-              <Palette className="w-5 h-5 text-neutral-500" />
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('email.brandingTitle')}</h2>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Palette className="w-5 h-5 text-neutral-500" />
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('email.brandingTitle')}</h2>
+              </div>
+              {/* One-click copy from Branding theme so email + site share an
+                  identical palette. Just stages the values — admin still has
+                  to click Save to persist (avoids surprise mass-saves). */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSyncFromBranding}
+                leftIcon={<RefreshCw className="w-4 h-4" />}
+              >
+                {t('email.syncFromBranding', 'Sync from Branding')}
+              </Button>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">{t('email.brandingDescription')}</p>
 
+            {/* 8 email colour pickers. Each row uses the same compact label
+                + info-tooltip pattern as the gallery palette in
+                ThemeCustomizerEnhanced — keeps the two configurators visually
+                consistent without sharing the React component (the email
+                state is local to this page and saved through a different
+                endpoint, so reuse would be more friction than value). */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  {t('email.primaryColor')}
-                </label>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t('email.primaryColorHint')}</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={emailPrimaryColor}
-                    onChange={(e) => setEmailPrimaryColor(e.target.value)}
-                    className="w-10 h-10 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-                  />
-                  <Input
-                    type="text"
-                    value={emailPrimaryColor}
-                    onChange={(e) => setEmailPrimaryColor(e.target.value)}
-                    className="w-32"
-                    placeholder="#5C8762"
-                  />
+              {[
+                { label: t('email.primaryColor', 'Primary'), help: t('email.primaryColorHelp', 'Header bar, H2 headings, button background, link colour. Maps to Branding → Accent (filled).'), value: emailPrimaryColor, setter: setEmailPrimaryColor, fallback: '#5C8762' },
+                { label: t('email.secondaryColor', 'Footer background'), help: t('email.secondaryColorHelp', 'Footer bar background. Maps to Branding → Surface.'), value: emailSecondaryColor, setter: setEmailSecondaryColor, fallback: '#f9f9f9' },
+                { label: t('email.bodyBgColor', 'Page background'), help: t('email.bodyBgColorHelp', 'The wrapper around the email card — what the recipient sees behind the email itself. Maps to Branding → Background.'), value: emailBodyBgColor, setter: setEmailBodyBgColor, fallback: '#f5f5f5' },
+                { label: t('email.containerBgColor', 'Email card'), help: t('email.containerBgColorHelp', 'The white card that holds the email content. Maps to Branding → Surface.'), value: emailContainerBgColor, setter: setEmailContainerBgColor, fallback: '#ffffff' },
+                { label: t('email.listBgColor', 'Info panel'), help: t('email.listBgColorHelp', 'Background of the bulleted info panels inside the email body. Maps to Branding → Elevated.'), value: emailListBgColor, setter: setEmailListBgColor, fallback: '#f9f9f9' },
+                { label: t('email.bodyTextColor', 'Body text'), help: t('email.bodyTextColorHelp', 'Paragraph and bold text colour. Maps to Branding → Primary text.'), value: emailBodyTextColor, setter: setEmailBodyTextColor, fallback: '#333333' },
+                { label: t('email.mutedTextColor', 'Footer text'), help: t('email.mutedTextColorHelp', 'Footer text and copyright line. Maps to Branding → Secondary text.'), value: emailMutedTextColor, setter: setEmailMutedTextColor, fallback: '#666666' },
+                { label: t('email.buttonTextColor', 'Button text'), help: t('email.buttonTextColorHelp', 'Text colour on filled buttons. Should contrast cleanly against the Primary colour. No Branding equivalent — usually white.'), value: emailButtonTextColor, setter: setEmailButtonTextColor, fallback: '#ffffff' },
+              ].map(({ label, help, value, setter, fallback }) => (
+                <div key={label}>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    {label}
+                    <span className="info-tooltip text-neutral-400 dark:text-neutral-500" data-tooltip={help} tabIndex={0}>
+                      <Info className="w-3.5 h-3.5" />
+                    </span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      className="w-10 h-10 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      className="w-32"
+                      placeholder={fallback}
+                    />
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  {t('email.secondaryColor')}
-                </label>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t('email.secondaryColorHint')}</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={emailSecondaryColor}
-                    onChange={(e) => setEmailSecondaryColor(e.target.value)}
-                    className="w-10 h-10 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-                  />
-                  <Input
-                    type="text"
-                    value={emailSecondaryColor}
-                    onChange={(e) => setEmailSecondaryColor(e.target.value)}
-                    className="w-32"
-                    placeholder="#f9f9f9"
-                  />
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className="mt-6">
@@ -664,7 +735,7 @@ export const EmailConfigPage: React.FC = () => {
                     }}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedTemplateKey === template.template_key
-                        ? 'bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-600'
+                        ? 'tile-selected'
                         : 'bg-neutral-50 dark:bg-neutral-700 border-2 border-transparent hover:bg-neutral-100 dark:hover:bg-neutral-600'
                     }`}
                   >
@@ -720,7 +791,7 @@ export const EmailConfigPage: React.FC = () => {
                       onClick={() => setEditingLang(lang.code)}
                       className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1.5 ${
                         editingLang === lang.code
-                          ? 'bg-white dark:bg-neutral-800 text-primary-700 dark:text-primary-300 shadow-sm'
+                          ? 'bg-white dark:bg-neutral-800 text-accent-dark shadow-sm'
                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                       }`}
                     >

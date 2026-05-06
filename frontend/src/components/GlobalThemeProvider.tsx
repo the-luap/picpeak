@@ -18,6 +18,7 @@ export const GlobalThemeProvider: React.FC<GlobalThemeProviderProps> = ({ childr
 
     if (!themeAppliedRef.current && settingsData?.theme_config && !isGalleryPage) {
       themeAppliedRef.current = true;
+      // Instance-wide force color mode is enforced inside ThemeContext.applyTheme.
       setTheme(settingsData.theme_config);
     }
   }, [settingsData, setTheme]);

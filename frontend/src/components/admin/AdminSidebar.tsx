@@ -90,12 +90,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
                 onClick={() => onClose()}
                 className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   isActive
-                    ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    ? 'bg-accent-dark text-white'
                     : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
                 }`}
               >
+                {/* Selected item: solid accent-dark fill with white text/icon
+                    for unambiguous high-contrast selection — matches the
+                    .tile-selected pattern used in the customizer. The accent
+                    -dark token defaults to the legacy primary green so users
+                    who haven't set CI colours yet see no migration regression. */}
                 <item.icon className={`w-5 h-5 mr-3 ${
-                  isActive ? 'text-primary-600' : 'text-neutral-400'
+                  isActive ? 'text-white' : 'text-neutral-400'
                 }`} />
                 {t(item.nameKey)}
               </NavLink>
@@ -136,7 +141,7 @@ const StorageInfo: React.FC = () => {
     ? Math.round((storageInfo.total_used / limitInUse) * 100)
     : 0;
   const isOverSoftLimit = limitInUse && storageInfo.total_used >= limitInUse;
-  const progressBarClass = isOverSoftLimit ? 'bg-red-600' : 'bg-primary-600';
+  const progressBarClass = isOverSoftLimit ? 'bg-red-600' : 'bg-accent-dark';
   const containerClass = isOverSoftLimit
     ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
     : 'bg-neutral-100 dark:bg-neutral-800';

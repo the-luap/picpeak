@@ -215,3 +215,58 @@ test.describe('Gallery Theme Color Mode', () => {
     await expect(page.getByRole('button', { name: /^Auto$/i })).toBeVisible();
   });
 });
+
+test.describe('Force color mode (instance-wide lock)', () => {
+  // The force color mode setting is exposed in Branding > Force color mode.
+  // When set, the user-facing dark/light toggle in the admin header should
+  // disappear entirely. We verify both presence of the controls and that
+  // toggling them hides the header chip.
+  test('force-mode controls are present in Branding settings', async ({ page }, testInfo) => {
+    if (testInfo.project.name === 'mobile-chrome') {
+      test.skip('Force color mode validated on desktop viewport');
+    }
+
+    await loginToAdmin(page);
+
+    await page.goto('/admin/branding');
+    await expect(page.getByRole('heading', { name: /Force color mode|Farbmodus erzwingen/i })).toBeVisible({ timeout: 10000 });
+
+    // The three states must be selectable as buttons.
+    await expect(page.getByRole('button', { name: /No force|Kein/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Force dark|Dunkel erzwingen/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Force light|Hell erzwingen/i })).toBeVisible();
+  });
+
+  test('selecting force-dark hides the header dark mode toggle on next reload', async ({ page }, testInfo) => {
+    if (testInfo.project.name === 'mobile-chrome') {
+      test.skip('Force color mode validated on desktop viewport');
+    }
+
+    await loginToAdmin(page);
+
+    // Confirm the toggle is initially visible (no force mode set).
+    let toggle = page.getByRole('button', { name: /dark mode|light mode|Dunkelmodus|Hellmodus/i });
+    await expect(toggle).toBeVisible();
+
+    // Set force-dark via Branding page.
+    await page.goto('/admin/branding');
+    await page.getByRole('button', { name: /Force dark|Dunkel erzwingen/i }).click();
+    await page.getByRole('button', { name: /^Save|^Speichern/i }).first().click();
+
+    // Reload so the public-settings refetch picks up the new value.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    toggle = page.getByRole('button', { name: /dark mode|light mode|Dunkelmodus|Hellmodus/i });
+    await expect(toggle).toHaveCount(0);
+
+    // The .dark class should be applied to <html>.
+    const html = page.locator('html');
+    await expect(html).toHaveClass(/(^|\s)dark(\s|$)/);
+
+    // Restore: clear the force mode so subsequent test runs aren't affected.
+    await page.goto('/admin/branding');
+    await page.getByRole('button', { name: /No force|Kein/i }).click();
+    await page.getByRole('button', { name: /^Save|^Speichern/i }).first().click();
+  });
+});

@@ -19,6 +19,12 @@ export interface PublicSettings {
   branding_logo_display_header?: boolean;
   branding_logo_display_hero?: boolean;
   branding_hide_powered_by?: boolean;
+  /**
+   * Force the entire site into a specific color mode (instance-wide).
+   * 'dark' or 'light' override user/system preference; null = no force.
+   * AdminDarkModeContext + ThemeContext both honor this.
+   */
+  branding_force_color_mode?: 'dark' | 'light' | null;
   theme_config: any;
   default_language: string;
   enable_analytics: boolean;

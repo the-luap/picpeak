@@ -341,7 +341,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         themeToApply = settingsData.theme_config;
       }
 
-      // Apply theme with a small delay to ensure it overrides any global theme
+      // Apply theme with a small delay to ensure it overrides any global theme.
+      // Instance-wide force color mode is enforced inside ThemeContext.applyTheme,
+      // so callers don't have to wrap the theme themselves.
       if (themeToApply) {
         // Use setTimeout to ensure this runs after any global theme application
         const timer = setTimeout(() => {

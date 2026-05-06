@@ -146,7 +146,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
       disabled={disabled}
       className={`p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors ${
         active
-          ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+          ? 'bg-accent-dark/15 text-accent-dark'
           : 'text-neutral-700 dark:text-neutral-300'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={title}
@@ -304,7 +304,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
                   onClick={() => setShowVariables(!showVariables)}
                   className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
                     showVariables
-                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      ? 'bg-accent-dark/15 text-accent-dark'
                       : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
                   type="button"
@@ -322,7 +322,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
                         className="w-full text-left px-3 py-1.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
                         type="button"
                       >
-                        <code className="text-primary-600 dark:text-primary-400">{`{{${variable}}}`}</code>
+                        <code className="text-accent">{`{{${variable}}}`}</code>
                       </button>
                     ))}
                   </div>
@@ -348,19 +348,19 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
 
       {/* Link Dialog */}
       {showLinkDialog && (
-        <div className="p-3 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800 flex items-center gap-2">
+        <div className="p-3 bg-accent-dark/15 border-b border-accent-dark/30 flex items-center gap-2">
           <input
             type="url"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addLink()}
             placeholder={t('email.editor.enterUrl')}
-            className="flex-1 px-3 py-1 text-sm border border-primary-300 dark:border-primary-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-2 focus:ring-primary-500"
+            className="flex-1 px-3 py-1 text-sm border border-accent-dark/30 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-2 focus:ring-primary-500"
             autoFocus
           />
           <button
             onClick={addLink}
-            className="px-3 py-1 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            className="px-3 py-1 text-sm bg-accent-dark text-white rounded-md hover:opacity-90"
             type="button"
           >
             {t('email.editor.addLink')}

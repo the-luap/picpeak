@@ -86,8 +86,8 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
             {/* Date marker */}
             {showDates && (
               <div className="flex items-center gap-4 mb-6">
-                <div className="hidden lg:flex items-center justify-center w-16 h-16 bg-white border-4 border-primary-600 rounded-full z-10">
-                  <Calendar className="w-6 h-6 text-primary-600" />
+                <div className="hidden lg:flex items-center justify-center w-16 h-16 bg-white border-4 border-accent-dark rounded-full z-10">
+                  <Calendar className="w-6 h-6 text-accent" />
                 </div>
                 <h3 className="text-xl font-semibold text-theme">
                   {group.label}
@@ -218,7 +218,7 @@ export const TimelineGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                       }`}
                       onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
                     >
-                      <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                      <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                         {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                       </div>
                     </button>

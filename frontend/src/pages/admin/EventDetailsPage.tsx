@@ -99,7 +99,7 @@ const FolderTreeNode: React.FC<{
   const rowClass =
     'flex items-center gap-1 py-1 pr-1 rounded ' +
     (isSelected
-      ? 'bg-primary-50 dark:bg-primary-900/30'
+      ? 'bg-accent-dark/15'
       : 'hover:bg-neutral-50 dark:hover:bg-neutral-700');
 
   return (
@@ -119,12 +119,12 @@ const FolderTreeNode: React.FC<{
           className={
             'flex items-center gap-1.5 flex-1 min-w-0 text-left text-sm ' +
             (isSelected
-              ? 'text-primary-700 dark:text-primary-300 font-medium'
+              ? 'text-accent-dark font-medium'
               : 'text-neutral-900 dark:text-neutral-100')
           }
         >
           {isExpanded ? (
-            <FolderOpen className="w-4 h-4 flex-shrink-0 text-primary-500" />
+            <FolderOpen className="w-4 h-4 flex-shrink-0 text-accent" />
           ) : (
             <Folder className="w-4 h-4 flex-shrink-0 text-neutral-500" />
           )}
@@ -924,7 +924,7 @@ export const EventDetailsPage: React.FC = () => {
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-accent hover:opacity-80 border border-accent-dark rounded-lg hover:bg-accent-dark/15 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 {t('events.viewGallery')}
@@ -1006,7 +1006,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'overview'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1016,7 +1016,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('photos')}
             className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
               activeTab === 'photos'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1032,7 +1032,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('categories')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'categories'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -1043,7 +1043,7 @@ export const EventDetailsPage: React.FC = () => {
               onClick={() => setActiveTab('guests')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'guests'
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -1071,7 +1071,7 @@ export const EventDetailsPage: React.FC = () => {
                   <textarea
                     value={editForm.welcome_message}
                     onChange={(e) => setEditForm(prev => ({ ...prev, welcome_message: e.target.value }))}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                     rows={3}
                     placeholder={t('events.welcomeMessage')}
                   />
@@ -1162,7 +1162,7 @@ export const EventDetailsPage: React.FC = () => {
                   <label className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       checked={editForm.require_password}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -1252,7 +1252,7 @@ export const EventDetailsPage: React.FC = () => {
                           : ''
                       }));
                     }}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="managed">{t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}</option>
                     <option value="reference">{t('events.sourceModeReference', 'Reference external folder')}</option>
@@ -1288,7 +1288,7 @@ export const EventDetailsPage: React.FC = () => {
                       value={editForm.photo_cap}
                       onChange={(e) => setEditForm(prev => ({ ...prev, photo_cap: parseInt(e.target.value) || 0 }))}
                       min={0}
-                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                     />
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
                       {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
@@ -1304,7 +1304,7 @@ export const EventDetailsPage: React.FC = () => {
                   <select
                     value={editForm.default_photo_sort}
                     onChange={(e) => setEditForm(prev => ({ ...prev, default_photo_sort: e.target.value }))}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
                     <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
@@ -1321,7 +1321,7 @@ export const EventDetailsPage: React.FC = () => {
                       type="checkbox"
                       checked={editForm.allow_user_uploads}
                       onChange={(e) => setEditForm(prev => ({ ...prev, allow_user_uploads: e.target.checked }))}
-                      className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                     />
                     <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowUserUploads')}</span>
                   </label>
@@ -1341,7 +1341,7 @@ export const EventDetailsPage: React.FC = () => {
                         ...prev,
                         upload_category_id: e.target.value ? parseInt(e.target.value) : null
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                     >
                       <option value="">{t('events.selectCategory')}</option>
                       {categories?.map(category => (
@@ -1368,7 +1368,7 @@ export const EventDetailsPage: React.FC = () => {
                 {/* Download Protection Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                   <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-primary-600" />
+                    <Shield className="w-4 h-4 text-accent" />
                     {t('events.downloadProtection', 'Download Protection')}
                   </h3>
 
@@ -1378,7 +1378,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.allow_downloads}
                         onChange={(e) => setEditForm(prev => ({ ...prev, allow_downloads: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowDownloads', 'Allow photo downloads')}</span>
@@ -1389,7 +1389,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.disable_right_click}
                         onChange={(e) => setEditForm(prev => ({ ...prev, disable_right_click: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.disableRightClick', 'Block right-click menu')}</span>
@@ -1407,7 +1407,7 @@ export const EventDetailsPage: React.FC = () => {
                           // S3 without going through the watermark pipeline.
                           allow_presigned_download: e.target.checked ? false : prev.allow_presigned_download,
                         }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
@@ -1425,7 +1425,7 @@ export const EventDetailsPage: React.FC = () => {
                         checked={!!editForm.allow_presigned_download}
                         disabled={editForm.watermark_downloads}
                         onChange={(e) => setEditForm(prev => ({ ...prev, allow_presigned_download: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -1438,7 +1438,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.enable_devtools_protection}
                         onChange={(e) => setEditForm(prev => ({ ...prev, enable_devtools_protection: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
@@ -1449,7 +1449,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.use_canvas_rendering}
                         onChange={(e) => setEditForm(prev => ({ ...prev, use_canvas_rendering: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
@@ -1464,7 +1464,7 @@ export const EventDetailsPage: React.FC = () => {
                 {/* Hero Logo Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                   <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
-                    <Layout className="w-4 h-4 text-primary-600" />
+                    <Layout className="w-4 h-4 text-accent" />
                     {t('events.heroLogoSettings', 'Hero Logo Settings')}
                   </h3>
 
@@ -1474,7 +1474,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.hero_logo_visible}
                         onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_visible: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.heroLogoVisible', 'Display logo in hero section')}</span>
@@ -1489,7 +1489,7 @@ export const EventDetailsPage: React.FC = () => {
                           <select
                             value={editForm.hero_logo_size}
                             onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_size: e.target.value as 'small' | 'medium' | 'large' | 'xlarge' }))}
-                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-accent-dark text-sm"
                           >
                             <option value="small">{t('events.heroLogoSizeSmall', 'Small')}</option>
                             <option value="medium">{t('events.heroLogoSizeMedium', 'Medium')}</option>
@@ -1505,7 +1505,7 @@ export const EventDetailsPage: React.FC = () => {
                           <select
                             value={editForm.hero_logo_position}
                             onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_position: e.target.value as 'top' | 'center' | 'bottom' }))}
-                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-accent-dark text-sm"
                           >
                             <option value="top">{t('events.heroLogoPositionTop', 'Top (above title)')}</option>
                             <option value="center">{t('events.heroLogoPositionCenter', 'Center (between title and dates)')}</option>
@@ -1532,7 +1532,7 @@ export const EventDetailsPage: React.FC = () => {
                                 />
                               </div>
                               <div className="flex flex-col gap-1">
-                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-accent hover:opacity-80">
                                   <Upload className="w-3 h-3" />
                                   {t('events.replaceLogo', 'Replace')}
                                   <input
@@ -1670,7 +1670,7 @@ export const EventDetailsPage: React.FC = () => {
                   <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.heroPhoto')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.hero_photo_id ? (
-                      <span className="text-primary-600 dark:text-primary-400">{t('events.heroPhotoSelected')}</span>
+                      <span className="text-accent">{t('events.heroPhotoSelected')}</span>
                     ) : (
                       <span className="text-neutral-400">{t('events.noHeroPhotoSelected')}</span>
                     )}
@@ -1846,7 +1846,7 @@ export const EventDetailsPage: React.FC = () => {
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   checked={!!event?.client_access_enabled}
                   onChange={async (e) => {
                     try {
@@ -2094,6 +2094,34 @@ export const EventDetailsPage: React.FC = () => {
                       setEditForm(prev => ({ ...prev, color_theme: presetName }));
                     }
                   }
+                }}
+                onSyncFromBranding={() => {
+                  // Reset only the 8 colour tokens to the site Branding —
+                  // layout, header, typography all stay so the admin doesn't
+                  // lose tweaks made for this specific event.
+                  const branding = publicSettings?.theme_config as ThemeConfig | undefined;
+                  if (!branding) {
+                    toast.error(t('toast.brandingThemeMissing', 'No branding theme has been saved yet.'));
+                    return;
+                  }
+                  const base = currentTheme || GALLERY_THEME_PRESETS.default.config;
+                  const merged: ThemeConfig = {
+                    ...base,
+                    primaryColor: branding.primaryColor,
+                    accentColor: branding.accentColor,
+                    accentDarkColor: branding.accentDarkColor,
+                    backgroundColor: branding.backgroundColor,
+                    surfaceColor: branding.surfaceColor,
+                    elevatedColor: branding.elevatedColor,
+                    surfaceBorderColor: branding.surfaceBorderColor,
+                    textColor: branding.textColor,
+                    mutedTextColor: branding.mutedTextColor,
+                    colorMode: branding.colorMode ?? base.colorMode,
+                  };
+                  setCurrentTheme(merged);
+                  setCurrentPresetName('custom');
+                  setEditForm(prev => ({ ...prev, color_theme: JSON.stringify(merged) }));
+                  toast.success(t('toast.brandingPaletteSynced', 'Palette synced from Branding.'));
                 }}
                 isPreviewMode={true}
                 showGalleryLayouts={true}
