@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.0-beta.0...v3.42.1-beta.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* **gallery:** WCAG-safe Download button text + extract HeaderDownloadButton ([#401](https://github.com/the-luap/picpeak/issues/401) follow-ups) ([04e928d](https://github.com/the-luap/picpeak/commit/04e928d7621743d9d99797f0996f8c7aa50e7b2d))
+* **gallery:** WCAG-safe Download button text + extract HeaderDownloadButton ([#401](https://github.com/the-luap/picpeak/issues/401) follow-ups) ([0c80abd](https://github.com/the-luap/picpeak/commit/0c80abd57b806b9df01429a093c30c12c80c0601))
+
 ## [3.42.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.41.0-beta.0...v3.42.0-beta.0) (2026-05-07)
 
 
