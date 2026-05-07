@@ -45,6 +45,13 @@ env:
   # Computing them with bash parameter expansion (${VAR,,}) keeps the workflow
   # working on forks regardless of the owner's name casing.
 
+# Default GITHUB_TOKEN to read-only at the workflow level. Each job that
+# needs to publish to GHCR sets `packages: write` explicitly. This keeps
+# the rest of the workflow (and any future steps) from inheriting unneeded
+# privileges (CKV2_GHA_1).
+permissions:
+  contents: read
+
 jobs:
   # -----------------------------------------------------------------------------
   # Backend: per-arch build, then merge into a multi-arch manifest
