@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.1](https://github.com/the-luap/picpeak/compare/v3.43.0...v3.43.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **security:** backport 18 dependency CVE patches from beta (3.42.2 stable) ([74eacbc](https://github.com/the-luap/picpeak/commit/74eacbc78f7efd5c499ae1647b716d3234096c39))
+* **security:** patch 18 dependency CVEs (axios + transitives + nodemailer + i18next-http-backend) ([37bf894](https://github.com/the-luap/picpeak/commit/37bf894412b4da0f0507dd8f1384e6f101ce14b2))
+
 ## [3.43.0](https://github.com/the-luap/picpeak/compare/v3.42.1...v3.43.0) (2026-05-07)
 
 
