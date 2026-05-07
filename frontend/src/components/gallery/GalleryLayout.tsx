@@ -40,6 +40,16 @@ interface GalleryLayoutProps {
   showDownloadAll?: boolean;
   onDownloadAll?: () => void;
   isDownloading?: boolean;
+  /**
+   * "Download" CTA shown immediately to the left of the Logout button in the
+   * standard / banner header. Same handler as Download All; the label and
+   * placement are intentionally simpler — single primary action right before
+   * Logout, the natural step at the end of a gallery visit (#386). Always
+   * visible when allowed (independent of sidebar state) so guests aren't
+   * forced to discover the download in the menu.
+   */
+  showHeaderDownload?: boolean;
+  onHeaderDownload?: () => void;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
   headerStyle?: HeaderStyleType;
@@ -54,6 +64,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   showDownloadAll = false,
   onDownloadAll,
   isDownloading = false,
+  showHeaderDownload = false,
+  onHeaderDownload,
   headerExtra,
   menuButton,
   headerStyle: headerStyleProp,
@@ -154,17 +166,22 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isHeroHeader || isBannerHeader ? 'shadow-sm' : ''}`}>
         {/* Standard / Banner header - full bar with logo, event info, and actions (all layouts) */}
         {!isHeroHeader && !isMinimalHeader && !isNoHeader && (
-          <div className="container py-3">
+          <div className="container py-3 relative">
+            {/*
+             * Menu icon is absolute-positioned at the very left of the header
+             * row instead of sitting inside the flex flow, so the logo's left
+             * edge can align with the leftmost gallery image (both anchored at
+             * `.container` left padding) — see #386. The icon stays vertically
+             * centred via top-1/2 + -translate-y-1/2.
+             */}
+            {menuButton && (
+              <div className="absolute left-3 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-10">
+                {menuButton}
+              </div>
+            )}
             <div className="flex items-center justify-between gap-2 sm:gap-4">
-              {/* Left side - Menu button, Logo */}
-              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                {/* Menu button */}
-                {menuButton && (
-                  <div className="flex-shrink-0">
-                    {menuButton}
-                  </div>
-                )}
-                
+              {/* Left side - Logo (menu lives in the absolute wrapper above) */}
+              <div className={`flex items-center gap-2 sm:gap-4 flex-shrink-0 ${menuButton ? 'pl-12 sm:pl-14' : ''}`}>
                 {/* Logo - Show custom logo or fallback to PicPeak logo */}
                 {shouldShowLogo('header') && (
                   <div className={`gallery-logo-wrapper flex-shrink-0 flex items-center gap-2 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
@@ -239,6 +256,27 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                   </Button>
                 )}
 
+                {/*
+                 * "Download" CTA — accent-coloured button immediately left of
+                 * Logout, always visible when the gallery allows downloads.
+                 * Uses var(--color-accent) inline so the same colour token
+                 * shared with the 8-token palette (PR #400) resolves to the
+                 * admin's chosen accent regardless of which PR merges first.
+                 */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <button
+                    type="button"
+                    onClick={onHeaderDownload}
+                    disabled={isDownloading}
+                    aria-label={t('gallery.download', 'Download')}
+                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
+                  </button>
+                )}
+
                 {/* Logout button */}
                 {showLogout && onLogout && (
                   <Button
@@ -300,6 +338,23 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                   >
                     <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                   </Button>
+                )}
+                {/* Accent Download CTA — also rendered in the minimal header
+                    so the action stays one click away regardless of header
+                    style. Intentionally NOT shown in the no-header variant
+                    where the gallery is fully chromeless by design. */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <button
+                    type="button"
+                    onClick={onHeaderDownload}
+                    disabled={isDownloading}
+                    aria-label={t('gallery.download', 'Download')}
+                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
+                  </button>
                 )}
                 {showLogout && onLogout && (
                   <Button
@@ -379,6 +434,24 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                     <span className="sm:hidden">{t('common.download')}</span>
                   </Button>
+                )}
+
+                {/* Accent Download CTA — also rendered above the hero so the
+                    primary download action is reachable without scrolling.
+                    Intentionally NOT shown in the no-header variant where
+                    the gallery is fully chromeless by design. */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <button
+                    type="button"
+                    onClick={onHeaderDownload}
+                    disabled={isDownloading}
+                    aria-label={t('gallery.download', 'Download')}
+                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
+                  </button>
                 )}
 
                 {/* Logout button */}

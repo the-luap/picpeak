@@ -731,21 +731,32 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}
         onLogout={logout}
-        showDownloadAll={!showSidebar && allowDownloads}
+        // Old Download All header button is replaced by the new
+        // showHeaderDownload below — accent-coloured, always visible when
+        // downloads are allowed, sits right before Logout (#386).
+        showDownloadAll={false}
         onDownloadAll={handleDownloadAll}
         isDownloading={downloadAllMutation.isPending}
-        menuButton={showSidebar ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gallery-btn"
-            leftIcon={<Menu className="w-4 h-4" />}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={t('gallery.toggleMenu')}
-          >
-            <span className="hidden sm:inline">{t('common.menu')}</span>
-          </Button>
-        ) : undefined}
+        menuButton={
+          // Menu icon is shown when the event theme uses the sidebar
+          // controls style. The button is icon-only — the redundant
+          // "Menu" text label was dropped (#386). The wrapper aligns the
+          // icon to the very left of the header so the logo lines up
+          // with the leftmost gallery image.
+          showSidebar ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gallery-btn p-2"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={t('gallery.toggleMenu')}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+          ) : undefined
+        }
+        showHeaderDownload={allowDownloads}
+        onHeaderDownload={handleDownloadAll}
         headerExtra={(() => {
           const items = [];
           
