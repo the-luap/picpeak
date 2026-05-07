@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.2-beta.0...v3.42.3-beta.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* **create-event:** re-apply Branding theme on stale→fresh settings ([#323](https://github.com/the-luap/picpeak/issues/323)-B) ([401abf7](https://github.com/the-luap/picpeak/commit/401abf7a27cb73dd7fb8399f4c05644c95767093))
+* **security:** scan triage cleanup — drop dead deps, harden Docker/nginx/postMessage ([7abfeb9](https://github.com/the-luap/picpeak/commit/7abfeb91cc7bbb9b6853146dbfe16b8d9835bcb3))
+* **security:** scan triage cleanup — drop dead deps, harden Docker/nginx/postMessage ([6b6191a](https://github.com/the-luap/picpeak/commit/6b6191a4260650e21c45f6153cac1b142bf8483a))
+
 ## [3.42.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.1-beta.0...v3.42.2-beta.0) (2026-05-07)
 
 
