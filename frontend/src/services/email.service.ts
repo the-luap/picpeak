@@ -11,19 +11,17 @@ export interface EmailConfig {
   tls_reject_unauthorized: boolean;
 }
 
+export interface EmailTemplateTranslation {
+  subject: string;
+  body_html: string;
+  body_text?: string;
+}
+
 export interface EmailTemplate {
   id: number;
   template_key: string;
-  subject: string; // For backward compatibility
-  body_html: string; // For backward compatibility
-  body_text?: string; // For backward compatibility
-  subject_en: string;
-  subject_de: string;
-  body_html_en: string;
-  body_html_de: string;
-  body_text_en?: string;
-  body_text_de?: string;
   variables: string[];
+  translations: Record<string, EmailTemplateTranslation>;
   updated_at: string;
 }
 
@@ -63,12 +61,12 @@ export const emailService = {
   },
 
   // Update email template
-  async updateTemplate(key: string, template: Partial<EmailTemplate>): Promise<void> {
-    await api.put(`/admin/email/templates/${key}`, template);
+  async updateTemplate(key: string, data: { translations: Record<string, EmailTemplateTranslation> }): Promise<void> {
+    await api.put(`/admin/email/templates/${key}`, data);
   },
 
   // Preview email template
-  async previewTemplate(key: string, previewData: Record<string, string>, language: 'en' | 'de' = 'en'): Promise<EmailPreview> {
+  async previewTemplate(key: string, previewData: Record<string, string>, language: string = 'en'): Promise<EmailPreview> {
     const response = await api.post<EmailPreview>(
       `/admin/email/templates/${key}/preview`,
       { preview_data: previewData, language }

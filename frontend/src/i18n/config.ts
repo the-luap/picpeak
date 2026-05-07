@@ -5,6 +5,9 @@ import HttpBackend from 'i18next-http-backend';
 
 import enTranslations from './locales/en.json';
 import deTranslations from './locales/de.json';
+import ruTranslations from './locales/ru.json';
+import ptTranslations from './locales/pt.json';
+import nlTranslations from './locales/nl.json';
 
 i18n
   .use(HttpBackend)
@@ -13,7 +16,7 @@ i18n
   .init({
     fallbackLng: 'en',
     debug: false,
-    
+
     resources: {
       en: {
         translation: enTranslations,
@@ -21,15 +24,24 @@ i18n
       de: {
         translation: deTranslations,
       },
+      ru: {
+        translation: ruTranslations,
+      },
+      pt: {
+        translation: ptTranslations,
+      },
+      nl: {
+        translation: nlTranslations,
+      },
     },
-    
+
     interpolation: {
       escapeValue: false,
     },
 
     // Use v4 format for pluralization (_one/_other instead of _plural suffix)
     compatibilityJSON: 'v4',
-    
+
     detection: {
       order: ['localStorage', 'cookie', 'navigator', 'htmlTag'],
       caches: ['localStorage', 'cookie'],

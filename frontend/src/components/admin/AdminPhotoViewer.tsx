@@ -266,7 +266,7 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
               </span>
               <button
                 onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-                className="text-xs text-primary-400 hover:text-primary-300"
+                className="text-xs text-accent hover:text-accent-dark"
               >
                 Change
               </button>
@@ -393,7 +393,7 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
                 <div className="space-y-2">
                   <button
                     onClick={() => setExpandedComments(!expandedComments)}
-                    className="text-xs text-primary-400 hover:text-primary-300 mb-2"
+                    className="text-xs text-accent hover:text-accent-dark mb-2"
                   >
                     {expandedComments ? 'Hide' : 'Show'} Comments ({comments.length})
                   </button>

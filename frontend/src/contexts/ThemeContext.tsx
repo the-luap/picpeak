@@ -1,6 +1,63 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { ThemeConfig, EventTheme, GALLERY_THEME_PRESETS } from '../types/theme.types';
+import { fontsService, extractFamilyName, type FontDefinition } from '../services/fonts.service';
+import { applyForceColorMode } from '../utils/themeMigration';
+import { getReadableForeground } from '../utils/contrast';
+import { usePublicSettings } from '../hooks/usePublicSettings';
+
+// Self-hosted font loader. Resolves the available-fonts list once (cached for
+// 5 minutes) and lazily injects @font-face blocks into <head> only for the
+// families a page actually uses. Avoids preloading every available font on
+// every gallery view.
+const FONTS_LIST_TTL_MS = 5 * 60 * 1000;
+let fontsListPromise: Promise<FontDefinition[]> | null = null;
+let fontsListExpiresAt = 0;
+const injectedFamilies = new Set<string>();
+const FONT_STYLE_ID = 'self-hosted-fonts';
+
+function getFontsList(): Promise<FontDefinition[]> {
+  if (fontsListPromise && Date.now() < fontsListExpiresAt) {
+    return fontsListPromise;
+  }
+  fontsListPromise = fontsService.list().catch((err) => {
+    console.error('Failed to load fonts list:', err);
+    return [];
+  });
+  fontsListExpiresAt = Date.now() + FONTS_LIST_TTL_MS;
+  return fontsListPromise;
+}
+
+function ensureFontFaceLoaded(family: string, weights: number[]): void {
+  if (injectedFamilies.has(family)) return;
+  injectedFamilies.add(family);
+
+  let styleEl = document.getElementById(FONT_STYLE_ID) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = FONT_STYLE_ID;
+    document.head.appendChild(styleEl);
+  }
+
+  // Folder name on disk = family name with hyphens. URL-encode in case of
+  // unusual characters (the scanner already restricts to subdirectory names,
+  // so this is belt-and-braces).
+  const folderName = family.replace(/ /g, '-');
+  const blocks = weights.map(
+    (w) => `@font-face{font-family:'${family}';font-style:normal;font-weight:${w};font-display:swap;src:url('/fonts/${encodeURIComponent(folderName)}/${w}.woff2') format('woff2');}`
+  );
+  styleEl.textContent += '\n' + blocks.join('\n');
+}
+
+async function loadFontForFamily(cssFontFamily: string | undefined | null): Promise<void> {
+  const family = extractFamilyName(cssFontFamily);
+  if (!family) return;
+  if (injectedFamilies.has(family)) return;
+  const fonts = await getFontsList();
+  const match = fonts.find((f) => f.family.toLowerCase() === family.toLowerCase());
+  if (!match) return; // unknown family — browser falls back to the CSS generic
+  ensureFontFaceLoaded(match.family, match.weights);
+}
 
 function resolveColorMode(mode: 'light' | 'dark' | 'auto' | undefined): 'light' | 'dark' {
   if (mode === 'dark') return 'dark';
@@ -36,8 +93,8 @@ interface ThemeProviderProps {
   initialThemeName?: string;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
-  children, 
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({
+  children,
   initialTheme = GALLERY_THEME_PRESETS.default.config,
   initialThemeName = 'default'
 }) => {
@@ -45,23 +102,76 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const [themeName, setThemeName] = useState(initialThemeName);
   const [resolvedColorMode, setResolvedColorMode] = useState<'light' | 'dark'>(() => resolveColorMode(initialTheme.colorMode));
 
-  const applyTheme = useCallback((themeConfig: ThemeConfig) => {
+  // Subscribe to the instance-wide force color mode setting. When an admin
+  // toggles "Force dark / light" in Branding, all open admin and gallery
+  // tabs re-apply the active theme through applyForceColorMode within the
+  // refetch interval so the lock takes effect without a full reload.
+  // Refetch is best-effort — a stale cached value just means a delayed flip,
+  // not a broken state.
+  const { data: publicSettings } = usePublicSettings({ refetchInterval: 30_000 });
+  const forcedMode = publicSettings?.branding_force_color_mode === 'dark'
+    ? 'dark'
+    : publicSettings?.branding_force_color_mode === 'light'
+      ? 'light'
+      : null;
+
+  const applyTheme = useCallback((rawThemeConfig: ThemeConfig) => {
     const root = document.documentElement;
-    
-    // Apply CSS variables
+
+    // Honour the instance-wide force color mode at the chokepoint so every
+    // call site (gallery, admin, preview iframe, branding live preview) is
+    // forced to follow without each one having to remember to do it.
+    // applyForceColorMode is a no-op when forcedMode is null, and only
+    // swaps surface/text tokens when the active theme doesn't natively
+    // support the locked mode — accent CI colours are preserved either way.
+    const themeConfig = applyForceColorMode(rawThemeConfig, forcedMode);
+
+    // Apply CSS variables — 8-token CI palette.
+    // Legacy --color-primary / --color-primary-light / --color-primary-dark
+    // are kept for any consumer still reading them; they mirror accent-dark.
     if (themeConfig.primaryColor) {
       root.style.setProperty('--color-primary', themeConfig.primaryColor);
-      // Generate primary color shades
       root.style.setProperty('--color-primary-light', lightenColor(themeConfig.primaryColor, 20));
       root.style.setProperty('--color-primary-dark', darkenColor(themeConfig.primaryColor, 20));
     }
-    
+
     if (themeConfig.accentColor) {
       root.style.setProperty('--color-accent', themeConfig.accentColor);
+      // Pick a readable foreground (white or black) for text/icons sitting
+      // on top of `--color-accent`. The gallery header Download CTA reads
+      // this via `var(--color-accent-fg, #ffffff)` so a pale accent doesn't
+      // leave the button text unreadable (PR #401 review follow-up).
+      root.style.setProperty('--color-accent-fg', getReadableForeground(themeConfig.accentColor));
+    }
+
+    // Accent-dark: filled CTA background. Falls back to primaryColor for
+    // legacy themes that pre-date the explicit token (matches the previous
+    // implicit behavior where .btn-primary used --color-primary).
+    const accentDark = themeConfig.accentDarkColor || themeConfig.primaryColor;
+    if (accentDark) {
+      root.style.setProperty('--color-accent-dark', accentDark);
+      // Same readable-foreground treatment for filled CTAs (.btn-primary
+      // and .tile-selected) that paint on top of accent-dark.
+      root.style.setProperty('--color-accent-dark-fg', getReadableForeground(accentDark));
     }
     
     if (themeConfig.backgroundColor) {
       root.style.setProperty('--color-background', themeConfig.backgroundColor);
+
+      // Cache the resolved background by slug so the next visit can
+      // apply it from the inline bootstrap in index.html before React
+      // mounts (#358 — eliminates the white flash on dark-theme galleries).
+      try {
+        const m = window.location.pathname.match(/\/gallery\/([^/?#]+)/);
+        if (m && m[1]) {
+          localStorage.setItem(
+            `gallery-theme-bg-${decodeURIComponent(m[1])}`,
+            themeConfig.backgroundColor
+          );
+        }
+      } catch {
+        /* ignore — caching is best-effort */
+      }
     }
     
     if (themeConfig.textColor) {
@@ -70,10 +180,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     
     if (themeConfig.fontFamily) {
       root.style.setProperty('--font-family', themeConfig.fontFamily);
+      // Lazily inject the @font-face for this family if we haven't already.
+      // Fire-and-forget: the CSS variable is set immediately, the font file
+      // streams in afterward and `font-display: swap` reflows on arrival.
+      void loadFontForFamily(themeConfig.fontFamily);
     }
-    
+
     if (themeConfig.headingFontFamily) {
       root.style.setProperty('--heading-font-family', themeConfig.headingFontFamily);
+      void loadFontForFamily(themeConfig.headingFontFamily);
     }
     
     if (themeConfig.borderRadius) {
@@ -118,6 +233,16 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       root.style.setProperty('--color-surface', '#1a1a1a');
     } else {
       root.style.setProperty('--color-surface', '#ffffff');
+    }
+
+    // Elevated: raised panels, image placeholders. Falls back to a slight
+    // shift from surface so the layering still reads on legacy themes.
+    if (themeConfig.elevatedColor) {
+      root.style.setProperty('--color-elevated', themeConfig.elevatedColor);
+    } else if (effectiveMode === 'dark') {
+      root.style.setProperty('--color-elevated', '#242424');
+    } else {
+      root.style.setProperty('--color-elevated', '#f5f5f5');
     }
 
     if (themeConfig.surfaceBorderColor) {
@@ -178,7 +303,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       }
       styleElement.textContent = themeConfig.customCss;
     }
-  }, []);
+  }, [forcedMode]);
 
   const setThemeConfig = useCallback((newTheme: ThemeConfig) => {
     setTheme(newTheme);
@@ -198,15 +323,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     setThemeByName('default');
   }, [setThemeByName]);
 
-  // Apply theme when it changes, but skip if it's the same
+  // Apply theme when it changes, OR when force-mode changes (so an admin
+  // toggling Force dark / light in Branding flips every open tab on the
+  // next public-settings refetch tick — no reload needed).
   useEffect(() => {
-    const root = document.documentElement;
-    const currentPrimary = root.style.getPropertyValue('--color-primary');
-    
-    // Only apply if the theme has actually changed
-    if (currentPrimary !== theme.primaryColor) {
-      applyTheme(theme);
-    }
+    applyTheme(theme);
   }, [theme, applyTheme]);
 
   // Load theme from localStorage on mount (skip if in gallery view)

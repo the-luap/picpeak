@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
-import { useQuery } from '@tanstack/react-query';
-import { getApiBaseUrl } from '../../utils/url';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 
 interface ReCaptchaProps {
   onChange: (token: string | null) => void;
@@ -9,31 +8,16 @@ interface ReCaptchaProps {
   size?: 'normal' | 'compact';
 }
 
-export const ReCaptcha: React.FC<ReCaptchaProps> = ({ 
-  onChange, 
+export const ReCaptcha: React.FC<ReCaptchaProps> = ({
+  onChange,
   onExpired,
-  size = 'normal' 
+  size = 'normal'
 }) => {
   const recaptchaRef = React.useRef<ReCAPTCHA>(null);
-  const [siteKey, setSiteKey] = useState<string>('');
+  const { data: settings } = usePublicSettings();
 
-  // Fetch public settings to get reCAPTCHA site key
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-      return response.json();
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const siteKey = settings?.recaptcha_site_key ?? '';
 
-  useEffect(() => {
-    if (settings?.recaptcha_site_key) {
-      setSiteKey(settings.recaptcha_site_key);
-    }
-  }, [settings]);
-
-  // If reCAPTCHA is not enabled or site key is not available, return null
   if (!settings?.enable_recaptcha || !siteKey) {
     return null;
   }

@@ -3,8 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PicPeak - Photo Sharing Platform</title>
+
+    <!-- Pre-React theme bootstrap (#358).
+         The browser may paint the very first frame before our inline
+         <script> below runs, so we set OS-preference defaults via CSS
+         here in <head> — that gets applied before any paint. The
+         script then layers a per-gallery cache hit on top when one is
+         available. Without this CSS, the very first frame on first-
+         visit dark-OS devices flashed white briefly (see Rekoo-PS's
+         frame f1 in the issue). -->
+    <style>
+      html, body { background-color: #fafafa; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background-color: #171717; }
+      }
+      /* Smooth out the cache → API theme transition for the rare case
+         where the cached colour drifts from the freshly fetched theme. */
+      html { transition: background-color 200ms ease; }
+    </style>
+
+    <script>
+      /*
+       * Pre-React theme bootstrap (#358).
+       *
+       * The CSS @media block above handles the OS-preference default
+       * before paint. This script then applies a per-gallery cached
+       * background (written by ThemeContext on the previous visit) so
+       * revisits land on the exact theme background from frame one.
+       */
+      (function () {
+        try {
+          var m = location.pathname.match(/\/gallery\/([^\/?#]+)/);
+          var bg = null;
+          if (m && m[1]) {
+            bg = localStorage.getItem('gallery-theme-bg-' + decodeURIComponent(m[1]));
+          }
+          if (bg) {
+            var root = document.documentElement;
+            root.style.backgroundColor = bg;
+            document.body && (document.body.style.backgroundColor = bg);
+            root.style.setProperty('--color-background', bg);
+          }
+        } catch (e) { /* never block render on a cache miss */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

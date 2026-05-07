@@ -163,22 +163,13 @@ async function createRateLimiter() {
       const isAuthEndpoint = req.path.match(/\/(auth|login|gallery\/[^/]+\/verify)$/);
       return isAuthEndpoint ? currentConfig.authMaxRequests : currentConfig.maxRequests;
     },
-    keyGenerator: (req) => {
-      // Use correct client IP when behind proxy
-      return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-             req.headers['x-real-ip'] || 
-             req.connection.remoteAddress || 
-             req.ip;
-    },
+    keyGenerator: (req) => req.ip,
     skip: async (req) => {
       const currentConfig = await getRateLimitSettings();
       return shouldSkipRateLimit(req, currentConfig);
     },
     handler: (req, res) => {
-      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                     req.headers['x-real-ip'] || 
-                     req.connection.remoteAddress || 
-                     req.ip;
+      const clientIp = req.ip;
       
       // Enhanced logging for production analysis
       logger.warn('Rate limit exceeded', {
@@ -223,22 +214,13 @@ async function createAuthRateLimiter() {
   return rateLimit({
     windowMs: config.windowMinutes * 60 * 1000,
     max: config.authMaxRequests,
-    keyGenerator: (req) => {
-      // Use correct client IP when behind proxy
-      return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-             req.headers['x-real-ip'] || 
-             req.connection.remoteAddress || 
-             req.ip;
-    },
+    keyGenerator: (req) => req.ip,
     skip: async () => {
       const currentConfig = await getRateLimitSettings();
       return !currentConfig.enabled;
     },
     handler: (req, res) => {
-      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                     req.headers['x-real-ip'] || 
-                     req.connection.remoteAddress || 
-                     req.ip;
+      const clientIp = req.ip;
       
       // Enhanced logging for auth failures
       logger.warn('Auth rate limit exceeded', {

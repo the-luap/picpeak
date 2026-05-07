@@ -1,6 +1,6 @@
 {
   "name": "picpeak-backend",
-  "version": "2.6.5",
+  "version": "3.42.1",
   "description": "Backend for PicPeak event photo sharing platform",
   "main": "server.js",
   "scripts": {
@@ -10,13 +10,13 @@
     "migrate:safe": "node migrations/run-migrations-safe.js",
     "generate:watermarks": "node scripts/generate-watermarks.js",
     "test": "jest",
+    "test:s3": "SKIP_S3_TESTS=false jest __tests__/integration/backup-s3",
     "lint": "eslint src/"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.850.0",
     "@aws-sdk/lib-storage": "^3.850.0",
     "@aws-sdk/s3-request-presigner": "^3.850.0",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "adm-zip": "^0.5.16",
     "archiver": "^5.3.1",
     "axios": "1.14.0",
@@ -50,6 +50,8 @@
     "sanitize-html": "^2.17.0",
     "sharp": "0.34.3",
     "sqlite3": "^5.1.6",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "winston": "^3.8.2",
     "zxcvbn": "^4.4.2"

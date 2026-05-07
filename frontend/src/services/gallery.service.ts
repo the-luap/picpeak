@@ -82,12 +82,26 @@ export const galleryService = {
   },
 
   // Download all photos as ZIP
-  async downloadAllPhotos(slug: string): Promise<void> {
+  // When a pre-generated zip is available, use native browser download (Content-Length → progress bar).
+  // Otherwise fall back to blob download.
+  async downloadAllPhotos(slug: string, zipReady?: boolean): Promise<void> {
+    if (zipReady) {
+      // Native browser download — the server sends Content-Length so
+      // the browser shows a real progress bar and mobile doesn't crash.
+      const link = document.createElement('a');
+      link.href = `/api/gallery/${slug}/download-all`;
+      link.setAttribute('download', `${slug}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return;
+    }
+
+    // Fallback: blob download (no Content-Length, buffered in memory)
     const response = await api.get(`/gallery/${slug}/download-all`, {
       responseType: 'blob',
     });
 
-    // Create download link
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
@@ -112,6 +126,16 @@ export const galleryService = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  // Toggle photo visibility (client-only)
+  async togglePhotoVisibility(slug: string, photoId: number, visibility: 'visible' | 'hidden'): Promise<void> {
+    await api.patch(`/gallery/${slug}/photos/${photoId}/visibility`, { visibility });
+  },
+
+  // Bulk toggle photo visibility (client-only)
+  async bulkToggleVisibility(slug: string, photoIds: number[], visibility: 'visible' | 'hidden'): Promise<void> {
+    await api.patch(`/gallery/${slug}/photos/visibility/bulk`, { photoIds, visibility });
   },
 
   // Get gallery statistics

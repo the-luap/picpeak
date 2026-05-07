@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Upload, X, CheckCircle } from 'lucide-react';
+import { Upload, X, CheckCircle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { Button } from '../common';
 import { api } from '../../config/api';
-import { publicSettingsService } from '../../services/publicSettings.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { extensionsToMimeTypes, extensionsToAcceptString } from '../../utils/fileTypes';
 
 interface UserPhotoUploadProps {
@@ -25,12 +24,12 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  // Per-file processing state — flips to true once axios reports
+  // bytes-on-wire for that file, so the UI can show "Processing…"
+  // instead of a static 100% bar while the backend works.
+  const [processingFiles, setProcessingFiles] = useState<{ [key: string]: boolean }>({});
 
-  const { data: publicSettings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings(),
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: publicSettings } = usePublicSettings();
 
   const allowedMimeTypes = useMemo(
     () => extensionsToMimeTypes(publicSettings?.allowed_file_types),
@@ -92,8 +91,17 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                 ...prev,
                 [file.name]: progress,
               }));
+              if (progress >= 100) {
+                setProcessingFiles(prev => ({ ...prev, [file.name]: true }));
+              }
             }
           },
+        });
+        // Request resolved → file fully processed by backend.
+        setProcessingFiles(prev => {
+          const next = { ...prev };
+          delete next[file.name];
+          return next;
         });
         successCount++;
       } catch (error: any) {
@@ -149,7 +157,7 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
             {/* Upload Area */}
             <div className="mb-4 sm:mb-6">
               <label className="block">
-                <div className="border-2 border-dashed border-surface rounded-lg p-6 sm:p-8 text-center hover:border-primary-500 transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-surface rounded-lg p-6 sm:p-8 text-center hover:border-accent-dark transition-colors cursor-pointer">
                   <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-neutral-400 mx-auto mb-3" />
                   <p className="text-sm font-medium text-muted-theme mb-1">
                     {t('upload.clickToUpload')}
@@ -190,13 +198,19 @@ export const UserPhotoUpload: React.FC<UserPhotoUploadProps> = ({
                     </div>
                     {uploadProgress[file.name] !== undefined ? (
                       <div className="flex items-center gap-2">
-                        {uploadProgress[file.name] === 100 ? (
+                        {processingFiles[file.name] ? (
+                          // Bytes are on the server; the request hasn't
+                          // resolved yet because the backend is still
+                          // generating thumbnails / reading EXIF. Show
+                          // a spinner so it doesn't look stuck at 100%.
+                          <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />
+                        ) : uploadProgress[file.name] === 100 ? (
                           <CheckCircle className="w-5 h-5 text-green-600" />
                         ) : (
                           <div className="w-20">
                             <div className="bg-neutral-200 rounded-full h-2">
                               <div
-                                className="bg-primary-600 h-2 rounded-full transition-all"
+                                className="bg-accent-dark h-2 rounded-full transition-all"
                                 style={{ width: `${uploadProgress[file.name]}%` }}
                               />
                             </div>

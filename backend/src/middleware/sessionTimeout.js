@@ -134,6 +134,34 @@ async function sessionTimeoutMiddleware(req, res, next) {
   }
 }
 
+// Non-mutating timeout check used by /auth/session (auth.js) so the session
+// endpoint enforces the same timeout the protected /api/admin endpoints
+// already enforce via sessionTimeoutMiddleware. Without this, /auth/session
+// returns valid:true for a token that protected endpoints reject with
+// 401 SESSION_TIMEOUT, producing the /admin/login → /admin/dashboard →
+// /admin/login redirect loop reported on v3.39.1-beta.0 (issue #350).
+//
+// Mirrors the middleware's logic exactly:
+//   - If we have an in-memory lastActivity for this token, return whether
+//     the gap exceeds the timeout.
+//   - Otherwise (post-restart, or first request with this token), return
+//     whether the token's iat is older than the timeout — same post-restart
+//     guard the middleware uses.
+//
+// Does NOT update the in-memory map. The middleware is the only place that
+// tracks activity; /auth/session is read-only by design.
+async function isSessionExpired(token, decoded) {
+  if (!token || !decoded || !decoded.id) return false;
+  const now = Date.now();
+  const timeout = await getSessionTimeout();
+  const lastActivity = sessions.get(token);
+  if (lastActivity) {
+    return (now - lastActivity) > timeout;
+  }
+  const tokenIssuedAt = (decoded.iat || 0) * 1000;
+  return (now - tokenIssuedAt) > timeout;
+}
+
 // Function to end a session
 function endSession(token) {
   sessions.delete(token);
@@ -153,8 +181,9 @@ function getActiveSessions() {
   return active;
 }
 
-module.exports = { 
-  sessionTimeoutMiddleware, 
+module.exports = {
+  sessionTimeoutMiddleware,
+  isSessionExpired,
   endSession,
-  getActiveSessions 
+  getActiveSessions
 };

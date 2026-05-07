@@ -3,7 +3,8 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { Button, SkeletonGalleryGrid, Skeleton } from '../common';
+import { Button } from '../common';
+import { GallerySkeleton } from './GallerySkeleton';
 import { useGalleryAuth, useTheme } from '../../contexts';
 import { useGalleryPhotos, useDownloadAllPhotos } from '../../hooks/useGallery';
 import { PhotoGridWithLayouts } from './PhotoGridWithLayouts';
@@ -13,16 +14,21 @@ import { GalleryLayout } from './GalleryLayout';
 import { GallerySidebar } from './GallerySidebar';
 import { PhotoFilterBar } from './PhotoFilterBar';
 import { UserPhotoUpload } from './UserPhotoUpload';
+import { GuestNamePromptModal } from './GuestNamePromptModal';
+import { GuestRecoveryModal } from './GuestRecoveryModal';
+import { GuestIdentityProvider } from '../../contexts/GuestIdentityContext';
 import type { FilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
-import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { api } from '../../config/api';
-import { Upload, Menu } from 'lucide-react';
+import { Upload, Menu, Eye, EyeOff, Shield } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
 import { useGalleryCustomCss } from '../../hooks/useGalleryCustomCss';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import type { Photo } from '../../types';
+import { GALLERY_THEME_PRESETS } from '../../types/theme.types';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface GalleryViewProps {
   slug: string;
@@ -41,13 +47,35 @@ interface GalleryViewProps {
   };
 }
 
+// Convert default_photo_sort DB value to internal sortBy state
+const parseDefaultPhotoSort = (defaultSort?: string): { sortBy: 'date' | 'name' | 'size' | 'rating' | 'capture_date'; sortDesc: boolean } => {
+  switch (defaultSort) {
+    case 'upload_date_asc':
+      return { sortBy: 'date', sortDesc: false };
+    case 'capture_date_desc':
+      return { sortBy: 'capture_date', sortDesc: true };
+    case 'capture_date_asc':
+      return { sortBy: 'capture_date', sortDesc: false };
+    case 'filename_asc':
+      return { sortBy: 'name', sortDesc: false };
+    case 'filename_desc':
+      return { sortBy: 'name', sortDesc: true };
+    case 'upload_date_desc':
+    default:
+      return { sortBy: 'date', sortDesc: true };
+  }
+};
+
 export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const { t } = useTranslation();
-  const { logout } = useGalleryAuth();
+  const { logout, isClient } = useGalleryAuth();
   const { setTheme, theme } = useTheme();
+  const queryClient = useQueryClient();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size' | 'rating' | 'capture_date'>('date');
+  const [sortDesc, setSortDesc] = useState(true);
+  const [defaultSortApplied, setDefaultSortApplied] = useState(false);
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,6 +128,16 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       setProtectionLevel(data.event.protection_level);
     }
   }, [data?.event?.protection_level]);
+
+  // Apply default photo sort from event settings
+  useEffect(() => {
+    if (!defaultSortApplied && data?.event?.default_photo_sort) {
+      const { sortBy: defaultSortBy, sortDesc: defaultSortDesc } = parseDefaultPhotoSort(data.event.default_photo_sort);
+      setSortBy(defaultSortBy);
+      setSortDesc(defaultSortDesc);
+      setDefaultSortApplied(true);
+    }
+  }, [data?.event?.default_photo_sort, defaultSortApplied]);
 
   // Get individual protection settings from event
   const disableRightClick = data?.event?.disable_right_click === true;
@@ -162,15 +200,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch branding settings
-  const { data: settingsData } = useQuery({
-    queryKey: ['gallery-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
 
   // Fetch feedback settings
   const { data: feedbackSettings } = useQuery({
@@ -280,7 +310,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     if (settingsData && data?.event) {
       let themeToApply = null;
       const fullEvent = data.event; // Use the full event data from API
-      
+
       if (fullEvent.color_theme) {
         try {
           // Check if it's a valid JSON string
@@ -310,8 +340,10 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         // No event theme, use global theme
         themeToApply = settingsData.theme_config;
       }
-      
-      // Apply theme with a small delay to ensure it overrides any global theme
+
+      // Apply theme with a small delay to ensure it overrides any global theme.
+      // Instance-wide force color mode is enforced inside ThemeContext.applyTheme,
+      // so callers don't have to wrap the theme themselves.
       if (themeToApply) {
         // Use setTimeout to ensure this runs after any global theme application
         const timer = setTimeout(() => {
@@ -325,11 +357,42 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           }
           setTheme(themeToApply);
         }, 0);
-        
+
         return () => clearTimeout(timer);
       }
     }
   }, [settingsData, data, setTheme]); // Use data instead of event prop
+
+  // Client visibility toggle handler (#172)
+  const handleToggleVisibility = async (photoId: number, currentVisibility: string) => {
+    const newVisibility = currentVisibility === 'hidden' ? 'visible' : 'hidden';
+    try {
+      await galleryService.togglePhotoVisibility(slug, photoId, newVisibility);
+      queryClient.invalidateQueries({ queryKey: ['gallery-photos', slug] });
+    } catch (error) {
+      console.error('Failed to toggle visibility:', error);
+    }
+  };
+
+  const handleBulkVisibility = async (visibility: 'visible' | 'hidden') => {
+    if (selectedPhotos.size === 0) return;
+    try {
+      await galleryService.bulkToggleVisibility(slug, Array.from(selectedPhotos), visibility);
+      setSelectedPhotos(new Set());
+      setIsSelectionMode(false);
+      queryClient.invalidateQueries({ queryKey: ['gallery-photos', slug] });
+    } catch (error) {
+      console.error('Failed to bulk toggle visibility:', error);
+    }
+  };
+
+  // Client visibility stats
+  const visibleCount = useMemo(() => {
+    if (!isClient || !data?.photos) return 0;
+    return data.photos.filter(p => p.visibility !== 'hidden').length;
+  }, [isClient, data?.photos]);
+
+  const totalCount = data?.photos?.length || 0;
 
   // Calculate days until expiration (null means never expires)
   const daysUntilExpiration = event.expires_at
@@ -382,29 +445,32 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     // Apply sorting
+    // Each comparator defaults to its natural order (desc for dates/size/rating, asc for name).
+    // The flip multiplier reverses that when sortDesc differs from the natural order.
+    const flip = sortDesc ? 1 : -1;
     photos.sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.filename.localeCompare(b.filename);
+          // Natural order is ascending (A-Z); flip when sortDesc=true
+          return (sortDesc ? -1 : 1) * a.filename.localeCompare(b.filename);
         case 'size':
-          return b.size - a.size;
-        case 'rating':
-          // Sort by rating (highest first), then by comment count
+          return flip * (b.size - a.size);
+        case 'rating': {
           const ratingA = a.average_rating || 0;
           const ratingB = b.average_rating || 0;
           if (ratingA !== ratingB) {
-            return ratingB - ratingA;
+            return flip * (ratingB - ratingA);
           }
-          // If ratings are equal, sort by comment count
-          return (b.comment_count || 0) - (a.comment_count || 0);
-        case 'capture_date':
-          // Sort by capture date (from EXIF), fall back to upload date
+          return flip * ((b.comment_count || 0) - (a.comment_count || 0));
+        }
+        case 'capture_date': {
           const captureDateA = a.captured_at || a.uploaded_at;
           const captureDateB = b.captured_at || b.uploaded_at;
-          return new Date(captureDateB).getTime() - new Date(captureDateA).getTime();
+          return flip * (new Date(captureDateB).getTime() - new Date(captureDateA).getTime());
+        }
         case 'date':
         default:
-          return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+          return flip * (new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime());
       }
     });
     
@@ -418,7 +484,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     }
     
     return photos;
-  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, watermarkEnabled, slug, filterType, mediaFilter]);
+  }, [data?.photos, selectedCategoryId, searchTerm, sortBy, sortDesc, watermarkEnabled, slug, filterType, mediaFilter]);
 
   const likeCount = useMemo(
     () => data?.photos?.filter(p => (p.like_count ?? 0) > 0).length || 0,
@@ -444,7 +510,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       return;
     }
     
-    downloadAllMutation.mutate(slug);
+    downloadAllMutation.mutate({ slug, zipReady: data?.event?.download_zip_ready });
     
     // Track download all action
     analyticsService.trackGalleryEvent('bulk_download', {
@@ -517,31 +583,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   }, [showUrgentWarning, daysUntilExpiration, slug]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background)' }}>
-        {/* Header Skeleton */}
-        <header className="bg-surface border-b border-surface sticky top-0 z-40">
-          <div className="container py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Skeleton height={32} width={200} className="mb-2" />
-                <Skeleton height={20} width={300} />
-              </div>
-              <div className="flex items-center gap-2">
-                <Skeleton height={40} width={120} />
-                <Skeleton height={40} width={100} />
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        {/* Content Skeleton */}
-        <div className="container mt-6">
-          <Skeleton height={80} className="mb-6" />
-          <SkeletonGalleryGrid count={12} />
-        </div>
-      </div>
-    );
+    return <GallerySkeleton />;
   }
 
   if (error || !data) {
@@ -566,15 +608,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
-  // Determine controls style (sidebar vs classic inline filter bar)
-  // If controlsStyle is explicitly set in theme, use that
-  // Otherwise: use sidebar for non-grid layouts OR hero headers (prevents filter bar above hero)
+  // Determine controls style (sidebar vs classic inline filter bar).
+  // Decoupled from layout — only an explicit controlsStyle === 'sidebar' on
+  // the theme renders the sidebar. Default (unset or 'classic') is the inline
+  // filter bar for every layout, so the gallery header/filters look identical
+  // regardless of whether the photos render as grid, masonry, carousel, etc.
   const headerStyle = data?.event?.header_style || theme.headerStyle || 'standard';
   const isHeroHeader = headerStyle === 'hero';
-  const controlsStyle = theme.controlsStyle;
-  const showSidebar = controlsStyle
-    ? controlsStyle === 'sidebar'
-    : (theme.galleryLayout !== 'grid' || isHeroHeader);
+  const showSidebar = theme.controlsStyle === 'sidebar';
 
   // Full-page layouts (gallery-premium, gallery-story) have their own integrated UI
   // Skip all wrapper elements (header, footer, sidebar, filters) for these layouts
@@ -619,6 +660,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           headerStyle={data?.event?.header_style || theme.headerStyle}
           heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
           heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+          welcomeMessage={event.welcome_message}
           onLogout={logout}
         />
 
@@ -638,8 +680,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
     );
   }
 
+  const identityMode: 'simple' | 'guest' =
+    feedbackSettings?.identity_mode === 'guest' ? 'guest' : 'simple';
+
   return (
+    <GuestIdentityProvider slug={slug} identityMode={identityMode}>
     <>
+      <GuestNamePromptModal requireEmail={!!feedbackSettings?.require_name_email} />
+      <GuestRecoveryModal />
       {/* Sidebar for non-grid layouts */}
       {showSidebar ? (
         <GallerySidebar
@@ -683,21 +731,32 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}
         onLogout={logout}
-        showDownloadAll={!showSidebar && allowDownloads}
+        // Old Download All header button is replaced by the new
+        // showHeaderDownload below — accent-coloured, always visible when
+        // downloads are allowed, sits right before Logout (#386).
+        showDownloadAll={false}
         onDownloadAll={handleDownloadAll}
         isDownloading={downloadAllMutation.isPending}
-        menuButton={showSidebar ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gallery-btn"
-            leftIcon={<Menu className="w-4 h-4" />}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={t('gallery.toggleMenu')}
-          >
-            <span className="hidden sm:inline">{t('common.menu')}</span>
-          </Button>
-        ) : undefined}
+        menuButton={
+          // Menu icon is shown when the event theme uses the sidebar
+          // controls style. The button is icon-only — the redundant
+          // "Menu" text label was dropped (#386). The wrapper aligns the
+          // icon to the very left of the header so the logo lines up
+          // with the leftmost gallery image.
+          showSidebar ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gallery-btn p-2"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={t('gallery.toggleMenu')}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+          ) : undefined
+        }
+        showHeaderDownload={allowDownloads}
+        onHeaderDownload={handleDownloadAll}
         headerExtra={(() => {
           const items = [];
           
@@ -733,8 +792,48 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           <ExpirationBanner daysRemaining={daysUntilExpiration} expiresAt={event.expires_at} />
         )}
 
-        {/* Search and Filters - Only for grid layout */}
-        {!showSidebar ? (
+        {/* Client Access Banner (#172) */}
+        {isClient && (
+          <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  {t('clientAccess.banner')}
+                </span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">
+                  {t('clientAccess.visibleCount', { visible: visibleCount, total: totalCount })}
+                </span>
+              </div>
+              {isSelectionMode && selectedPhotos.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<EyeOff className="w-4 h-4" />}
+                    onClick={() => handleBulkVisibility('hidden')}
+                  >
+                    {t('clientAccess.hideSelected')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<Eye className="w-4 h-4" />}
+                    onClick={() => handleBulkVisibility('visible')}
+                  >
+                    {t('clientAccess.showSelected')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filters - Only for grid layout, when admin enables the
+            filter bar globally, and when the gallery actually has photos
+            (avoids the empty "Search photos by filename" row in the screenshot
+            from discussion #317). */}
+        {!showSidebar && settingsData?.gallery_show_filter_bar !== false && (data?.photos?.length ?? 0) > 0 ? (
           <div className="mt-6">
             <PhotoFilterBar
               categories={data.categories}
@@ -794,6 +893,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             headerStyle={data?.event?.header_style || theme.headerStyle}
             heroDividerStyle={data?.event?.hero_divider_style || theme.heroDividerStyle || 'wave'}
             heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
+            welcomeMessage={event.welcome_message}
+            isClient={isClient}
+            onToggleVisibility={isClient ? handleToggleVisibility : undefined}
           />
         </div>
 
@@ -812,5 +914,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         )}
       </GalleryLayout>
     </>
+    </GuestIdentityProvider>
   );
 };

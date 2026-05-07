@@ -7,6 +7,7 @@ const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const archiver = require('archiver');
 const AdmZip = require('adm-zip');
+const { requireEventOwnership } = require('../middleware/ownership');
 const router = express.Router();
 
 // Get all archived events
@@ -82,7 +83,7 @@ router.get('/', adminAuth, requirePermission('archives.view'), async (req, res) 
 });
 
 // Get single archive details
-router.get('/:id', adminAuth, requirePermission('archives.view'), async (req, res) => {
+router.get('/:id', adminAuth, requirePermission('archives.view'), requireEventOwnership, async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -138,7 +139,7 @@ router.get('/:id', adminAuth, requirePermission('archives.view'), async (req, re
 });
 
 // Restore archive
-router.post('/:id/restore', adminAuth, requirePermission('archives.restore'), async (req, res) => {
+router.post('/:id/restore', adminAuth, requirePermission('archives.restore'), requireEventOwnership, async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -301,7 +302,7 @@ router.post('/:id/restore', adminAuth, requirePermission('archives.restore'), as
 });
 
 // Download archive
-router.get('/:id/download', adminAuth, requirePermission('archives.download'), async (req, res) => {
+router.get('/:id/download', adminAuth, requirePermission('archives.download'), requireEventOwnership, async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)
@@ -350,7 +351,7 @@ router.get('/:id/download', adminAuth, requirePermission('archives.download'), a
 });
 
 // Delete archive permanently
-router.delete('/:id', adminAuth, requirePermission('archives.delete'), async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('archives.delete'), requireEventOwnership, async (req, res) => {
   try {
     const archive = await db('events')
       .where('id', req.params.id)

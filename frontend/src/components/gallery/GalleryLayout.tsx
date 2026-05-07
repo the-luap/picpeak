@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Calendar, Clock, Download, LogOut } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +8,9 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { Button } from '../common';
 import { DynamicFavicon } from '../common/DynamicFavicon';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 import { buildResourceUrl } from '../../utils/url';
+import { cmsService, type PublicCMSPage } from '../../services/cms.service';
 import type { HeaderStyleType } from '../../types/theme.types';
 
 interface GalleryLayoutProps {
@@ -37,11 +40,53 @@ interface GalleryLayoutProps {
   showDownloadAll?: boolean;
   onDownloadAll?: () => void;
   isDownloading?: boolean;
+  /**
+   * "Download" CTA shown immediately to the left of the Logout button in the
+   * standard / banner header. Same handler as Download All; the label and
+   * placement are intentionally simpler — single primary action right before
+   * Logout, the natural step at the end of a gallery visit (#386). Always
+   * visible when allowed (independent of sidebar state) so guests aren't
+   * forced to discover the download in the menu.
+   */
+  showHeaderDownload?: boolean;
+  onHeaderDownload?: () => void;
   headerExtra?: React.ReactNode;
   menuButton?: React.ReactNode;
   headerStyle?: HeaderStyleType;
   children: React.ReactNode;
 }
+
+/**
+ * Accent-coloured "Download" CTA shown immediately to the left of the
+ * Logout button. Identical markup is rendered in three header variants
+ * (standard/banner, minimal, hero) — extracted into a small component
+ * here so changes (label, icon, contrast) only need to happen in one
+ * place. Background reads `--color-accent`; text reads `--color-accent-fg`
+ * which `ThemeContext.applyTheme` derives from the accent's luminance,
+ * so a pale accent automatically gets dark text and a saturated accent
+ * gets white. Falls back to white if the variable isn't set (legacy
+ * deployments before the contrast helper landed).
+ */
+const HeaderDownloadButton: React.FC<{
+  onClick: () => void;
+  isDownloading?: boolean;
+  label: string;
+}> = ({ onClick, isDownloading = false, label }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={isDownloading}
+    aria-label={label}
+    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+    style={{
+      backgroundColor: 'var(--color-accent)',
+      color: 'var(--color-accent-fg, #ffffff)',
+    }}
+  >
+    <Download className="w-4 h-4" />
+    <span className="hidden sm:inline">{label}</span>
+  </button>
+);
 
 export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   event,
@@ -51,6 +96,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   showDownloadAll = false,
   onDownloadAll,
   isDownloading = false,
+  showHeaderDownload = false,
+  onHeaderDownload,
   headerExtra,
   menuButton,
   headerStyle: headerStyleProp,
@@ -59,15 +106,30 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { theme } = useTheme();
+  const guestIdentity = useGuestIdentityOptional();
+
+  // Footer legal-link config. Cached aggressively because the toggle state
+  // changes rarely and the gallery footer renders on every page view.
+  // Failures fall back to the internal /impressum and /datenschutz routes.
+  const { data: impressumPage } = useQuery<PublicCMSPage>({
+    queryKey: ['public-cms', 'impressum'],
+    queryFn: () => cmsService.getPublicPage('impressum'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const { data: datenschutzPage } = useQuery<PublicCMSPage>({
+    queryKey: ['public-cms', 'datenschutz'],
+    queryFn: () => cmsService.getPublicPage('datenschutz'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   // Determine header style - use prop first (from event data), then theme, then fall back to 'standard'
   const headerStyle: HeaderStyleType = headerStyleProp || theme.headerStyle || 'standard';
   const isHeroHeader = headerStyle === 'hero';
+  const isBannerHeader = headerStyle === 'banner';
   const isMinimalHeader = headerStyle === 'minimal';
   const isNoHeader = headerStyle === 'none';
-
-  // Non-grid layouts that need the sidebar (excluding layouts using hero header)
-  const isNonGridLayout = theme.galleryLayout && theme.galleryLayout !== 'grid';
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   const headingFontFamily = theme.headingFontFamily || fontFamily;
   
@@ -133,66 +195,25 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
       <DynamicFavicon />
 
       {/* Header structure */}
-      <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isNonGridLayout || isHeroHeader ? 'shadow-sm' : ''}`}>
-        {/* For non-grid layouts - keep the current structure (standard and minimal/none) */}
-        {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
-          <div className="bg-surface border-b border-surface">
-            <div className="container py-2">
-              <div className="flex items-center justify-between">
-                {/* Left side - Menu button and other header extras */}
-                <div className="flex items-center gap-3">
-                  {menuButton}
-                  {headerExtra}
-                </div>
-                
-                {/* Right side - Download and Logout */}
-                <div className="flex items-center gap-3">
-                  {/* Download all button */}
-                  {showDownloadAll && onDownloadAll && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<Download className="w-4 h-4" />}
-                      onClick={onDownloadAll}
-                      isLoading={isDownloading}
-                      className="gallery-btn gallery-btn-download"
-                    >
-                      <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
-                      <span className="sm:hidden">{t('common.download')}</span>
-                    </Button>
-                  )}
-
-                  {/* Logout button */}
-                  {showLogout && onLogout && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<LogOut className="w-4 h-4" />}
-                      onClick={onLogout}
-                      className="gallery-btn gallery-btn-logout sm:min-w-0"
-                    >
-                      <span className="hidden sm:inline">{t('common.logout')}</span>
-                    </Button>
-                  )}
-                </div>
+      <header className={`gallery-header bg-surface border-b border-surface sticky top-0 z-40 ${isHeroHeader || isBannerHeader ? 'shadow-sm' : ''}`}>
+        {/* Standard / Banner header - full bar with logo, event info, and actions (all layouts) */}
+        {!isHeroHeader && !isMinimalHeader && !isNoHeader && (
+          <div className="container py-3 relative">
+            {/*
+             * Menu icon is absolute-positioned at the very left of the header
+             * row instead of sitting inside the flex flow, so the logo's left
+             * edge can align with the leftmost gallery image (both anchored at
+             * `.container` left padding) — see #386. The icon stays vertically
+             * centred via top-1/2 + -translate-y-1/2.
+             */}
+            {menuButton && (
+              <div className="absolute left-3 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-10">
+                {menuButton}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* For grid layout - everything in one bar (standard header) */}
-        {!isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
-          <div className="container py-3">
+            )}
             <div className="flex items-center justify-between gap-2 sm:gap-4">
-              {/* Left side - Menu button, Logo */}
-              <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                {/* Menu button */}
-                {menuButton && (
-                  <div className="flex-shrink-0">
-                    {menuButton}
-                  </div>
-                )}
-                
+              {/* Left side - Logo (menu lives in the absolute wrapper above) */}
+              <div className={`flex items-center gap-2 sm:gap-4 flex-shrink-0 ${menuButton ? 'pl-12 sm:pl-14' : ''}`}>
                 {/* Logo - Show custom logo or fallback to PicPeak logo */}
                 {shouldShowLogo('header') && (
                   <div className={`gallery-logo-wrapper flex-shrink-0 flex items-center gap-2 ${brandingSettings?.logo_position === 'center' ? 'flex-1' : ''} ${getLogoPositionClass()}`}>
@@ -267,6 +288,20 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                   </Button>
                 )}
 
+                {/*
+                 * "Download" CTA — accent-coloured button immediately left of
+                 * Logout, always visible when the gallery allows downloads.
+                 * Markup lives in HeaderDownloadButton above; reused in the
+                 * minimal and hero headers below.
+                 */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <HeaderDownloadButton
+                    onClick={onHeaderDownload}
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
+                )}
+
                 {/* Logout button */}
                 {showLogout && onLogout && (
                   <Button
@@ -302,56 +337,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For minimal/none header + non-grid layouts - compact menu bar */}
-        {isNonGridLayout && (isMinimalHeader || isNoHeader) && (
-          <div className="bg-surface border-b border-surface">
-            <div className="container py-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {menuButton}
-                  {headerExtra}
-                  {isMinimalHeader && (
-                    <h1
-                      className="text-sm font-semibold text-theme truncate"
-                      style={{ fontFamily: headingFontFamily }}
-                    >
-                      {event.event_name}
-                    </h1>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  {showDownloadAll && onDownloadAll && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      leftIcon={<Download className="w-4 h-4" />}
-                      onClick={onDownloadAll}
-                      isLoading={isDownloading}
-                      className="gallery-btn gallery-btn-download"
-                    >
-                      <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
-                      <span className="sm:hidden">{t('common.download')}</span>
-                    </Button>
-                  )}
-                  {showLogout && onLogout && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<LogOut className="w-4 h-4" />}
-                      onClick={onLogout}
-                      className="gallery-btn gallery-btn-logout sm:min-w-0"
-                    >
-                      <span className="hidden sm:inline">{t('common.logout')}</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* For minimal header + grid layout - compact bar with event name */}
-        {!isNonGridLayout && isMinimalHeader && (
+        {/* Minimal header - compact bar with event name (all layouts) */}
+        {isMinimalHeader && (
           <div className="container py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -377,6 +364,17 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     <span className="hidden sm:inline">{t('gallery.downloadAll')}</span>
                   </Button>
                 )}
+                {/* Accent Download CTA — also rendered in the minimal header
+                    so the action stays one click away regardless of header
+                    style. Intentionally NOT shown in the no-header variant
+                    where the gallery is fully chromeless by design. */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <HeaderDownloadButton
+                    onClick={onHeaderDownload}
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
+                )}
                 {showLogout && onLogout && (
                   <Button
                     variant="outline"
@@ -393,8 +391,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
           </div>
         )}
 
-        {/* For none header + grid layout - just functional buttons, no event info */}
-        {!isNonGridLayout && isNoHeader && (
+        {/* No-header style - just functional buttons, no event info (all layouts) */}
+        {isNoHeader && (
           <div className="container py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -457,6 +455,18 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                   </Button>
                 )}
 
+                {/* Accent Download CTA — also rendered above the hero so the
+                    primary download action is reachable without scrolling.
+                    Intentionally NOT shown in the no-header variant where
+                    the gallery is fully chromeless by design. */}
+                {showHeaderDownload && onHeaderDownload && (
+                  <HeaderDownloadButton
+                    onClick={onHeaderDownload}
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
+                )}
+
                 {/* Logout button */}
                 {showLogout && onLogout && (
                   <Button
@@ -475,8 +485,8 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
         )}
       </header>
 
-      {/* Colored banner for non-grid layouts when using standard header style */}
-      {isNonGridLayout && !isHeroHeader && !isMinimalHeader && !isNoHeader && (
+      {/* Colored banner — only when headerStyle === 'banner', regardless of layout */}
+      {isBannerHeader && (
         <div
           className="gallery-hero relative text-white overflow-hidden"
           style={{
@@ -571,7 +581,7 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
               {t('gallery.needHelp')}{' '}
               <a 
                 href={`mailto:${brandingSettings.support_email}`}
-                className="text-primary-600 hover:text-primary-700 break-all"
+                className="text-accent hover:opacity-80 break-all"
               >
                 {brandingSettings.support_email}
               </a>
@@ -589,20 +599,58 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
             </p>
           )}
           {/* Legal Links */}
-          <div className="mt-4 flex items-center justify-center gap-4">
-            <Link 
-              to="/impressum" 
-              className="text-xs text-muted-theme hover:text-theme transition-colors"
-            >
-              {t('legal.impressum')}
-            </Link>
+          <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
+            {impressumPage?.use_external_url && impressumPage.external_url ? (
+              <a
+                href={impressumPage.external_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.impressum')}
+              </a>
+            ) : (
+              <Link
+                to="/impressum"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.impressum')}
+              </Link>
+            )}
             <span className="text-xs text-muted-theme">|</span>
-            <Link 
-              to="/datenschutz" 
-              className="text-xs text-muted-theme hover:text-theme transition-colors"
-            >
-              {t('legal.datenschutz')}
-            </Link>
+            {datenschutzPage?.use_external_url && datenschutzPage.external_url ? (
+              <a
+                href={datenschutzPage.external_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.datenschutz')}
+              </a>
+            ) : (
+              <Link
+                to="/datenschutz"
+                className="text-xs text-muted-theme hover:text-theme transition-colors"
+              >
+                {t('legal.datenschutz')}
+              </Link>
+            )}
+            {guestIdentity?.identity && (
+              <>
+                <span className="text-xs text-muted-theme">|</span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-theme hover:text-theme transition-colors"
+                  onClick={async () => {
+                    if (window.confirm(t('gallery.footer.forgetMeConfirm', 'Your name and selections will be removed from this gallery.'))) {
+                      await guestIdentity.forget();
+                    }
+                  }}
+                >
+                  {t('gallery.footer.forgetMe', 'Forget me ({{name}})', { name: guestIdentity.identity.name })}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </footer>

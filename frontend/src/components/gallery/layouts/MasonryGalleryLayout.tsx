@@ -4,6 +4,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import {
   calculateJustifiedLayout,
   createJustifiedPhotos,
@@ -33,6 +34,9 @@ interface MasonryPhotoProps {
   onQuickComment?: () => void;
   // Column width for calculating proper aspect-ratio-based height
   columnWidth?: number;
+  // Optimistic "I liked this" state + callback (lifted to parent)
+  liked?: boolean;
+  onLikeSuccess?: () => void;
 }
 
 const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
@@ -48,11 +52,14 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
   slug,
   feedbackOptions,
   onQuickComment,
-  columnWidth = 300
+  columnWidth = 300,
+  liked = false,
+  onLikeSuccess,
 }) => {
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
 
   // Calculate height based on actual photo aspect ratio
   // This preserves the photo's natural proportions in the masonry layout
@@ -95,7 +102,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         <div className="absolute top-2 left-2 flex gap-1 z-10">
           {(photo.comment_count ?? 0) > 0 && (
             <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${photo.comment_count ?? 0} comments`}>
-              <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+              <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
               <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
             </div>
           )}
@@ -148,24 +155,56 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
             )}
             {feedbackEnabled && feedbackOptions?.allowLikes && (
               <button
-                className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                className={`p-2 rounded-full transition-colors ${
+                  liked
+                    ? 'bg-red-500/90 hover:bg-red-500'
+                    : 'bg-white/90 hover:bg-white'
+                }`}
                 onClick={async (e) => {
                   e.stopPropagation();
+                  if (guestIdentity?.identityMode === 'guest') {
+                    try {
+                      await guestIdentity.ensureIdentity();
+                    } catch {
+                      return;
+                    }
+                    // Optimistic UI: mark as liked immediately
+                    if (onLikeSuccess) onLikeSuccess();
+                    try {
+                      await feedbackService.submitFeedback(slug!, String(photo.id), {
+                        feedback_type: 'like',
+                      });
+                    } catch (err) {
+                      // eslint-disable-next-line no-console
+                      console.warn('Like submit failed, keeping optimistic UI', err);
+                    }
+                    return;
+                  }
                   if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                     setPendingAction({ type: 'like', photoId: photo.id });
                     setShowIdentityModal(true);
                     return;
                   }
-                  await feedbackService.submitFeedback(slug!, String(photo.id), {
-                    feedback_type: 'like',
-                    guest_name: savedIdentity?.name,
-                    guest_email: savedIdentity?.email,
-                  });
+                  // Optimistic UI: mark as liked immediately
+                  if (onLikeSuccess) onLikeSuccess();
+                  try {
+                    await feedbackService.submitFeedback(slug!, String(photo.id), {
+                      feedback_type: 'like',
+                      guest_name: savedIdentity?.name,
+                      guest_email: savedIdentity?.email,
+                    });
+                  } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.warn('Like submit failed, keeping optimistic UI', err);
+                  }
                 }}
-                aria-label="Like photo"
-                title="Like"
+                aria-label={liked ? 'Unlike photo' : 'Like photo'}
+                aria-pressed={liked}
+                title={liked ? 'Unlike' : 'Like'}
               >
-                <Heart className="w-5 h-5 text-neutral-800" />
+                <Heart
+                  className={`w-5 h-5 ${liked ? 'text-white fill-white' : 'text-neutral-800'}`}
+                />
               </button>
             )}
           </>
@@ -180,6 +219,9 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
           setSavedIdentity({ name, email });
           setShowIdentityModal(false);
           if (pendingAction) {
+            if (pendingAction.type === 'like' && onLikeSuccess) {
+              onLikeSuccess();
+            }
             await feedbackService.submitFeedback(slug!, String(pendingAction.photoId), {
               feedback_type: pendingAction.type,
               guest_name: name,
@@ -203,7 +245,7 @@ const MasonryPhoto: React.FC<MasonryPhotoProps> = ({
         }`}
         onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
       >
-        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+        <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
           {isSelected && <Check className="w-4 h-4 text-white" />}
         </div>
       </button>
@@ -236,11 +278,21 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
   const [containerWidth, setContainerWidth] = useState(0);
+  // Optimistic "I liked this" state — lifted here so it survives re-renders
+  // of individual MasonryPhoto components during layout reflow/resize.
+  const [likedPhotoIds, setLikedPhotoIds] = useState<Set<number>>(new Set());
   const gallerySettings = theme.gallerySettings || {};
   const gutter = gallerySettings.masonryGutter || 16;
   const mode = gallerySettings.masonryMode || 'columns';
   const targetRowHeight = gallerySettings.masonryRowHeight || 250;
   const lastRowBehavior = gallerySettings.masonryLastRowBehavior || 'left';
+  const scale = gallerySettings.thumbnailScale || 'md';
+
+  const scaleOffsets: Record<string, number> = { xs: 3, sm: 1, md: 0, lg: -1, xl: -2 };
+  const applyScale = (cols: number) => Math.max(1, cols + (scaleOffsets[scale] ?? 0));
+
+  // Apply scale to columns only in columns mode
+  const scaledColumns = mode === 'columns' ? applyScale(columns) : columns;
 
 
   // Calculate number of columns based on container width (for columns mode)
@@ -339,20 +391,20 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   // This creates a more balanced masonry layout instead of round-robin
   const photoColumns: Photo[][] = useMemo(() => {
     if (mode !== 'columns' || photos.length === 0) {
-      return Array.from({ length: columns }, () => []);
+      return Array.from({ length: scaledColumns }, () => []);
     }
 
-    const cols: Photo[][] = Array.from({ length: columns }, () => []);
-    const colHeights: number[] = Array(columns).fill(0);
+    const cols: Photo[][] = Array.from({ length: scaledColumns }, () => []);
+    const colHeights: number[] = Array(scaledColumns).fill(0);
 
     // Calculate approximate column width for height estimation
-    const approxColWidth = containerWidth > 0 ? (containerWidth - (columns - 1) * gutter) / columns : 300;
+    const approxColWidth = containerWidth > 0 ? (containerWidth - (scaledColumns - 1) * gutter) / scaledColumns : 300;
 
     photos.forEach((photo) => {
       // Find the shortest column
       let shortestCol = 0;
       let minHeight = colHeights[0];
-      for (let i = 1; i < columns; i++) {
+      for (let i = 1; i < scaledColumns; i++) {
         if (colHeights[i] < minHeight) {
           minHeight = colHeights[i];
           shortestCol = i;
@@ -373,15 +425,15 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     });
 
     return cols;
-  }, [mode, photos, columns, containerWidth, gutter]);
+  }, [mode, photos, scaledColumns, containerWidth, gutter]);
 
   // Calculate approximate column width for aspect ratio calculations
   const columnWidth = useMemo(() => {
-    if (containerWidth <= 0 || columns <= 0) return 300;
+    if (containerWidth <= 0 || scaledColumns <= 0) return 300;
     // Account for gaps between columns
-    const totalGaps = (columns - 1) * gutter;
-    return (containerWidth - totalGaps) / columns;
-  }, [containerWidth, columns, gutter]);
+    const totalGaps = (scaledColumns - 1) * gutter;
+    return (containerWidth - totalGaps) / scaledColumns;
+  }, [containerWidth, scaledColumns, gutter]);
 
   // ROWS MODE - Google Photos style justified layout
   if (mode === 'rows') {
@@ -434,7 +486,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -490,7 +542,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
@@ -550,7 +602,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -606,7 +658,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
@@ -675,7 +727,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 <div className="absolute top-2 left-2 flex gap-1 z-10">
                   {(photo.comment_count ?? 0) > 0 && (
                     <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                      <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                       <span className="text-xs font-medium text-neutral-700">{photo.comment_count ?? 0}</span>
                     </div>
                   )}
@@ -731,7 +783,7 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 }`}
                 onClick={(e) => { e.stopPropagation(); onPhotoSelect && onPhotoSelect(photo.id); }}
               >
-                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+                <div className={`w-6 h-6 rounded-full border-2 ${selectedPhotos.has(photo.id) ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
                   {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
                 </div>
               </button>
@@ -778,6 +830,14 @@ export const MasonryGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 feedbackOptions={feedbackOptions}
                 onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(originalIndex)}
                 columnWidth={columnWidth}
+                liked={likedPhotoIds.has(photo.id)}
+                onLikeSuccess={() => {
+                  setLikedPhotoIds((prev) => {
+                    const next = new Set(prev);
+                    next.add(photo.id);
+                    return next;
+                  });
+                }}
               />
             );
           })}

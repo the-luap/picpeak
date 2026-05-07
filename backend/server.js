@@ -23,6 +23,7 @@ const { startExpirationChecker } = require('./src/services/expirationChecker');
 const { initializeTransporter, startEmailQueueProcessor } = require('./src/services/emailProcessor');
 const { startBackupService } = require('./src/services/backupService');
 const { startScheduledBackups } = require('./src/services/databaseBackup');
+const backgroundProcessor = require('./src/services/backgroundProcessor');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
@@ -194,13 +195,23 @@ function composeInlineStyles(payload) {
   return cssSegments.join('\n\n');
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function renderBrandHeader(branding) {
-  const displayName = branding.companyName || 'PicPeak';
-  const logoSrc = branding.logoUrl || '/picpeak-logo-transparent.png';
+  const displayName = escapeHtml(branding.companyName || 'PicPeak');
+  const logoSrc = encodeURI(branding.logoUrl || '/picpeak-logo-transparent.png');
   const logo = `<img src="${logoSrc}" alt="${displayName}" class="brand-logo" loading="lazy" decoding="async" />`;
 
   const tagline = branding.companyTagline
-    ? `<p class="brand-tagline">${branding.companyTagline}</p>`
+    ? `<p class="brand-tagline">${escapeHtml(branding.companyTagline)}</p>`
     : '';
 
   return `<header class="site-header">
@@ -224,13 +235,14 @@ function renderBrandHeader(branding) {
 }
 
 function renderBrandFooter(branding) {
-  const displayName = branding.companyName || 'PicPeak';
+  const displayName = escapeHtml(branding.companyName || 'PicPeak');
   const footerNote = branding.footerText
-    ? `<p>${branding.footerText}</p>`
+    ? `<p>${escapeHtml(branding.footerText)}</p>`
     : '<p>Powered by PicPeak to keep every celebration beautifully organised.</p>';
 
-  const supportLink = branding.supportEmail
-    ? `<a href="mailto:${branding.supportEmail}">Support</a>`
+  const supportEmail = escapeHtml(branding.supportEmail || '');
+  const supportLink = supportEmail
+    ? `<a href="mailto:${supportEmail}">Support</a>`
     : '';
 
   const legalLinks = `
@@ -282,7 +294,7 @@ function buildPublicSiteDocument(payload) {
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${payload.title}</title>
+  <title>${escapeHtml(payload.title)}</title>
   <meta name="description" content="Curated photo galleries and stories from unforgettable celebrations." />
   ${seoMeta}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -362,6 +374,20 @@ async function initializeRateLimiters() {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// CSRF protection: require JSON Content-Type on mutating API requests
+// This blocks cross-origin form submissions which cannot set Content-Type: application/json
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+    const contentType = req.headers['content-type'] || '';
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    // Allow empty-body requests (e.g. logout), multipart for uploads, and JSON for API calls
+    if (contentLength > 0 && !contentType.includes('application/json') && !contentType.includes('multipart/form-data')) {
+      return res.status(415).json({ error: 'Unsupported Content-Type. Use application/json or multipart/form-data.' });
+    }
+  }
+  next();
+});
+
 // Request logging for API routes (with timestamps)
 const apiRequestLogger = (req, res, next) => {
   try {
@@ -423,6 +449,34 @@ app.use('/thumbnails', require('./src/middleware/photoAuth'), setCorsHeaders, se
 // Static file serving for uploads (public - logos, favicons)
 app.use('/uploads', setCorsHeaders, secureStatic(path.join(storagePath, 'uploads')));
 
+// Static file serving for self-hosted webfonts (public — gallery visitors
+// load these via @font-face). Replaces the previous Google Fonts CDN
+// dependency, which leaked visitor IPs to a third party (LG München 2022
+// GDPR ruling).
+//
+// Two mounts in priority order:
+//   1. STORAGE_PATH/fonts/ — runtime user additions (drop a folder, restart)
+//   2. backend/assets/fonts/ — bundled defaults baked into the image
+// Express evaluates handlers in order, so user-supplied files win on overlap.
+//
+// We deliberately do NOT set `immutable` on these responses. The filenames
+// are stable (e.g. Inter/400.woff2), so an admin replacing the file on disk
+// must be able to roll out the change to clients. With max-age + Last-Modified
+// (set by express.static from file mtime), browsers send If-Modified-Since
+// after expiry and pick up the new version automatically. See docs/fonts.md
+// "Replacing an existing font" for the documented rollout strategy.
+const fontStaticOpts = { maxAge: '7d' };
+app.use(
+  '/fonts',
+  setCorsHeaders,
+  secureStatic(path.join(storagePath, 'fonts'), fontStaticOpts)
+);
+app.use(
+  '/fonts',
+  setCorsHeaders,
+  secureStatic(path.resolve(__dirname, 'assets/fonts'), fontStaticOpts)
+);
+
 // Debug endpoint to check IP detection (only in development)
 if (process.env.NODE_ENV === 'development') {
   app.get('/api/debug/ip', (req, res) => {
@@ -445,6 +499,13 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+// OG/Twitter-card preview endpoint for gallery share URLs. Crawlers (WhatsApp,
+// Slack, Facebook, etc.) don't execute JS, so the SPA's client-side meta tags
+// never reach them. nginx routes UA-detected crawlers from /gallery/:slug to
+// here; humans still get the SPA via try_files.
+const { isSocialCrawler, handleGalleryOgRequest } = require('./src/services/galleryOgService');
+app.get('/og/gallery/:slug', handleGalleryOgRequest);
+
 // robots.txt endpoint (dynamic, served from DB settings)
 const { generateRobotsTxt } = require('./src/services/robotsTxtService');
 app.get('/robots.txt', async (req, res) => {
@@ -461,21 +522,24 @@ app.get('/robots.txt', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Health check endpoint. `pid` + `uptime` let monitors (and the local E2E
+// watchdog) detect a silent process restart between two checks.
 app.get('/health', async (req, res) => {
   try {
-    // Check database connectivity
     await db.raw('SELECT 1');
-
     res.json({
       status: 'ok',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   } catch (error) {
     logger.error('Health check failed:', error);
     res.status(503).json({
       status: 'error',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      pid: process.pid,
+      uptime: process.uptime()
     });
   }
 });
@@ -487,12 +551,14 @@ app.use('/api/auth', authRoutes);
 // Gallery routes - main routes first, then feedback routes
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/gallery', require('./src/routes/galleryFeedback'));
+app.use('/api/gallery', require('./src/routes/galleryGuests'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
 app.use('/api/admin/backup', require('./src/routes/adminBackup'));
 app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
+app.use('/api/admin', require('./src/routes/adminGuests'));
 app.use('/api/admin/image-security', require('./src/routes/adminImageSecurity'));
 app.use('/api/admin/thumbnails', require('./src/routes/adminThumbnails'));
 app.use('/api/admin/photos', require('./src/routes/adminPhotoDimensions'));
@@ -502,8 +568,30 @@ app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
+app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
+app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));
+// Public v1 API for n8n / external integrations (#322). Mounted under
+// /api/v1; auth handled per-route via apiTokenAuth (Bearer tokens).
+app.use('/api/v1', require('./src/routes/v1/events'));
+
+// Swagger UI for the v1 API. Admin-gated since it lists endpoint shapes
+// that should not be enumerable to anonymous users (a common reduce-info-leak hardening).
+{
+  const swaggerUi = require('swagger-ui-express');
+  const { adminAuth } = require('./src/middleware/auth');
+  const { getOpenApiSpec } = require('./src/openapi/spec');
+  app.get('/api/openapi.json', adminAuth, (_req, res) => res.json(getOpenApiSpec()));
+  app.use(
+    '/api/docs',
+    adminAuth,
+    swaggerUi.serve,
+    swaggerUi.setup(getOpenApiSpec(), { customSiteTitle: 'PicPeak API · v1' })
+  );
+}
+
 app.use('/api/invite', require('./src/routes/acceptInvite'));
 app.use('/api/public/settings', require('./src/routes/publicSettings'));
+app.use('/api/public/fonts', require('./src/routes/publicFonts'));
 app.use('/api/public', require('./src/routes/publicCMS'));
 app.use('/api/images', require('./src/routes/protectedImages'));
 app.use('/api/secure-images', secureImagesRoutes);
@@ -525,7 +613,16 @@ try {
       res.sendFile(indexPath);
     });
 
-    // SPA fallback for admin + gallery routes
+    // SPA fallback for admin + gallery routes. For gallery URLs we intercept
+    // social-crawler User-Agents and serve OG/Twitter-card metadata so link
+    // previews show the event name + branding instead of the SPA stub.
+    app.get('/gallery/:slug/:token?', (req, res, next) => {
+      if (isSocialCrawler(req.get('user-agent'))) {
+        return handleGalleryOgRequest(req, res);
+      }
+      return next();
+    }, (req, res) => res.sendFile(indexPath));
+
     app.get(['/admin', '/admin/*', '/gallery/*'], (req, res) => {
       res.sendFile(indexPath);
     });
@@ -550,6 +647,10 @@ async function startServer() {
   try {
     // Initialize database
     await initializeDatabase();
+
+    // Initialize storage backend (local fs or S3) — fail fast on misconfig
+    const { initStorage } = require('./src/services/storage');
+    await initStorage();
 
     // Initialize rate limiters after database is ready
     await initializeRateLimiters();
@@ -577,12 +678,27 @@ async function startServer() {
     await initializeTransporter();
     startEmailQueueProcessor();
     
+    // Start webhook delivery worker (#327)
+    const { startWebhookDeliveryWorker } = require('./src/services/webhookDeliveryWorker');
+    startWebhookDeliveryWorker();
+
+    // Start S3 auto-importer (#328 follow-up). No-op when STORAGE_AUTO_IMPORT
+    // is unset OR STORAGE_BACKEND=local — replaces the chokidar watcher
+    // for S3-mode deployments that drop files into the bucket directly.
+    const { startS3AutoImporter } = require('./src/services/s3AutoImporter');
+    startS3AutoImporter();
+
     // Start backup service
     await startBackupService();
-    
+
     // Start database backup service
     await startScheduledBackups();
-    
+
+    // Start the async photo-processing worker pool. Picks up
+    // photos in 'pending' state (from POST /upload) and runs the
+    // sharp/ffmpeg/EXIF pipeline off the request thread.
+    backgroundProcessor.start();
+
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(`Admin interface: ${process.env.ADMIN_URL || 'http://localhost:3000'}`);

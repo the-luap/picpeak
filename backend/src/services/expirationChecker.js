@@ -1,9 +1,9 @@
 const cron = require('node-cron');
 const { db } = require('../database/db');
 const { archiveEvent } = require('./archiveService');
-const { queueEmail } = require('./emailProcessor');
+const { queueEmail, getSupportEmail } = require('./emailProcessor');
+const { buildShareLinkVariants } = require('./shareLinkService');
 const logger = require('../utils/logger');
-const { formatDate } = require('../utils/dateFormatter');
 const { formatBoolean } = require('../utils/dbCompat');
 
 function startExpirationChecker() {
@@ -60,23 +60,33 @@ async function checkExpirations() {
 
 async function queueExpirationWarning(event) {
   const daysRemaining = Math.ceil((new Date(event.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
-  
-  // Determine language based on email domain
+
   const recipientEmail = event.customer_email || event.host_email;
   const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
-  const emailLang = recipientEmail && recipientEmail.endsWith('.de') ? 'de' : 'en';
-  
-  // Queue email to customer
+  // event.share_link is the path-only form; use the full URL so the
+  // recipient's mail client renders a clickable absolute link.
+  const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
+
+  // Date formatting + language detection happen inside processTemplate using
+  // the recipient's resolved language — pass the raw ISO date and let the
+  // processor format it. Don't pre-format here with a hard-coded `.de`/`en`
+  // sniff (that helper got the wrong language for nl/pt/ru recipients).
+  //
+  // gallery_password is sent as the security-message sentinel because by the
+  // time the warning fires we no longer have the plaintext (only the bcrypt
+  // hash); the processor localises this to "(Not shown for security reasons)".
   await queueEmail(event.id, recipientEmail, 'expiration_warning', {
     customer_name: recipientName,
     customer_email: recipientEmail,
     host_name: recipientName,
     event_name: event.event_name,
+    event_date: event.event_date,
     days_remaining: daysRemaining.toString(),
-    expiration_date: await formatDate(event.expires_at, emailLang),
-    gallery_link: event.share_link
+    expiry_date: event.expires_at,
+    gallery_link: shareUrl,
+    gallery_password: '{{password_security_message}}'
   });
-  
+
   logger.info(`Queued expiration warning for event ${event.slug}`);
 }
 
@@ -84,23 +94,62 @@ async function handleExpiredEvent(event) {
   try {
     // Mark as inactive
     await db('events').where('id', event.id).update({ is_active: formatBoolean(false) });
-    
-    // Queue expiration emails
+
+    // Fire event.expired BEFORE the cascading archive call so receivers
+    // get the lifecycle in order (expired → archived). Canonical event
+    // subject (#341) so receivers see the same shape across all event.*
+    // types; expires_at retained as an event.expired-specific extra.
+    try {
+      const webhookService = require('./webhookService');
+      await webhookService.fire('event.expired', {
+        event: {
+          ...webhookService.buildEventSubject({
+            id: event.id,
+            slug: event.slug,
+            event_name: event.event_name,
+            event_type: event.event_type,
+            event_date: event.event_date,
+            share_token: event.share_token,
+            customer_name: event.customer_name || event.host_name,
+            customer_email: event.customer_email || event.host_email,
+            customer_phone: event.customer_phone,
+          }),
+          expires_at: event.expires_at,
+        },
+      });
+    } catch (e) { /* non-fatal */ }
+
+    // Queue expiration emails. The shipped templates (EN/DE in legacy 028,
+    // NL/PT/RU in core 075) reference {{host_name}}, {{event_date}},
+    // {{expiry_date}} and {{support_email}}. Without these, customers used
+    // to literally see "Hello {{host_name}}, your gallery expired on
+    // {{expiry_date}}…" — fill them all here.
     const recipientEmail = event.customer_email || event.host_email;
     const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+    const supportEmail = await getSupportEmail();
 
-    await queueEmail(event.id, recipientEmail, 'gallery_expired', {
-      event_name: event.event_name,
-      admin_email: event.admin_email,
+    const customerVars = {
       customer_name: recipientName,
-      customer_email: recipientEmail
-    });
-    
-    // Also notify admin
-    await queueEmail(event.id, event.admin_email, 'gallery_expired', {
+      customer_email: recipientEmail,
+      host_name: recipientName,
       event_name: event.event_name,
-      admin_email: event.admin_email
-    });
+      event_date: event.event_date,
+      expiry_date: event.expires_at,
+      admin_email: event.admin_email,
+      support_email: supportEmail
+    };
+
+    if (recipientEmail) {
+      await queueEmail(event.id, recipientEmail, 'gallery_expired', customerVars);
+    }
+
+    // Also notify admin (when configured).
+    if (event.admin_email && event.admin_email !== recipientEmail) {
+      await queueEmail(event.id, event.admin_email, 'gallery_expired', {
+        ...customerVars,
+        host_name: 'Admin'
+      });
+    }
     
     // Start archiving process
     await archiveEvent(event);

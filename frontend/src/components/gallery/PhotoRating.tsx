@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackService } from '../../services/feedback.service';
 import { toast } from 'react-toastify';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoRatingProps {
   photoId: string;
@@ -31,6 +32,7 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
   const safeAverageRating = typeof averageRating === 'number' && !isNaN(averageRating) ? averageRating : 0;
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const guestIdentity = useGuestIdentityOptional();
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
@@ -72,18 +74,28 @@ export const PhotoRating: React.FC<PhotoRatingProps> = ({
     }
   });
 
-  const handleRatingClick = (rating: number) => {
+  const handleRatingClick = async (rating: number) => {
     if (!isEnabled || isSubmitting) return;
-    
+
     // If clicking the same rating, remove it
     const newRating = rating === currentRating ? 0 : rating;
-    
+
+    if (guestIdentity?.identityMode === 'guest') {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      submitRatingMutation.mutate({ rating: newRating });
+      return;
+    }
+
     if (requireNameEmail && !savedIdentity) {
       setPendingRating(newRating);
       setShowIdentityModal(true);
     } else {
-      submitRatingMutation.mutate({ 
-        rating: newRating, 
+      submitRatingMutation.mutate({
+        rating: newRating,
         guest_name: savedIdentity?.name,
         guest_email: savedIdentity?.email
       });

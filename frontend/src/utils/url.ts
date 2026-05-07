@@ -132,3 +132,30 @@ export const isProductionMode = (): boolean => {
   const apiBase = getApiBaseUrl();
   return !ABSOLUTE_URL_REGEX.test(apiBase);
 };
+
+/**
+ * Build a fully-qualified gallery share URL from the value stored in
+ * `events.share_link`. The DB stores the relative path (e.g.
+ * `/gallery/<slug>/<token>`); for display and clipboard copy we need an
+ * absolute URL the recipient can paste into a browser. Absolute inputs are
+ * passed through (with the same localhost-fallback rule used elsewhere).
+ *
+ * @param link - The relative or absolute share link
+ * @returns A fully-qualified URL, or `'#'` if input is empty
+ */
+export const buildShareLinkUrl = (link: string | null | undefined): string => {
+  if (!link) return '#';
+
+  if (ABSOLUTE_URL_REGEX.test(link)) {
+    if (!shouldFallbackToRelative(link)) return link;
+    try {
+      const parsed = new URL(link);
+      return buildFromOrigin(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+    } catch {
+      return link;
+    }
+  }
+
+  const path = link.startsWith('/') ? link : `/gallery/${link}`;
+  return buildFromOrigin(path);
+};

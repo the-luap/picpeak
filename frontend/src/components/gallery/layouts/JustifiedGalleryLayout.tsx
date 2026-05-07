@@ -8,6 +8,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import { buildResourceUrl } from '../../../utils/url';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
@@ -81,6 +82,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
   liked = false,
   onLikeSuccess,
 }) => {
+  const guestIdentity = useGuestIdentityOptional();
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const overlayTimeoutRef = useRef<number | null>(null);
@@ -301,6 +303,25 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
                     }`}
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (guestIdentity?.identityMode === 'guest') {
+                        try {
+                          await guestIdentity.ensureIdentity();
+                        } catch {
+                          hideOverlay();
+                          return;
+                        }
+                        if (onLikeSuccess) onLikeSuccess();
+                        try {
+                          await feedbackService.submitFeedback(slug!, String(photo.id), {
+                            feedback_type: 'like',
+                          });
+                        } catch (err) {
+                          console.warn('Like submit failed, keeping optimistic UI', err);
+                        }
+                        if (onFeedbackChange) onFeedbackChange();
+                        hideOverlay();
+                        return;
+                      }
                       if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
                         onRequireIdentity('like', photo.id);
                         hideOverlay();
@@ -349,7 +370,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
           >
             <div
               className={`w-6 h-6 rounded-full border-2 ${
-                isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'
+                isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'
               } flex items-center justify-center transition-colors`}
             >
               {isSelected && <Check className="w-4 h-4 text-white" />}
@@ -382,7 +403,7 @@ const JustifiedPhoto: React.FC<JustifiedPhotoProps> = ({
                   className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm"
                   title="Commented"
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                  <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                 </span>
               )}
             </div>

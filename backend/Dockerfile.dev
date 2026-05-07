@@ -5,8 +5,10 @@ WORKDIR /app
 # Upgrade all packages to fix security vulnerabilities (BusyBox CVEs)
 RUN apk upgrade --no-cache
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init for proper signal handling and ffmpeg for video uploads.
+# Alpine's ffmpeg ships both ffmpeg + ffprobe built natively against musl;
+# the npm-bundled binary doesn't run reliably on Alpine. Match production.
+RUN apk add --no-cache dumb-init ffmpeg
 
 # Copy package files
 COPY package*.json ./

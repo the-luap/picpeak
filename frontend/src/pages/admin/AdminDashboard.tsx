@@ -54,10 +54,12 @@ export const AdminDashboard: React.FC = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  // Fetch events data for expiring events
-  const { data: eventsData, isLoading: eventsLoading } = useQuery({
-    queryKey: ['admin-events-summary'],
-    queryFn: () => eventsService.getEvents(1, 100),
+  // Fetch the next 5 expiring events directly from the server. Previously
+  // this fetched the first 100 events and filtered client-side (#346 follow-up),
+  // which silently missed any expiring event outside the first 100 rows.
+  const { data: expiringEventsData, isLoading: eventsLoading } = useQuery({
+    queryKey: ['admin-events-summary', 'expiring'],
+    queryFn: () => eventsService.getEvents(1, 5, 'expiring'),
   });
 
   const isLoading = statsLoading || eventsLoading;
@@ -70,13 +72,8 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  // Calculate expiring events
-  const activeEvents = eventsData?.events.filter(e => e.is_active && !e.is_archived) || [];
-  const expiringEvents = activeEvents.filter(e => {
-    if (!e.expires_at) return false;
-    const days = differenceInDays(parseISO(e.expires_at), new Date());
-    return days <= 7 && days > 0;
-  });
+  const expiringEvents = expiringEventsData?.events ?? [];
+  const expiringTotal = expiringEventsData?.pagination?.total ?? expiringEvents.length;
 
   // Format numbers for display
   const formatNumber = (num: number): string => {
@@ -194,7 +191,7 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-neutral-600 dark:text-neutral-400 py-8 text-center">{t('admin.noEventsExpiring')}</p>
             ) : (
               <div className="space-y-3">
-                {expiringEvents.slice(0, 5).map((event) => {
+                {expiringEvents.map((event) => {
                   const daysLeft = differenceInDays(parseISO(event.expires_at!), new Date());
 
                   return (
@@ -225,12 +222,12 @@ export const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {expiringEvents.length > 5 && (
+            {expiringTotal > 5 && (
               <button
                 onClick={() => navigate('/admin/events?filter=expiring')}
-                className="w-full mt-4 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                className="w-full mt-4 text-sm text-accent hover:opacity-80 font-medium"
               >
-                {t('admin.viewAllExpiringEvents', { count: expiringEvents.length })} →
+                {t('admin.viewAllExpiringEvents', { count: expiringTotal })} →
               </button>
             )}
           </Card>

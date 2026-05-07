@@ -1,8 +1,10 @@
 import React from 'react';
 import { Download, Maximize2, Check, Heart, MessageSquare } from 'lucide-react';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -52,6 +54,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
   const [showIdentityModal, setShowIdentityModal] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
   const [likedLocal, setLikedLocal] = React.useState(false);
   const canComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onQuickComment);
 
@@ -107,6 +110,20 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
                   className={`p-2 rounded-full transition-colors ${likedLocal ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                   onClick={async (e) => {
                     e.stopPropagation();
+                    if (guestIdentity?.identityMode === 'guest') {
+                      try {
+                        await guestIdentity.ensureIdentity();
+                      } catch {
+                        return;
+                      }
+                      setLikedLocal(true);
+                      try {
+                        await feedbackService.submitFeedback(slug!, String(photo.id), {
+                          feedback_type: 'like',
+                        });
+                      } catch (_) {}
+                      return;
+                    }
                     if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                       setPendingAction({ type: 'like', photoId: photo.id });
                       setShowIdentityModal(true);
@@ -163,7 +180,7 @@ const MosaicPhoto: React.FC<MosaicPhotoProps> = ({
           }`}
           onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
         >
-          <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+          <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
             {isSelected && <Check className="w-4 h-4 text-white" />}
           </div>
         </button>
@@ -210,23 +227,33 @@ export const MosaicGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   feedbackEnabled = false,
   feedbackOptions
 }) => {
+  const { theme } = useTheme();
+  const scale = theme.gallerySettings?.thumbnailScale || 'md';
+  const scaleOffsets: Record<string, number> = { xs: 3, sm: 1, md: 0, lg: -1, xl: -2 };
+  const applyScale = (cols: number, min = 1) => Math.max(min, cols + (scaleOffsets[scale] ?? 0));
+
+  const desktop = applyScale(4);
+  const xlDown = applyScale(3);
+  const lgDown = applyScale(2);
+  const mobile = Math.min(applyScale(1), 2); // Cap mobile at 2
+
   return (
     <div
       className="photo-grid w-full"
       style={{
-        columnCount: 4,
+        columnCount: desktop,
         columnGap: '8px',
       }}
     >
       <style>{`
         @media (max-width: 1280px) {
-          .photo-grid { column-count: 3 !important; }
+          .photo-grid { column-count: ${xlDown} !important; }
         }
         @media (max-width: 1024px) {
-          .photo-grid { column-count: 2 !important; }
+          .photo-grid { column-count: ${lgDown} !important; }
         }
         @media (max-width: 640px) {
-          .photo-grid { column-count: 1 !important; }
+          .photo-grid { column-count: ${mobile} !important; }
         }
       `}</style>
       {photos.map((photo, index) => (

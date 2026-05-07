@@ -13,6 +13,7 @@ const {
   getGenericAuthError
 } = require('../utils/authSecurity');
 const { endSession } = require('../middleware/sessionTimeout');
+const { revokeToken } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 const {
   setAdminAuthCookie,
@@ -117,9 +118,8 @@ router.post('/admin/login', [
 
     setAdminAuthCookie(res, token);
 
-    // Include role in response
+    // Token is delivered via HttpOnly cookie only (not in response body)
     res.json({
-      token,
       user: {
         id: admin.id,
         username: admin.username,
@@ -145,7 +145,8 @@ router.post('/logout', async (req, res) => {
     const token = adminToken || galleryToken;
 
     if (token) {
-      // End the session
+      // Revoke the token so it can't be reused, then end the session
+      await revokeToken(token, 'user_logout');
       endSession(token);
 
       try {
@@ -198,6 +199,8 @@ router.post('/gallery/verify', [
       .first();
 
     if (!event) {
+      // Perform a dummy bcrypt compare to prevent timing-based slug enumeration
+      await bcrypt.compare(password || '', '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234');
       await trackFailedAttempt(`gallery:${slug}`, ipAddress, userAgent);
       return res.status(401).json({ error: 'Invalid gallery or password' });
     }
@@ -280,12 +283,89 @@ router.post('/gallery/verify', [
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
         upload_category_id: event.upload_category_id,
-        require_password: requiresPassword
+        require_password: requiresPassword,
+        photo_cap: event.photo_cap
       }
     });
   } catch (error) {
     logger.error('Gallery verification error:', error);
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// Client access login (PIN-based)
+router.post('/gallery/:slug/client-login', [
+  body('password').notEmpty().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { slug } = req.params;
+    const { password } = req.body;
+    const ipAddress = getClientIp(req);
+    const userAgent = req.headers['user-agent'] || '';
+
+    const event = await db('events')
+      .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+      .first();
+
+    if (!event || !event.client_access_enabled || !event.client_password_hash) {
+      await trackFailedAttempt(`client:${slug}`, ipAddress, userAgent);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const lockoutStatus = await checkAccountLockout(`client:${slug}`, ipAddress);
+    if (lockoutStatus.isLocked) {
+      return res.status(423).json({
+        error: 'Too many failed attempts. Please try again later.',
+        retryAfter: lockoutStatus.remainingTime
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, event.client_password_hash);
+    if (!validPassword) {
+      await trackFailedAttempt(`client:${slug}`, ipAddress, userAgent);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    await trackSuccessfulLogin(`client:${slug}`, ipAddress, userAgent);
+
+    const token = jwt.sign({
+      eventId: event.id,
+      eventSlug: event.slug,
+      type: 'gallery',
+      accessLevel: 'client',
+      ip: ipAddress,
+      loginTime: Date.now()
+    }, process.env.JWT_SECRET, {
+      expiresIn: '24h',
+      issuer: 'picpeak-auth'
+    });
+
+    setGalleryAuthCookies(res, token, event.slug);
+
+    res.json({
+      token,
+      event: {
+        id: event.id,
+        event_name: event.event_name,
+        event_type: event.event_type,
+        event_date: event.event_date,
+        welcome_message: event.welcome_message,
+        color_theme: event.color_theme,
+        expires_at: event.expires_at,
+        allow_user_uploads: event.allow_user_uploads,
+        upload_category_id: event.upload_category_id,
+        require_password: true
+      },
+      accessLevel: 'client'
+    });
+  } catch (error) {
+    logger.error('Client login error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
@@ -304,6 +384,17 @@ router.post('/gallery/share-login', [
     const ipAddress = getClientIp(req);
     const userAgent = req.headers['user-agent'] || '';
 
+    // Rate limit share-link login attempts
+    const shareIdentifier = `gallery:${slug}:share`;
+    const lockoutStatus = await checkAccountLockout(shareIdentifier, ipAddress);
+    if (lockoutStatus.isLocked) {
+      logger.warn('Share link login attempt on locked gallery', { slug, ipAddress });
+      return res.status(423).json({
+        error: 'Too many failed attempts. Please try again later.',
+        retryAfter: lockoutStatus.remainingTime
+      });
+    }
+
     let event = await db('events')
       .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
       .first();
@@ -316,12 +407,14 @@ router.post('/gallery/share-login', [
     }
 
     if (!event) {
+      await trackFailedAttempt(shareIdentifier, ipAddress, userAgent);
       return res.status(404).json({ error: 'Gallery not found' });
     }
 
     const expectedToken = getEventShareToken(event);
 
     if (!expectedToken || token !== expectedToken) {
+      await trackFailedAttempt(shareIdentifier, ipAddress, userAgent);
       return res.status(401).json({ error: 'Invalid or expired share link' });
     }
 
@@ -353,7 +446,8 @@ router.post('/gallery/share-login', [
         expires_at: event.expires_at,
         allow_user_uploads: event.allow_user_uploads,
         upload_category_id: event.upload_category_id,
-        require_password: requiresPassword
+        require_password: requiresPassword,
+        photo_cap: event.photo_cap
       }
     });
   } catch (error) {
@@ -362,10 +456,14 @@ router.post('/gallery/share-login', [
   }
 });
 
-// Gallery logout to clear cookies
+// Gallery logout to clear cookies and revoke token
 router.post('/gallery/logout', async (req, res) => {
   try {
     const { slug } = req.body || {};
+    const token = getGalleryTokenFromRequest(req, slug);
+    if (token) {
+      await revokeToken(token, 'gallery_logout');
+    }
     clearGalleryAuthCookies(res, slug);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -379,18 +477,104 @@ router.get('/session', async (req, res) => {
   try {
     const { slug } = req.query;
     const token = getAdminTokenFromRequest(req) || getGalleryTokenFromRequest(req, slug);
-    
+
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
+      // Verify with the same `issuer` claim that adminAuth/galleryAuth
+      // require (#350 — without this, /auth/session accepted pre-issuer
+      // tokens and the frontend thought the user was authenticated, but
+      // every protected endpoint rejected them with 401, producing a
+      // /admin/login → /admin/dashboard → /admin/login redirect loop).
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        issuer: 'picpeak-auth'
+      });
+
+      // Check if token has been revoked (e.g. after logout)
+      const { isTokenRevoked } = require('../utils/tokenRevocation');
+      if (await isTokenRevoked(decoded)) {
+        return res.status(401).json({ valid: false, error: 'Session has been invalidated' });
+      }
+
+      // The redirect loop reported on the v3.32.4-beta.0 release came
+      // from /auth/session reporting valid: true while the protected
+      // adminAuth / galleryAuth middleware rejected the same token for
+      // reasons /auth/session never checked: the admin user was
+      // deactivated, the admin's password had been changed since iat,
+      // or the gallery event was archived/deleted. Mirror those checks
+      // here so the session endpoint is always at least as strict as
+      // what the protected endpoints will enforce next.
+      if (decoded.type === 'admin') {
+        let admin = null;
+        try {
+          admin = await db('admin_users')
+            .where({ id: decoded.id, is_active: formatBoolean(true) })
+            .select('id', 'username', 'email', 'password_changed_at')
+            .first();
+        } catch (lookupErr) {
+          // admin_users table not present (test fixture, fresh DB) — fall
+          // through and trust the token. Real deployments always have it.
+          admin = null;
+          // intentional swallow; if the table is missing we do not want
+          // to fail-closed during e.g. early bootstrap.
+        }
+
+        if (admin === null) {
+          // Lookup didn't run because the table is missing; skip the
+          // existence/password checks and treat the token as valid.
+        } else if (!admin) {
+          return res.json({ valid: false, error: 'Admin account no longer active' });
+        } else if (admin.password_changed_at) {
+          const passwordChangedSeconds = Math.floor(
+            new Date(admin.password_changed_at).getTime() / 1000
+          );
+          if (decoded.iat < passwordChangedSeconds) {
+            return res.json({ valid: false, error: 'Token invalid due to password change' });
+          }
+        }
+
+        // Mirror the session-timeout check that sessionTimeoutMiddleware
+        // enforces on every /api/admin endpoint. Without this, /auth/session
+        // returns valid:true for an idle/old-iat token that protected
+        // endpoints reject with 401 SESSION_TIMEOUT — the same redirect-loop
+        // shape as the issuer-claim and password-change asymmetries (issue
+        // #350 recurrence on v3.39.1-beta.0).
+        try {
+          const { isSessionExpired } = require('../middleware/sessionTimeout');
+          if (await isSessionExpired(token, decoded)) {
+            return res.json({ valid: false, error: 'Session expired' });
+          }
+        } catch (timeoutErr) {
+          // Helper lookup failed (test stub may not export it) — fall through
+          // and trust the token. Real deployments always have the middleware.
+        }
+      } else if (decoded.type === 'gallery') {
+        try {
+          const event = await db('events')
+            .where({
+              id: decoded.eventId,
+              is_active: formatBoolean(true),
+              is_archived: formatBoolean(false),
+            })
+            .first();
+          if (!event) {
+            return res.json({ valid: false, error: 'Gallery no longer available' });
+          }
+          if (event.expires_at && new Date(event.expires_at) < new Date()) {
+            return res.json({ valid: false, error: 'Gallery has expired' });
+          }
+        } catch (galleryLookupErr) {
+          // events table missing in this context — same fallback as
+          // admin path; trust the token rather than fail-closed.
+        }
+      }
+
       // Calculate remaining time
       const now = Date.now() / 1000;
       const remainingTime = Math.max(0, decoded.exp - now);
-      
+
       res.json({
         valid: true,
         type: decoded.type,

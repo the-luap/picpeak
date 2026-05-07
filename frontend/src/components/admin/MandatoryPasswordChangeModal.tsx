@@ -27,14 +27,12 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
     mutationFn: adminService.changePassword,
     onSuccess: () => {
       toast.success(t('mandatoryPasswordChange.success'));
-      updatePasswordChanged();
-      // Reset form
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      setErrors({});
+      // Force a full page reload so the browser picks up the new JWT cookie
+      // set by the backend. A React state update alone causes a race condition
+      // where the auth context checks the session before the cookie is stored.
+      setTimeout(() => {
+        window.location.href = '/admin/dashboard';
+      }, 2000);
     },
     onError: (error: any) => {
       if (error.response?.data?.error) {
@@ -137,7 +135,7 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 rounded"
+                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
                 >
                   {showPasswords.current ? 
                     <EyeOff className="w-4 h-4 text-neutral-500" /> : 
@@ -165,7 +163,7 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 rounded"
+                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
                 >
                   {showPasswords.new ? 
                     <EyeOff className="w-4 h-4 text-neutral-500" /> : 
@@ -193,7 +191,7 @@ export const MandatoryPasswordChangeModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 rounded"
+                  className="absolute right-3 top-2 p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded"
                 >
                   {showPasswords.confirm ? 
                     <EyeOff className="w-4 h-4 text-neutral-500" /> : 

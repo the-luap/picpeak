@@ -8,6 +8,7 @@ import { analyticsService } from './services/analytics.service';
 import { GalleryAuthProvider, MaintenanceProvider } from './contexts';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GalleryPage } from './pages/GalleryPage';
+import { ClientAccessPage } from './pages/ClientAccessPage';
 import { PreviewPage } from './pages/gallery/PreviewPage';
 import { LegalPage } from './pages/public/LegalPage';
 import {
@@ -25,14 +26,15 @@ import {
   BackupManagement,
   CMSPage,
   UserManagementPage,
-  EventTypesPage
+  EventTypesPage,
+  WebhookDeliveriesPage
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
-import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags } from './components/common';
+import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags, CMSContentBlock } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
 import { GlobalThemeProvider } from './components/GlobalThemeProvider';
-import { getApiBaseUrl } from './utils/url';
+import { usePublicSettings } from './hooks/usePublicSettings';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -43,6 +45,40 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Bootstraps Umami analytics from /public/settings. Lives inside QueryClientProvider
+// so it shares the public-settings cache with every other consumer of usePublicSettings.
+function AnalyticsBootstrap() {
+  const { data: settings, isError } = usePublicSettings();
+
+  useEffect(() => {
+    if (!settings && !isError) return;
+
+    const envUmamiUrl = import.meta.env.VITE_UMAMI_URL;
+    const envUmamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+
+    if (settings?.umami_enabled && settings.umami_url && settings.umami_website_id) {
+      analyticsService.initialize({
+        websiteId: settings.umami_website_id,
+        hostUrl: settings.umami_url,
+        autoTrack: true,
+        doNotTrack: true,
+      });
+      return;
+    }
+
+    if (envUmamiUrl && envUmamiWebsiteId && (isError || settings?.enable_analytics !== false)) {
+      analyticsService.initialize({
+        websiteId: envUmamiWebsiteId,
+        hostUrl: envUmamiUrl,
+        autoTrack: true,
+        doNotTrack: true,
+      });
+    }
+  }, [settings, isError]);
+
+  return null;
+}
 
 function App() {
   // Track dark mode for toast theming
@@ -56,60 +92,10 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
-  // Initialize Umami Analytics based on settings
-  useEffect(() => {
-    const initializeAnalytics = async () => {
-      try {
-        // Fetch public settings to get Umami configuration
-        const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-        const settings = await response.json();
-        
-        // Check if Umami is enabled and configured in backend settings
-        if (settings.umami_enabled && settings.umami_url && settings.umami_website_id) {
-          // Use backend configuration
-          analyticsService.initialize({
-            websiteId: settings.umami_website_id,
-            hostUrl: settings.umami_url,
-            autoTrack: true,
-            doNotTrack: true
-          });
-        } else {
-          // Fall back to environment variables if backend not configured
-          const umamiUrl = import.meta.env.VITE_UMAMI_URL;
-          const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
-          
-          if (umamiUrl && umamiWebsiteId && settings.enable_analytics !== false) {
-            analyticsService.initialize({
-              websiteId: umamiWebsiteId,
-              hostUrl: umamiUrl,
-              autoTrack: true,
-              doNotTrack: true
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch settings for analytics:', error);
-        // Fall back to environment variables on error
-        const umamiUrl = import.meta.env.VITE_UMAMI_URL;
-        const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
-        
-        if (umamiUrl && umamiWebsiteId) {
-          analyticsService.initialize({
-            websiteId: umamiWebsiteId,
-            hostUrl: umamiUrl,
-            autoTrack: true,
-            doNotTrack: true
-          });
-        }
-      }
-    };
-    
-    initializeAnalytics();
-  }, []);
-
   return (
     <PageErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <AnalyticsBootstrap />
         <MaintenanceProvider>
           <ThemeProvider>
             <GlobalThemeProvider>
@@ -121,6 +107,11 @@ function App() {
                   <Routes>
                   {/* Public gallery routes */}
                   <Route path="/gallery/preview" element={<PreviewPage />} />
+                  <Route path="/gallery/:slug/client-access" element={
+                    <GalleryAuthProvider>
+                      <ClientAccessPage />
+                    </GalleryAuthProvider>
+                  } />
                   <Route path="/gallery/:slug/:token?" element={
                     <GalleryAuthProvider>
                       <GalleryPage />
@@ -142,6 +133,7 @@ function App() {
                       <Route path="branding" element={<BrandingPage />} />
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="event-types" element={<EventTypesPage />} />
+                      <Route path="webhooks/:id/deliveries" element={<WebhookDeliveriesPage />} />
                       <Route path="backup" element={<BackupManagement />} />
                       <Route path="cms" element={<CMSPage />} />
                       <Route path="users" element={<UserManagementPage />} />
@@ -159,6 +151,11 @@ function App() {
 
                   {/* Default redirect */}
                   <Route path="/" element={<Navigate to="/admin/login" replace />} />
+
+                  {/* Customisable 404 (#324) — caught here for any path that
+                      didn't match. Top-level `/:slug` is consumed above by
+                      LegalPage; this picks up deeper unknown paths. */}
+                  <Route path="*" element={<CMSContentBlock slug="not-found" />} />
                 </Routes>
               </MaintenanceWrapper>
             </Router>

@@ -268,6 +268,15 @@ async function getDatabaseBackupInfoInternal() {
 
     if (recent && recent.file_path) {
       const hasChanged = await hasDatabaseChanged(recent.completed_at);
+      // Postgres jsonb columns come back already parsed; sqlite TEXT comes
+      // back as a JSON string. Accept both.
+      const parseField = (v) => {
+        if (v == null) return null;
+        if (typeof v === 'object') return v;
+        try { return JSON.parse(v); } catch { return null; }
+      };
+      const stats = parseField(recent.statistics);
+      const checksums = parseField(recent.table_checksums);
       return {
         type: recent.backup_type || 'unknown',
         backupFile: recent.file_path,
@@ -275,8 +284,8 @@ async function getDatabaseBackupInfoInternal() {
         checksum: recent.checksum,
         hasChanged,
         backupTime: recent.completed_at,
-        tables: recent.statistics ? JSON.parse(recent.statistics).tables : {},
-        rowCounts: recent.table_checksums ? JSON.parse(recent.table_checksums) : {}
+        tables: (stats && stats.tables) || {},
+        rowCounts: checksums || {}
       };
     }
 
@@ -437,26 +446,59 @@ async function performLocalBackup(config, files) {
   };
 }
 
+function validateRsyncParam(value, label) {
+  if (!value || typeof value !== 'string') return null;
+  if (!/^[a-zA-Z0-9._\/@:-]+$/.test(value)) {
+    throw new Error(`Invalid ${label}: contains disallowed characters`);
+  }
+  if (value.length > 1024) {
+    throw new Error(`Invalid ${label}: too long`);
+  }
+  return value;
+}
+
 function buildRsyncArgs(config) {
   const storagePath = getStoragePath();
-  const host = config.backup_rsync_host;
-  const remotePath = config.backup_rsync_path;
+  const host = validateRsyncParam(config.backup_rsync_host, 'host');
+  const remotePath = validateRsyncParam(config.backup_rsync_path, 'remote path');
 
   if (!host || !remotePath) {
     throw new Error('Rsync configuration incomplete');
   }
 
+  // Validate host format (hostname or IP only)
+  const hostRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!hostRegex.test(host) && !ipRegex.test(host)) {
+    throw new Error('Invalid rsync host format');
+  }
+
   const args = ['-avz', '--delete', '--stats'];
   if (config.backup_rsync_ssh_key) {
-    args.push('-e', `ssh -i ${config.backup_rsync_ssh_key} -o StrictHostKeyChecking=no`);
+    const sshKey = validateRsyncParam(config.backup_rsync_ssh_key, 'SSH key path');
+    const fs = require('fs');
+    if (!fs.existsSync(sshKey) || !fs.statSync(sshKey).isFile()) {
+      throw new Error('SSH key file not found or is not a file');
+    }
+    // Pass SSH options as separate array elements to avoid shell interpretation
+    args.push('-e', `ssh -i ${sshKey} -o StrictHostKeyChecking=no`);
   }
 
   const excludePatterns = config.backup_exclude_patterns || [];
   excludePatterns.forEach(pattern => args.push('--exclude', pattern));
 
   const source = `${storagePath}/`;
-  const destination = config.backup_rsync_user
-    ? `${config.backup_rsync_user}@${host}:${remotePath}`
+
+  const user = config.backup_rsync_user;
+  if (user) {
+    validateRsyncParam(user, 'user');
+    if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(user)) {
+      throw new Error('Invalid rsync username format');
+    }
+  }
+
+  const destination = user
+    ? `${user}@${host}:${remotePath}`
     : `${host}:${remotePath}`;
 
   args.push(source, destination);
@@ -793,7 +835,7 @@ async function runBackupInternal(isManual = false) {
       let manifest = await backupManifest.generateManifest(manifestOptions);
       if (previousBackup && previousBackup.manifest_path) {
         try {
-          const parentManifest = await backupManifest.loadManifest(previousBackup.manifest_path);
+          const parentManifest = await loadManifestFromAnywhere(previousBackup.manifest_path, config);
           manifest = await backupManifest.generateIncrementalManifest(manifestOptions, parentManifest);
         } catch (error) {
           logger.warn('Failed to load parent manifest, generating full manifest:', error);
@@ -903,17 +945,41 @@ async function startBackupService() {
       backupJob = null;
     }
 
+    // Two settings cooperate here:
+    //   - backup_schedule           — UI label like "daily" / "weekly" / "custom"
+    //   - backup_schedule_cron      — actual cron expression
+    // The frontend writes both (BackupConfiguration.jsx). Older startup code
+    // here read backup_schedule and crashed when it found a label instead of
+    // a cron expression. Resolution order: explicit cron field, then map known
+    // labels, then fall back to default.
+    const NAMED_SCHEDULES = {
+      hourly: '0 * * * *',
+      daily: '0 2 * * *',
+      weekly: '0 3 * * 0',  // Sunday 03:00
+      monthly: '0 4 1 * *',
+    };
+    const isCronExpression = (s) => typeof s === 'string' && /^\s*\S+(\s+\S+){4}\s*$/.test(s);
+    const readSetting = (key) => {
+      if (config && Object.prototype.hasOwnProperty.call(config, key)) {
+        return String(config[key] ?? '').trim();
+      }
+      if (config?.__raw && Object.prototype.hasOwnProperty.call(config.__raw, key)) {
+        return String(parseSettingValue(config.__raw[key]) ?? '').trim();
+      }
+      return '';
+    };
+
     let schedule = '0 2 * * *';
-    if (Object.prototype.hasOwnProperty.call(config, 'backup_schedule')) {
-      const candidate = String(config.backup_schedule ?? '').trim();
-      if (candidate.length) {
-        schedule = candidate;
-      }
-    } else if (config.__raw && Object.prototype.hasOwnProperty.call(config.__raw, 'backup_schedule')) {
-      const candidate = String(parseSettingValue(config.__raw.backup_schedule) ?? '').trim();
-      if (candidate.length) {
-        schedule = candidate;
-      }
+    const cronCandidate = readSetting('backup_schedule_cron');
+    const labelCandidate = readSetting('backup_schedule');
+    if (cronCandidate && isCronExpression(cronCandidate)) {
+      schedule = cronCandidate;
+    } else if (labelCandidate && NAMED_SCHEDULES[labelCandidate.toLowerCase()]) {
+      schedule = NAMED_SCHEDULES[labelCandidate.toLowerCase()];
+    } else if (labelCandidate && isCronExpression(labelCandidate)) {
+      // Back-compat: a deployment that wrote a cron expression directly into
+      // backup_schedule (no _cron field) still works.
+      schedule = labelCandidate;
     }
 
     backupJob = cron.schedule(schedule, async () => {
@@ -1037,6 +1103,71 @@ async function cleanupOldBackupRuns(retentionDays = 30) {
     }
   } catch (error) {
     logger.error('Failed to cleanup old backup runs:', error);
+  }
+}
+
+/**
+ * Load a backup manifest regardless of whether it lives on the local
+ * filesystem or in S3. Used by both the public getBackupManifest API
+ * and the incremental-manifest path in runBackupInternal — previously
+ * the latter called loadManifest() with an s3:// URI directly, which
+ * tried fs.readFile on the literal string and threw ENOENT, silently
+ * downgrading every incremental backup to a full manifest.
+ */
+async function loadManifestFromAnywhere(manifestPath, config) {
+  if (!manifestPath) {
+    throw new Error('Manifest path is required');
+  }
+  if (!manifestPath.startsWith('s3://')) {
+    return backupManifest.loadManifest(manifestPath);
+  }
+
+  const cfg = config || (await resolveConfigWithFallback());
+  const accessKey = cfg?.backup_s3_access_key
+    ?? (cfg?.__raw && Object.prototype.hasOwnProperty.call(cfg.__raw, 'backup_s3_access_key')
+      ? parseSettingValue(cfg.__raw.backup_s3_access_key)
+      : undefined)
+    ?? process.env.BACKUP_S3_ACCESS_KEY;
+  const secretKey = cfg?.backup_s3_secret_key
+    ?? (cfg?.__raw && Object.prototype.hasOwnProperty.call(cfg.__raw, 'backup_s3_secret_key')
+      ? parseSettingValue(cfg.__raw.backup_s3_secret_key)
+      : undefined)
+    ?? process.env.BACKUP_S3_SECRET_KEY;
+
+  if (!accessKey || !secretKey) {
+    throw new Error('S3 credentials not configured for manifest retrieval');
+  }
+
+  const match = manifestPath.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+  if (!match) {
+    throw new Error('Invalid S3 manifest path');
+  }
+  const [, bucket, key] = match;
+
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'backup-manifest-'));
+  // Preserve the original extension so loadManifest's format detection
+  // picks the right parser.
+  const ext = path.extname(key) || '.json';
+  const tempPath = path.join(tempDir, `manifest-${Date.now()}${ext}`);
+
+  const s3Client = new S3StorageAdapter({
+    bucket,
+    region: (cfg && cfg.backup_s3_region) || 'us-east-1',
+    endpoint: cfg && cfg.backup_s3_endpoint,
+    accessKeyId: accessKey,
+    secretAccessKey: secretKey,
+    forcePathStyle: cfg ? normalizeBoolean(cfg.backup_s3_force_path_style) : false,
+    sslEnabled: cfg && cfg.backup_s3_ssl_enabled !== undefined
+      ? normalizeBoolean(cfg.backup_s3_ssl_enabled)
+      : true,
+  });
+
+  try {
+    await s3Client.download(key, tempPath);
+    return await backupManifest.loadManifest(tempPath);
+  } finally {
+    await fs.unlink(tempPath).catch(() => {});
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 

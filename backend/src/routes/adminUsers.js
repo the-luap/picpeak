@@ -114,7 +114,8 @@ router.post('/invite', [
   const invitation = await userManagementService.createInvitation({
     email: req.body.email,
     roleId: req.body.role_id,
-    invitedById: req.admin.id
+    invitedById: req.admin.id,
+    inviterRoleName: req.admin.roleName
   });
 
   successResponse(res, { invitation }, 201);
@@ -146,7 +147,12 @@ router.get('/:id', [
   param('id').isInt({ min: 1 }).withMessage('Valid user ID is required')
 ], handleAsync(async (req, res) => {
   validateRequest(req);
-  const user = await userManagementService.getAdminUserById(parseInt(req.params.id));
+  const targetId = parseInt(req.params.id);
+  // Non-super_admin users can only view their own profile
+  if (req.admin.roleName !== 'super_admin' && targetId !== req.admin.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  const user = await userManagementService.getAdminUserById(targetId);
   res.json({ user: transformUser(user) });
 }));
 
@@ -169,7 +175,8 @@ router.put('/:id', [
   const user = await userManagementService.updateAdminUser(
     parseInt(req.params.id),
     req.body,
-    req.admin.id
+    req.admin.id,
+    { roleName: req.admin.roleName }
   );
 
   successResponse(res, { user: transformUser(user), message: 'User updated successfully' });

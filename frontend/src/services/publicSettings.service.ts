@@ -12,6 +12,19 @@ export interface PublicSettings {
   branding_watermark_size: number;
   branding_favicon_url: string;
   branding_logo_url: string;
+  branding_logo_size?: string;
+  branding_logo_max_height?: number;
+  branding_logo_position?: 'left' | 'center' | 'right';
+  branding_logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
+  branding_logo_display_header?: boolean;
+  branding_logo_display_hero?: boolean;
+  branding_hide_powered_by?: boolean;
+  /**
+   * Force the entire site into a specific color mode (instance-wide).
+   * 'dark' or 'light' override user/system preference; null = no force.
+   * AdminDarkModeContext + ThemeContext both honor this.
+   */
+  branding_force_color_mode?: 'dark' | 'light' | null;
   theme_config: any;
   default_language: string;
   enable_analytics: boolean;
@@ -31,6 +44,13 @@ export interface PublicSettings {
   event_require_admin_email?: boolean;
   event_require_event_date?: boolean;
   event_require_expiration?: boolean;
+  event_default_require_password?: boolean;
+  gallery_show_filter_bar?: boolean;
+  event_phone_field_enabled?: boolean;
+  // SEO meta tags (consumed by RobotsMetaTags)
+  seo_meta_noindex?: boolean;
+  seo_meta_nofollow?: boolean;
+  seo_meta_noai?: boolean;
 }
 
 export const publicSettingsService = {

@@ -23,7 +23,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({
     <div className="fixed bottom-4 right-4 bg-surface rounded-lg shadow-lg border border-surface p-4 min-w-[300px] z-50">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Download className="w-5 h-5 text-primary-600 animate-bounce" />
+          <Download className="w-5 h-5 text-accent animate-bounce" />
           <div>
             <p className="text-sm font-medium text-theme">{t('download.downloading')}</p>
             {fileName && (
@@ -43,7 +43,7 @@ export const DownloadProgress: React.FC<DownloadProgressProps> = ({
       
       <div className="w-full bg-black/10 rounded-full h-2">
         <div
-          className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+          className="bg-accent-dark h-2 rounded-full transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>

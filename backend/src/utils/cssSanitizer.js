@@ -29,8 +29,8 @@ const FORBIDDEN_PATTERNS = [
   /on\w+\s*=/gi, // onclick=, onload=, etc.
 ];
 
-// Pattern for external URLs (block external, allow data: for images)
-const EXTERNAL_URL_PATTERN = /url\s*\(\s*["']?(?!data:image)/gi;
+// Pattern for external URLs (block external, allow only safe raster data: images)
+const EXTERNAL_URL_PATTERN = /url\s*\(\s*["']?(?!data:image\/(?:jpeg|jpg|png|gif|webp))/gi;
 
 // Maximum CSS size in bytes (100KB)
 const MAX_CSS_SIZE = 100 * 1024;
@@ -50,7 +50,8 @@ function sanitizeCss(css) {
     /@charset[^;]+;?/gi,
     /expression\s*\([^)]*\)/gi,
     /url\s*\(\s*(['"])\s*javascript:[^)]*\)/gi,
-    /url\s*\(\s*(['"])\s*data:text\/javascript[^)]*\)/gi
+    /url\s*\(\s*(['"])\s*data:text\/javascript[^)]*\)/gi,
+    /url\s*\(\s*(['"]?)\s*data:image\/svg\+xml[^)]*\)/gi
   ];
 
   disallowedPatterns.forEach((pattern) => {

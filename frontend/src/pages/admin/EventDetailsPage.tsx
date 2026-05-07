@@ -27,7 +27,13 @@ import {
   Droplets,
   MousePointer,
   Layout,
-  Trash2
+  Trash2,
+  Send,
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Loader2
 } from 'lucide-react';
 import { parseISO, differenceInDays, isValid } from 'date-fns';
 
@@ -52,81 +58,180 @@ import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading } from '../../components/common';
-import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu } from '../../components/admin';
+import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu, AdminGuestsList } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
-import { publicSettingsService } from '../../services/publicSettings.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { api } from '../../config/api';
-import { buildResourceUrl } from '../../utils/url';
+import { buildResourceUrl, buildShareLinkUrl } from '../../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../../utils/accessControl';
 import { archiveService } from '../../services/archive.service';
-import { externalMediaService } from '../../services/externalMedia.service';
+import { externalMediaService, type ExternalEntry } from '../../services/externalMedia.service';
 import { photosService, AdminPhoto, type PhotoFilters as PhotoFilterParams, type FeedbackFilters } from '../../services/photos.service';
 import { feedbackService, FeedbackSettings as FeedbackSettingsType } from '../../services/feedback.service';
 import { cssTemplatesService, type EnabledTemplate } from '../../services/cssTemplates.service';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 
-const resolveShareLink = (link: string): string => {
-  if (!link) return '#';
-  if (link.startsWith('http')) return link;
-  if (link.startsWith('/')) return link;
-  return `/gallery/${link}`;
+const FolderTreeNode: React.FC<{
+  path: string;
+  name: string;
+  depth: number;
+  value: string;
+  onChange: (p: string) => void;
+  expandedPaths: Set<string>;
+  toggleExpand: (p: string) => void;
+}> = ({ path, name, depth, value, onChange, expandedPaths, toggleExpand }) => {
+  const { t } = useTranslation();
+  const isExpanded = expandedPaths.has(path);
+  const isSelected = value === path;
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['external-folder-children', path],
+    queryFn: () => externalMediaService.list(path),
+    enabled: isExpanded,
+    staleTime: 30_000
+  });
+
+  const dirs = (data?.entries || []).filter(e => e.type === 'dir');
+  const showEmpty = isExpanded && !isLoading && !isError && dirs.length === 0;
+  const indentStyle = { paddingLeft: depth * 16 + 4 };
+  const childIndentStyle = { paddingLeft: (depth + 1) * 16 + 4 };
+  const rowClass =
+    'flex items-center gap-1 py-1 pr-1 rounded ' +
+    (isSelected
+      ? 'bg-accent-dark/15'
+      : 'hover:bg-neutral-50 dark:hover:bg-neutral-700');
+
+  return (
+    <div>
+      <div className={rowClass} style={indentStyle}>
+        <button
+          type="button"
+          onClick={() => toggleExpand(path)}
+          className="p-0.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+          aria-label={isExpanded ? t('common.collapse', 'Collapse') : t('common.expand', 'Expand')}
+        >
+          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(path)}
+          className={
+            'flex items-center gap-1.5 flex-1 min-w-0 text-left text-sm ' +
+            (isSelected
+              ? 'text-accent-dark font-medium'
+              : 'text-neutral-900 dark:text-neutral-100')
+          }
+        >
+          {isExpanded ? (
+            <FolderOpen className="w-4 h-4 flex-shrink-0 text-accent" />
+          ) : (
+            <Folder className="w-4 h-4 flex-shrink-0 text-neutral-500" />
+          )}
+          <span className="truncate">{name}</span>
+        </button>
+      </div>
+      {isExpanded && (
+        <div>
+          {isLoading && (
+            <div
+              className="flex items-center gap-2 py-1 text-xs text-neutral-500 dark:text-neutral-400"
+              style={childIndentStyle}
+            >
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>{t('common.loading', 'Loading...')}</span>
+            </div>
+          )}
+          {isError && (
+            <div
+              className="py-1 text-xs text-red-600 dark:text-red-400"
+              style={childIndentStyle}
+            >
+              {t('errors.somethingWentWrong', 'Something went wrong')}
+            </div>
+          )}
+          {showEmpty && (
+            <div
+              className="py-1 text-xs italic text-neutral-500 dark:text-neutral-400"
+              style={childIndentStyle}
+            >
+              {t('events.externalFolderEmpty', 'No subfolders')}
+            </div>
+          )}
+          {dirs.map(d => {
+            const childPath = path ? `${path}/${d.name}` : d.name;
+            return (
+              <FolderTreeNode
+                key={childPath}
+                path={childPath}
+                name={d.name}
+                depth={depth + 1}
+                value={value}
+                onChange={onChange}
+                expandedPaths={expandedPaths}
+                toggleExpand={toggleExpand}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const ExternalFolderPicker: React.FC<{ value: string; onChange: (p: string) => void }> = ({ value, onChange }) => {
   const { t } = useTranslation();
-  const [entries, setEntries] = useState<{ path: string; entries: any[]; canNavigateUp: boolean } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [currentPath, setCurrentPath] = useState<string>(value || '');
 
-  const load = async (p: string) => {
-    try {
-      setLoading(true);
-      const res = await externalMediaService.list(p);
-      setEntries(res);
-      setCurrentPath(res.path);
-    } finally {
-      setLoading(false);
+  // Seed expanded paths so the current selection (and the synthetic root) is visible on mount.
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => {
+    const set = new Set<string>(['']);
+    if (value) {
+      const parts = value.split('/').filter(Boolean);
+      let acc = '';
+      for (const seg of parts) {
+        acc = acc ? `${acc}/${seg}` : seg;
+        set.add(acc);
+      }
     }
-  };
+    return set;
+  });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(currentPath || ''); }, []);
-
-  const navigateUp = () => {
-    if (!entries?.canNavigateUp) return;
-    const parts = (entries.path || '').split('/').filter(Boolean);
-    parts.pop();
-    load(parts.join('/'));
+  const toggleExpand = (p: string) => {
+    setExpandedPaths(prev => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
   };
 
   return (
-    <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-neutral-600 dark:text-neutral-400">/external-media/{entries?.path || ''}</div>
-        <div className="flex gap-2">
-          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={navigateUp} disabled={!entries?.canNavigateUp}>{t('common.up', 'Up')}</button>
-          <button className="text-sm underline text-neutral-700 dark:text-neutral-300" onClick={() => onChange(entries?.path || '')}>{t('common.select', 'Select')}</button>
+    <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2">
+      <div className="flex items-center justify-between gap-2 mb-2 px-1">
+        <div className="text-xs text-neutral-600 dark:text-neutral-400 truncate">
+          {t('common.selected', 'Selected')}: /external-media/{value}
         </div>
+        {value && (
+          <button
+            type="button"
+            className="text-xs underline text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-neutral-100 flex-shrink-0"
+            onClick={() => onChange('')}
+          >
+            {t('events.clearSelection', 'Clear')}
+          </button>
+        )}
       </div>
-      {loading ? (
-        <div className="text-sm text-neutral-500 dark:text-neutral-400">{t('common.loading', 'Loading...')}</div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {entries?.entries?.filter((e: any) => e.type === 'dir').map((e: any) => (
-            <button
-              key={e.name}
-              onClick={() => load([entries?.path, e.name].filter(Boolean).join('/'))}
-              className="px-3 py-2 border border-neutral-200 dark:border-neutral-600 rounded text-left text-neutral-900 dark:text-neutral-100 hover:bg-neutral-50 dark:hover:bg-neutral-700"
-            >
-              📁 {e.name}
-            </button>
-          ))}
-        </div>
-      )}
-      {value && (
-        <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{t('common.selected', 'Selected')}: /external-media/{value}</div>
-      )}
+      <div className="max-h-80 overflow-auto [color-scheme:light] dark:[color-scheme:dark]">
+        <FolderTreeNode
+          path=""
+          name="/external-media"
+          depth={0}
+          value={value}
+          onChange={onChange}
+          expandedPaths={expandedPaths}
+          toggleExpand={toggleExpand}
+        />
+      </div>
     </div>
   );
 };
@@ -154,6 +259,8 @@ export const EventDetailsPage: React.FC = () => {
     upload_category_id: number | null;
     hero_photo_id: number | null;
     customer_name: string;
+    customer_email: string;
+    customer_phone: string;
     source_mode: 'managed' | 'reference';
     external_path: string;
     require_password: boolean;
@@ -164,6 +271,7 @@ export const EventDetailsPage: React.FC = () => {
     disable_right_click: boolean;
     allow_downloads: boolean;
     watermark_downloads: boolean;
+    allow_presigned_download: boolean;
     enable_devtools_protection: boolean;
     use_canvas_rendering: boolean;
     // Hero logo settings
@@ -172,6 +280,10 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_position: 'top' | 'center' | 'bottom';
     // Hero image anchor position (#162) – keyword or "X% Y%" focal point
     hero_image_anchor: string;
+    // Photo cap
+    photo_cap: number;
+    // Default photo sort
+    default_photo_sort: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +296,8 @@ export const EventDetailsPage: React.FC = () => {
     upload_category_id: null,
     hero_photo_id: null,
     customer_name: '',
+    customer_email: '',
+    customer_phone: '',
     source_mode: 'managed',
     external_path: '',
     require_password: true,
@@ -194,6 +308,7 @@ export const EventDetailsPage: React.FC = () => {
     disable_right_click: true,
     allow_downloads: true,
     watermark_downloads: false,
+    allow_presigned_download: false,
     enable_devtools_protection: true,
     use_canvas_rendering: false,
     // Hero logo settings
@@ -202,6 +317,10 @@ export const EventDetailsPage: React.FC = () => {
     hero_logo_position: 'top',
     // Hero image anchor position (#162)
     hero_image_anchor: 'center',
+    // Photo cap
+    photo_cap: 0,
+    // Default photo sort
+    default_photo_sort: 'upload_date_desc',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -217,9 +336,11 @@ export const EventDetailsPage: React.FC = () => {
     rate_limit_max_requests: 10,
   });
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedClientLink, setCopiedClientLink] = useState(false);
+  const [clientPin, setClientPin] = useState('');
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [showExternalImport, setShowExternalImport] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'photos' | 'categories'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'photos' | 'categories' | 'guests'>('overview');
   const [externalPath, setExternalPath] = useState<string>('');
   const [importing, setImporting] = useState<boolean>(false);
   const [selectedPhoto, setSelectedPhoto] = useState<{ photo: AdminPhoto; index: number } | null>(null);
@@ -259,7 +380,7 @@ export const EventDetailsPage: React.FC = () => {
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<number[]>([]);
 
   // Fetch event details
-  const { data: event, isLoading: eventLoading } = useQuery({
+  const { data: event, isLoading: eventLoading, refetch: refetchEvent } = useQuery({
     queryKey: ['admin-event', id],
     queryFn: () => eventsService.getEvent(parseInt(id!)),
     enabled: !!id,
@@ -281,11 +402,33 @@ export const EventDetailsPage: React.FC = () => {
 
   // Statistics are now fetched with the event details from the admin API
 
-  // Fetch photos (needed for both photos tab and hero photo selector)
+  // Merge feedback filters into photo query params so the grid reflects
+  // the Has Likes / Has Favorites / Has Comments / min rating checkboxes.
+  const combinedPhotoFilters: PhotoFilterParams = useMemo(() => ({
+    ...photoFilters,
+    hasLikes: feedbackFilters.hasLikes || undefined,
+    hasFavorites: feedbackFilters.hasFavorites || undefined,
+    hasComments: feedbackFilters.hasComments || undefined,
+    minRating: feedbackFilters.minRating ?? undefined,
+    logic: feedbackFilters.logic,
+  }), [photoFilters, feedbackFilters]);
+
+  // Fetch photos (needed for both photos tab and hero photo selector).
+  // While any photo is still in pending/processing state we poll every
+  // 2s so the admin grid auto-updates as the background worker drains
+  // the queue. Once everything is complete/failed the polling stops.
   const { data: photos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
-    queryKey: ['admin-event-photos', id, photoFilters],
-    queryFn: () => photosService.getEventPhotos(parseInt(id!), photoFilters),
+    queryKey: ['admin-event-photos', id, combinedPhotoFilters],
+    queryFn: () => photosService.getEventPhotos(parseInt(id!), combinedPhotoFilters),
     enabled: !!id && (activeTab === 'photos' || isEditing),
+    refetchInterval: (query) => {
+      const data = query.state.data as AdminPhoto[] | undefined;
+      if (!Array.isArray(data)) return false;
+      const inFlight = data.some(
+        (p: any) => p.processing_status === 'pending' || p.processing_status === 'processing'
+      );
+      return inFlight ? 2000 : false;
+    },
   });
 
   // Fetch filter summary for feedback filters
@@ -315,12 +458,9 @@ export const EventDetailsPage: React.FC = () => {
     }
   }, [showMediaFilter, photoFilters.media_type]);
 
-  // Fetch public settings (for field requirement checks like expiration)
-  const { data: publicSettings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings(),
-  });
+  const { data: publicSettings } = usePublicSettings();
   const requireExpiration = publicSettings?.event_require_expiration !== false;
+  const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
 
   // Fetch categories for the event
   const { data: categories = [] } = useQuery({
@@ -356,6 +496,19 @@ export const EventDetailsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
       toast.success(t('toast.eventArchived'));
+    },
+    onError: () => {
+      toast.error(t('errors.somethingWentWrong'));
+    },
+  });
+
+  // Publish mutation (Draft mode)
+  const publishMutation = useMutation({
+    mutationFn: () => eventsService.publishEvent(parseInt(id!)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      toast.success(t('events.publishSuccess'));
     },
     onError: () => {
       toast.error(t('errors.somethingWentWrong'));
@@ -399,6 +552,8 @@ export const EventDetailsPage: React.FC = () => {
       upload_category_id: event.upload_category_id || null,
       hero_photo_id: event.hero_photo_id || null,
       customer_name: event.customer_name || '',
+      customer_email: event.customer_email || '',
+      customer_phone: event.customer_phone || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
       require_password: normalizeRequirePassword(event.require_password),
@@ -409,6 +564,7 @@ export const EventDetailsPage: React.FC = () => {
       disable_right_click: event.disable_right_click ?? true,
       allow_downloads: event.allow_downloads ?? true,
       watermark_downloads: event.watermark_downloads ?? false,
+      allow_presigned_download: (event as { allow_presigned_download?: boolean }).allow_presigned_download ?? false,
       enable_devtools_protection: event.enable_devtools_protection ?? true,
       use_canvas_rendering: event.use_canvas_rendering ?? false,
       // Load hero logo settings from event
@@ -417,6 +573,10 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_position: event.hero_logo_position || 'top',
       // Hero image anchor position (#162)
       hero_image_anchor: event.hero_image_anchor || 'center',
+      // Photo cap
+      photo_cap: event.photo_cap || 0,
+      // Default photo sort
+      default_photo_sort: event.default_photo_sort || 'upload_date_desc',
     });
 
     setShowNewPassword(false);
@@ -542,6 +702,7 @@ export const EventDetailsPage: React.FC = () => {
       disable_right_click: editForm.disable_right_click,
       allow_downloads: editForm.allow_downloads,
       watermark_downloads: editForm.watermark_downloads,
+      allow_presigned_download: editForm.allow_presigned_download,
       enable_devtools_protection: editForm.enable_devtools_protection,
       use_canvas_rendering: editForm.use_canvas_rendering,
       // Hero logo settings
@@ -550,6 +711,10 @@ export const EventDetailsPage: React.FC = () => {
       hero_logo_position: editForm.hero_logo_position,
       // Hero image anchor position (#162)
       hero_image_anchor: editForm.hero_image_anchor,
+      // Photo cap
+      photo_cap: editForm.photo_cap > 0 ? editForm.photo_cap : null,
+      // Default photo sort
+      default_photo_sort: editForm.default_photo_sort,
       // Header style settings (decoupled from layout, #158)
       header_style: currentTheme?.headerStyle || 'standard',
       hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
@@ -574,6 +739,14 @@ export const EventDetailsPage: React.FC = () => {
       : null;
     if (editForm.customer_name !== undefined && editForm.customer_name !== null) {
       updateData.customer_name = editForm.customer_name;
+    }
+    if (editForm.customer_email !== undefined && editForm.customer_email !== null && editForm.customer_email.trim()) {
+      updateData.customer_email = editForm.customer_email;
+    }
+    if (editForm.customer_phone !== undefined) {
+      // Send empty string as null so an admin can clear the field. Backend
+      // strips this entirely if the global phone-field toggle is off.
+      updateData.customer_phone = editForm.customer_phone.trim() || null;
     }
 
     if (editForm.new_password) {
@@ -608,13 +781,15 @@ export const EventDetailsPage: React.FC = () => {
         return;
       }
 
+      const shareUrl = buildShareLinkUrl(event.share_link);
+
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(event.share_link);
+        await navigator.clipboard.writeText(shareUrl);
       } else {
         // Fallback for non-HTTPS contexts or older browsers
         const textArea = document.createElement('textarea');
-        textArea.value = event.share_link;
+        textArea.value = shareUrl;
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
         textArea.style.top = '-999999px';
@@ -672,6 +847,11 @@ export const EventDetailsPage: React.FC = () => {
               >
                 {isGalleryPublic(event.require_password) ? t('events.publicAccess', 'Public access') : t('events.passwordProtected', 'Password protected')}
               </span>
+              {event.is_draft ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">
+                  {t('events.draft')}
+                </span>
+              ) : null}
               {event.is_archived ? (
                 <span className="text-neutral-500 dark:text-neutral-400 flex items-center">
                   <Archive className="w-4 h-4 mr-1" />
@@ -738,10 +918,13 @@ export const EventDetailsPage: React.FC = () => {
             )}
             {event.share_link && !isEditing && (
               <a
-                href={resolveShareLink(event.share_link)}
+                href={event.is_draft
+                  ? `${buildShareLinkUrl(event.share_link)}${buildShareLinkUrl(event.share_link).includes('?') ? '&' : '?'}preview=${eventsService.getPreviewToken() || ''}`
+                  : buildShareLinkUrl(event.share_link)
+                }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-accent hover:opacity-80 border border-accent-dark rounded-lg hover:bg-accent-dark/15 transition-colors"
               >
                 <ExternalLink className="w-4 h-4" />
                 {t('events.viewGallery')}
@@ -750,6 +933,36 @@ export const EventDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Draft Banner */}
+      {event.is_draft && !event.is_archived && (
+        <Card className="p-4 mb-6 border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-900 dark:text-yellow-200">
+                {t('events.draft')}
+              </p>
+              <p className="text-sm mt-1 text-yellow-700 dark:text-yellow-300">
+                {t('events.draftBanner')}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Send className="w-4 h-4" />}
+              onClick={() => {
+                if (confirm(t('events.publishConfirm'))) {
+                  publishMutation.mutate();
+                }
+              }}
+              isLoading={publishMutation.isPending}
+            >
+              {t('events.publishAndNotify')}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Expiration Warning */}
       {!event.is_archived && (isExpired || isExpiring) && (
@@ -793,7 +1006,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'overview'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -803,7 +1016,7 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('photos')}
             className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
               activeTab === 'photos'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
@@ -819,12 +1032,24 @@ export const EventDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('categories')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'categories'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                ? 'border-accent text-accent'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
             {t('events.categories')}
           </button>
+          {eventFeedbackSettings?.identity_mode === 'guest' && (
+            <button
+              onClick={() => setActiveTab('guests')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'guests'
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
+              }`}
+            >
+              {t('admin.events.tabs.guests', 'Guests')}
+            </button>
+          )}
         </nav>
       </div>
 
@@ -846,7 +1071,7 @@ export const EventDetailsPage: React.FC = () => {
                   <textarea
                     value={editForm.welcome_message}
                     onChange={(e) => setEditForm(prev => ({ ...prev, welcome_message: e.target.value }))}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                     rows={3}
                     placeholder={t('events.welcomeMessage')}
                   />
@@ -864,6 +1089,32 @@ export const EventDetailsPage: React.FC = () => {
                   />
                 </div>
                 
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('events.hostEmail')}
+                  </label>
+                  <Input
+                    type="email"
+                    value={editForm.customer_email}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, customer_email: e.target.value }))}
+                    placeholder={t('events.hostEmailPlaceholder')}
+                  />
+                </div>
+
+                {phoneFieldEnabled && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                      {t('events.customerPhone', 'Customer Phone')} ({t('common.optional')})
+                    </label>
+                    <Input
+                      type="tel"
+                      value={editForm.customer_phone}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, customer_phone: e.target.value }))}
+                      placeholder={t('events.customerPhonePlaceholder', '+1 555 555 1234')}
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t('events.expirationDate')}
@@ -911,7 +1162,7 @@ export const EventDetailsPage: React.FC = () => {
                   <label className="flex items-start gap-2">
                     <input
                       type="checkbox"
-                      className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       checked={editForm.require_password}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -1001,7 +1252,7 @@ export const EventDetailsPage: React.FC = () => {
                           : ''
                       }));
                     }}
-                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                   >
                     <option value="managed">{t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}</option>
                     <option value="reference">{t('events.sourceModeReference', 'Reference external folder')}</option>
@@ -1026,13 +1277,51 @@ export const EventDetailsPage: React.FC = () => {
                   </div>
                 )}
                 
+                {/* Photo Cap */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('events.photoCap', 'Photo Limit')}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={editForm.photo_cap}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, photo_cap: parseInt(e.target.value) || 0 }))}
+                      min={0}
+                      className="w-24 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
+                    />
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Default Photo Sort */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                    {t('photoSort.defaultSort', 'Default Photo Sort')}
+                  </label>
+                  <select
+                    value={editForm.default_photo_sort}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, default_photo_sort: e.target.value }))}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
+                  >
+                    <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
+                    <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
+                    <option value="capture_date_desc">{t('photoSort.captureDateNewest', 'Date Taken (Newest First)')}</option>
+                    <option value="capture_date_asc">{t('photoSort.captureDateOldest', 'Date Taken (Oldest First)')}</option>
+                    <option value="filename_asc">{t('photoSort.filenameAZ', 'Filename (A-Z)')}</option>
+                    <option value="filename_desc">{t('photoSort.filenameZA', 'Filename (Z-A)')}</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
                       checked={editForm.allow_user_uploads}
                       onChange={(e) => setEditForm(prev => ({ ...prev, allow_user_uploads: e.target.checked }))}
-                      className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                     />
                     <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowUserUploads')}</span>
                   </label>
@@ -1052,7 +1341,7 @@ export const EventDetailsPage: React.FC = () => {
                         ...prev,
                         upload_category_id: e.target.value ? parseInt(e.target.value) : null
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
                     >
                       <option value="">{t('events.selectCategory')}</option>
                       {categories?.map(category => (
@@ -1079,7 +1368,7 @@ export const EventDetailsPage: React.FC = () => {
                 {/* Download Protection Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                   <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-primary-600" />
+                    <Shield className="w-4 h-4 text-accent" />
                     {t('events.downloadProtection', 'Download Protection')}
                   </h3>
 
@@ -1089,7 +1378,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.allow_downloads}
                         onChange={(e) => setEditForm(prev => ({ ...prev, allow_downloads: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.allowDownloads', 'Allow photo downloads')}</span>
@@ -1100,7 +1389,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.disable_right_click}
                         onChange={(e) => setEditForm(prev => ({ ...prev, disable_right_click: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <MousePointer className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.disableRightClick', 'Block right-click menu')}</span>
@@ -1110,11 +1399,38 @@ export const EventDetailsPage: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={editForm.watermark_downloads}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, watermark_downloads: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        onChange={(e) => setEditForm(prev => ({
+                          ...prev,
+                          watermark_downloads: e.target.checked,
+                          // Watermarking and presigned URLs are mutually
+                          // exclusive — presigned URLs serve raw bytes from
+                          // S3 without going through the watermark pipeline.
+                          allow_presigned_download: e.target.checked ? false : prev.allow_presigned_download,
+                        }))}
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Droplets className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
+                    </label>
+
+                    <label
+                      className={`flex items-center ${editForm.watermark_downloads ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={editForm.watermark_downloads
+                        ? 'Disabled while watermarks are on — presigned URLs bypass the watermark pipeline.'
+                        : 'When the backend uses STORAGE_BACKEND=s3, "Download All" returns a 5-minute presigned S3 URL instead of streaming through the backend. Saves bandwidth on huge galleries; bypasses watermarking.'
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!editForm.allow_presigned_download}
+                        disabled={editForm.watermark_downloads}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, allow_presigned_download: e.target.checked }))}
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                      />
+                      <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                        {t('events.allowPresignedDownload', 'Allow direct S3 download (no watermark, S3 mode only)')}
+                      </span>
                     </label>
 
                     <label className="flex items-center">
@@ -1122,7 +1438,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.enable_devtools_protection}
                         onChange={(e) => setEditForm(prev => ({ ...prev, enable_devtools_protection: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Monitor className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.enableDevtoolsProtection', 'Detect developer tools')}</span>
@@ -1133,7 +1449,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.use_canvas_rendering}
                         onChange={(e) => setEditForm(prev => ({ ...prev, use_canvas_rendering: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.useCanvasRendering', 'Canvas rendering (advanced protection)')}</span>
@@ -1148,7 +1464,7 @@ export const EventDetailsPage: React.FC = () => {
                 {/* Hero Logo Settings */}
                 <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                   <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3 flex items-center gap-2">
-                    <Layout className="w-4 h-4 text-primary-600" />
+                    <Layout className="w-4 h-4 text-accent" />
                     {t('events.heroLogoSettings', 'Hero Logo Settings')}
                   </h3>
 
@@ -1158,7 +1474,7 @@ export const EventDetailsPage: React.FC = () => {
                         type="checkbox"
                         checked={editForm.hero_logo_visible}
                         onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_visible: e.target.checked }))}
-                        className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                        className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                       />
                       <Image className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
                       <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.heroLogoVisible', 'Display logo in hero section')}</span>
@@ -1173,7 +1489,7 @@ export const EventDetailsPage: React.FC = () => {
                           <select
                             value={editForm.hero_logo_size}
                             onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_size: e.target.value as 'small' | 'medium' | 'large' | 'xlarge' }))}
-                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-accent-dark text-sm"
                           >
                             <option value="small">{t('events.heroLogoSizeSmall', 'Small')}</option>
                             <option value="medium">{t('events.heroLogoSizeMedium', 'Medium')}</option>
@@ -1189,7 +1505,7 @@ export const EventDetailsPage: React.FC = () => {
                           <select
                             value={editForm.hero_logo_position}
                             onChange={(e) => setEditForm(prev => ({ ...prev, hero_logo_position: e.target.value as 'top' | 'center' | 'bottom' }))}
-                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            className="w-full sm:w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-md shadow-sm focus:ring-primary-500 focus:border-accent-dark text-sm"
                           >
                             <option value="top">{t('events.heroLogoPositionTop', 'Top (above title)')}</option>
                             <option value="center">{t('events.heroLogoPositionCenter', 'Center (between title and dates)')}</option>
@@ -1216,7 +1532,7 @@ export const EventDetailsPage: React.FC = () => {
                                 />
                               </div>
                               <div className="flex flex-col gap-1">
-                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                                <label className="cursor-pointer inline-flex items-center gap-1 text-xs text-accent hover:opacity-80">
                                   <Upload className="w-3 h-3" />
                                   {t('events.replaceLogo', 'Replace')}
                                   <input
@@ -1310,6 +1626,19 @@ export const EventDetailsPage: React.FC = () => {
                   </div>
                 </div>
 
+                {phoneFieldEnabled && (
+                  <div>
+                    <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                      {t('events.customerPhone', 'Customer Phone')}
+                    </dt>
+                    <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+                      {event.customer_phone || (
+                        <span className="text-neutral-400">{t('common.notSet')}</span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.created')}</dt>
@@ -1341,7 +1670,7 @@ export const EventDetailsPage: React.FC = () => {
                   <dt className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('events.heroPhoto')}</dt>
                   <dd className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
                     {event.hero_photo_id ? (
-                      <span className="text-primary-600 dark:text-primary-400">{t('events.heroPhotoSelected')}</span>
+                      <span className="text-accent">{t('events.heroPhotoSelected')}</span>
                     ) : (
                       <span className="text-neutral-400">{t('events.noHeroPhotoSelected')}</span>
                     )}
@@ -1455,7 +1784,7 @@ export const EventDetailsPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                value={event.share_link}
+                value={buildShareLinkUrl(event.share_link)}
                 readOnly
                 className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm"
               />
@@ -1506,7 +1835,135 @@ export const EventDetailsPage: React.FC = () => {
             )}
           </Card>
 
+          {/* Client Access (#172) */}
+          <Card padding="md">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              {t('clientAccess.adminTitle')}
+            </h2>
 
+            <div className="space-y-4">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  checked={!!event?.client_access_enabled}
+                  onChange={async (e) => {
+                    try {
+                      await eventsService.updateEvent(event.id, { client_access_enabled: e.target.checked });
+                      refetchEvent();
+                    } catch {
+                      toast.error(t('common.error'));
+                    }
+                  }}
+                  disabled={event?.is_archived}
+                />
+                <div>
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    {t('clientAccess.enableToggle')}
+                  </span>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {t('clientAccess.enableDescription')}
+                  </p>
+                </div>
+              </label>
+
+              {event?.client_access_enabled && (
+                <>
+                  {/* Set/Change PIN */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        {t('clientAccess.pinLabel')}
+                      </label>
+                      <input
+                        type="text"
+                        value={clientPin}
+                        onChange={(e) => setClientPin(e.target.value)}
+                        placeholder={t('clientAccess.pinPlaceholder')}
+                        className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="md"
+                      leftIcon={<Key className="w-4 h-4" />}
+                      onClick={async () => {
+                        if (!clientPin.trim()) return;
+                        try {
+                          await eventsService.updateEvent(event.id, { client_password: clientPin });
+                          setClientPin('');
+                          toast.success(t('clientAccess.pinUpdated'));
+                          refetchEvent();
+                        } catch {
+                          toast.error(t('common.error'));
+                        }
+                      }}
+                      disabled={!clientPin.trim()}
+                    >
+                      {t('clientAccess.setPin')}
+                    </Button>
+                  </div>
+
+                  {/* Client access link */}
+                  {event?.client_share_token && (
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        {t('clientAccess.linkLabel')}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={`${window.location.origin}/gallery/${event.slug}/client-access?token=${event.client_share_token}`}
+                          readOnly
+                          className="flex-1 px-3 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-neutral-100 rounded-lg text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="md"
+                          leftIcon={copiedClientLink ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          onClick={async () => {
+                            const link = `${window.location.origin}/gallery/${event.slug}/client-access?token=${event.client_share_token}`;
+                            try {
+                              await navigator.clipboard.writeText(link);
+                            } catch {
+                              const textArea = document.createElement('textarea');
+                              textArea.value = link;
+                              document.body.appendChild(textArea);
+                              textArea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textArea);
+                            }
+                            setCopiedClientLink(true);
+                            setTimeout(() => setCopiedClientLink(false), 2000);
+                          }}
+                        >
+                          {copiedClientLink ? t('events.copied') : t('events.copy')}
+                        </Button>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 text-xs"
+                        onClick={async () => {
+                          try {
+                            await eventsService.updateEvent(event.id, { regenerate_client_token: true });
+                            toast.success(t('clientAccess.tokenRegenerated'));
+                            refetchEvent();
+                          } catch {
+                            toast.error(t('common.error'));
+                          }
+                        }}
+                      >
+                        {t('clientAccess.regenerateToken')}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </Card>
 
           {/* Actions */}
           {!event.is_archived && (
@@ -1514,23 +1971,45 @@ export const EventDetailsPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('events.actions')}</h2>
 
               <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  leftIcon={<Archive className="w-4 h-4" />}
-                  onClick={() => {
-                    if (confirm(t('events.archiveConfirm'))) {
-                      archiveMutation.mutate();
-                    }
-                  }}
-                  isLoading={archiveMutation.isPending}
-                  className="w-full justify-center"
-                >
-                  {t('events.archiveEvent')}
-                </Button>
-
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
-                  {t('events.archivingInfo')}
-                </p>
+                {event.is_draft ? (
+                  <>
+                    <Button
+                      variant="primary"
+                      leftIcon={<Send className="w-4 h-4" />}
+                      onClick={() => {
+                        if (confirm(t('events.publishConfirm'))) {
+                          publishMutation.mutate();
+                        }
+                      }}
+                      isLoading={publishMutation.isPending}
+                      className="w-full justify-center"
+                    >
+                      {t('events.publishAndNotify')}
+                    </Button>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      {t('events.draftBanner')}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      leftIcon={<Archive className="w-4 h-4" />}
+                      onClick={() => {
+                        if (confirm(t('events.archiveConfirm'))) {
+                          archiveMutation.mutate();
+                        }
+                      }}
+                      isLoading={archiveMutation.isPending}
+                      className="w-full justify-center"
+                    >
+                      {t('events.archiveEvent')}
+                    </Button>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+                      {t('events.archivingInfo')}
+                    </p>
+                  </>
+                )}
               </div>
             </Card>
           )}
@@ -1615,6 +2094,34 @@ export const EventDetailsPage: React.FC = () => {
                       setEditForm(prev => ({ ...prev, color_theme: presetName }));
                     }
                   }
+                }}
+                onSyncFromBranding={() => {
+                  // Reset only the 8 colour tokens to the site Branding —
+                  // layout, header, typography all stay so the admin doesn't
+                  // lose tweaks made for this specific event.
+                  const branding = publicSettings?.theme_config as ThemeConfig | undefined;
+                  if (!branding) {
+                    toast.error(t('toast.brandingThemeMissing', 'No branding theme has been saved yet.'));
+                    return;
+                  }
+                  const base = currentTheme || GALLERY_THEME_PRESETS.default.config;
+                  const merged: ThemeConfig = {
+                    ...base,
+                    primaryColor: branding.primaryColor,
+                    accentColor: branding.accentColor,
+                    accentDarkColor: branding.accentDarkColor,
+                    backgroundColor: branding.backgroundColor,
+                    surfaceColor: branding.surfaceColor,
+                    elevatedColor: branding.elevatedColor,
+                    surfaceBorderColor: branding.surfaceBorderColor,
+                    textColor: branding.textColor,
+                    mutedTextColor: branding.mutedTextColor,
+                    colorMode: branding.colorMode ?? base.colorMode,
+                  };
+                  setCurrentTheme(merged);
+                  setCurrentPresetName('custom');
+                  setEditForm(prev => ({ ...prev, color_theme: JSON.stringify(merged) }));
+                  toast.success(t('toast.brandingPaletteSynced', 'Palette synced from Branding.'));
                 }}
                 isPreviewMode={true}
                 showGalleryLayouts={true}
@@ -1817,12 +2324,19 @@ export const EventDetailsPage: React.FC = () => {
         </div>
       )}
 
+      {/* Guests Tab (only visible when identity_mode === 'guest') */}
+      {activeTab === 'guests' && eventFeedbackSettings?.identity_mode === 'guest' && (
+        <AdminGuestsList eventId={parseInt(id!)} eventName={event.event_name} />
+      )}
+
       {/* Password Reset Modal */}
       {showPasswordReset && (
         <PasswordResetModal
           eventName={event.event_name}
-          onConfirm={async (sendEmail) => {
-            const result = await eventsService.resetPassword(event.id, sendEmail);
+          eventDate={event.event_date}
+          eventType={event.event_type}
+          onConfirm={async (sendEmail, password) => {
+            const result = await eventsService.resetPassword(event.id, sendEmail, password);
             return result;
           }}
           onClose={() => setShowPasswordReset(false)}

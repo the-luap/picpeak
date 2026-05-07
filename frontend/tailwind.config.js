@@ -8,6 +8,19 @@ export default {
   theme: {
     extend: {
       colors: {
+        // 8-token CI palette aliases — these read CSS variables that are set
+        // either by ThemeContext.applyTheme (gallery + branding) or by the
+        // :root.dark { } block in index.css (admin dark mode). Use these in
+        // place of bg-white / text-neutral-900 / border-neutral-200 so that
+        // every component flips with dark/light mode automatically.
+        background: 'var(--color-background)',
+        surface: 'var(--color-surface)',
+        elevated: 'var(--color-elevated)',
+        'border-token': 'var(--color-surface-border)',
+        'text-primary': 'var(--color-text)',
+        'text-secondary': 'var(--color-muted-text)',
+        accent: 'var(--color-accent)',
+        'accent-dark': 'var(--color-accent-dark)',
         primary: {
           50: '#f0fdf4',
           100: '#dcfce7',
@@ -84,6 +97,13 @@ export default {
       },
     },
   },
+  safelist: [
+    // Dynamic grid-cols classes used by thumbnail scale offsets
+    ...Array.from({ length: 12 }, (_, i) => `grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `sm:grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `lg:grid-cols-${i + 1}`),
+    ...Array.from({ length: 12 }, (_, i) => `xl:grid-cols-${i + 1}`),
+  ],
   plugins: [],
 }
 

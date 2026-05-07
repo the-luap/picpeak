@@ -5,7 +5,9 @@ const secureImageService = require('../services/secureImageService');
 const secureImageMiddleware = require('../middleware/secureImageMiddleware');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
-const { resolvePhotoFilePath } = require('../services/photoResolver');
+const { resolvePhotoFilePath, resolvePhotoStorageKey } = require('../services/photoResolver');
+const { withLocalCopy } = require('../services/imageProcessor');
+const { getStorage } = require('../services/storage');
 
 const router = express.Router();
 
@@ -139,18 +141,10 @@ router.get('/:slug/secure/:photoId/:token',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      let filePath;
-      try {
-        filePath = resolvePhotoFilePath(req.event, photo);
-      } catch (resolveError) {
-        logger.error('Failed to resolve photo path for secure token generation', {
-          slug: req.params.slug,
-          photoId,
-          eventId: req.event.id,
-          error: resolveError.message,
-        });
-        return res.status(404).json({ error: 'Photo file not found' });
-      }
+      // Resolve photo through storage backend (managed) or fall back to local
+      // path (external reference mode). secureImageService needs a local file,
+      // so we materialize a tmp copy via withLocalCopy in S3 mode.
+      const storageKey = resolvePhotoStorageKey(event, photo);
 
       // Get protection settings for this event
       const protectionSettings = {
@@ -160,11 +154,21 @@ router.get('/:slug/secure/:photoId/:token',
         fragmentImage: event.use_canvas_rendering === true && fragment !== undefined
       };
 
-      // Process image with protection measures
-      const processedImage = await secureImageService.processProtectedImage(
-        filePath,
-        protectionSettings
-      );
+      let processedImage;
+      try {
+        const runProcessing = (lp) => secureImageService.processProtectedImage(lp, protectionSettings);
+        processedImage = storageKey
+          ? await withLocalCopy(storageKey, runProcessing)
+          : await runProcessing(resolvePhotoFilePath(event, photo));
+      } catch (resolveError) {
+        logger.error('Failed to process secure image', {
+          slug: req.params.slug,
+          photoId,
+          eventId: event.id,
+          error: resolveError.message,
+        });
+        return res.status(404).json({ error: 'Photo file not found' });
+      }
 
       // Handle fragmented images
       if (processedImage.type === 'fragmented') {
@@ -292,29 +296,36 @@ router.get('/:slug/secure-download/:photoId/:token',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
-      let filePath;
+      // Resolve photo through storage backend (managed) or local disk (external).
+      const storageKey = resolvePhotoStorageKey(req.event, photo);
+
+      const watermarkService = require('../services/watermarkService');
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+      const wantsWatermark = watermarkSettings && watermarkSettings.enabled;
+
+      let fileBuffer;
       try {
-        filePath = resolvePhotoFilePath(req.event, photo);
+        if (wantsWatermark) {
+          fileBuffer = storageKey
+            ? await withLocalCopy(storageKey, (lp) => watermarkService.applyWatermark(lp, watermarkSettings))
+            : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), watermarkSettings);
+        } else if (storageKey) {
+          const stream = await getStorage().get(storageKey);
+          const chunks = [];
+          for await (const chunk of stream) chunks.push(chunk);
+          fileBuffer = Buffer.concat(chunks);
+        } else {
+          const fs = require('fs').promises;
+          fileBuffer = await fs.readFile(resolvePhotoFilePath(req.event, photo));
+        }
       } catch (resolveError) {
-        logger.error('Failed to resolve photo path for secure download', {
+        logger.error('Failed to fetch photo for secure download', {
           slug: req.params.slug,
           photoId,
           eventId: req.event.id,
           error: resolveError.message,
         });
         return res.status(404).json({ error: 'Photo file not found' });
-      }
-
-      // Apply watermark if enabled
-      const watermarkService = require('../services/watermarkService');
-      const watermarkSettings = await watermarkService.getWatermarkSettings();
-      
-      let fileBuffer;
-      if (watermarkSettings && watermarkSettings.enabled) {
-        fileBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
-      } else {
-        const fs = require('fs').promises;
-        fileBuffer = await fs.readFile(filePath);
       }
 
       // Update download count
@@ -350,34 +361,11 @@ router.get('/:slug/secure-download/:photoId/:token',
 /**
  * Get security statistics for monitoring
  */
-router.get('/security/stats', async (req, res) => {
-  try {
-    // Only allow admin access
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+const { adminAuth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/permissions');
 
-    const jwt = require('jsonwebtoken');
-    // Try to verify with issuer first, fallback to no issuer for backward compatibility
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET, {
-        issuer: 'picpeak-auth'
-      });
-    } catch (issuerError) {
-      // If verification fails with issuer, try without issuer (backward compatibility)
-      if (issuerError.name === 'JsonWebTokenError' && issuerError.message.includes('jwt issuer invalid')) {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-      } else {
-        throw issuerError;
-      }
-    }
-    const admin = await db('admin_users').where({ id: decoded.id }).first();
-    
-    if (!admin) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+router.get('/security/stats', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
 
     // Get security statistics
     const stats = {

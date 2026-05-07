@@ -6,7 +6,7 @@ import { ArrowLeft, Home } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Loading, Card } from '../../components/common';
 import { cmsService } from '../../services/cms.service';
-import { api } from '../../config/api';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import '../../styles/prose-overrides.css';
 
 export const LegalPage: React.FC = () => {
@@ -18,15 +18,7 @@ export const LegalPage: React.FC = () => {
   const pathname = window.location.pathname;
   const pageSlug = slug || pathname.split('/').pop() || '';
   
-  // Fetch settings to get default language
-  const { data: settingsData } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
 
   // Use admin settings language
   const lang = settingsData?.default_language || 'en';
@@ -52,7 +44,17 @@ export const LegalPage: React.FC = () => {
     }
   }, [page?.title]);
 
-  if (isLoading) {
+  // External-URL override: full-page redirect so the visitor lands on the
+  // operator's own canonical legal page. Use replace() so the back button
+  // returns to the gallery instead of looping back through the redirect.
+  const willRedirect = !!(page?.use_external_url && page?.external_url);
+  useEffect(() => {
+    if (willRedirect && page?.external_url) {
+      window.location.replace(page.external_url);
+    }
+  }, [willRedirect, page?.external_url]);
+
+  if (isLoading || willRedirect) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <Loading size="lg" text="Loading..." />

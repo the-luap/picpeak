@@ -102,7 +102,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-4">
-        <Loader2 className="w-5 h-5 animate-spin text-primary-600" />
+        <Loader2 className="w-5 h-5 animate-spin text-accent" />
       </div>
     );
   }
@@ -185,7 +185,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                   {/* Hero photo thumbnail */}
                   <button
                     onClick={() => setHeroPickerCategoryId(category.id)}
-                    className="flex-shrink-0 w-10 h-10 rounded border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-neutral-100 dark:bg-neutral-700 hover:border-primary-400 transition-colors flex items-center justify-center"
+                    className="flex-shrink-0 w-10 h-10 rounded border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-neutral-100 dark:bg-neutral-700 hover:border-accent-dark transition-colors flex items-center justify-center"
                     title={t('categories.setCoverPhoto')}
                   >
                     {heroPhoto ? (
@@ -195,7 +195,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                         className="w-full h-full object-cover"
                       />
                     ) : category.hero_photo_id ? (
-                      <ImageIcon className="w-4 h-4 text-primary-400" />
+                      <ImageIcon className="w-4 h-4 text-accent" />
                     ) : (
                       <ImageIcon className="w-4 h-4 text-neutral-300" />
                     )}
@@ -234,7 +234,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                 <div key={cat.id} className="flex items-center gap-3 px-3 py-2 bg-neutral-50 dark:bg-neutral-800 rounded-md">
                   <button
                     onClick={() => setHeroPickerCategoryId(cat.id)}
-                    className="flex-shrink-0 w-10 h-10 rounded border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-neutral-100 dark:bg-neutral-700 hover:border-primary-400 transition-colors flex items-center justify-center"
+                    className="flex-shrink-0 w-10 h-10 rounded border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-neutral-100 dark:bg-neutral-700 hover:border-accent-dark transition-colors flex items-center justify-center"
                     title={t('categories.setCoverPhoto')}
                   >
                     {heroPhoto ? (
@@ -244,7 +244,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                         className="w-full h-full object-cover"
                       />
                     ) : cat.hero_photo_id ? (
-                      <ImageIcon className="w-4 h-4 text-primary-400" />
+                      <ImageIcon className="w-4 h-4 text-accent" />
                     ) : (
                       <ImageIcon className="w-4 h-4 text-neutral-300" />
                     )}
@@ -288,7 +288,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                         onClick={() => handleSelectHeroPhoto(heroPickerCategoryId, photo.id)}
                         className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
                           isSelected
-                            ? 'border-primary-500 ring-2 ring-primary-500 ring-offset-2'
+                            ? 'border-accent-dark ring-2 ring-primary-500 ring-offset-2'
                             : 'border-transparent hover:border-neutral-300'
                         }`}
                       >
@@ -300,7 +300,7 @@ export const EventCategoryManager: React.FC<EventCategoryManagerProps> = ({ even
                           />
                         </div>
                         {isSelected && (
-                          <div className="absolute top-2 right-2 bg-primary-500 text-white rounded-full p-1">
+                          <div className="absolute top-2 right-2 bg-accent-dark/150 text-white rounded-full p-1">
                             <Check className="w-4 h-4" />
                           </div>
                         )}

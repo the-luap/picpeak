@@ -10,6 +10,7 @@ export interface DashboardStats {
   viewsTrend: number;
   downloadsTrend: number;
   archivedEvents: number;
+  totalEvents: number;
 }
 
 export interface SystemHealth {

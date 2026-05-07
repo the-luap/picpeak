@@ -19,6 +19,12 @@ export interface BrandingSettings {
   logo_display_hero?: boolean;
   logo_display_mode?: 'logo_only' | 'text_only' | 'logo_and_text';
   hide_powered_by?: boolean;
+  /**
+   * Force the entire admin and public site into a specific color mode.
+   * When set, the user-facing dark/light toggle is hidden and any per-theme
+   * `colorMode` override is ignored. `null` means no force (default behavior).
+   */
+  force_color_mode?: 'dark' | 'light' | null;
 }
 
 export interface ThemeSettings {
@@ -242,6 +248,8 @@ export const settingsService = {
       endpoint = '/admin/settings/branding';
     } else if (firstKey?.startsWith('seo_')) {
       endpoint = '/admin/settings/seo';
+    } else if (firstKey?.startsWith('email_')) {
+      endpoint = '/admin/settings/general';
     }
     
     await api.put(endpoint, settings);
@@ -286,7 +294,12 @@ export const settingsService = {
       logo_display_header: this._parseBoolean(rawSettings.branding_logo_display_header, true),
       logo_display_hero: this._parseBoolean(rawSettings.branding_logo_display_hero, true),
       logo_display_mode: rawSettings.branding_logo_display_mode || 'logo_and_text',
-      hide_powered_by: this._parseBoolean(rawSettings.branding_hide_powered_by, false)
+      hide_powered_by: this._parseBoolean(rawSettings.branding_hide_powered_by, false),
+      force_color_mode: rawSettings.branding_force_color_mode === 'dark'
+        ? 'dark'
+        : rawSettings.branding_force_color_mode === 'light'
+          ? 'light'
+          : null
     };
   },
 

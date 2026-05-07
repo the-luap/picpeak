@@ -30,14 +30,12 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
     mutationFn: adminService.changePassword,
     onSuccess: () => {
       toast.success(t('passwordChange.success'));
-      onClose();
-      // Reset form
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      setErrors({});
+      // Full page reload so the browser picks up the new JWT cookie.
+      // Same fix as MandatoryPasswordChangeModal — without this, the old
+      // token gets rejected and causes a redirect loop.
+      setTimeout(() => {
+        window.location.href = '/admin/dashboard';
+      }, 2000);
     },
     onError: (error: any) => {
       if (error.response?.data?.error) {

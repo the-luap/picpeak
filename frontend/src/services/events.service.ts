@@ -39,6 +39,8 @@ interface CreateEventData {
   require_name_email?: boolean;
   moderate_comments?: boolean;
   show_feedback_to_guests?: boolean;
+  photo_cap?: number | null;
+  default_photo_sort?: string;
 }
 
 interface UpdateEventData {
@@ -58,13 +60,20 @@ interface UpdateEventData {
   hero_photo_id?: number | null;
   source_mode?: 'managed' | 'reference';
   external_path?: string | null;
+  photo_cap?: number | null;
+  default_photo_sort?: string;
 }
+
+export type EventStatusFilter = 'active' | 'inactive' | 'archived' | 'draft' | 'expiring';
 
 interface EventsListResponse {
   events: Event[];
-  total: number;
-  page: number;
-  limit: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export const eventsService = {
@@ -72,15 +81,19 @@ export const eventsService = {
   async getEvents(
     page: number = 1,
     limit: number = 20,
-    status?: 'active' | 'inactive' | 'archived'
+    status?: EventStatusFilter,
+    search?: string
   ): Promise<EventsListResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    
+
     if (status) {
       params.append('status', status);
+    }
+    if (search) {
+      params.append('search', search);
     }
 
     const response = await api.get<EventsListResponse>(`/admin/events?${params}`);
@@ -135,6 +148,23 @@ export const eventsService = {
     return response.data;
   },
 
+  // Bulk delete events (admin) — destructive. Requires the calling admin's
+  // password as a server-side confirmation gate. On 401 the server returns
+  // { error, code: 'INVALID_PASSWORD' } and no events are touched.
+  async bulkDeleteEvents(eventIds: number[], password: string): Promise<{
+    message: string;
+    results: {
+      successful: Array<{ id: number; name: string }>;
+      failed: Array<{ id: number; name: string | null; error: string }>;
+    };
+  }> {
+    const response = await api.post('/admin/events/bulk-delete', {
+      eventIds,
+      password,
+    });
+    return response.data;
+  },
+
   // Extend event expiration (admin)
   async extendExpiration(id: number, days: number): Promise<Event> {
     const response = await api.post<Event>(`/events/${id}/extend`, {
@@ -149,9 +179,17 @@ export const eventsService = {
     return response.data || [];
   },
 
-  // Reset event password
-  async resetPassword(eventId: number, sendEmail: boolean = true): Promise<{ message: string; newPassword: string; emailSent: boolean }> {
-    const response = await api.post(`/admin/events/${eventId}/reset-password`, { sendEmail });
+  // Reset event password. Pass `password` to set a specific value (validated
+  // server-side with the same rules as create-event); omit it to have the
+  // server auto-generate one.
+  async resetPassword(
+    eventId: number,
+    sendEmail: boolean = true,
+    password?: string
+  ): Promise<{ message: string; newPassword: string; emailSent: boolean }> {
+    const body: { sendEmail: boolean; password?: string } = { sendEmail };
+    if (password) body.password = password;
+    const response = await api.post(`/admin/events/${eventId}/reset-password`, body);
     return response.data;
   },
 
@@ -169,6 +207,18 @@ export const eventsService = {
   }> {
     const response = await api.post(`/admin/events/${eventId}/validate-rename`, { newEventName });
     return response.data;
+  },
+
+  // Publish a draft event
+  async publishEvent(eventId: number): Promise<{ message: string; is_draft: boolean }> {
+    const response = await api.post(`/admin/events/${eventId}/publish`);
+    return response.data;
+  },
+
+  // Get admin preview token (uses existing admin session token)
+  getPreviewToken(): string | null {
+    const token = sessionStorage.getItem('admin_token') || localStorage.getItem('admin_token');
+    return token;
   },
 
   // Rename event

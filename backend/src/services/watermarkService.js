@@ -2,7 +2,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs').promises;
 const { db } = require('../database/db');
-const { getStoragePath } = require('../config/storage');
+const { getStorage } = require('./storage');
 
 class WatermarkService {
   constructor() {
@@ -235,19 +235,6 @@ class WatermarkService {
   }
 
   /**
-   * Get the watermarks directory path, creating it if needed
-   */
-  async getWatermarksDir() {
-    const watermarksDir = path.join(getStoragePath(), 'watermarks');
-    try {
-      await fs.access(watermarksDir);
-    } catch {
-      await fs.mkdir(watermarksDir, { recursive: true });
-    }
-    return watermarksDir;
-  }
-
-  /**
    * Get the file extension from a filename
    */
   getFileExtension(filename) {
@@ -258,45 +245,41 @@ class WatermarkService {
   }
 
   /**
-   * Generate watermarked version of a photo and save to disk
+   * Generate watermarked version of a photo and persist it through the
+   * storage backend. The source must be a local filesystem path because
+   * sharp doesn't take streams; callers in S3 mode should materialize a
+   * tmp local copy via imageProcessor.withLocalCopy first.
+   *
    * @param {Object} photo - Photo object with id, filename, and path info
-   * @param {string} originalPath - Full path to the original image file
+   * @param {string} originalPath - Local path to the original image file
    * @param {Object} settings - Watermark settings (optional, will fetch if not provided)
    * @returns {Object} { success, watermarkPath, error }
    */
   async generateAndSaveWatermark(photo, originalPath, settings = null) {
     try {
-      // Get settings if not provided
       if (!settings) {
         settings = await this.getWatermarkSettings();
       }
 
-      // If watermarking is disabled, return early
       if (!settings || !settings.enabled) {
         return { success: false, watermarkPath: null, error: 'Watermarking is disabled' };
       }
 
-      // Verify original file exists
       try {
         await fs.access(originalPath);
       } catch {
         return { success: false, watermarkPath: null, error: 'Original file not found' };
       }
 
-      // Generate watermarked buffer using existing method
       const watermarkedBuffer = await this.applyWatermark(originalPath, settings);
 
-      // Determine output path
-      const watermarksDir = await this.getWatermarksDir();
       const ext = this.getFileExtension(photo.filename);
       const outputFilename = `${photo.id}_watermarked${ext}`;
-      const outputPath = path.join(watermarksDir, outputFilename);
-
-      // Write the watermarked image to disk
-      await fs.writeFile(outputPath, watermarkedBuffer);
-
-      // Return relative path for database storage
       const relativePath = `watermarks/${outputFilename}`;
+
+      await getStorage().put(relativePath, watermarkedBuffer, {
+        contentType: ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg',
+      });
 
       return {
         success: true,
@@ -314,22 +297,18 @@ class WatermarkService {
   }
 
   /**
-   * Delete a pre-generated watermark file
-   * @param {string} watermarkPath - Relative path to the watermark file
-   * @returns {boolean} - True if deleted successfully
+   * Delete a pre-generated watermark file from the storage backend.
+   * @param {string} watermarkPath - Relative storage key (e.g. "watermarks/123_watermarked.jpg")
+   * @returns {boolean} - True if a delete was attempted (no-op if missing)
    */
   async deleteWatermarkFile(watermarkPath) {
     if (!watermarkPath) return false;
 
     try {
-      const fullPath = path.join(getStoragePath(), watermarkPath);
-      await fs.unlink(fullPath);
+      await getStorage().delete(watermarkPath);
       return true;
     } catch (error) {
-      // File might not exist, which is fine
-      if (error.code !== 'ENOENT') {
-        console.error('Error deleting watermark file:', error);
-      }
+      console.error('Error deleting watermark file:', error);
       return false;
     }
   }

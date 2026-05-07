@@ -9,10 +9,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAdminAuth } from '../../contexts';
 import { useAdminDarkMode } from '../../contexts/AdminDarkModeContext';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { PasswordChangeModal } from './PasswordChangeModal';
 import { LanguageSelector } from '../common';
 import { notificationsService } from '../../services/notifications.service';
 import { toast } from 'react-toastify';
+import { buildResourceUrl } from '../../utils/url';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -21,7 +23,7 @@ interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAdminAuth();
-  const { isDark, toggle: toggleDarkMode } = useAdminDarkMode();
+  const { isDark, toggle: toggleDarkMode, forcedMode } = useAdminDarkMode();
   const { t } = useTranslation();
   const { format } = useLocalizedDate();
   const { formatTimeAgo } = useLocalizedTimeAgo();
@@ -30,6 +32,15 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const queryClient = useQueryClient();
   
+  const { data: brandingSettings } = usePublicSettings();
+
+  const companyName = brandingSettings?.branding_company_name?.trim() || 'PicPeak';
+  const logoUrl = brandingSettings?.branding_logo_url?.trim();
+  const logoDisplayMode = brandingSettings?.branding_logo_display_mode || 'logo_and_text';
+  const resolvedLogoUrl = logoUrl
+    ? (logoUrl.startsWith('http') ? logoUrl : buildResourceUrl(logoUrl))
+    : '/picpeak-kamera-transparent.png';
+
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -82,10 +93,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
               <Menu className="w-6 h-6" />
             </button>
 
-            {/* PicPeak logo - sticky to the left on all sizes */}
+            {/* Logo - sticky to the left on all sizes */}
             <div className="flex items-center gap-2">
-              <img src="/picpeak-kamera-transparent.png" alt="PicPeak" className="h-8 w-auto object-contain" />
-              <span className="text-xl sm:text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>PicPeak</span>
+              {(logoDisplayMode === 'logo_only' || logoDisplayMode === 'logo_and_text') && (
+                <img src={resolvedLogoUrl} alt={companyName} className="h-8 w-auto object-contain" />
+              )}
+              {(logoDisplayMode === 'text_only' || logoDisplayMode === 'logo_and_text') && (
+                <span className="text-xl sm:text-2xl" style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 600, color: '#145346' }}>{companyName}</span>
+              )}
             </div>
 
             {/* Date display - hidden on smaller screens */}
@@ -101,14 +116,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
             {/* Language Selector */}
             <LanguageSelector />
 
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
-              title={isDark ? t('admin.lightMode', 'Switch to light mode') : t('admin.darkMode', 'Switch to dark mode')}
-            >
-              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            {/* Dark Mode Toggle — hidden entirely when an admin has locked
+                the instance to a specific mode via Branding > Force color mode. */}
+            {!forcedMode && (
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors"
+                title={isDark ? t('admin.lightMode', 'Switch to light mode') : t('admin.darkMode', 'Switch to dark mode')}
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            )}
 
             {/* Notifications */}
             <div className="relative" ref={notificationRef}>
@@ -131,7 +149,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                       {unreadCount > 0 && (
                         <button
                           onClick={() => markAllAsReadMutation.mutate()}
-                          className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center gap-1"
+                          className="text-xs text-accent hover:opacity-80 flex items-center gap-1"
                           title={t('admin.markAllRead')}
                         >
                           <CheckCircle className="w-3 h-3" />
@@ -160,7 +178,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                           <div
                             key={notification.id}
                             className={`px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer border-l-4 ${
-                              notification.isRead ? 'border-transparent opacity-75' : 'border-primary-500'
+                              notification.isRead ? 'border-transparent opacity-75' : 'border-accent-dark'
                             }`}
                           >
                             <div className="flex items-start gap-3">
@@ -185,7 +203,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                     <div className="px-4 py-2 border-t border-neutral-100 dark:border-neutral-700 text-center">
                       <button
                         onClick={() => setShowNotifications(false)}
-                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                        className="text-sm text-accent hover:opacity-80"
                       >
                         {t('admin.close')}
                       </button>
@@ -205,7 +223,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
                   <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{user?.username}</p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</p>
                 </div>
-                <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-accent-dark rounded-full flex items-center justify-center">
                   <User className="w-5 h-5 text-white" />
                 </div>
               </button>

@@ -60,7 +60,7 @@ export const StoryPhotoCard: React.FC<StoryPhotoCardProps> = ({
         className="block w-full h-full"
       >
         <AuthenticatedImage
-          src={photo.thumbnail_url || photo.url}
+          src={photo.url}
           alt={photo.filename}
           onLoad={() => setIsLoaded(true)}
           className={`w-full h-full object-cover transition-all duration-700 ease-out will-change-transform ${

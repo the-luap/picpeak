@@ -23,10 +23,15 @@ class FeedbackService {
           allow_favorites: true,
           require_name_email: false,
           moderate_comments: true,
-          show_feedback_to_guests: true
+          show_feedback_to_guests: true,
+          identity_mode: 'simple'
         };
       }
-      
+
+      // Back-compat: rows created before migration 078 have NULL identity_mode.
+      if (!settings.identity_mode) {
+        settings.identity_mode = 'simple';
+      }
       return settings;
     } catch (error) {
       logger.error('Error getting feedback settings:', error);
@@ -73,23 +78,29 @@ class FeedbackService {
    */
   async submitFeedback(photoId, eventId, feedbackData, guestIdentifier) {
     try {
-      const { feedback_type, rating, comment_text, guest_name, guest_email, ip_address, user_agent } = feedbackData;
+      const { feedback_type, rating, comment_text, guest_name, guest_email, ip_address, user_agent, guest_id } = feedbackData;
       
       // Validate feedback type
       if (!['rating', 'like', 'comment', 'favorite'].includes(feedback_type)) {
         throw new Error('Invalid feedback type');
       }
       
-      // Check if similar feedback already exists (prevent duplicates)
+      // Check if similar feedback already exists (prevent duplicates).
+      // When a per-person guest_id is present, scope the check to that guest
+      // so two guests on the same device can independently like a photo.
       if (feedback_type !== 'comment') {
-        const existing = await db('photo_feedback')
+        const duplicateQuery = db('photo_feedback')
           .where({
             photo_id: photoId,
             event_id: eventId,
             feedback_type,
-            guest_identifier: guestIdentifier
-          })
-          .first();
+          });
+        if (guest_id) {
+          duplicateQuery.where('guest_id', guest_id);
+        } else {
+          duplicateQuery.where('guest_identifier', guestIdentifier);
+        }
+        const existing = await duplicateQuery.first();
         
         if (existing) {
           if (feedback_type === 'rating' && rating !== existing.rating) {
@@ -129,6 +140,7 @@ class FeedbackService {
         guest_name,
         guest_email,
         guest_identifier: guestIdentifier,
+        guest_id: guest_id || null,
         ip_address,
         user_agent,
         is_approved: feedback_type !== 'comment' || !feedbackData.moderate_comments,
@@ -232,7 +244,7 @@ class FeedbackService {
           db.raw('COUNT(CASE WHEN feedback_type = ? THEN 1 END) as like_count', ['like']),
           db.raw('COUNT(CASE WHEN feedback_type = ? THEN 1 END) as favorite_count', ['favorite']),
           db.raw('AVG(CASE WHEN feedback_type = ? THEN rating END) as average_rating', ['rating']),
-          db.raw('COUNT(DISTINCT guest_identifier) as feedback_count')
+          db.raw('COUNT(DISTINCT COALESCE(CAST(guest_id AS VARCHAR), guest_identifier)) as feedback_count')
         )
         .first();
       
@@ -457,6 +469,75 @@ class FeedbackService {
       return filteredPhotos.map(p => p.photo_id);
     } catch (error) {
       logger.error('Error getting filtered photos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Anonymize feedback belonging to a guest — sets guest_id to NULL on all
+   * their feedback rows and clears guest_name/guest_email for privacy, then
+   * recomputes denormalized photo counts on affected photos.
+   *
+   * Used by self-service "forget me" and admin guest deletion.
+   */
+  async anonymizeGuestFeedback(guestId) {
+    try {
+      const affected = await db('photo_feedback')
+        .where('guest_id', guestId)
+        .select('photo_id');
+      const photoIds = [...new Set(affected.map((r) => r.photo_id))];
+
+      await db('photo_feedback')
+        .where('guest_id', guestId)
+        .update({
+          guest_id: null,
+          guest_name: null,
+          guest_email: null,
+          updated_at: new Date(),
+        });
+
+      for (const pid of photoIds) {
+        await this.updatePhotoFeedbackStats(pid);
+      }
+
+      return { anonymized: affected.length, photos: photoIds.length };
+    } catch (error) {
+      logger.error('Error anonymizing guest feedback:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Merge feedback rows from sourceGuestIds into keepGuestId. Used by admin
+   * guest merge and email-based identity recovery when a user re-registers.
+   * Recomputes denormalized counts on affected photos.
+   */
+  async mergeGuestFeedback(keepGuestId, sourceGuestIds) {
+    try {
+      const sources = (sourceGuestIds || []).filter((id) => id && id !== keepGuestId);
+      if (sources.length === 0) {
+        return { merged: 0, photos: 0 };
+      }
+
+      const affected = await db('photo_feedback')
+        .whereIn('guest_id', sources)
+        .select('photo_id');
+      const photoIds = [...new Set(affected.map((r) => r.photo_id))];
+
+      await db('photo_feedback')
+        .whereIn('guest_id', sources)
+        .update({
+          guest_id: keepGuestId,
+          updated_at: new Date(),
+        });
+
+      for (const pid of photoIds) {
+        await this.updatePhotoFeedbackStats(pid);
+      }
+
+      return { merged: affected.length, photos: photoIds.length };
+    } catch (error) {
+      logger.error('Error merging guest feedback:', error);
       throw error;
     }
   }

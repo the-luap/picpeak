@@ -131,6 +131,16 @@ We welcome contributions — bug fixes, features, translations, documentation. S
 - [Admin API Quickstart](docs/admin-api-quickstart.md) — Authentication and testing guide
 - [Security Policy](SECURITY.md)
 
+## Contributors
+
+Thanks to the people whose code, reports, and feedback have shaped PicPeak:
+
+- [**@Luca-Timo**](https://github.com/Luca-Timo) — native Apple Silicon multi-arch images, external-URL toggle for legal CMS pages, lazy-loaded folder tree picker, admin-email picker, self-hosted webfont system, gallery header/banner decoupling, and several typed-API refactors.
+- [**@Rekoo-PS**](https://github.com/Rekoo-PS) — sharp-eyed bug reporter and product feedback. Filed the issues that drove the login-loop fix, gallery-loading skeleton work, mobile-lightbox overhaul, admin-events search-counter fix, photo-count column, and bulk-delete workflow. Also a [BuyMeACoffee](https://buymeacoffee.com/theluap) supporter.
+
+If you've contributed and aren't listed here, please open a PR.
+
+
 ## License
 
 MIT — use it for personal or commercial projects.

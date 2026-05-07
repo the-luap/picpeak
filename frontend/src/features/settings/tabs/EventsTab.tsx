@@ -149,6 +149,63 @@ export const EventsTab: React.FC<EventsTabProps> = ({
               </div>
             </label>
           </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.event_default_require_password}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, event_default_require_password: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t('settings.events.defaultRequirePassword', 'Require password by default')}
+                </span>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('settings.events.defaultRequirePasswordHelp', 'Pre-check "Require password" when creating new events. Disable for quicker creation of public galleries.')}
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.gallery_show_filter_bar}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, gallery_show_filter_bar: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t('settings.events.showGalleryFilterBar', 'Show filter bar in galleries')}
+                </span>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('settings.events.showGalleryFilterBarHelp', 'Display the search-by-filename and sort controls above grid-layout galleries. Disable for a cleaner layout.')}
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={eventSettings.event_phone_field_enabled}
+                onChange={(e) => setEventSettings(prev => ({ ...prev, event_phone_field_enabled: e.target.checked }))}
+                className="mt-1 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t('settings.events.enablePhoneField', 'Enable phone number field')}
+                </span>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('settings.events.enablePhoneFieldHelp', 'Adds an optional phone number input to the event form. Useful for downstream automations like WhatsApp delivery via n8n. Always optional even when enabled.')}
+                </p>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div className="mt-6">

@@ -1,23 +1,8 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getApiBaseUrl } from '../../utils/url';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 
 export const RobotsMetaTags: React.FC = () => {
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-        if (response.ok) {
-          return response.json();
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: settings } = usePublicSettings({ retry: false });
 
   useEffect(() => {
     // Remove any existing robots meta tags we previously injected

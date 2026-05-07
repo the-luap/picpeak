@@ -60,7 +60,7 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
               const numeric = Number(raw);
               onCategoryChange(Number.isNaN(numeric) ? raw : numeric);
             }}
-            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
           >
             <option value="">{t('gallery.allCategories', 'All Categories')}</option>
             <option value="0">{t('gallery.uncategorized', 'Uncategorized')}</option>
@@ -78,7 +78,7 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
             <select
               value={mediaType}
               onChange={(e) => onMediaTypeChange(e.target.value as 'all' | 'photo' | 'video')}
-              className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
             >
               <option value="all">{t('gallery.allMedia', 'All media')}</option>
               <option value="photo">{t('gallery.photosOnly', 'Photos only')}</option>
@@ -92,7 +92,7 @@ export const PhotoFilters: React.FC<PhotoFiltersProps> = ({
           <select
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as 'date' | 'name' | 'size' | 'rating', sortOrder)}
-            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
           >
             <option value="date">{t('gallery.sortByDate', 'Sort by Date')}</option>
             <option value="name">{t('gallery.sortByName', 'Sort by Name')}</option>
