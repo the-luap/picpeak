@@ -4,15 +4,15 @@ import { AlertCircle, Clock } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useLocalizedDate } from '../hooks/useLocalizedDate';
-import { useQuery } from '@tanstack/react-query';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 
-import { Card, CardContent, Input, Button, Loading, ReCaptcha } from '../components/common';
+import { Card, CardContent, Input, Button, ReCaptcha, CMSContentBlock } from '../components/common';
 import { useGalleryAuth, useTheme } from '../contexts';
 import { useGalleryInfo } from '../hooks/useGallery';
 import { GalleryView } from '../components/gallery';
+import { GallerySkeleton } from '../components/gallery/GallerySkeleton';
 import { analyticsService } from '../services/analytics.service';
 import { galleryService } from '../services';
-import { api } from '../config/api';
 import { GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { buildResourceUrl } from '../utils/url';
 import { isGalleryPublic, normalizeRequirePassword } from '../utils/accessControl';
@@ -105,15 +105,7 @@ export const GalleryPage: React.FC = () => {
     setAutoLoginAttempted(false);
   }, [resolvedSlug]);
   
-  // Fetch branding settings
-  const { data: settingsData } = useQuery({
-    queryKey: ['gallery-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData, isLoading: isLoadingSettings } = usePublicSettings();
   
   // Set language from admin settings when on login page
   React.useEffect(() => {
@@ -156,7 +148,18 @@ export const GalleryPage: React.FC = () => {
         themeToApply = settingsData.theme_config;
       }
 
-      // Apply theme
+      // Inject hero photo ID into theme gallery settings
+      if (themeToApply && galleryInfo.hero_photo_id) {
+        if (themeToApply.gallerySettings) {
+          themeToApply.gallerySettings.heroImageId = galleryInfo.hero_photo_id;
+        } else {
+          themeToApply.gallerySettings = { heroImageId: galleryInfo.hero_photo_id };
+        }
+      }
+
+      // Apply theme. Force color mode is enforced inside ThemeContext.applyTheme
+      // (it subscribes to public settings) so callers don't have to wrap the
+      // theme themselves — keeps the lock consistent across every entry point.
       if (themeToApply) {
         setTheme(themeToApply);
       }
@@ -168,7 +171,7 @@ export const GalleryPage: React.FC = () => {
       return;
     }
 
-    if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted) {
+    if (galleryInfo && isGalleryPublic(galleryInfo.requires_password) && !isAuthenticated && !autoLoginAttempted && !isLoadingSettings) {
       setAutoLoginAttempted(true);
       setIsLoggingIn(true);
       login(resolvedSlug, '')
@@ -185,7 +188,7 @@ export const GalleryPage: React.FC = () => {
           setIsLoggingIn(false);
         });
     }
-  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier]);
+  }, [galleryInfo, isAuthenticated, autoLoginAttempted, login, resolvedSlug, isResolvingIdentifier, isLoadingSettings]);
 
   // Calculate days until expiration (null if no expiration set)
   const daysUntilExpiration = galleryInfo?.expires_at
@@ -249,128 +252,23 @@ export const GalleryPage: React.FC = () => {
     }
   };
 
-  // Show loading state
+  // Show the same skeleton GalleryView uses while photos load, so the
+  // visitor sees one continuous loading state from URL open to real photos
+  // instead of three different full-page interstitials (#321).
   if (isLoadingInfo) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex items-center justify-center">
-          <Loading size="lg" text={t('gallery.loading')} />
-        </div>
-      </div>
-    );
+    return <GallerySkeleton />;
   }
 
-  if (identifierError && !resolvedSlug && !isResolvingIdentifier) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex flex-col">
-          {settingsData?.branding_logo_url && (
-            <div className="p-8 text-center">
-              <img
-                src={buildResourceUrl(settingsData.branding_logo_url)}
-                alt={settingsData.branding_company_name || 'Company Logo'}
-                className="h-16 w-auto object-contain mx-auto"
-              />
-            </div>
-          )}
-
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md w-full mx-4">
-              <CardContent className="text-center py-12">
-                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">
-                  {t('errors.galleryNotFound')}
-                </h2>
-                <p className="text-neutral-600">
-                  {identifierError}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="p-8 text-center">
-            <div className="flex items-center justify-center gap-4">
-              <Link
-                to="/impressum"
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.impressum')}
-              </Link>
-              <span className="text-xs text-neutral-400">|</span>
-              <Link
-                to="/datenschutz"
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.datenschutz')}
-              </Link>
-            </div>
-            <p className="text-xs mt-2 text-neutral-500">
-              Powered by <span className="font-semibold">PicPeak</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (infoError) {
-    // Check if it's an archived gallery error
-    const errorMessage = (infoError as any)?.response?.data?.error;
-    const isArchived = errorMessage?.includes('archived');
-    
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
-        <div className="min-h-screen flex flex-col">
-          {/* Logo at top */}
-          {settingsData?.branding_logo_url && (
-            <div className="p-8 text-center">
-              <img 
-                src={buildResourceUrl(settingsData.branding_logo_url)} 
-                alt={settingsData.branding_company_name || 'Company Logo'}
-                className="h-16 w-auto object-contain mx-auto"
-              />
-            </div>
-          )}
-          
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="max-w-md w-full mx-4">
-              <CardContent className="text-center py-12">
-                <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">
-                  {t(isArchived ? 'errors.galleryArchived' : 'errors.galleryNotFound')}
-                </h2>
-                <p className="text-neutral-600">
-                  {t(isArchived ? 'errors.galleryArchivedMessage' : 'errors.galleryNotFoundMessage')}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Legal Links */}
-          <div className="p-8 text-center">
-            <div className="flex items-center justify-center gap-4">
-              <Link 
-                to="/impressum" 
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.impressum')}
-              </Link>
-              <span className="text-xs text-neutral-400">|</span>
-              <Link 
-                to="/datenschutz" 
-                className="text-xs text-neutral-500 hover:text-neutral-700 transition-colors"
-              >
-                {t('legal.datenschutz')}
-              </Link>
-            </div>
-            <p className="text-xs mt-2 text-neutral-500">
-              Powered by <span className="font-semibold">PicPeak</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  // Gallery missing / archived / expired-link / unresolvable identifier all
+  // collapse into the customisable "gallery-not-found" CMS page (#324).
+  // Admins can edit the title, body, and logo from the CMS Pages tab; the
+  // seeded default copy is intentionally generic so any of those reasons
+  // reads correctly.
+  if (
+    (identifierError && !resolvedSlug && !isResolvingIdentifier) ||
+    infoError
+  ) {
+    return <CMSContentBlock slug="gallery-not-found" />;
   }
 
   // Show expired state
@@ -439,6 +337,13 @@ export const GalleryPage: React.FC = () => {
     return <GalleryView slug={gallerySlugForView} event={event} />;
   }
 
+  // Public gallery: auto-login is in flight (or about to fire). Show the
+  // skeleton instead of the "publicly accessible — loading photos" card so
+  // visitors see one continuous skeleton until real photos appear (#321).
+  if (!requiresPassword) {
+    return <GallerySkeleton />;
+  }
+
   // Show login form
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background, #fafafa)' }}>
@@ -478,59 +383,40 @@ export const GalleryPage: React.FC = () => {
 
           <Card>
             <CardContent className="p-4 sm:p-6">
-              {requiresPassword ? (
-                <>
-                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
-                  
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <Input
-                      type="password"
-                      label={t('auth.password')}
-                      placeholder={t('auth.passwordPlaceholder')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      error={loginError || undefined}
-                      autoFocus
-                      className="text-sm sm:text-base"
-                    />
-                    
-                    <ReCaptcha
-                      onChange={setRecaptchaToken}
-                      onExpired={() => setRecaptchaToken(null)}
-                    />
-                    
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      className="w-full text-sm sm:text-base"
-                      isLoading={isLoggingIn}
-                      disabled={isLoggingIn}
-                    >
-                      {t('gallery.viewGallery')}
-                    </Button>
-                  </form>
+              <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4">{t('auth.enterPassword')}</h2>
 
-                  <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
-                    {t('auth.passwordHint')}
-                  </p>
-                </>
-              ) : (
-                <div className="text-center space-y-3">
-                  <h2 className="text-base sm:text-lg lg:text-xl font-semibold">
-                    {t('gallery.publicGalleryTitle', 'This gallery is publicly accessible')}
-                  </h2>
-                  <p className="text-sm text-neutral-600">
-                    {t('gallery.publicGallerySubtitle', 'Loading the photos now...')}
-                  </p>
-                  <div className="flex justify-center py-4">
-                    <Loading size="sm" text={t('gallery.loading')} />
-                  </div>
-                  {loginError && (
-                    <p className="text-xs text-red-600">{loginError}</p>
-                  )}
-                </div>
-              )}
+              <form onSubmit={handleLogin} className="space-y-4">
+                <Input
+                  type="password"
+                  label={t('auth.password')}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  error={loginError || undefined}
+                  autoFocus
+                  className="text-sm sm:text-base"
+                />
+
+                <ReCaptcha
+                  onChange={setRecaptchaToken}
+                  onExpired={() => setRecaptchaToken(null)}
+                />
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full text-sm sm:text-base"
+                  isLoading={isLoggingIn}
+                  disabled={isLoggingIn}
+                >
+                  {t('gallery.viewGallery')}
+                </Button>
+              </form>
+
+              <p className="text-xs text-neutral-500 text-center mt-4 sm:mt-6">
+                {t('auth.passwordHint')}
+              </p>
             </CardContent>
           </Card>
 

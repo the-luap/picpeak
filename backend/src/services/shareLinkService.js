@@ -1,6 +1,7 @@
 const { db } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { extractShareToken, isPotentialShareToken, buildSharePath } = require('../utils/shareLinkUtils');
+const { getFrontendBaseUrl } = require('../utils/frontendUrl');
 
 const SETTING_KEY = 'general_short_gallery_urls';
 const CACHE_TTL_MS = 60_000;
@@ -87,7 +88,7 @@ const buildShareLinkVariants = async ({ slug, shareToken }) => {
 
   const shortEnabled = await isShortGalleryUrlsEnabled();
   const sharePath = buildSharePath(slug, shareToken, shortEnabled);
-  const frontendBase = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const frontendBase = await getFrontendBaseUrl();
   const shareUrl = frontendBase ? `${frontendBase}${sharePath}` : sharePath;
 
   return {
@@ -112,7 +113,8 @@ const getEventShareToken = (event) => {
 
 const ACTIVE_EVENT_FILTER = {
   is_active: formatBoolean(true),
-  is_archived: formatBoolean(false)
+  is_archived: formatBoolean(false),
+  is_draft: formatBoolean(false)
 };
 
 const resolveShareIdentifier = async (identifier) => {

@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Archive,
   AlertTriangle,
   MoreVertical,
@@ -12,26 +12,27 @@ import {
   Trash2,
   Calendar,
   Image,
-  Activity
+  Activity,
+  Copy,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { parseISO, differenceInDays } from 'date-fns';
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, SkeletonTable, ErrorBoundary } from '../../components/common';
-import { BulkArchiveModal } from '../../components/admin';
+import { BulkArchiveModal, BulkDeleteModal } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { eventsService } from '../../services/events.service';
+import { eventsService, type EventStatusFilter } from '../../services/events.service';
+import { adminService } from '../../services/admin.service';
 import { isGalleryPublic } from '../../utils/accessControl';
+import { buildShareLinkUrl } from '../../utils/url';
 import type { Event } from '../../types';
 import { useTranslation } from 'react-i18next';
 
-const resolveShareLink = (link: string): string => {
-  if (!link) return '#';
-  if (link.startsWith('http')) return link;
-  if (link.startsWith('/')) return link;
-  return `/gallery/${link}`;
-};
+const PAGE_SIZE = 20;
 
 export const EventsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -46,10 +47,63 @@ export const EventsListPage: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [showBulkArchiveModal, setShowBulkArchiveModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeletePasswordError, setBulkDeletePasswordError] = useState<string | null>(null);
+  const [copiedEventId, setCopiedEventId] = useState<number | null>(null);
 
-  // Get filter from URL
-  const statusFilter = searchParams.get('filter') as 'active' | 'archived' | null;
-  const isExpiringFilter = searchParams.get('filter') === 'expiring';
+  const copyShareLink = async (event: Event) => {
+    const url = buildShareLinkUrl(event.share_link);
+    if (!url || url === '#') {
+      toast.error(t('errors.noShareLink', 'No share link available'));
+      return;
+    }
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!ok) throw new Error('Copy failed');
+      }
+      setCopiedEventId(event.id);
+      toast.success(t('events.linkCopied', 'Gallery link copied'));
+      setTimeout(() => setCopiedEventId((current) => (current === event.id ? null : current)), 2000);
+    } catch {
+      toast.error(t('errors.copyFailed', 'Failed to copy link'));
+    }
+  };
+
+  // Get filter from URL — backend supports all of these as `status` values
+  const filterParam = searchParams.get('filter');
+  const statusFilter: EventStatusFilter | undefined =
+    filterParam === 'active' || filterParam === 'archived' ||
+    filterParam === 'draft' || filterParam === 'expiring' ||
+    filterParam === 'inactive'
+      ? filterParam
+      : undefined;
+  const isExpiringFilter = filterParam === 'expiring';
+  const isDraftFilter = filterParam === 'draft';
+
+  // Server-side pagination + debounced search
+  const [page, setPage] = useState(1);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Reset to page 1 whenever the filter or search changes so users don't
+  // get stuck on a page index that no longer exists in the new result set.
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, debouncedSearchTerm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -85,10 +139,20 @@ export const EventsListPage: React.FC = () => {
     };
   }, [activeDropdown]);
 
-  // Fetch events
+  // Fetch events — fully server-side: pagination, status filter, and search
+  // (#346 — counters and search were previously bounded to the first 100 rows).
   const { data, isLoading, error } = useQuery({
-    queryKey: ['admin-events', statusFilter],
-    queryFn: () => eventsService.getEvents(1, 100, (statusFilter === 'archived' || statusFilter === 'active') ? statusFilter : undefined),
+    queryKey: ['admin-events', statusFilter ?? 'all', debouncedSearchTerm, page],
+    queryFn: () => eventsService.getEvents(page, PAGE_SIZE, statusFilter, debouncedSearchTerm || undefined),
+    placeholderData: (prev) => prev,
+  });
+
+  // Aggregate counters come from the dashboard stats endpoint so the cards
+  // and the "All (N)" filter button always reflect global totals, not the
+  // currently visible page.
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
+    queryFn: () => adminService.getDashboardStats(),
   });
 
   // Archive mutation
@@ -96,6 +160,7 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.archiveEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast.success(t('toast.eventArchived'));
     },
     onError: () => {
@@ -108,6 +173,7 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.deleteEvent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       toast.success(t('toast.deleteSuccess'));
     },
     onError: () => {
@@ -120,9 +186,10 @@ export const EventsListPage: React.FC = () => {
     mutationFn: eventsService.bulkArchiveEvents,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       setSelectedEvents([]);
       setShowBulkArchiveModal(false);
-      
+
       if (data.results.failed.length === 0) {
         toast.success(t('events.bulkArchiveSuccess', { count: data.results.successful.length }));
       } else {
@@ -134,50 +201,49 @@ export const EventsListPage: React.FC = () => {
     },
   });
 
-  // Filter and search events
-  const filteredEvents = useMemo(() => {
-    if (!data?.events) return [];
-    
-    let events = [...data.events];
-    
-    // Apply status filter
-    if (statusFilter === 'active') {
-      events = events.filter(e => e.is_active && !e.is_archived);
-    } else if (isExpiringFilter) {
-      events = events.filter(e => {
-        if (!e.is_active || e.is_archived) return false;
-        const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-        return days <= 7 && days > 0;
-      });
-    } else if (statusFilter === 'archived') {
-      events = events.filter(e => e.is_archived);
-    }
-    
-    // Apply search
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      events = events.filter(e => 
-        e.event_name.toLowerCase().includes(term) ||
-        e.event_type.toLowerCase().includes(term) ||
-        (e.customer_email || '').toLowerCase().includes(term)
-      );
-    }
-    
-    // Sort by creation date (newest first)
-    events.sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateB - dateA;
-    });
-    
-    return events;
-  }, [data?.events, statusFilter, searchTerm]);
+  // Bulk delete mutation. The 401 INVALID_PASSWORD response surfaces inline
+  // on the modal's password field rather than as a toast, since it's a
+  // recoverable input error (the user can retry without losing context).
+  const bulkDeleteMutation = useMutation({
+    mutationFn: ({ eventIds, password }: { eventIds: number[]; password: string }) =>
+      eventsService.bulkDeleteEvents(eventIds, password),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+      setSelectedEvents([]);
+      setShowBulkDeleteModal(false);
+      setBulkDeletePasswordError(null);
+
+      if (data.results.failed.length === 0) {
+        toast.success(t('events.bulkDelete.successAll', { count: data.results.successful.length }));
+      } else {
+        toast.warning(t('events.bulkDelete.successPartial', { success: data.results.successful.length, failed: data.results.failed.length }));
+      }
+    },
+    onError: (error: unknown) => {
+      const e = error as { response?: { status?: number; data?: { code?: string; error?: string } } };
+      if (e?.response?.status === 401 && e.response.data?.code === 'INVALID_PASSWORD') {
+        setBulkDeletePasswordError(t('events.bulkDelete.incorrectPassword'));
+      } else {
+        toast.error(t('events.bulkDelete.errorGeneric'));
+        setShowBulkDeleteModal(false);
+      }
+    },
+  });
+
+  // Filtering and searching now happen server-side. Use the response directly,
+  // ordered as the backend returned them (created_at desc by default).
+  const events: Event[] = data?.events ?? [];
+  const pagination = data?.pagination;
+  const totalPages = pagination?.totalPages ?? 1;
+  const filteredCount = pagination?.total ?? 0;
+  const isFilteringOrSearching = !!statusFilter || !!debouncedSearchTerm;
 
   const handleSelectAll = () => {
-    if (selectedEvents.length === filteredEvents.length) {
+    if (selectedEvents.length === events.length) {
       setSelectedEvents([]);
     } else {
-      setSelectedEvents(filteredEvents.map(e => e.id));
+      setSelectedEvents(events.map(e => e.id));
     }
   };
 
@@ -190,6 +256,7 @@ export const EventsListPage: React.FC = () => {
   };
 
   const getEventStatus = (event: Event) => {
+    if (event.is_draft) return { label: t('events.draft'), color: 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/40' };
     if (event.is_archived) return { label: t('events.archived'), color: 'text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700' };
     if (!event.is_active) return { label: t('events.inactive'), color: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40' };
 
@@ -245,52 +312,49 @@ export const EventsListPage: React.FC = () => {
           </Button>
         </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards — fed from /admin/dashboard/stats so the totals
+          stay accurate regardless of the visible page (#346). */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalEvents')}</p>
-              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{data?.events.length || 0}</p>
+              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">{dashboardStats?.totalEvents ?? 0}</p>
             </div>
-            <Calendar className="w-8 h-8 text-primary-600" />
+            <Calendar className="w-8 h-8 text-accent" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.activeEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => e.is_active && !e.is_archived).length || 0}
+                {dashboardStats?.activeEvents ?? 0}
               </p>
             </div>
             <Activity className="w-8 h-8 text-green-600" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.totalPhotos')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.reduce((sum, e) => sum + (e.photo_count || 0), 0) || 0}
+                {dashboardStats?.totalPhotos ?? 0}
               </p>
             </div>
             <Image className="w-8 h-8 text-blue-600" />
           </div>
         </Card>
-        
+
         <Card padding="sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('events.stats.expiringEvents')}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                {data?.events.filter(e => {
-                  if (!e.is_active || e.is_archived) return false;
-                  const days = e.expires_at ? differenceInDays(parseISO(e.expires_at), new Date()) : 0;
-                  return days <= 7 && days > 0;
-                }).length || 0}
+                {dashboardStats?.expiringEvents ?? 0}
               </p>
             </div>
             <AlertTriangle className="w-8 h-8 text-orange-600" />
@@ -322,7 +386,7 @@ export const EventsListPage: React.FC = () => {
                 setSearchParams(searchParams);
               }}
             >
-              {t('events.all')} ({data?.events.length || 0})
+              {t('events.all')} ({dashboardStats?.totalEvents ?? 0})
             </Button>
             <Button
               variant={statusFilter === 'active' ? 'primary' : 'outline'}
@@ -340,6 +404,13 @@ export const EventsListPage: React.FC = () => {
               {t('events.expiring')}
             </Button>
             <Button
+              variant={isDraftFilter ? 'primary' : 'outline'}
+              size="md"
+              onClick={() => setSearchParams({ filter: 'draft' })}
+            >
+              {t('events.draft')}
+            </Button>
+            <Button
               variant={statusFilter === 'archived' ? 'primary' : 'outline'}
               size="md"
               onClick={() => setSearchParams({ filter: 'archived' })}
@@ -352,20 +423,31 @@ export const EventsListPage: React.FC = () => {
 
         {/* Bulk Actions */}
         {selectedEvents.length > 0 && (
-          <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-primary-900 dark:text-primary-100">
+          <div className="mt-4 p-3 bg-accent-dark/15 rounded-lg flex items-center justify-between">
+            <span className="text-sm text-accent-dark">
               {t('events.eventsSelected', { count: selectedEvents.length })}
             </span>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setSelectedEvents([])}>
                 {t('events.clear')}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => setShowBulkArchiveModal(true)}
               >
                 {t('events.archiveSelected')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBulkDeletePasswordError(null);
+                  setShowBulkDeleteModal(true);
+                }}
+                className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+              >
+                {t('events.deleteSelected', 'Delete Selected')}
               </Button>
             </div>
           </div>
@@ -381,9 +463,9 @@ export const EventsListPage: React.FC = () => {
                 <th className="px-6 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedEvents.length === filteredEvents.length && filteredEvents.length > 0}
+                    checked={selectedEvents.length === events.length && events.length > 0}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
+                    className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
@@ -394,6 +476,9 @@ export const EventsListPage: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('events.date')}
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                  {t('events.photos', 'Photos')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                   {t('events.status')}
@@ -407,14 +492,14 @@ export const EventsListPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-700">
-              {filteredEvents.length === 0 ? (
+              {events.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
                     {t('events.noEventsFound')}
                   </td>
                 </tr>
               ) : (
-                filteredEvents.map((event) => {
+                events.map((event) => {
                   const status = getEventStatus(event);
 
                   return (
@@ -428,7 +513,7 @@ export const EventsListPage: React.FC = () => {
                           type="checkbox"
                           checked={selectedEvents.includes(event.id)}
                           onChange={() => handleSelectEvent(event.id)}
-                          className="w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
+                          className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500 dark:bg-neutral-700"
                         />
                       </td>
                       <td className="px-6 py-4">
@@ -454,6 +539,9 @@ export const EventsListPage: React.FC = () => {
                       <td className="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-300">
                         {event.event_date ? format(parseISO(event.event_date), 'MMM d, yyyy') : 'N/A'}
                       </td>
+                      <td className="px-6 py-4 text-sm text-right tabular-nums text-neutral-700 dark:text-neutral-300">
+                        {event.photo_count ?? 0}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
                           {status.label}
@@ -478,10 +566,24 @@ export const EventsListPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => window.open(resolveShareLink(event.share_link), '_blank')}
+                                onClick={() => window.open(buildShareLinkUrl(event.share_link), '_blank')}
                                 title={t('events.viewGallery')}
                               >
                                 <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {event.share_link && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyShareLink(event)}
+                                title={t('events.copyLink', 'Copy Link')}
+                              >
+                                {copiedEventId === event.id ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
                               </Button>
                             )}
                           </div>
@@ -528,7 +630,7 @@ export const EventsListPage: React.FC = () => {
                                   </button>
                                   {event.share_link ? (
                                     <a
-                                      href={resolveShareLink(event.share_link)}
+                                      href={buildShareLinkUrl(event.share_link)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="md:hidden w-full text-left px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
@@ -540,6 +642,19 @@ export const EventsListPage: React.FC = () => {
                                       <ExternalLink className="w-4 h-4" />
                                       {t('events.viewGallery')}
                                     </a>
+                                  ) : null}
+                                  {event.share_link ? (
+                                    <button
+                                      onClick={() => {
+                                        copyShareLink(event);
+                                        setActiveDropdown(null);
+                                        setDropdownPosition(null);
+                                      }}
+                                      className="md:hidden w-full text-left px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                      {t('events.copyLink', 'Copy Link')}
+                                    </button>
                                   ) : null}
                                   {!event.is_archived ? (
                                     <button
@@ -594,14 +709,74 @@ export const EventsListPage: React.FC = () => {
           </table>
         </div>
       </Card>
-      
+
+      {/* Pagination — only when the current filter has more than one page */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
+          <div>
+            {t('events.paginationLabel', {
+              from: events.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1,
+              to: (page - 1) * PAGE_SIZE + events.length,
+              total: filteredCount,
+              defaultValue: '{{from}}–{{to}} of {{total}}',
+            })}
+            {isFilteringOrSearching && (
+              <span className="ml-2 text-neutral-400">({t('events.filtered', 'filtered')})</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<ChevronLeft className="w-4 h-4" />}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              {t('common.previous', 'Previous')}
+            </Button>
+            <span>
+              {t('events.pageOf', {
+                page,
+                totalPages,
+                defaultValue: 'Page {{page}} of {{totalPages}}',
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              rightIcon={<ChevronRight className="w-4 h-4" />}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              {t('common.next', 'Next')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Bulk Archive Modal */}
       <BulkArchiveModal
         isOpen={showBulkArchiveModal}
         onClose={() => setShowBulkArchiveModal(false)}
         onConfirm={() => bulkArchiveMutation.mutate(selectedEvents)}
-        selectedEvents={filteredEvents.filter(e => selectedEvents.includes(e.id))}
+        selectedEvents={events.filter(e => selectedEvents.includes(e.id))}
         isLoading={bulkArchiveMutation.isPending}
+      />
+
+      {/* Bulk Delete Modal */}
+      <BulkDeleteModal
+        isOpen={showBulkDeleteModal}
+        onClose={() => {
+          setShowBulkDeleteModal(false);
+          setBulkDeletePasswordError(null);
+        }}
+        onConfirm={async (password) => {
+          await bulkDeleteMutation.mutateAsync({ eventIds: selectedEvents, password });
+        }}
+        selectedEvents={events.filter(e => selectedEvents.includes(e.id))}
+        isLoading={bulkDeleteMutation.isPending}
+        passwordError={bulkDeletePasswordError}
+        onPasswordErrorClear={() => setBulkDeletePasswordError(null)}
       />
       </div>
     </ErrorBoundary>

@@ -69,7 +69,9 @@ backend/data/
 backend/docs/
 backend/logs/
 logs/
-storage/
+# Anchored to repo root: matches the top-level runtime storage dir,
+# NOT backend/src/services/storage/ (the storage backend abstraction code).
+/storage/
 data/
 certbot/
 
@@ -94,11 +96,23 @@ docs/FRONTEND_ARCHITECTURE.md
 docs/DEVELOPER_ONBOARDING.md
 docs/ENVIRONMENT_VARIABLES.md
 
+# Build artifact: OpenAPI spec generated locally + synced into the
+# picpeak-docs repo. Never tracked here — the docs site at
+# docs.picpeak.app is the source of truth.
+docs/openapi.json
+docs/openapi.yaml
+
 # Local backup directory (from testing)
 backup/
 
 # Local artifacts from browser tooling
 .playwright-mcp/
+
+# Local-only E2E suite (never pushed; runs as pre-push gate on this machine)
+tests/e2e/local/
+playwright-local-results/
+e2e-test.log
+scripts/e2e-local.sh
 
 # Local SQLite files in backend
 backend/*.sqlite*

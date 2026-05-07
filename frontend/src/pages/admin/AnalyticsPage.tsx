@@ -454,7 +454,7 @@ export const AnalyticsPage: React.FC = () => {
               ? 'bg-red-600'
               : usagePercent >= 90
                 ? 'bg-amber-500'
-                : 'bg-primary-600';
+                : 'bg-accent-dark';
             const limitDescriptor = storageInfo
               ? storageInfo.soft_limit_configured
                 ? t('admin.storageSoftLimitConfigured', { limit: limitDisplay })

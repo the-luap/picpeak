@@ -184,7 +184,7 @@ export const BackupConfiguration = ({ config, onSave, isSaving }) => {
                 onClick={() => handleChange('backup_destination_type', type.id)}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   formData.backup_destination_type === type.id
-                    ? 'border-primary bg-primary-50 dark:bg-primary-900/30'
+                    ? 'border-primary bg-accent-dark/15'
                     : 'border-neutral-200 dark:border-neutral-600 hover:border-neutral-300 dark:hover:border-neutral-500'
                 }`}
               >

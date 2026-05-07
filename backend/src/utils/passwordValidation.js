@@ -213,17 +213,17 @@ async function validatePasswordInContext(password, context, userData = {}) {
     // Base validation with gallery-specific options
     const result = validatePassword(password, galleryOptions);
     
-    // Override validation for common date formats
-    // Allow passwords like "04.07.2025", "04/07/2025", "04-07-2025"
-    const datePattern = /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}$/;
-    if (datePattern.test(password)) {
-      // Date format is valid for gallery passwords
-      return {
-        valid: true,
-        errors: [],
-        score: 2,
-        feedback: {}
-      };
+    // Only allow date-format passwords when complexity is 'simple'
+    if (complexityLevel === 'simple') {
+      const datePattern = /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}$/;
+      if (datePattern.test(password)) {
+        return {
+          valid: true,
+          errors: [],
+          score: 2,
+          feedback: {}
+        };
+      }
     }
     
     // Additional gallery-specific checks

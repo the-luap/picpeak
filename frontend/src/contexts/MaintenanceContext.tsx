@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { setMaintenanceModeCallback } from '../config/api';
-import { getApiBaseUrl } from '../utils/url';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 
 interface MaintenanceContextType {
   isMaintenanceMode: boolean;
@@ -25,34 +24,18 @@ interface MaintenanceProviderProps {
 export const MaintenanceProvider: React.FC<MaintenanceProviderProps> = ({ children }) => {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
 
-  // Check maintenance mode status on mount
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings-maintenance'],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-        if (response.status === 503) {
-          setIsMaintenanceMode(true);
-          return null;
-        }
-        return response.json();
-      } catch (error) {
-        // If we can't reach the server, don't assume maintenance mode
-        return null;
-      }
-    },
-    staleTime: 30 * 1000, // Check every 30 seconds
-    refetchInterval: 30 * 1000,
-  });
+  // Polls /public/settings every 30s so a maintenance flag flipped server-side propagates
+  // without a refresh. 503 responses are caught by the axios interceptor in config/api.ts
+  // (which calls setMaintenanceModeCallback below), so we only need to read the explicit
+  // maintenance_mode flag here.
+  const { data: settings } = usePublicSettings({ refetchInterval: 30_000 });
 
-  // Update maintenance mode based on settings
   useEffect(() => {
     if (settings?.maintenance_mode !== undefined) {
       setIsMaintenanceMode(settings.maintenance_mode);
     }
   }, [settings]);
 
-  // Set up the callback for API interceptor
   useEffect(() => {
     setMaintenanceModeCallback((enabled: boolean) => {
       setIsMaintenanceMode(enabled);

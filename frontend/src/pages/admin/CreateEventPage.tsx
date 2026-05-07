@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Calendar,
@@ -8,7 +8,9 @@ import {
   ArrowLeft,
   Palette,
   Eye,
-  EyeOff
+  EyeOff,
+  Image,
+  Key
 } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -20,9 +22,11 @@ import { eventsService } from '../../services/events.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 import { categoriesService } from '../../services/categories.service';
 import { settingsService } from '../../services/settings.service';
-import { publicSettingsService } from '../../services/publicSettings.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { cssTemplatesService } from '../../services/cssTemplates.service';
 import { eventTypesService } from '../../services/eventTypes.service';
+import { userManagementService } from '../../services/userManagement.service';
+import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { useTranslation } from 'react-i18next';
 import { ThemeConfig, GALLERY_THEME_PRESETS } from '../../types/theme.types';
 import { Code } from 'lucide-react';
@@ -33,6 +37,7 @@ interface FormData {
   event_date: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
   admin_email: string;
   require_password: boolean;
   password: string;
@@ -44,6 +49,7 @@ interface FormData {
   allow_user_uploads: boolean;
   upload_category_id: number | null;
   css_template_id: number | null;
+  photo_cap: number;
   feedback_settings: {
     feedback_enabled: boolean;
     allow_ratings: boolean;
@@ -57,6 +63,11 @@ interface FormData {
     rate_limit_window_minutes?: number;
     rate_limit_max_requests?: number;
   };
+  // Client access (#172)
+  client_access_enabled: boolean;
+  client_password: string;
+  // Default photo sort
+  default_photo_sort: string;
 }
 
 // Fallback event types (used when API is unavailable)
@@ -87,6 +98,7 @@ export const CreateEventPage: React.FC = () => {
     event_date: new Date().toISOString().split('T')[0], // Initialize with ISO date format
     customer_name: '',
     customer_email: '',
+    customer_phone: '',
     admin_email: '',
     require_password: true,
     password: '',
@@ -98,6 +110,7 @@ export const CreateEventPage: React.FC = () => {
     allow_user_uploads: false,
     upload_category_id: null,
     css_template_id: null,
+    photo_cap: 0,
     feedback_settings: {
       feedback_enabled: false,
       allow_ratings: true,
@@ -111,8 +124,11 @@ export const CreateEventPage: React.FC = () => {
       rate_limit_window_minutes: 15,
       rate_limit_max_requests: 10,
     },
+    client_access_enabled: false,
+    client_password: '',
+    default_photo_sort: 'upload_date_desc',
   });
-  
+
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -134,15 +150,21 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => eventTypesService.getActiveEventTypes()
   });
 
-  // Compute event types to use (API data or fallback)
-  const availableEventTypes = eventTypes?.length
-    ? eventTypes.map(et => ({
-        value: et.slug_prefix,
-        name: et.name,
-        emoji: et.emoji,
-        theme_preset: et.theme_preset
-      }))
-    : FALLBACK_EVENT_TYPES;
+  // Compute event types to use (API data or fallback). Memoised so its
+  // identity is stable across renders — otherwise the "Update theme when
+  // event type changes" effect below re-runs on every render and silently
+  // overwrites the user's Theme Preset selection (#317).
+  const availableEventTypes = useMemo(
+    () => (eventTypes?.length
+      ? eventTypes.map(et => ({
+          value: et.slug_prefix,
+          name: et.name,
+          emoji: et.emoji,
+          theme_preset: et.theme_preset
+        }))
+      : FALLBACK_EVENT_TYPES),
+    [eventTypes]
+  );
 
   // Fetch default settings
   const { data: settings } = useQuery({
@@ -150,15 +172,47 @@ export const CreateEventPage: React.FC = () => {
     queryFn: () => settingsService.getAllSettings()
   });
 
-  // Fetch public settings for field requirements
-  const { data: publicSettings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: () => publicSettingsService.getPublicSettings()
+  const { data: publicSettings } = usePublicSettings();
+
+  // Current logged-in admin (used to prefill the admin email field)
+  const { user: currentAdmin } = useAdminAuth();
+
+  // Optional: list of admin users — used to populate the email picker when
+  // there are multiple admins. Falls back to an empty list silently if the
+  // current user lacks `users.view` permission, so basic admins still get
+  // the auto-prefill from `currentAdmin` without errors surfacing.
+  const { data: adminUsers } = useQuery({
+    queryKey: ['admin-users-list'],
+    queryFn: async () => {
+      try {
+        return await userManagementService.getUsers();
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false
   });
+
+  const activeAdmins = useMemo(
+    () => (adminUsers || []).filter(u => u.isActive !== false && !!u.email),
+    [adminUsers]
+  );
+
+  // Auto-prefill admin email with the current user's email exactly once,
+  // and only if the field is still empty (don't clobber typed input).
+  const didPrefillAdminEmailRef = useRef(false);
+  useEffect(() => {
+    if (didPrefillAdminEmailRef.current) return;
+    if (!currentAdmin?.email) return;
+    didPrefillAdminEmailRef.current = true;
+    setFormData(prev => (prev.admin_email ? prev : { ...prev, admin_email: currentAdmin.email }));
+  }, [currentAdmin?.email]);
 
   // Get field requirements (default to true if not set)
   const requireCustomerName = publicSettings?.event_require_customer_name !== false;
   const requireCustomerEmail = publicSettings?.event_require_customer_email !== false;
+  const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
   const requireAdminEmail = publicSettings?.event_require_admin_email !== false;
   const requireEventDate = publicSettings?.event_require_event_date !== false;
   const requireExpiration = publicSettings?.event_require_expiration !== false;
@@ -173,13 +227,62 @@ export const CreateEventPage: React.FC = () => {
     }
   }, [settings]);
 
-  // Update theme when event type changes
+  // Honour the global "Require password by default" admin setting (#317).
+  // Apply once when public settings first load, before the user has interacted.
+  const requirePasswordDefaultApplied = useRef(false);
   useEffect(() => {
-    // Find the selected event type's theme preset
-    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
-    const recommendedPreset = selectedType?.theme_preset || 'default';
+    if (requirePasswordDefaultApplied.current) return;
+    if (publicSettings?.event_default_require_password === undefined) return;
+    requirePasswordDefaultApplied.current = true;
+    setFormData(prev => ({
+      ...prev,
+      require_password: publicSettings.event_default_require_password !== false
+    }));
+  }, [publicSettings]);
 
-    if (recommendedPreset && GALLERY_THEME_PRESETS[recommendedPreset]) {
+  // Apply the global Branding default theme on first load so admins who set a
+  // site-wide default in Branding actually see it on new events (#323).
+  // This is the "always inherit colours from Branding" guarantee — every new
+  // gallery starts with the site palette unless the admin then picks a preset
+  // or hits Sync from Branding inside the customizer to re-pull it later.
+  const brandingThemeApplied = useRef(false);
+  useEffect(() => {
+    if (brandingThemeApplied.current) return;
+    const brandingTheme = settings?.theme_config as ThemeConfig | undefined;
+    if (!brandingTheme || Object.keys(brandingTheme).length === 0) return;
+    brandingThemeApplied.current = true;
+
+    // Identify which preset (if any) the Branding theme matches. Compare
+    // only on the preset's own fields so saved themes carrying extras
+    // (e.g. logoUrl preserved through preset changes) still match.
+    let matchedPreset = 'custom';
+    for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
+      const keys = Object.keys(preset.config);
+      const matches = keys.every((k) =>
+        JSON.stringify((preset.config as any)[k]) === JSON.stringify((brandingTheme as any)[k])
+      );
+      if (matches) {
+        matchedPreset = key;
+        break;
+      }
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      theme_preset: matchedPreset,
+      theme_config: brandingTheme
+    }));
+  }, [settings]);
+
+  // Update theme when event type changes — but only when the event type has
+  // an explicit recommended preset. Skip the generic 'default' so the global
+  // Branding theme isn't clobbered by Classic Grid for event types like
+  // "Other" (#323).
+  useEffect(() => {
+    const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
+    const recommendedPreset = selectedType?.theme_preset;
+
+    if (recommendedPreset && recommendedPreset !== 'default' && GALLERY_THEME_PRESETS[recommendedPreset]) {
       setFormData(prev => ({
         ...prev,
         theme_preset: recommendedPreset,
@@ -287,6 +390,7 @@ export const CreateEventPage: React.FC = () => {
       event_date: formData.event_date || undefined,
       customer_name: formData.customer_name,
       customer_email: formData.customer_email,
+      ...(phoneFieldEnabled && formData.customer_phone ? { customer_phone: formData.customer_phone.trim() } : {}),
       admin_email: formData.admin_email,
       require_password: formData.require_password,
       password: formData.require_password ? formData.password : undefined,
@@ -298,6 +402,7 @@ export const CreateEventPage: React.FC = () => {
       allow_user_uploads: formData.allow_user_uploads,
       upload_category_id: formData.upload_category_id,
       css_template_id: formData.css_template_id,
+      photo_cap: formData.photo_cap > 0 ? formData.photo_cap : null,
       feedback_enabled: feedbackSettings.feedback_enabled,
       allow_ratings: feedbackSettings.allow_ratings,
       allow_likes: feedbackSettings.allow_likes,
@@ -306,6 +411,11 @@ export const CreateEventPage: React.FC = () => {
       require_name_email: feedbackSettings.require_name_email,
       moderate_comments: feedbackSettings.moderate_comments,
       show_feedback_to_guests: feedbackSettings.show_feedback_to_guests,
+      // Client access (#172)
+      client_access_enabled: formData.client_access_enabled,
+      client_password: formData.client_access_enabled ? formData.client_password : undefined,
+      // Default photo sort
+      default_photo_sort: formData.default_photo_sort,
     };
 
     createMutation.mutate(payload);
@@ -390,7 +500,7 @@ export const CreateEventPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, event_type: type.value })}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       formData.event_type === type.value
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -488,9 +598,38 @@ export const CreateEventPage: React.FC = () => {
                     onChange={handleThemeChange}
                     presetName={formData.theme_preset}
                     onPresetChange={handlePresetChange}
-                    isPreviewMode={true}
                     showGalleryLayouts={true}
                     hideActions={true}
+                    onSyncFromBranding={() => {
+                      // Pull the 8 colour tokens (+ legacy primary alias) from
+                      // the global Branding theme into the current event theme.
+                      // Layout / header / typography are kept untouched so an
+                      // admin who has already arranged structure can refresh
+                      // just the palette.
+                      const branding = settings?.theme_config as ThemeConfig | undefined;
+                      if (!branding) {
+                        toast.error(t('toast.brandingThemeMissing', 'No branding theme has been saved yet.'));
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        theme_preset: 'custom',
+                        theme_config: {
+                          ...prev.theme_config,
+                          primaryColor: branding.primaryColor,
+                          accentColor: branding.accentColor,
+                          accentDarkColor: branding.accentDarkColor,
+                          backgroundColor: branding.backgroundColor,
+                          surfaceColor: branding.surfaceColor,
+                          elevatedColor: branding.elevatedColor,
+                          surfaceBorderColor: branding.surfaceBorderColor,
+                          textColor: branding.textColor,
+                          mutedTextColor: branding.mutedTextColor,
+                          colorMode: branding.colorMode ?? prev.theme_config.colorMode,
+                        },
+                      }));
+                      toast.success(t('toast.brandingPaletteSynced', 'Palette synced from Branding.'));
+                    }}
                   />
                   
                   {/* Gallery Preview */}
@@ -521,7 +660,7 @@ export const CreateEventPage: React.FC = () => {
                     onClick={() => setFormData({ ...formData, css_template_id: null })}
                     className={`p-4 rounded-lg border-2 transition-all text-left ${
                       formData.css_template_id === null
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -539,7 +678,7 @@ export const CreateEventPage: React.FC = () => {
                       onClick={() => setFormData({ ...formData, css_template_id: template.id })}
                       className={`p-4 rounded-lg border-2 transition-all text-left ${
                         formData.css_template_id === template.id
-                          ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                          ? 'tile-selected'
                           : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                       }`}
                     >
@@ -585,6 +724,16 @@ export const CreateEventPage: React.FC = () => {
                 />
               </div>
 
+              {phoneFieldEnabled && (
+                <Input
+                  type="tel"
+                  label={`${t('events.customerPhone', 'Customer Phone')} (${t('common.optional')})`}
+                  placeholder={t('events.customerPhonePlaceholder', '+1 555 555 1234')}
+                  value={formData.customer_phone}
+                  onChange={handleInputChange('customer_phone')}
+                />
+              )}
+
               <Input
                 type="email"
                 label={requireAdminEmail ? t('events.adminEmail') : `${t('events.adminEmail')} (${t('common.optional')})`}
@@ -594,13 +743,38 @@ export const CreateEventPage: React.FC = () => {
                 error={errors.admin_email}
                 leftIcon={<Mail className="w-5 h-5" />}
               />
+              {activeAdmins.length > 1 && (
+                <div className="flex items-center gap-2 -mt-1">
+                  <label htmlFor="admin-email-picker" className="text-xs text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
+                    {t('events.adminEmailPickFromAdmins', 'Pick from admins:')}
+                  </label>
+                  <select
+                    id="admin-email-picker"
+                    value={activeAdmins.some(a => a.email === formData.admin_email) ? formData.admin_email : ''}
+                    onChange={(e) => {
+                      const email = e.target.value;
+                      if (email) {
+                        setFormData(prev => ({ ...prev, admin_email: email }));
+                      }
+                    }}
+                    className="text-xs px-2 py-1 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
+                  >
+                    <option value="">{t('events.adminEmailCustom', 'Custom email')}</option>
+                    {activeAdmins.map(a => (
+                      <option key={a.id} value={a.email}>
+                        {a.username} ({a.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
               <label className="flex items-start gap-2">
                 <input
                   type="checkbox"
-                  className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                   checked={formData.require_password}
                   onChange={(e) => {
                     const checked = e.target.checked;
@@ -701,7 +875,12 @@ export const CreateEventPage: React.FC = () => {
                 </div>
                 {formData.event_date && (
                   <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), formData.expires_in_days))}
+                    {/* Coerce to Number — handleInputChange stores the
+                        <input type="number"> value as a string, and date-fns
+                        addDays does `_date.setDate(_date.getDate() + amount)`
+                        which string-concatenates (25 + "120" = "25120") and
+                        ends up ~68 years in the future. */}
+                    {t('events.expiresOn')}: {format(addDays(new Date(formData.event_date), Number(formData.expires_in_days)))}
                   </p>
                 )}
               </div>
@@ -717,6 +896,84 @@ export const CreateEventPage: React.FC = () => {
               </div>
             )}
 
+            {/* Photo Cap */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                {t('events.photoCap', 'Photo Limit')}
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="w-32">
+                  <Input
+                    type="number"
+                    value={formData.photo_cap}
+                    onChange={(e) => setFormData({ ...formData, photo_cap: parseInt(e.target.value) || 0 })}
+                    min={0}
+                    leftIcon={<Image className="w-5 h-5" />}
+                  />
+                </div>
+                <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {t('events.photoCapHelp', 'Maximum number of photos allowed. 0 = unlimited')}
+                </span>
+              </div>
+            </div>
+
+            {/* Default Photo Sort */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                {t('photoSort.defaultSort', 'Default Photo Sort')}
+              </label>
+              <select
+                value={formData.default_photo_sort}
+                onChange={(e) => setFormData({ ...formData, default_photo_sort: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
+              >
+                <option value="upload_date_desc">{t('photoSort.uploadDateNewest', 'Upload Date (Newest First)')}</option>
+                <option value="upload_date_asc">{t('photoSort.uploadDateOldest', 'Upload Date (Oldest First)')}</option>
+                <option value="capture_date_desc">{t('photoSort.captureDateNewest', 'Date Taken (Newest First)')}</option>
+                <option value="capture_date_asc">{t('photoSort.captureDateOldest', 'Date Taken (Oldest First)')}</option>
+                <option value="filename_asc">{t('photoSort.filenameAZ', 'Filename (A-Z)')}</option>
+                <option value="filename_desc">{t('photoSort.filenameZA', 'Filename (Z-A)')}</option>
+              </select>
+            </div>
+
+            {/* Client Access (#172) */}
+            <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
+                  checked={formData.client_access_enabled}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    client_access_enabled: e.target.checked,
+                    client_password: e.target.checked ? prev.client_password : '',
+                  }))}
+                />
+                <div>
+                  <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    {t('clientAccess.enableToggle')}
+                  </span>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {t('clientAccess.enableDescription')}
+                  </p>
+                </div>
+              </label>
+
+              {formData.client_access_enabled && (
+                <div className="mt-3">
+                  <Input
+                    type="text"
+                    label={t('clientAccess.pinLabel')}
+                    placeholder={t('clientAccess.pinPlaceholder')}
+                    value={formData.client_password}
+                    onChange={handleInputChange('client_password')}
+                    leftIcon={<Key className="w-5 h-5" />}
+                    helperText={t('clientAccess.pinHelperText')}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* User Upload Settings */}
             <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
               <label className="flex items-center gap-3">
@@ -724,7 +981,7 @@ export const CreateEventPage: React.FC = () => {
                   type="checkbox"
                   checked={formData.allow_user_uploads}
                   onChange={(e) => setFormData({ ...formData, allow_user_uploads: e.target.checked })}
-                  className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                 />
                 <div>
                   <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">

@@ -91,10 +91,16 @@ async function adminAuth(req, res, next) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    // Check if password was changed after token was issued
+    // Check if password was changed after token was issued. JWT `iat` has
+    // 1-second resolution; `password_changed_at` is sub-second. Floor the
+    // comparison so a token issued in the *same* second as the password
+    // change isn't incorrectly rejected — that race used to bite anyone
+    // logging in immediately after a password reset/change.
     if (admin.password_changed_at) {
-      const passwordChangedTime = new Date(admin.password_changed_at).getTime() / 1000;
-      if (decoded.iat < passwordChangedTime) {
+      const passwordChangedSeconds = Math.floor(
+        new Date(admin.password_changed_at).getTime() / 1000
+      );
+      if (decoded.iat < passwordChangedSeconds) {
         logger.warn('Token used after password change', { userId: decoded.id });
         return res.status(401).json({
           error: 'Token invalid due to password change',

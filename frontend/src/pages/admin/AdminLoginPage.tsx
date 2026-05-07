@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Input, Card, ReCaptcha } from '../../components/common';
 import { useAdminAuth } from '../../contexts';
 import { authService } from '../../services/auth.service';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { api } from '../../config/api';
 
 export const AdminLoginPage: React.FC = () => {
@@ -25,15 +25,13 @@ export const AdminLoginPage: React.FC = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
-  // Fetch branding settings
-  const { data: settingsData } = useQuery({
-    queryKey: ['admin-login-settings'],
-    queryFn: async () => {
-      const response = await api.get('/public/settings');
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { data: settingsData } = usePublicSettings();
+
+  const companyName = settingsData?.branding_company_name?.trim() || 'PicPeak';
+  const logoUrl = settingsData?.branding_logo_url?.trim();
+  const resolvedLogoUrl = logoUrl
+    ? (logoUrl.startsWith('http') ? logoUrl : logoUrl)
+    : '/picpeak-logo-transparent.png';
 
   // Check for session expired message
   useEffect(() => {
@@ -126,13 +124,13 @@ export const AdminLoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div 
+          <div
             className="w-[200px] h-[150px] mx-auto mb-6 rounded-2xl flex items-center justify-center"
             style={{ backgroundColor: '#eee6d2' }}
           >
-            <img 
-              src="/picpeak-logo-transparent.png" 
-              alt="PicPeak"
+            <img
+              src={resolvedLogoUrl}
+              alt={companyName}
               className="w-[180px] h-[130px] object-contain"
             />
           </div>
@@ -205,7 +203,7 @@ export const AdminLoginPage: React.FC = () => {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  className="w-4 h-4 text-accent border-neutral-300 rounded focus:ring-primary-500"
                 />
                 <span className="ml-2 text-sm text-neutral-700">{t('adminLogin.rememberMe')}</span>
               </label>

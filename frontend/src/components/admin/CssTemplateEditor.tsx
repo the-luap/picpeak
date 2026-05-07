@@ -108,7 +108,7 @@ export const CssTemplateEditor: React.FC = () => {
                 onClick={() => setActiveSlot(slot)}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeSlot === slot
-                    ? 'border-primary-600 text-primary-600'
+                    ? 'border-accent text-accent'
                     : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -138,7 +138,7 @@ export const CssTemplateEditor: React.FC = () => {
                 value={activeTemplate.name}
                 onChange={(e) => updateLocalTemplate({ name: e.target.value })}
                 maxLength={50}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-accent-dark"
               />
             </div>
 
@@ -149,7 +149,7 @@ export const CssTemplateEditor: React.FC = () => {
                   type="checkbox"
                   checked={activeTemplate.is_enabled}
                   onChange={(e) => updateLocalTemplate({ is_enabled: e.target.checked })}
-                  className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-neutral-300 text-accent focus:ring-primary-500"
                 />
                 <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   {t('cssTemplates.enableTemplate', 'Enable this template')}
@@ -169,7 +169,7 @@ export const CssTemplateEditor: React.FC = () => {
                 <textarea
                   value={activeTemplate.css_content}
                   onChange={(e) => updateLocalTemplate({ css_content: e.target.value })}
-                  className="w-full h-96 px-4 py-3 font-mono text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-neutral-900 text-green-400"
+                  className="w-full h-96 px-4 py-3 font-mono text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark bg-neutral-900 text-green-400"
                   spellCheck={false}
                   placeholder="/* Enter your custom CSS here */"
                 />

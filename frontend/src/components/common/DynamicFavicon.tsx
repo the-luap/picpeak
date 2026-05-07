@@ -1,25 +1,11 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getApiBaseUrl, buildResourceUrl } from '../../utils/url';
+import { usePublicSettings } from '../../hooks/usePublicSettings';
+import { buildResourceUrl } from '../../utils/url';
 
 const DEFAULT_TITLE = 'PicPeak - Photo Sharing Platform';
 
 export const DynamicFavicon: React.FC = () => {
-  const { data: settings } = useQuery({
-    queryKey: ['public-settings'],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/public/settings`);
-        if (response.ok) {
-          return response.json();
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const { data: settings } = usePublicSettings({ retry: false });
 
   // Update favicon when branding settings change
   useEffect(() => {
@@ -40,7 +26,7 @@ export const DynamicFavicon: React.FC = () => {
     }
   }, [settings?.branding_favicon_url]);
 
-  // Update document title when company name or tagline changes
+  // Update document title and OG meta tags when company name or tagline changes
   useEffect(() => {
     const companyName = settings?.branding_company_name?.trim();
     const tagline = settings?.branding_company_tagline?.trim();
@@ -52,6 +38,33 @@ export const DynamicFavicon: React.FC = () => {
     } else {
       document.title = DEFAULT_TITLE;
     }
+
+    // Update OG meta tags
+    const title = companyName || 'PicPeak';
+    const description = tagline || 'Photo Sharing Platform';
+
+    const updateMeta = (property: string, content: string) => {
+      let meta = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('property', property);
+        document.head.appendChild(meta);
+      }
+      meta.content = content;
+    };
+
+    updateMeta('og:title', document.title);
+    updateMeta('og:site_name', title);
+    updateMeta('og:description', description);
+
+    // Also update standard meta description
+    let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.name = 'description';
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.content = description;
   }, [settings?.branding_company_name, settings?.branding_company_tagline]);
 
   return null;

@@ -13,3 +13,4 @@ export { BackupManagement } from './BackupManagement';
 export { EventFeedbackPage } from './EventFeedbackPage';
 export { UserManagementPage } from './UserManagementPage';
 export { EventTypesPage } from './EventTypesPage';
+export { WebhookDeliveriesPage } from './WebhookDeliveriesPage';

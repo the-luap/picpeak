@@ -85,6 +85,16 @@ class S3StorageAdapter extends stream.EventEmitter {
         endpoint = this.config.sslEnabled ? `https://${endpoint}` : `http://${endpoint}`;
       }
 
+      // SSRF protection: block private/internal S3 endpoints in production
+      // Local endpoints (e.g. MinIO on localhost) are allowed in development
+      if (process.env.NODE_ENV === 'production') {
+        const { validateExternalUrl } = require('../../utils/networkValidation');
+        const urlCheck = validateExternalUrl(endpoint);
+        if (!urlCheck.valid) {
+          throw new Error(`Invalid S3 endpoint: ${urlCheck.error}`);
+        }
+      }
+
       s3Config.endpoint = endpoint;
 
       // For S3-compatible services with custom endpoints, force path style

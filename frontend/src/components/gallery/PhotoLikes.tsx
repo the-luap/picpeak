@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { feedbackService } from '../../services/feedback.service';
 import { toast } from 'react-toastify';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoLikesProps {
   photoId: string;
@@ -27,6 +28,7 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const guestIdentity = useGuestIdentityOptional();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
@@ -68,9 +70,23 @@ export const PhotoLikes: React.FC<PhotoLikesProps> = ({
     }
   });
 
-  const handleLikeClick = () => {
+  const handleLikeClick = async () => {
     if (!isEnabled || isSubmitting) return;
-    
+
+    // Guest identity mode: ensure we have a per-person guest token. The
+    // server will read name/email from the token — body values are ignored.
+    if (guestIdentity?.identityMode === 'guest') {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        // User cancelled the prompt — silently abort.
+        return;
+      }
+      submitLikeMutation.mutate({});
+      return;
+    }
+
+    // Simple mode (or no provider at all): legacy inline prompt flow.
     if (requireNameEmail && !savedIdentity) {
       setShowIdentityModal(true);
     } else {

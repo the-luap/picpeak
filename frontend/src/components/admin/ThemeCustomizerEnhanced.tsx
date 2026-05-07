@@ -1,18 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RotateCcw, Check, Layout, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film } from 'lucide-react';
+import { Palette, RotateCcw, Check, Layout, LayoutTemplate, Type, Sparkles, Grid3X3, Layers, Play, Clock, Image, LayoutGrid, ChevronDown, Code, Info, FileCode, ImageIcon, Minimize2, EyeOff, Menu, SlidersHorizontal, Columns, Film, AlertTriangle } from 'lucide-react';
 import { Button, Card, Input } from '../common';
 import { ThemeConfig, GALLERY_THEME_PRESETS, GalleryLayoutType, HeaderStyleType, HeroDividerStyle } from '../../types/theme.types';
 import type { EnabledTemplate } from '../../services/cssTemplates.service';
-// import { settingsService } from '../../services/settings.service';
-// import { toast } from 'react-toastify';
+import { settingsService } from '../../services/settings.service';
+import { fontsService, extractFamilyName, type FontDefinition } from '../../services/fonts.service';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+
+/**
+ * Build the CSS font-family value for a scanned font, using the generic
+ * fallback the backend supplied (from each family's optional meta.json).
+ * Defaults to 'sans-serif' when the backend doesn't report one — keeps
+ * compatibility with backends that predate the generic field.
+ */
+function buildFontFamilyValue(font: FontDefinition): string {
+  const generic = font.generic ?? 'sans-serif';
+  // Always quote the family name (covers multi-word like 'Playfair Display').
+  return `'${font.family}', ${generic}`;
+}
+
+/**
+ * Match a saved CSS font-family string against the available scanned families
+ * and return the canonical option value the dropdown renders. Handles both
+ * legacy unquoted strings ("Inter, sans-serif") and the new quoted format
+ * ("'Inter', sans-serif"), so events saved before this change still show the
+ * right option as selected.
+ */
+function resolveFontDropdownValue(
+  saved: string | undefined,
+  available: FontDefinition[] | undefined,
+  fallback: string
+): string {
+  if (!saved) return fallback;
+  const family = extractFamilyName(saved);
+  if (!family) return saved; // generic family like "system-ui, sans-serif"
+  const match = (available || []).find(
+    (f) => f.family.toLowerCase() === family.toLowerCase()
+  );
+  return match ? buildFontFamilyValue(match) : saved;
+}
 
 interface ThemeCustomizerEnhancedProps {
   value: ThemeConfig;
   onChange: (theme: ThemeConfig) => void;
   presetName?: string;
   onPresetChange?: (presetName: string) => void;
-  isPreviewMode?: boolean;
   showGalleryLayouts?: boolean;
   hideActions?: boolean;
   onApply?: (theme: ThemeConfig, metadata: { presetName: string }) => Promise<void> | void;
@@ -21,7 +54,62 @@ interface ThemeCustomizerEnhancedProps {
   cssTemplates?: EnabledTemplate[];
   cssTemplateId?: number | null;
   onCssTemplateChange?: (templateId: number | null) => void;
+  // Force color mode is an instance-level branding setting (not part of the
+  // per-theme config), but it lives next to the per-theme Color Mode picker
+  // so the Branding admin can find both controls in one place. When these
+  // props are omitted (e.g. event-level theme editor), the section is hidden.
+  forceColorMode?: 'dark' | 'light' | null;
+  onForceColorModeChange?: (mode: 'dark' | 'light' | null) => void;
+  // Sync palette from Branding. When provided, a small button appears in
+  // the colour-pickers section header. The caller resolves the active
+  // Branding theme and fires onChange with the merged 8-token values —
+  // only the colour tokens swap, layout/header/typography stay put so an
+  // admin who's already arranged the structure can pull just the palette.
+  onSyncFromBranding?: () => void;
 }
+
+/**
+ * Compact color-picker row used by the 8-token palette.
+ * Renders [Label + Info icon (tooltip)] / [color swatch + hex input].
+ * Help text is hidden in the static layout (lives on the Info icon's title
+ * attribute) so all rows are the same height — keeps the four Surfaces
+ * pickers and the two Accent pickers grid-aligned without forcing the user
+ * to read every help string up front.
+ */
+const ColorPickerRow: React.FC<{
+  label: string;
+  help: string;
+  value: string;
+  fallback: string;
+  onChange: (value: string) => void;
+}> = ({ label, help, value, fallback, onChange }) => (
+  <div>
+    <label className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+      {label}
+      <span
+        className="info-tooltip text-neutral-400 dark:text-neutral-500"
+        data-tooltip={help}
+        tabIndex={0}
+      >
+        <Info className="w-3.5 h-3.5" />
+      </span>
+    </label>
+    <div className="flex gap-2">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={fallback}
+        className="flex-1"
+      />
+    </div>
+  </div>
+);
 
 const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
   grid: <Grid3X3 className="w-5 h-5" />,
@@ -36,6 +124,7 @@ const layoutIcons: Record<GalleryLayoutType, React.ReactNode> = {
 const headerStyleIcons: Record<HeaderStyleType, React.ReactNode> = {
   hero: <Image className="w-5 h-5" />,
   standard: <Layout className="w-5 h-5" />,
+  banner: <LayoutTemplate className="w-5 h-5" />,
   minimal: <Minimize2 className="w-5 h-5" />,
   none: <EyeOff className="w-5 h-5" />
 };
@@ -76,21 +165,46 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   onChange,
   presetName = 'default',
   onPresetChange,
-  isPreviewMode = false,
   showGalleryLayouts = true,
   hideActions = false,
   onApply,
   isApplying = false,
   cssTemplates,
   cssTemplateId,
-  onCssTemplateChange
+  onCssTemplateChange,
+  forceColorMode,
+  onForceColorModeChange,
+  onSyncFromBranding
 }) => {
   const { t } = useTranslation();
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(value);
   const [selectedPreset, setSelectedPreset] = useState(presetName);
   const [customCss, setCustomCss] = useState(value.customCss || '');
   const [showCssInstructions, setShowCssInstructions] = useState(false);
-  // const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const BETA_LAYOUTS: GalleryLayoutType[] = ['gallery-premium', 'gallery-story'];
+  const MIN_RECOMMENDED_THUMBNAIL_SIZE = 500;
+
+  // Fetch thumbnail settings to warn about low resolution with beta themes
+  const { data: allSettings } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => settingsService.getAllSettings(),
+    staleTime: 60000,
+  });
+
+  // Fetch the list of self-hosted font families discovered by the backend
+  // scanner. Used to populate the body / heading font dropdowns. Cached
+  // 5 minutes — fonts rarely change without a backend restart.
+  const { data: availableFonts } = useQuery<FontDefinition[]>({
+    queryKey: ['fonts'],
+    queryFn: () => fontsService.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const thumbnailWidth = parseInt(allSettings?.thumbnail_width) || 300;
+  const thumbnailHeight = parseInt(allSettings?.thumbnail_height) || 300;
+  const isBetaLayout = BETA_LAYOUTS.includes(localTheme.galleryLayout as GalleryLayoutType);
+  const isThumbnailTooSmall = Math.max(thumbnailWidth, thumbnailHeight) < MIN_RECOMMENDED_THUMBNAIL_SIZE;
 
   useEffect(() => {
     setLocalTheme(value);
@@ -102,7 +216,13 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
   }, [presetName]);
 
   const handleChange = (key: keyof ThemeConfig, newValue: any) => {
-    const updated = { ...localTheme, [key]: newValue };
+    const updated: ThemeConfig = { ...localTheme, [key]: newValue };
+    // Legacy alias: keep primaryColor in lockstep with accentDarkColor so
+    // any consumer that still reads --color-primary or themeConfig.primaryColor
+    // doesn't drift after the 8-token migration.
+    if (key === 'accentDarkColor') {
+      updated.primaryColor = newValue;
+    }
     setLocalTheme(updated);
 
     // When any change is made, mark it as custom
@@ -111,10 +231,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       onPresetChange('custom');
     }
 
-    if (isPreviewMode) {
-      // Include customCss in the propagated theme
-      onChange({ ...updated, customCss });
-    }
+    // Always propagate to parent so Save sees the latest values (#323).
+    // The "Apply changes immediately (Live Preview)" toggle controls whether
+    // the parent applies the theme globally — that gating belongs in the
+    // parent, not here.
+    onChange({ ...updated, customCss });
   };
 
   const handlePresetSelect = (presetKey: string) => {
@@ -126,9 +247,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
       if (onPresetChange) {
         onPresetChange(presetKey);
       }
-      if (isPreviewMode) {
-        onChange(preset.config);
-      }
+      // Always propagate; live-apply gating is the parent's concern (#323).
+      onChange(preset.config);
     }
   };
 
@@ -187,11 +307,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(GALLERY_THEME_PRESETS).map(([key, theme]) => (
             <button
+              type="button"
               key={key}
               onClick={() => handlePresetSelect(key)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 selectedPreset === key
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -203,22 +324,28 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   )}
                 </div>
                 {selectedPreset === key && (
-                  <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                 )}
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <div className="flex gap-1">
+                  {/* Preview swatches: background, surface, accent-dark, accent
+                      — gives a quick read of the preset's full palette. */}
                   <div
                     className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
-                    style={{ backgroundColor: theme.config.primaryColor }}
+                    style={{ backgroundColor: theme.config.backgroundColor }}
+                  />
+                  <div
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
+                    style={{ backgroundColor: theme.config.surfaceColor || theme.config.backgroundColor }}
+                  />
+                  <div
+                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
+                    style={{ backgroundColor: theme.config.accentDarkColor || theme.config.primaryColor }}
                   />
                   <div
                     className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
                     style={{ backgroundColor: theme.config.accentColor }}
-                  />
-                  <div
-                    className="w-5 h-5 rounded-full border border-neutral-200 dark:border-neutral-600"
-                    style={{ backgroundColor: theme.config.backgroundColor }}
                   />
                 </div>
                 {theme.config.galleryLayout && layoutIcons[theme.config.galleryLayout] && (
@@ -230,6 +357,33 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             </button>
           ))}
         </div>
+
+        {/* Warning: Beta preset with low thumbnail resolution */}
+        {isBetaLayout && isThumbnailTooSmall && !showGalleryLayouts && (
+          <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  {t('branding.betaThumbnailWarningTitle')}
+                </p>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  {t('branding.betaThumbnailWarningText', { width: thumbnailWidth, height: thumbnailHeight, recommended: MIN_RECOMMENDED_THUMBNAIL_SIZE })}
+                </p>
+                <a
+                  href="/admin/settings"
+                  className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-800 dark:text-amber-300 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.location.href = '/admin/settings';
+                  }}
+                >
+                  {t('branding.betaThumbnailWarningLink')} →
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Gallery Layout */}
@@ -242,11 +396,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(layoutIcons) as GalleryLayoutType[]).map((layout) => (
               <button
+                type="button"
                 key={layout}
                 onClick={() => handleChange('galleryLayout', layout)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   localTheme.galleryLayout === layout
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -265,11 +420,38 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </span>
                 </div>
                 {localTheme.galleryLayout === layout && (
-                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
                 )}
               </button>
             ))}
           </div>
+
+          {/* Warning: Beta theme with low thumbnail resolution */}
+          {isBetaLayout && isThumbnailTooSmall && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    {t('branding.betaThumbnailWarningTitle')}
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                    {t('branding.betaThumbnailWarningText', { width: thumbnailWidth, height: thumbnailHeight, recommended: MIN_RECOMMENDED_THUMBNAIL_SIZE })}
+                  </p>
+                  <a
+                    href="/admin/settings"
+                    className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-amber-800 dark:text-amber-300 hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.location.href = '/admin/settings';
+                    }}
+                  >
+                    {t('branding.betaThumbnailWarningLink')} →
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Layout-specific settings */}
           {localTheme.galleryLayout && (
@@ -312,52 +494,73 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
               {/* Grid specific */}
               {localTheme.galleryLayout === 'grid' && (
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                    {t('branding.columns')}
-                  </label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.mobile')}</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="4"
-                        value={localTheme.gallerySettings?.gridColumns?.mobile || 2}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          mobile: parseInt(e.target.value)
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.tablet')}</label>
-                      <Input
-                        type="number"
-                        min="2"
-                        max="6"
-                        value={localTheme.gallerySettings?.gridColumns?.tablet || 3}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          tablet: parseInt(e.target.value)
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.desktop')}</label>
-                      <Input
-                        type="number"
-                        min="3"
-                        max="8"
-                        value={localTheme.gallerySettings?.gridColumns?.desktop || 4}
-                        onChange={(e) => updateGallerySettings('gridColumns', {
-                          ...localTheme.gallerySettings?.gridColumns,
-                          desktop: parseInt(e.target.value)
-                        })}
-                      />
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      {t('branding.columns')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.mobile')}</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="4"
+                          value={localTheme.gallerySettings?.gridColumns?.mobile || 2}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            mobile: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.tablet')}</label>
+                        <Input
+                          type="number"
+                          min="2"
+                          max="6"
+                          value={localTheme.gallerySettings?.gridColumns?.tablet || 3}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            tablet: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-neutral-600 dark:text-neutral-400">{t('branding.desktop')}</label>
+                        <Input
+                          type="number"
+                          min="3"
+                          max="8"
+                          value={localTheme.gallerySettings?.gridColumns?.desktop || 4}
+                          onChange={(e) => updateGallerySettings('gridColumns', {
+                            ...localTheme.gallerySettings?.gridColumns,
+                            desktop: parseInt(e.target.value)
+                          })}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                      {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                    </label>
+                    <select
+                      value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                      onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                      className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                    >
+                      <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                      <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                      <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                      <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                      <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                    </select>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                    </p>
+                  </div>
+                </>
               )}
 
               {/* Carousel specific */}
@@ -437,6 +640,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                     </p>
                   </div>
 
+                  {/* Thumbnail scale - only for columns mode */}
+                  {(!localTheme.gallerySettings?.masonryMode || localTheme.gallerySettings?.masonryMode === 'columns') && (
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                        {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                      </label>
+                      <select
+                        value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                        onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                        className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                      >
+                        <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                        <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                        <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                        <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                        <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                        {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Row-specific settings - show for all row-based modes */}
                   {['rows', 'flickr', 'justified'].includes(localTheme.gallerySettings?.masonryMode || '') && (
                     <>
@@ -476,6 +702,29 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   )}
                 </>
               )}
+
+              {/* Mosaic specific */}
+              {localTheme.galleryLayout === 'mosaic' && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    {t('branding.thumbnailScale', 'Thumbnail Scale')}
+                  </label>
+                  <select
+                    value={localTheme.gallerySettings?.thumbnailScale || 'md'}
+                    onChange={(e) => updateGallerySettings('thumbnailScale', e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
+                  >
+                    <option value="xs">{t('branding.thumbnailScaleOptions.xs', 'XS — Most photos')}</option>
+                    <option value="sm">{t('branding.thumbnailScaleOptions.sm', 'SM — More photos')}</option>
+                    <option value="md">{t('branding.thumbnailScaleOptions.md', 'MD — Default')}</option>
+                    <option value="lg">{t('branding.thumbnailScaleOptions.lg', 'LG — Larger photos')}</option>
+                    <option value="xl">{t('branding.thumbnailScaleOptions.xl', 'XL — Largest photos')}</option>
+                  </select>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    {t('branding.thumbnailScaleHint', 'Adjusts column count relative to the base grid columns')}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </Card>
@@ -491,14 +740,15 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
             {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
               <button
+                type="button"
                 key={style}
                 onClick={() => handleChange('headerStyle', style)}
                 className={`relative p-4 rounded-lg border-2 transition-all ${
                   (localTheme.headerStyle || 'standard') === style
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
@@ -514,7 +764,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   </span>
                 </div>
                 {(localTheme.headerStyle || 'standard') === style && (
-                  <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                  <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
                 )}
               </button>
             ))}
@@ -532,11 +782,12 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
                   <button
+                    type="button"
                     key={divider}
                     onClick={() => handleChange('heroDividerStyle', divider)}
                     className={`relative p-3 rounded-lg border-2 transition-all ${
                       (localTheme.heroDividerStyle || 'wave') === divider
-                        ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                        ? 'tile-selected'
                         : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                     }`}
                   >
@@ -550,7 +801,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                       </span>
                     </div>
                     {(localTheme.heroDividerStyle || 'wave') === divider && (
-                      <Check className="absolute top-1 right-1 w-3 h-3 text-primary-600" />
+                      <Check className="absolute top-1 right-1 w-3 h-3 text-accent-dark" />
                     )}
                   </button>
                 ))}
@@ -572,10 +823,11 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'classic')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 (localTheme.controlsStyle || 'classic') === 'classic'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -591,14 +843,15 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 </span>
               </div>
               {(localTheme.controlsStyle || 'classic') === 'classic' && (
-                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
               )}
             </button>
             <button
+              type="button"
               onClick={() => handleChange('controlsStyle', 'sidebar')}
               className={`relative p-4 rounded-lg border-2 transition-all ${
                 localTheme.controlsStyle === 'sidebar'
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
@@ -614,7 +867,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 </span>
               </div>
               {localTheme.controlsStyle === 'sidebar' && (
-                <Check className="absolute top-2 right-2 w-4 h-4 text-primary-600" />
+                <Check className="absolute top-2 right-2 w-4 h-4 text-accent-dark" />
               )}
             </button>
           </div>
@@ -632,10 +885,26 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
 
       {/* Color Customization */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
-          <Palette className="w-5 h-5" />
-          {t('branding.colors')}
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+            <Palette className="w-5 h-5" />
+            {t('branding.colors')}
+          </h3>
+          {/* "Sync from Branding" — caller-supplied so the customizer
+              doesn't have to know how to resolve the Branding theme.
+              Used in event create/edit to reset palette to site colours. */}
+          {onSyncFromBranding && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              leftIcon={<RotateCcw className="w-4 h-4" />}
+              onClick={onSyncFromBranding}
+            >
+              {t('branding.syncFromBranding', 'Sync from Branding')}
+            </Button>
+          )}
+        </div>
 
         {/* Color Mode Selector */}
         <div className="mb-6">
@@ -645,39 +914,42 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="flex gap-2">
             {(['light', 'dark', 'auto'] as const).map((mode) => (
               <button
+                type="button"
                 key={mode}
                 onClick={() => {
                   handleChange('colorMode', mode);
                   // When switching to dark, auto-populate dark defaults if colors are still light
                   if (mode === 'dark' && (!localTheme.backgroundColor || localTheme.backgroundColor === '#fafafa' || localTheme.backgroundColor === '#ffffff')) {
-                    const updated = {
+                    const updated: ThemeConfig = {
                       ...localTheme,
                       colorMode: mode,
                       backgroundColor: '#0f0f0f',
-                      textColor: '#e5e5e5',
                       surfaceColor: '#1a1a1a',
+                      elevatedColor: '#242424',
                       surfaceBorderColor: '#2e2e2e',
+                      textColor: '#e5e5e5',
                       mutedTextColor: '#a3a3a3',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   } else if (mode === 'light' && localTheme.colorMode === 'dark') {
-                    const updated = {
+                    const updated: ThemeConfig = {
                       ...localTheme,
                       colorMode: mode,
                       backgroundColor: '#fafafa',
-                      textColor: '#171717',
                       surfaceColor: '#ffffff',
+                      elevatedColor: '#f5f5f5',
                       surfaceBorderColor: '#e5e5e5',
+                      textColor: '#171717',
                       mutedTextColor: '#737373',
                     };
                     setLocalTheme(updated);
-                    if (isPreviewMode) onChange({ ...updated, customCss });
+                    onChange({ ...updated, customCss });
                   }
                 }}
                 className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                   (localTheme.colorMode || 'light') === mode
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                    ? 'border-accent-dark bg-accent-dark text-white'
                     : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
                 }`}
               >
@@ -690,87 +962,214 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             {t('branding.colorModeHelp', 'Auto follows the visitor\'s system preference.')}
           </p>
+
+          {/*
+           * Force color mode (instance-wide). Lives next to the per-theme
+           * Color Mode picker so the admin can find both controls in one
+           * place. The data flows through props from BrandingPage which
+           * persists it to branding settings; only renders when the
+           * onForceColorModeChange handler is provided (i.e. only on the
+           * Branding admin page, not in event-level theme editors).
+           */}
+          {onForceColorModeChange && (
+            <div className="mt-5 pt-5 border-t border-neutral-200 dark:border-neutral-700">
+              <h4 className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                {t('branding.forceColorMode', 'Force color mode')}
+              </h4>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                {t(
+                  'branding.forceColorModeHelp',
+                  'Lock the entire admin and public site to dark or light. The user-facing dark/light toggle is hidden whenever a lock is active. Per-event themes that try to override the colour mode are also forced to follow.'
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { value: null, label: t('branding.forceColorModeNone', 'No force (user choice)') },
+                  { value: 'dark', label: t('branding.forceColorModeDark', 'Force dark') },
+                  { value: 'light', label: t('branding.forceColorModeLight', 'Force light') },
+                ] as const).map(({ value, label }) => {
+                  const active = (forceColorMode ?? null) === value;
+                  return (
+                    <button
+                      type="button"
+                      key={String(value)}
+                      onClick={() => onForceColorModeChange(value)}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                        active
+                          ? 'border-accent-dark bg-accent-dark text-white'
+                          : 'border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/*
+         * 8-token CI palette pickers, grouped by role.
+         * Each token writes directly to the same field name on ThemeConfig
+         * (kebab → camel mapping happens via handleChange's first arg).
+         * Translation keys fall back to inline strings — German/English
+         * coverage only (per user language profile); other locales will
+         * show the fallback until reviewed by a native speaker.
+         */}
+        {/*
+         * 8-token CI palette pickers, grouped by role. Each picker label
+         * carries an Info icon whose `title` attribute renders the
+         * descriptive help text on hover (or long-press on touch). Keeping
+         * the help out of the static layout means every picker row is the
+         * same height so the four Surfaces and the two Accent rows align
+         * cleanly side-by-side.
+         */}
+        <div className="space-y-6">
+          {/* Surfaces */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.primaryColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.primaryColor || '#5C8762'}
-                onChange={(e) => handleChange('primaryColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.primaryColor || '#5C8762'}
-                onChange={(e) => handleChange('primaryColor', e.target.value)}
-                placeholder="#5C8762"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              {t('branding.colorGroupSurfaces', 'Surfaces')}
+              <span
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
+                  'branding.colorGroupSurfacesHelp',
+                  'The neutral layers behind your content. Background sits furthest back; Surface and Elevated stack on top.'
+                )}
+                tabIndex={0}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  key: 'backgroundColor',
+                  label: t('branding.backgroundColor', 'Background'),
+                  help: t('branding.backgroundColorHelp', 'The page itself — body background of every gallery, admin page and CMS page.'),
+                  fallback: '#fafafa',
+                },
+                {
+                  key: 'surfaceColor',
+                  label: t('branding.surfaceColor', 'Surface'),
+                  help: t('branding.surfaceColorHelp', 'Cards, sidebar, header bar and navigation. The first layer above Background.'),
+                  fallback: '#ffffff',
+                },
+                {
+                  key: 'elevatedColor',
+                  label: t('branding.elevatedColor', 'Elevated'),
+                  help: t('branding.elevatedColorHelp', 'Panels that float above cards: image placeholders, hover/active rows, modal headers, code blocks.'),
+                  fallback: '#f5f5f5',
+                },
+                {
+                  key: 'surfaceBorderColor',
+                  label: t('branding.borderColor', 'Border'),
+                  help: t('branding.borderColorHelp', 'Dividers, table grid lines, card outlines, input borders.'),
+                  fallback: '#e5e5e5',
+                },
+              ].map(({ key, label, help, fallback }) => (
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
+              ))}
             </div>
           </div>
 
+          {/* Text */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.accentColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.accentColor || '#22c55e'}
-                onChange={(e) => handleChange('accentColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.accentColor || '#22c55e'}
-                onChange={(e) => handleChange('accentColor', e.target.value)}
-                placeholder="#22c55e"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              {t('branding.colorGroupText', 'Text')}
+              <span
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
+                  'branding.colorGroupTextHelp',
+                  'Foreground text colours. Primary is for everything readers focus on; Secondary is for supporting copy.'
+                )}
+                tabIndex={0}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  key: 'textColor',
+                  label: t('branding.textColor', 'Primary text'),
+                  help: t('branding.textColorHelp', 'Headlines, body copy, table cells, form input values, navigation labels — the main text colour.'),
+                  fallback: '#171717',
+                },
+                {
+                  key: 'mutedTextColor',
+                  label: t('branding.mutedTextColor', 'Secondary text'),
+                  help: t('branding.mutedTextColorHelp', 'Captions, helper text under inputs, table column headers, footer links, dates and metadata.'),
+                  fallback: '#737373',
+                },
+              ].map(({ key, label, help, fallback }) => (
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
+              ))}
             </div>
           </div>
 
+          {/* Accent */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.backgroundColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.backgroundColor || '#fafafa'}
-                onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.backgroundColor || '#fafafa'}
-                onChange={(e) => handleChange('backgroundColor', e.target.value)}
-                placeholder="#fafafa"
-                className="flex-1"
-              />
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              {t('branding.colorGroupAccent', 'Accent')}
+              <span
+                className="info-tooltip text-neutral-400 dark:text-neutral-500"
+                data-tooltip={t(
+                  'branding.colorGroupAccentHelp',
+                  'Brand colours that highlight interactive elements. Use a strong colour pair — Accent is for outlines/text, Accent Dark is for filled buttons.'
+                )}
+                tabIndex={0}
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  key: 'accentColor',
+                  label: t('branding.accentColor', 'Accent'),
+                  help: t(
+                    'branding.accentColorHelp',
+                    'Links, icons, focus rings, hover states on primary buttons, active sidebar item underline. Should read clearly on both Background and Surface.'
+                  ),
+                  fallback: '#22c55e',
+                },
+                {
+                  key: 'accentDarkColor',
+                  label: t('branding.accentDarkColor', 'Accent (filled)'),
+                  help: t(
+                    'branding.accentDarkColorHelp',
+                    'Filled CTA buttons, active sidebar item background, badges and tags. Needs enough contrast for white text to be readable on top.'
+                  ),
+                  fallback: '#5C8762',
+                },
+              ].map(({ key, label, help, fallback }) => (
+                <ColorPickerRow
+                  key={key}
+                  label={label}
+                  help={help}
+                  value={(localTheme as Record<string, string | undefined>)[key] || fallback}
+                  fallback={fallback}
+                  onChange={(v) => handleChange(key as keyof ThemeConfig, v)}
+                />
+              ))}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-              {t('branding.textColor')}
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={localTheme.textColor || '#171717'}
-                onChange={(e) => handleChange('textColor', e.target.value)}
-                className="h-10 w-20 rounded border border-neutral-300 dark:border-neutral-600 cursor-pointer"
-              />
-              <Input
-                value={localTheme.textColor || '#171717'}
-                onChange={(e) => handleChange('textColor', e.target.value)}
-                placeholder="#171717"
-                className="flex-1"
-              />
-            </div>
+            {/* primaryColor is kept in sync with accentDarkColor inside
+                handleChange() — no dedicated picker. */}
           </div>
         </div>
       </Card>
@@ -788,17 +1187,27 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 {t('branding.bodyFont')}
               </label>
               <select
-                value={localTheme.fontFamily || 'Inter, sans-serif'}
+                value={resolveFontDropdownValue(
+                  localTheme.fontFamily,
+                  availableFonts,
+                  // Fallback when no fontFamily is saved yet: prefer the
+                  // scanned Inter (with its real generic), else a bare CSS
+                  // string when the backend hasn't loaded yet.
+                  (availableFonts || []).find((f) => f.family === 'Inter')
+                    ? buildFontFamilyValue(
+                        (availableFonts || []).find((f) => f.family === 'Inter')!
+                      )
+                    : "'Inter', sans-serif"
+                )}
                 onChange={(e) => handleChange('fontFamily', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
-                <option value="Inter, sans-serif">Inter</option>
                 <option value="system-ui, sans-serif">System UI</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'Playfair Display', serif">Playfair Display</option>
-                <option value="'Montserrat', sans-serif">Montserrat</option>
-                <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
-                <option value="'Comic Neue', cursive">Comic Neue</option>
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -807,15 +1216,21 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                 {t('branding.headingFont')}
               </label>
               <select
-                value={localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'}
+                value={resolveFontDropdownValue(
+                  localTheme.headingFontFamily,
+                  availableFonts,
+                  ''
+                )}
                 onChange={(e) => handleChange('headingFontFamily', e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
               >
                 <option value="">{t('branding.sameAsBody')}</option>
-                <option value="'Playfair Display', serif">Playfair Display</option>
-                <option value="'Montserrat', sans-serif">Montserrat</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+                <option value="system-ui, sans-serif">System UI</option>
+                {(availableFonts || []).map((f) => (
+                  <option key={f.family} value={buildFontFamilyValue(f)}>
+                    {f.family}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -904,17 +1319,18 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* No template option */}
             <button
+              type="button"
               onClick={() => onCssTemplateChange(null)}
               className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                 !cssTemplateId
-                  ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'tile-selected'
                   : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{t('branding.noTemplate', 'No Template')}</span>
                 {!cssTemplateId && (
-                  <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                 )}
               </div>
               <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
@@ -924,18 +1340,19 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
             {/* Template options */}
             {cssTemplates.map((template) => (
               <button
+                type="button"
                 key={template.id}
                 onClick={() => onCssTemplateChange(template.id)}
                 className={`relative p-4 rounded-lg border-2 transition-all text-left ${
                   cssTemplateId === template.id
-                    ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/30'
+                    ? 'tile-selected'
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm text-neutral-900 dark:text-neutral-100">{template.name}</span>
                   {cssTemplateId === template.id && (
-                    <Check className="w-4 h-4 text-primary-600 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-accent-dark flex-shrink-0" />
                   )}
                 </div>
                 <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 block">
@@ -959,7 +1376,7 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
           <button
             type="button"
             onClick={() => setShowCssInstructions(!showCssInstructions)}
-            className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+            className="flex items-center gap-2 text-sm text-accent hover:opacity-80 font-medium"
           >
             <Info className="w-4 h-4" />
             {t('branding.cssInstructions.title', 'How to use Custom CSS')}
@@ -977,10 +1394,14 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
                   {t('branding.cssInstructions.variablesDesc', 'Use these CSS variables to match your theme presets:')}
                 </p>
                 <code className="block bg-neutral-800 text-green-400 p-3 rounded text-xs overflow-x-auto">
-{`--primary-color: ${localTheme.primaryColor || '#5C8762'};
---accent-color: ${localTheme.accentColor || '#22c55e'};
---background-color: ${localTheme.backgroundColor || '#fafafa'};
---text-color: ${localTheme.textColor || '#171717'};
+{`--color-background: ${localTheme.backgroundColor || '#fafafa'};
+--color-surface: ${localTheme.surfaceColor || '#ffffff'};
+--color-elevated: ${localTheme.elevatedColor || '#f5f5f5'};
+--color-surface-border: ${localTheme.surfaceBorderColor || '#e5e5e5'};
+--color-text: ${localTheme.textColor || '#171717'};
+--color-muted-text: ${localTheme.mutedTextColor || '#737373'};
+--color-accent: ${localTheme.accentColor || '#22c55e'};
+--color-accent-dark: ${localTheme.accentDarkColor || localTheme.primaryColor || '#5C8762'};
 --font-family: ${localTheme.fontFamily || 'Inter, sans-serif'};
 --heading-font: ${localTheme.headingFontFamily || localTheme.fontFamily || 'Inter, sans-serif'};`}
                 </code>
@@ -1046,10 +1467,8 @@ export const ThemeCustomizerEnhanced: React.FC<ThemeCustomizerEnhancedProps> = (
               setSelectedPreset('custom');
               onPresetChange('custom');
             }
-            // Propagate customCss changes to parent in preview mode
-            if (isPreviewMode) {
-              onChange({ ...localTheme, customCss: newCss });
-            }
+            // Propagate to parent so Save sees the latest CSS (#323).
+            onChange({ ...localTheme, customCss: newCss });
           }}
           placeholder="/* Add custom CSS here */"
           className="w-full h-40 px-3 py-2 font-mono text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100"

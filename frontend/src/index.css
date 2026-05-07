@@ -1,4 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+/*
+ * Self-hosted Inter is bootstrapped here so the very first paint —
+ * before React mounts and runs the dynamic @font-face injector — has
+ * the default body font available. Replaces the previous Google Fonts
+ * @import that leaked visitor IPs to fonts.googleapis.com (LG München
+ * 2022 GDPR ruling). All other families are injected on-demand by
+ * frontend/src/contexts/ThemeContext.tsx based on the active theme.
+ */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/Inter/400.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Inter/600.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/Inter/700.woff2') format('woff2'); }
 
 /* Import image protection styles */
 @import './styles/image-protection.css';
@@ -9,27 +19,58 @@
 
 @layer base {
   :root {
-    /* Theme CSS Variables */
+    /*
+     * Theme CSS Variables — 8-token CI palette.
+     * Token names are kept aligned with frontend/src/types/theme.types.ts
+     * (ThemeConfig). ThemeContext.applyTheme() writes these from the active
+     * theme/branding settings; values here are the "Classic Grid" defaults.
+     */
+    --color-background: #fafafa;        /* page base */
+    --color-surface: #ffffff;           /* cards, nav, alternating sections */
+    --color-elevated: #f5f5f5;          /* raised panels */
+    --color-surface-border: #e5e5e5;    /* dividers, borders (a.k.a. border token) */
+    --color-text: #171717;              /* primary text */
+    --color-muted-text: #737373;        /* secondary text */
+    --color-accent: #22c55e;            /* links, focus rings, hover */
+    --color-accent-dark: #5C8762;       /* primary CTA fill */
+
+    /* Legacy aliases — kept for any consumer that still reads --color-primary.
+     * Both resolve to the accent-dark token (the previous "primary" CTA color). */
     --color-primary: #5C8762;
     --color-primary-light: #7aa583;
     --color-primary-dark: #4a6f4f;
-    --color-accent: #22c55e;
-    --color-background: #fafafa;
-    --color-text: #171717;
+
     --font-family: 'Inter', 'Noto Sans', system-ui, -apple-system, sans-serif;
     --heading-font-family: 'Inter', 'Noto Sans', system-ui, -apple-system, sans-serif;
     --border-radius: 0.5rem;
     --font-size-base: 16px;
     --shadow-default: 0 4px 6px rgba(0,0,0,0.1);
-    
-    /* Surface colors (for cards, inputs, etc.) */
-    --color-surface: #ffffff;
-    --color-surface-border: #e5e5e5;
-    --color-muted-text: #737373;
 
-    /* Tailwind RGB values for primary color */
+    /* Tailwind RGB values for primary color (legacy, used by primary-* utilities) */
     --tw-color-primary: 92 135 98;
     --radius: 0.5rem;
+  }
+
+  /*
+   * Admin dark mode unification.
+   * AdminDarkModeContext toggles `.dark` on <html> without going through
+   * applyTheme(). Previously this only flipped the components that had
+   * explicit `.dark .x` overrides; everything else (cards/inputs/buttons
+   * that now read CSS variables) stayed light. We re-declare the 8-token
+   * defaults under `.dark` so the same variables resolve to a dark palette
+   * whenever the class is present. Gallery applyTheme() still wins because
+   * it writes inline `--color-*` styles on the html element, which beat the
+   * .dark stylesheet rule in the cascade.
+   */
+  .dark {
+    --color-background: #0a0a0a;
+    --color-surface: #171717;
+    --color-elevated: #1f1f1f;
+    --color-surface-border: #262626;
+    --color-text: #f5f5f5;
+    --color-muted-text: #a3a3a3;
+    --color-accent: #22c55e;
+    --color-accent-dark: #5C8762;
   }
 
   * {
@@ -90,33 +131,59 @@
 }
 
 @layer components {
-  /* Button styles */
+  /*
+   * Button styles.
+   *
+   * Migration note: .btn-primary now binds to --color-accent-dark instead
+   * of --color-primary. The two tokens are kept in lockstep by the
+   * customizer (handleChange syncs primaryColor → accentDarkColor) and by
+   * the migration helper (legacy themes get accentDarkColor = primaryColor),
+   * so existing instances render identically after upgrade — but new themes
+   * that set only accentDarkColor (the 8-token CI flow) now drive primary
+   * buttons correctly. White text + accent-dark fill matches the rest of
+   * the selected-state visual language (sidebar, tile-selected, segmented
+   * buttons). Hover stays on --color-primary-dark for the auto-darkened
+   * legacy behaviour.
+   */
   .btn {
     @apply inline-flex items-center justify-center font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
     border-radius: var(--border-radius);
+    --tw-ring-color: var(--color-accent);
+    --tw-ring-offset-color: var(--color-background);
   }
 
   .btn-primary {
-    background-color: var(--color-primary);
+    background-color: var(--color-accent-dark);
     color: white;
-    @apply hover:opacity-90 focus-visible:ring-2;
+    @apply hover:opacity-90;
   }
-  
+
   .btn-primary:hover {
     background-color: var(--color-primary-dark);
+  }
+
+  .btn-alt {
+    background-color: transparent;
+    color: var(--color-text);
+    border: 2px solid var(--color-text);
+  }
+
+  .btn-alt:hover {
+    background-color: var(--color-text);
+    color: var(--color-background);
   }
 
   .btn-secondary {
     background-color: var(--color-surface-border);
     color: var(--color-text);
-    @apply hover:opacity-80 focus-visible:ring-neutral-400;
+    @apply hover:opacity-80;
   }
 
   .btn-outline {
     border-color: var(--color-surface-border);
     background-color: transparent;
     color: var(--color-muted-text);
-    @apply border hover:opacity-80 focus-visible:ring-neutral-400;
+    @apply border hover:opacity-80;
   }
 
   .btn-sm {
@@ -131,7 +198,13 @@
     @apply h-11 px-8 text-lg;
   }
 
-  /* Input styles - Admin inputs use explicit Tailwind colors */
+  /*
+   * Input styles - Admin inputs keep explicit Tailwind colors so the visual
+   * contract is byte-for-byte identical to pre-migration (border-neutral-300
+   * vs the lighter neutral-200/surface-border). Dark mode is handled by the
+   * .dark .input override below. Gallery inputs use .input-themed which
+   * binds to the 8-token palette via CSS variables.
+   */
   .input {
     @apply flex h-10 w-full rounded-lg border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
     @apply bg-white border-neutral-300 text-neutral-900;
@@ -153,7 +226,10 @@
     color: var(--color-muted-text);
   }
 
-  /* Card styles - Admin cards use explicit Tailwind colors, gallery cards use CSS variables */
+  /* Card styles - Admin cards keep their explicit Tailwind colors for
+   * migration safety (visible border lightness change otherwise); the
+   * .dark .card override below handles admin dark mode. Gallery uses
+   * .card-themed which binds to the 8-token palette. */
   .card {
     @apply rounded-xl border bg-white border-neutral-200;
     box-shadow: var(--shadow-default);
@@ -181,9 +257,31 @@
     @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl w-full;
   }
 
-  /* Surface utility classes for gallery dark mode */
+  /*
+   * Theme-token utility classes — exposed so any component (admin or gallery)
+   * can opt into the 8-token palette without an inline style. The Tailwind
+   * config also exposes these as full color aliases (bg-surface, text-theme,
+   * etc.) but these single-purpose classes are kept for back-compat with
+   * existing call sites.
+   */
+  .bg-background {
+    background-color: var(--color-background);
+  }
+
   .bg-surface {
     background-color: var(--color-surface);
+  }
+
+  .bg-elevated {
+    background-color: var(--color-elevated);
+  }
+
+  .bg-accent {
+    background-color: var(--color-accent);
+  }
+
+  .bg-accent-dark {
+    background-color: var(--color-accent-dark);
   }
 
   .border-surface {
@@ -196,6 +294,77 @@
 
   .text-muted-theme {
     color: var(--color-muted-text);
+  }
+
+  .text-accent {
+    color: var(--color-accent);
+  }
+
+  /*
+   * Selected-tile state for picker grids (Gallery Layout, Filter Bar Style,
+   * Header Style, Hero Divider, Theme Presets). Used in place of the dim
+   * "border + light tint + accent text" pattern which had poor contrast on
+   * dark themes (accent text on dim accent bg). The full accent-dark fill
+   * with white descendants gives a strong, accessible selection cue and
+   * follows the user's CI palette.
+   */
+  .tile-selected {
+    background-color: var(--color-accent-dark) !important;
+    border-color: var(--color-accent-dark) !important;
+    color: #ffffff !important;
+  }
+
+  .tile-selected *,
+  .tile-selected svg {
+    color: #ffffff !important;
+  }
+
+  /*
+   * Inline hover tooltip used by the colour-picker info icons.
+   * Pure CSS — no library, no JS state. Wrap an `<Info>` icon (or any
+   * trigger) in <span class="info-tooltip" data-tooltip="..."> and a
+   * positioned bubble fades in on hover/focus. The native HTML `title`
+   * attribute has a ~1.5s delay and is suppressed in some browsers, which
+   * is why earlier iterations appeared not to work for users.
+   */
+  .info-tooltip {
+    position: relative;
+    display: inline-flex;
+    cursor: help;
+  }
+
+  .info-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    min-width: 200px;
+    max-width: 320px;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    background-color: #171717;
+    color: #fafafa;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    font-weight: 400;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease-out;
+  }
+
+  .info-tooltip:hover::after,
+  .info-tooltip:focus-visible::after {
+    opacity: 1;
+  }
+
+  .dark .info-tooltip::after {
+    background-color: #fafafa;
+    color: #171717;
   }
 
   /* Image loading skeleton */
@@ -271,7 +440,8 @@
     @apply bg-red-900/40 text-red-300;
   }
 
-  /* Secondary and outline buttons for admin dark mode */
+  /* Secondary and outline buttons for admin dark mode — restore explicit
+   * neutral overrides so existing admin pages render exactly as before. */
   .dark .btn-secondary {
     @apply bg-neutral-700 border-neutral-600 text-neutral-100;
   }

@@ -385,7 +385,7 @@ export const BackupHistory = () => {
                           onClick={() => setCurrentPage(pageNum)}
                           className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                             currentPage === pageNum
-                              ? 'z-10 bg-primary-50 dark:bg-primary-900/30 border-primary text-primary'
+                              ? 'z-10 bg-accent-dark/15 border-primary text-primary'
                               : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                           }`}
                         >

@@ -1,9 +1,12 @@
 const sharp = require('sharp');
 const exifr = require('exifr');
 const path = require('path');
-const fs = require('fs').promises;
+const fsp = require('fs').promises;
+const os = require('os');
+const crypto = require('crypto');
 const logger = require('../utils/logger');
 const { db } = require('../database/db');
+const { getStorage } = require('./storage');
 
 // Configure sharp for better memory management with large batches
 sharp.cache(false); // Disable cache to prevent memory buildup
@@ -16,8 +19,10 @@ const DEFAULT_THUMBNAIL_FIT = 'cover'; // 'cover' for square crops
 const DEFAULT_THUMBNAIL_QUALITY = 85;
 const DEFAULT_THUMBNAIL_FORMAT = 'jpeg';
 
-const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-const getThumbnailPath = () => path.join(getStoragePath(), 'thumbnails');
+// Hero image settings - optimized for large displays
+const DEFAULT_HERO_WIDTH = 1920;
+const DEFAULT_HERO_HEIGHT = 1080;
+const DEFAULT_HERO_QUALITY = 85;
 
 // Helper to parse setting value (handles both JSON-encoded and plain values)
 function parseSettingValue(value) {
@@ -83,60 +88,62 @@ async function getThumbnailSettings() {
   }
 }
 
+const contentTypeFor = (format) => {
+  if (format === 'png') return 'image/png';
+  if (format === 'webp') return 'image/webp';
+  return 'image/jpeg';
+};
+
+/**
+ * Generate a thumbnail from a local source image path. The output is written
+ * to the storage backend (local fs or S3) under `thumbnails/thumb_<filename>`
+ * and the relative storage key is returned for DB persistence.
+ *
+ * Callers must ensure the source is on the local filesystem. For S3 mode
+ * regeneration flows, fetch via `withLocalCopy(storage, sourceKey, fn)` first.
+ */
 async function generateThumbnail(imagePath, options = {}) {
   const filename = path.basename(imagePath);
   const thumbnailFilename = `thumb_${filename}`;
-  const thumbnailDir = getThumbnailPath();
-  const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
-  
+  const thumbnailRelKey = path.posix.join('thumbnails', thumbnailFilename);
+  const storage = getStorage();
+
   // Get thumbnail settings
   const settings = await getThumbnailSettings();
-  
-  // Ensure thumbnail directory exists
-  await fs.mkdir(thumbnailDir, { recursive: true });
-  
-  // Check if we need to regenerate (for broken thumbnails)
+
+  // Force regeneration: drop the existing object before writing the new one
   if (options.regenerate) {
-    try {
-      await fs.unlink(thumbnailPath);
-      logger.info(`Deleted broken thumbnail: ${thumbnailPath}`);
-    } catch (err) {
-      // File might not exist, that's okay
-    }
+    await storage.delete(thumbnailRelKey).catch(() => {});
   }
-  
+
   try {
     // First, verify the source image is complete and valid
     const metadata = await sharp(imagePath).metadata();
-    
+
     if (!metadata.width || !metadata.height) {
       throw new Error('Invalid image metadata - file may be incomplete');
     }
-    
-    // Create sharp instance with memory-efficient settings
-    let sharpInstance = sharp(imagePath, { 
+
+    let sharpInstance = sharp(imagePath, {
       limitInputPixels: 268402689, // ~16k x 16k max
-      sequentialRead: true, // More memory efficient for large images
-      failOnError: false // Don't fail on minor issues
+      sequentialRead: true,
+      failOnError: false
     });
-    
+
     // Strip EXIF/metadata from thumbnails (privacy: prevent GPS leak etc.)
     sharpInstance = sharpInstance.withMetadata(false);
 
-    // Apply resize with configured settings
-    // For square thumbnails with 'cover' fit, we crop to center
     sharpInstance = sharpInstance.resize(settings.width, settings.height, {
       withoutEnlargement: true,
-      fit: settings.fit, // 'cover' will crop to fill the exact dimensions
-      position: 'center' // Center the crop for better composition
+      fit: settings.fit,
+      position: 'center'
     });
-    
-    // Apply format-specific options
+
     if (settings.format === 'jpeg') {
-      sharpInstance = sharpInstance.jpeg({ 
+      sharpInstance = sharpInstance.jpeg({
         quality: settings.quality,
-        progressive: true, // Progressive JPEG for better loading
-        mozjpeg: true // Better compression
+        progressive: true,
+        mozjpeg: true
       });
     } else if (settings.format === 'png') {
       sharpInstance = sharpInstance.png({
@@ -147,51 +154,45 @@ async function generateThumbnail(imagePath, options = {}) {
     } else if (settings.format === 'webp') {
       sharpInstance = sharpInstance.webp({
         quality: settings.quality,
-        effort: 4 // Balance between speed and compression
+        effort: 4
       });
     }
-    
-    // Save the thumbnail
-    await sharpInstance.toFile(thumbnailPath);
-    
-    // Verify the thumbnail was created successfully
-    const stats = await fs.stat(thumbnailPath);
-    if (stats.size === 0) {
+
+    const buffer = await sharpInstance.toBuffer();
+    if (!buffer || buffer.length === 0) {
       throw new Error('Generated thumbnail is empty');
     }
-    
-    return path.relative(getStoragePath(), thumbnailPath);
+
+    await storage.put(thumbnailRelKey, buffer, { contentType: contentTypeFor(settings.format) });
+
+    return thumbnailRelKey;
   } catch (error) {
     const msg = (error && error.message) ? error.message : String(error);
     logger.error(`Failed to generate thumbnail for ${filename}: ${msg}`);
-    
-    // Clean up any partially created file
-    try {
-      await fs.unlink(thumbnailPath);
-    } catch (unlinkErr) {
-      // Ignore unlink errors
-    }
-    
-    // Return null if thumbnail generation fails, don't fail the whole upload
+
+    // Clean up any partially uploaded object
+    await storage.delete(thumbnailRelKey).catch(() => {});
+
     return null;
   }
 }
 
 /**
- * Check if a thumbnail exists and is valid
+ * Check if a thumbnail exists and is valid. For local-fs storage we open the
+ * file with sharp to confirm it parses; for S3 we trust the byte-integrity
+ * checks built into the protocol and only verify size > 0.
  */
 async function isThumbnailValid(thumbnailPath) {
+  const storage = getStorage();
   try {
-    const fullPath = path.join(getStoragePath(), thumbnailPath);
-    const stats = await fs.stat(fullPath);
-    
-    // Check if file exists and has content
-    if (stats.size === 0) {
+    const stat = await storage.stat(thumbnailPath);
+    if (!stat || stat.size === 0) {
       return false;
     }
-    
-    // Try to read metadata to ensure it's a valid image
-    await sharp(fullPath).metadata();
+    if (storage.kind() === 'local') {
+      const localPath = storage.resolveLocalPath(thumbnailPath);
+      await sharp(localPath).metadata();
+    }
     return true;
   } catch (error) {
     return false;
@@ -199,22 +200,41 @@ async function isThumbnailValid(thumbnailPath) {
 }
 
 /**
+ * Wraps a callback that needs the source image as a local file. In local-fs
+ * mode the storage path is used directly (no copy); in S3 mode the object is
+ * streamed to a tmp file which is removed afterwards.
+ */
+async function withLocalCopy(sourceKey, fn) {
+  const storage = getStorage();
+  if (storage.kind() === 'local') {
+    return fn(storage.resolveLocalPath(sourceKey));
+  }
+  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'picpeak-src-'));
+  const tmpPath = path.join(tmpDir, `${crypto.randomBytes(4).toString('hex')}_${path.basename(sourceKey)}`);
+  try {
+    await storage.getToFile(sourceKey, tmpPath);
+    return await fn(tmpPath);
+  } finally {
+    await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
  * Regenerate thumbnail if it's broken or missing
  */
 async function ensureThumbnail(photo) {
-  const { db } = require('../database/db');
-  const { resolvePhotoFilePath } = require('./photoResolver');
-  let originalPath;
+  const { resolvePhotoStorageKey } = require('./photoResolver');
+  let sourceKey;
   try {
     const event = await db('events').where('id', photo.event_id).first();
-    originalPath = resolvePhotoFilePath(event, photo);
-    logger.info(`Ensuring thumbnail for photo ${photo.id} from source: ${originalPath}`);
+    sourceKey = resolvePhotoStorageKey(event, photo);
+    logger.info(`Ensuring thumbnail for photo ${photo.id} from key: ${sourceKey}`);
   } catch (e) {
     const msg = (e && e.message) ? e.message : String(e);
-    logger.error(`Failed to resolve original path for thumbnail (photo ${photo.id}): ${msg}`);
+    logger.error(`Failed to resolve original key for thumbnail (photo ${photo.id}): ${msg}`);
     return null;
   }
-  
+
   // Check if thumbnail exists and is valid
   if (photo.thumbnail_path) {
     const isValid = await isThumbnailValid(photo.thumbnail_path);
@@ -223,45 +243,40 @@ async function ensureThumbnail(photo) {
     }
     logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
   }
-  
-  // Generate new thumbnail
-  const newThumbnailPath = await generateThumbnail(originalPath, { regenerate: true });
-  
+
+  // Generate new thumbnail (sources via withLocalCopy so this works in S3 mode)
+  const newThumbnailPath = await withLocalCopy(sourceKey, (localPath) =>
+    generateThumbnail(localPath, { regenerate: true })
+  );
+
   if (newThumbnailPath) {
-    // Update database with new thumbnail path
-    const { db } = require('../database/db');
     await db('photos')
       .where({ id: photo.id })
       .update({ thumbnail_path: newThumbnailPath });
-    
+
     logger.info(`Regenerated thumbnail for photo ${photo.id}`);
     return newThumbnailPath;
   }
-  
+
   return null;
 }
 
 async function generateVideoPlaceholder(originalFilename, options = {}) {
   const parsed = path.parse(originalFilename || '');
   const baseName = parsed.name || 'video';
-  const thumbnailDir = getThumbnailPath();
   const thumbnailFilename = `thumb_${baseName}.jpg`;
-  const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
+  const thumbnailRelKey = path.posix.join('thumbnails', thumbnailFilename);
+  const storage = getStorage();
 
   const settings = await getThumbnailSettings();
   const width = settings.width || DEFAULT_THUMBNAIL_WIDTH;
   const height = settings.height || DEFAULT_THUMBNAIL_HEIGHT;
 
   if (options.regenerate) {
-    try {
-      await fs.unlink(thumbnailPath);
-    } catch (_) {
-      // ignore if missing
-    }
+    await storage.delete(thumbnailRelKey).catch(() => {});
   }
 
   try {
-    await fs.mkdir(thumbnailDir, { recursive: true });
     const svg = `
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -279,25 +294,19 @@ async function generateVideoPlaceholder(originalFilename, options = {}) {
       </svg>
     `;
 
-    await sharp(Buffer.from(svg))
+    const buffer = await sharp(Buffer.from(svg))
       .resize(width, height, { fit: 'cover' })
       .jpeg({ quality: settings.quality || DEFAULT_THUMBNAIL_QUALITY })
-      .toFile(thumbnailPath);
+      .toBuffer();
 
-    return path.relative(getStoragePath(), thumbnailPath);
+    await storage.put(thumbnailRelKey, buffer, { contentType: 'image/jpeg' });
+
+    return thumbnailRelKey;
   } catch (error) {
     logger.error('Failed to generate video placeholder thumbnail:', error.message);
     return null;
   }
 }
-
-// Hero image settings - optimized for large displays
-const DEFAULT_HERO_WIDTH = 1920;
-const DEFAULT_HERO_HEIGHT = 1080;
-const DEFAULT_HERO_QUALITY = 85;
-const DEFAULT_HERO_FORMAT = 'jpeg';
-
-const getHeroPath = () => path.join(getStoragePath(), 'heroes');
 
 /**
  * Generate a hero-optimized image for gallery headers
@@ -306,36 +315,24 @@ const getHeroPath = () => path.join(getStoragePath(), 'heroes');
 async function generateHeroImage(imagePath, options = {}) {
   const filename = path.basename(imagePath);
   const heroFilename = `hero_${filename}`;
-  const heroDir = getHeroPath();
-  const heroPath = path.join(heroDir, heroFilename);
+  const heroRelKey = path.posix.join('heroes', heroFilename);
+  const storage = getStorage();
 
-  // Ensure hero directory exists
-  await fs.mkdir(heroDir, { recursive: true });
-
-  // Check if we need to regenerate
   if (options.regenerate) {
-    try {
-      await fs.unlink(heroPath);
-      logger.info(`Deleted existing hero image: ${heroPath}`);
-    } catch (err) {
-      // File might not exist, that's okay
-    }
+    await storage.delete(heroRelKey).catch(() => {});
   }
 
   try {
-    // First, verify the source image is complete and valid
     const metadata = await sharp(imagePath).metadata();
 
     if (!metadata.width || !metadata.height) {
       throw new Error('Invalid image metadata - file may be incomplete');
     }
 
-    // Calculate dimensions to maintain aspect ratio while fitting within hero bounds
     const heroWidth = options.width || DEFAULT_HERO_WIDTH;
     const heroHeight = options.height || DEFAULT_HERO_HEIGHT;
     const quality = options.quality || DEFAULT_HERO_QUALITY;
 
-    // Create sharp instance with memory-efficient settings
     let sharpInstance = sharp(imagePath, {
       limitInputPixels: 268402689,
       sequentialRead: true,
@@ -345,43 +342,31 @@ async function generateHeroImage(imagePath, options = {}) {
     // Strip EXIF/metadata from hero images (privacy: prevent GPS leak etc.)
     sharpInstance = sharpInstance.withMetadata(false);
 
-    // Resize to fit hero dimensions while maintaining aspect ratio
-    // Use 'cover' to fill the hero area (crops if needed)
     sharpInstance = sharpInstance.resize(heroWidth, heroHeight, {
-      withoutEnlargement: false, // Allow upscaling for small images
+      withoutEnlargement: false,
       fit: 'cover',
       position: 'center'
     });
 
-    // Apply JPEG format with high quality
     sharpInstance = sharpInstance.jpeg({
       quality: quality,
       progressive: true,
       mozjpeg: true
     });
 
-    // Save the hero image
-    await sharpInstance.toFile(heroPath);
-
-    // Verify the hero image was created successfully
-    const stats = await fs.stat(heroPath);
-    if (stats.size === 0) {
+    const buffer = await sharpInstance.toBuffer();
+    if (!buffer || buffer.length === 0) {
       throw new Error('Generated hero image is empty');
     }
 
-    logger.info(`Generated hero image for ${filename}: ${heroPath}`);
-    return path.relative(getStoragePath(), heroPath);
+    await storage.put(heroRelKey, buffer, { contentType: 'image/jpeg' });
+
+    logger.info(`Generated hero image for ${filename} → ${heroRelKey}`);
+    return heroRelKey;
   } catch (error) {
     const msg = (error && error.message) ? error.message : String(error);
     logger.error(`Failed to generate hero image for ${filename}: ${msg}`);
-
-    // Clean up any partially created file
-    try {
-      await fs.unlink(heroPath);
-    } catch (unlinkErr) {
-      // Ignore unlink errors
-    }
-
+    await storage.delete(heroRelKey).catch(() => {});
     return null;
   }
 }
@@ -390,16 +375,16 @@ async function generateHeroImage(imagePath, options = {}) {
  * Check if a hero image exists and is valid
  */
 async function isHeroValid(heroPath) {
+  const storage = getStorage();
   try {
-    const fullPath = path.join(getStoragePath(), heroPath);
-    const stats = await fs.stat(fullPath);
-
-    if (stats.size === 0) {
+    const stat = await storage.stat(heroPath);
+    if (!stat || stat.size === 0) {
       return false;
     }
-
-    // Try to read metadata to ensure it's a valid image
-    await sharp(fullPath).metadata();
+    if (storage.kind() === 'local') {
+      const localPath = storage.resolveLocalPath(heroPath);
+      await sharp(localPath).metadata();
+    }
     return true;
   } catch (error) {
     return false;
@@ -410,21 +395,19 @@ async function isHeroValid(heroPath) {
  * Ensure a hero image exists for a photo, regenerate if needed
  */
 async function ensureHeroImage(photo) {
-  const { db } = require('../database/db');
-  const { resolvePhotoFilePath } = require('./photoResolver');
+  const { resolvePhotoStorageKey } = require('./photoResolver');
 
-  let originalPath;
+  let sourceKey;
   try {
     const event = await db('events').where('id', photo.event_id).first();
-    originalPath = resolvePhotoFilePath(event, photo);
-    logger.info(`Ensuring hero image for photo ${photo.id} from source: ${originalPath}`);
+    sourceKey = resolvePhotoStorageKey(event, photo);
+    logger.info(`Ensuring hero image for photo ${photo.id} from key: ${sourceKey}`);
   } catch (e) {
     const msg = (e && e.message) ? e.message : String(e);
-    logger.error(`Failed to resolve original path for hero image (photo ${photo.id}): ${msg}`);
+    logger.error(`Failed to resolve original key for hero image (photo ${photo.id}): ${msg}`);
     return null;
   }
 
-  // Check if hero image exists and is valid
   if (photo.hero_path) {
     const isValid = await isHeroValid(photo.hero_path);
     if (isValid) {
@@ -433,11 +416,11 @@ async function ensureHeroImage(photo) {
     logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
   }
 
-  // Generate new hero image
-  const newHeroPath = await generateHeroImage(originalPath, { regenerate: true });
+  const newHeroPath = await withLocalCopy(sourceKey, (localPath) =>
+    generateHeroImage(localPath, { regenerate: true })
+  );
 
   if (newHeroPath) {
-    // Update database with new hero path
     await db('photos')
       .where({ id: photo.id })
       .update({ hero_path: newHeroPath });
@@ -451,12 +434,9 @@ async function ensureHeroImage(photo) {
 
 /**
  * Extract capture date from EXIF metadata
- * @param {string} imagePath - Path to the image file
- * @returns {Date|null} - The capture date or null if not available
  */
 async function extractCaptureDate(imagePath) {
   try {
-    // Parse EXIF data, looking for common date fields
     const exif = await exifr.parse(imagePath, {
       pick: ['DateTimeOriginal', 'CreateDate', 'DateTimeDigitized', 'ModifyDate']
     });
@@ -465,23 +445,19 @@ async function extractCaptureDate(imagePath) {
       return null;
     }
 
-    // Priority order: DateTimeOriginal > CreateDate > DateTimeDigitized > ModifyDate
     const captureDate = exif.DateTimeOriginal ||
                         exif.CreateDate ||
                         exif.DateTimeDigitized ||
                         exif.ModifyDate;
 
     if (captureDate) {
-      // exifr returns Date objects directly when parsing dates
       if (captureDate instanceof Date) {
-        // Validate the date is reasonable (not in the future, not before 1990)
         const now = new Date();
         const minDate = new Date('1990-01-01');
         if (captureDate > minDate && captureDate <= now) {
           return captureDate;
         }
       }
-      // Handle string dates if necessary
       if (typeof captureDate === 'string') {
         const parsed = new Date(captureDate);
         if (!isNaN(parsed.getTime())) {
@@ -492,7 +468,6 @@ async function extractCaptureDate(imagePath) {
 
     return null;
   } catch (error) {
-    // Log only as debug - many images don't have EXIF data
     logger.debug(`Could not extract EXIF date from ${path.basename(imagePath)}:`, error.message);
     return null;
   }
@@ -506,5 +481,6 @@ module.exports = {
   generateHeroImage,
   isHeroValid,
   ensureHeroImage,
-  extractCaptureDate
+  extractCaptureDate,
+  withLocalCopy,
 };

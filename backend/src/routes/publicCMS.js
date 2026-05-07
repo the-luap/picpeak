@@ -22,6 +22,17 @@ router.get('/pages/:slug', async (req, res) => {
       title,
       content,
       slug: page.slug,
+      // Per-page logo override (#324). Null means "fall back to global
+      // branding logo" — the consumer decides.
+      logo_url: page.logo_url || null,
+      // Per-page external-URL override. When use_external_url is true and
+      // external_url is set, consumers should redirect / link out instead
+      // of rendering the internal title/content. external_url is gated by
+      // use_external_url so the public response never exposes a URL the
+      // admin has saved-but-disabled (the value stays in the DB so the
+      // toggle can be flipped back on, but it shouldn't leak via the API).
+      use_external_url: !!page.use_external_url,
+      external_url: page.use_external_url && page.external_url ? page.external_url : null,
       updated_at: page.updated_at
     });
   } catch (error) {

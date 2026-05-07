@@ -131,9 +131,17 @@
     "unsupportedFiles": "Some files were skipped because the format is not supported (use JPEG/PNG/WebP/MP4/MOV/WEBM).",
     "selectedFiles": "Selected files",
     "uploading": "Uploading...",
+    "transferring": "Transferring",
+    "processing": "Processing photos...",
+    "processingHint": "Files are uploaded. PicPeak is now generating thumbnails and reading metadata. You can leave this page — work continues in the background.",
+    "processingProgress": "{{complete}} of {{total}} done",
+    "processingFailed": "{{count}} photo(s) failed to process",
+    "retryFailed": "Retry failed",
     "uploadComplete": "Upload complete!",
     "uploadFailed": "Upload failed",
     "someFilesFailed": "Some files failed to upload",
+    "replaceByName": "Replace existing photos with same name",
+    "replacedFiles": "{{count}} photo(s) replaced",
     "uploadPhotos": "Upload Photos",
     "uploadMedia": "Upload Photos & Videos",
     "importExternal": "Import from External Folder",
@@ -224,10 +232,10 @@
     "dayRemaining": "1 day remaining",
     "hoursRemaining": "{{hours}} hours remaining",
     "expiredMessage": "This gallery expired on {{date}}",
-    "contactOrganizer": "Please contact the event organizer if you need access to these photos",
+    "contactOrganizer": "Please contact the event organizer if you need access to these photos.",
     "searchPhotos": "Search photos by filename...",
     "sortByDate": "Sort by Date",
-    "sortByName": "Sort by Name", 
+    "sortByName": "Sort by Name",
     "sortBySize": "Sort by Size",
     "allPhotos": "All Photos",
     "filter": "Filter",
@@ -236,7 +244,7 @@
     "liked": "Liked",
     "favorited": "Favorited",
     "favorites": "Favorites",
-    "downloadSelected": "Download Selected",
+    "downloadSelected": "Download {{count}} Selected",
     "shareGallery": "Share Gallery",
     "needHelp": "Need help? Contact us at",
     "noPhotosFound": "No photos found",
@@ -244,7 +252,6 @@
     "tryAgain": "Try Again",
     "loading": "Loading gallery...",
     "expiredOn": "This gallery expired on {{date}}.",
-    "contactOrganizer": "Please contact the event organizer if you need access to these photos.",
     "expiresIn": "Gallery expires in {{count}} day",
     "expiresIn_plural": "Gallery expires in {{count}} days",
     "downloadBefore": "Download your photos before they're no longer available.",
@@ -262,7 +269,6 @@
     "photosSelected": "{{count}} selected",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
-    "downloadSelected": "Download {{count}} Selected",
     "deleteSelected": "Delete Selected",
     "photosCount": "{{count}} photo",
     "photosCount_plural": "{{count}} photos",
@@ -286,10 +292,7 @@
     "noMedia": "No media uploaded yet",
     "searchPlaceholder": "Search photos...",
     "sortBy": "Sort By",
-    "sortByDate": "Sort by Date",
     "sortByCaptureDate": "Sort by Capture Date",
-    "sortByName": "Sort by Name",
-    "sortBySize": "Sort by Size",
     "sortByRating": "Sort by Rating",
     "photoGallery": "Photo Gallery",
     "photos": "Photos",
@@ -308,7 +311,9 @@
       "writeLovelyNote": "Write a lovely note...",
       "postComment": "Post Comment",
       "anonymous": "Anonymous"
-    }
+    },
+    "rated": "Rated",
+    "commented": "Commented"
   },
   "categories": {
     "title": "Photo Categories",
@@ -351,6 +356,8 @@
     "welcomeMessagePlaceholder": "Welcome to our special day! Feel free to download and share these memories...",
     "hostEmailPlaceholder": "customer@example.com",
     "adminEmailPlaceholder": "admin@example.com",
+    "adminEmailPickFromAdmins": "Pick from admins:",
+    "adminEmailCustom": "Custom email",
     "securityAndAccess": "Security & Access",
     "accessAndSecurity": "Access & Security",
     "enterPassword": "Enter password",
@@ -411,6 +418,8 @@
     "externalFolder": "External Folder",
     "externalFolderHint": "These folders are read from the /external-media mount inside your container or host.",
     "externalFolderRequired": "Please select an external folder before saving.",
+    "externalFolderEmpty": "No subfolders",
+    "clearSelection": "Clear",
     "welcomeMessage": "Welcome Message",
     "noWelcomeMessage": "No welcome message set",
     "created": "Created",
@@ -429,7 +438,6 @@
     "statistics": "Statistics",
     "views": "Views",
     "downloads": "Downloads",
-    "uniqueVisitors": "Unique Visitors",
     "noStatistics": "No statistics available yet",
     "archiveStatus": "Archive Status",
     "archivedOn": "Archived On",
@@ -437,7 +445,7 @@
     "loadingPhotos": "Loading photos...",
     "photoCategories": "Photo Categories",
     "organizeCategoriesInfo": "Organize your photos into categories. Categories help guests navigate and find specific types of photos.",
-    "categoriesTip": "Tip: Categories are specific to each event. You can also create global categories in Settings.",
+    "categoriesTip": "Tip: Categories are specific to each event. You can create custom categories like \"Ceremony\", \"Reception\", \"Portraits\", etc.",
     "contactInformation": "Contact Information",
     "hostEmailHelp": "Customer will receive gallery creation and expiration notifications",
     "adminEmailHelp": "Will receive system notifications and archive confirmations",
@@ -450,6 +458,29 @@
     "confirmPassword": "Confirm Password",
     "showPasswords": "Show passwords",
     "newPasswordLabel": "New Gallery Password",
+    "passwordReset": {
+      "title": "Reset Gallery Password",
+      "newTitle": "New Password",
+      "description": "Set a new password for {{eventName}}, or leave both fields empty to have one auto-generated.",
+      "newPasswordLabel": "New password",
+      "placeholder": "Leave empty to auto-generate",
+      "helperText": "Use 6+ characters, or leave blank to auto-generate",
+      "confirmLabel": "Confirm password",
+      "sendEmail": "Send email notification",
+      "sendEmailHelp": "Notify the host about the password change",
+      "warning": "Note: The old password will no longer work. Make sure to share the new password with the host.",
+      "submit": "Reset Password",
+      "successHeading": "Password reset successfully!",
+      "emailSentNote": "An email notification has been sent to the host.",
+      "generatedLabel": "Auto-generated gallery password",
+      "saveSecurelyNote": "Important: Save this password securely. It cannot be recovered once you close this window.",
+      "done": "Done",
+      "toastSuccess": "Password reset successfully",
+      "toastError": "Failed to reset password",
+      "toastCopied": "Password copied to clipboard",
+      "errorMinLength": "Password must be at least 6 characters",
+      "errorMismatch": "Passwords do not match"
+    },
     "gallerySettings": "Gallery Settings",
     "themeAndStyle": "Theme & Style",
     "colorTheme": "Color Theme",
@@ -461,6 +492,8 @@
     "expirationWarning": "Guests will receive a warning email 7 days before expiration.",
     "noExpiration": "No Expiration",
     "noExpirationHelp": "This gallery will remain active until manually archived.",
+    "photoCap": "Photo Limit",
+    "photoCapHelp": "Maximum number of photos allowed. 0 = unlimited",
     "userUploads": "User Upload Settings",
     "allowUserUploads": "Allow guests to upload photos",
     "allowUserUploadsHelp": "Enable guests to upload their own photos to this gallery",
@@ -532,14 +565,33 @@
     "days365": "1 year",
     "inactive": "Inactive",
     "expired": "Expired",
-    "daysLeft": "{{count}}d left",
-    "daysLeft_plural": "{{count}}d left",
+    "draft": "Draft",
+    "publishAndNotify": "Publish & Notify Client",
+    "publishConfirm": "This will make the gallery accessible and send the notification email to the client. Continue?",
+    "publishSuccess": "Gallery published and client notified!",
+    "draftBanner": "This gallery is in draft mode. Upload your photos, then publish when ready.",
+    "daysLeft": "({{count}} day left)",
+    "daysLeft_plural": "({{count}} days left)",
     "subtitle": "Manage your photo galleries and events",
     "loadingEvents": "Loading events...",
     "failedToLoadEvents": "Failed to load events",
     "tryAgain": "Try Again",
     "bulkArchiveSuccess": "Successfully archived {{count}} events",
     "bulkArchivePartial": "Archived {{success}} events, {{failed}} failed",
+    "deleteSelected": "Delete Selected",
+    "bulkDelete": {
+      "title": "Permanently delete {{count}} events?",
+      "warning": "This will permanently delete the selected events, all their photos, archives, and audit logs. This action cannot be undone.",
+      "passwordLabel": "Re-enter your password to confirm",
+      "passwordPlaceholder": "Your admin password",
+      "passwordHelp": "We require your password as a safeguard against accidental bulk deletions.",
+      "submit": "Delete {{count}} events",
+      "processing": "Deleting {{count}} events. This may take a few minutes — please don't close this window.",
+      "incorrectPassword": "Incorrect password. No events were deleted.",
+      "successAll": "Permanently deleted {{count}} events",
+      "successPartial": "Deleted {{success}} events, {{failed}} failed",
+      "errorGeneric": "Failed to delete events"
+    },
     "searchEventsPlaceholder": "Search events...",
     "all": "All",
     "expiring": "Expiring",
@@ -554,8 +606,6 @@
     "type": "Type",
     "date": "Date",
     "status": "Status",
-    "expires": "Expires",
-    "actions": "Actions",
     "noEventsFound": "No events found",
     "stats": {
       "totalEvents": "Total Events",
@@ -569,31 +619,17 @@
     "deleteEvent": "Delete Event",
     "deleteEventConfirm": "Are you sure you want to delete this event?",
     "downloadArchiveSoon": "Download archive coming soon",
-    "failedToLoadEvents": "Failed to load events",
-    "tryAgain": "Try Again",
     "eventExpiredMessage": "This event has expired",
     "guestsCannotAccessGallery": "Guests can no longer access the gallery. Consider archiving this event.",
     "warningEmailsHaveBeenSent": "Warning emails have been sent to the customer.",
     "extendSevenDays": "Extend 7 Days",
-    "overview": "Overview",
-    "eventInformation": "Event Information",
     "welcomeMessageLabel": "Welcome Message",
     "noWelcomeMessageSet": "No welcome message set",
-    "hostEmail": "Customer Email",
-    "adminEmail": "Admin Email",
     "createdOn": "Created",
-    "expires": "Expires",
-    "daysLeft": "({{count}} day left)",
-    "daysLeft_plural": "({{count}} days left)",
-    "shareLink": "Share Link",
     "copy": "Copy",
     "copied": "Copied!",
-    "uploadPhotos": "Upload Photos",
-    "photoCategories": "Photo Categories",
     "organizingPhotosInfo": "Organize your photos into categories. Categories help guests navigate and find specific types of photos.",
-    "categoriesTip": "Tip: Categories are specific to each event. You can create custom categories like \"Ceremony\", \"Reception\", \"Portraits\", etc.",
     "archiveStatusTitle": "Archive Status",
-    "archivedOn": "Archived On",
     "downloadingArchive": "Downloading {{name}} archive...",
     "downloadStarted": "Download started",
     "failedToDownloadArchive": "Failed to download archive",
@@ -620,7 +656,24 @@
       "failed": "Rename failed",
       "filesRenamed": "{{count}} files updated",
       "confirm": "Rename Event"
-    }
+    },
+    "activeFilter": "Active",
+    "archivedFilter": "Archived",
+    "sortByName": "By Name",
+    "sortByDate": "By Date",
+    "sortByExpiration": "By Expiration",
+    "photosCount": "Photos",
+    "moreActions": "More Actions",
+    "copyLinkTooltip": "Copy Link",
+    "viewGalleryTooltip": "View Gallery",
+    "uploadPhotosTooltip": "Upload Photos",
+    "editTooltip": "Edit",
+    "archiveTooltip": "Archive",
+    "noEvents": "No events found",
+    "noEventsDescription": "Create your first event to get started.",
+    "bulkArchive": "Archive",
+    "confirmBulkArchive": "Are you sure you want to archive {{count}} event(s)?",
+    "confirmBulkArchiveDescription": "This action cannot be undone. Archived events will no longer be publicly accessible."
   },
   "settings": {
     "title": "System Settings",
@@ -1003,7 +1056,7 @@
     "fullDashboard": "Full Dashboard",
     "refresh": "Refresh",
     "last7Days": "Last 7 days",
-    "last30Days": "Last 30 days", 
+    "last30Days": "Last 30 days",
     "last90Days": "Last 90 days",
     "pageViews": "Page Views",
     "uniqueVisitors": "Unique Visitors",
@@ -1047,7 +1100,7 @@
     "uploadLogo": "Upload Logo",
     "removeLogo": "Remove Logo",
     "logoHelp": "Recommended size: 200x60px, PNG or JPEG",
-    "favicon": "Favicon", 
+    "favicon": "Favicon",
     "currentFavicon": "Current favicon",
     "uploadFavicon": "Upload Favicon",
     "removeFavicon": "Remove Favicon",
@@ -1150,6 +1203,15 @@
       "center": "Centered",
       "justify": "Justified (stretch)"
     },
+    "thumbnailScale": "Thumbnail Scale",
+    "thumbnailScaleOptions": {
+      "xs": "XS — Most photos",
+      "sm": "SM — More photos",
+      "md": "MD — Default",
+      "lg": "LG — Larger photos",
+      "xl": "XL — Largest photos"
+    },
+    "thumbnailScaleHint": "Adjusts column count relative to the base grid columns",
     "showHeroSection": "Show Hero Section",
     "showHeroSectionHint": "Display a featured hero image above the justified gallery",
     "heroHeight": "Hero Section Height",
@@ -1239,13 +1301,15 @@
     "headerStyleDescription": "Choose how the gallery header appears. The header style is independent of the photo layout.",
     "headerStyleOptions": {
       "hero": "Hero Image",
-      "standard": "Standard Banner",
+      "standard": "Standard",
+      "banner": "Banner",
       "minimal": "Minimal",
       "none": "No Header"
     },
     "headerStyleDescriptions": {
       "hero": "Full-height image with event info overlay",
-      "standard": "Classic banner with event details",
+      "standard": "Compact inline header with event details",
+      "banner": "Standard header plus a colored banner above",
       "minimal": "Compact header with essential info",
       "none": "Hide header completely"
     },
@@ -1268,7 +1332,10 @@
       "classic": "Inline filter bar below header",
       "sidebar": "Menu button opens sidebar with filters"
     },
-    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image."
+    "controlsStyleHeroWarning": "Sidebar is recommended for hero headers to prevent controls appearing above the hero image.",
+    "betaThumbnailWarningTitle": "Low thumbnail resolution detected",
+    "betaThumbnailWarningText": "Your thumbnails are currently {{width}}×{{height}}px. Beta themes display photos at larger sizes and require at least {{recommended}}×{{recommended}}px for good quality. Increase the thumbnail dimensions in Settings > Thumbnails and regenerate.",
+    "betaThumbnailWarningLink": "Go to Thumbnail Settings"
   },
   "admin": {
     "title": "Admin Panel",
@@ -1469,6 +1536,13 @@
       "username": "Choose a Username",
       "password": "Create Password",
       "submit": "Create Account"
+    },
+    "photos": {
+      "hidden": "Hidden",
+      "hideSelected": "Hide",
+      "showSelected": "Show",
+      "hiddenSuccess": "Photos hidden from guests",
+      "visibleSuccess": "Photos now visible to guests"
     }
   },
   "permissions": {
@@ -1644,6 +1718,7 @@
     "subjectLine": "Subject Line",
     "emailBody": "Email Body",
     "preview": "Preview",
+    "save": "Save",
     "saveChanges": "Save Changes",
     "templates": "Templates",
     "variableHelp": "Use these variables in your template. They will be replaced with actual values when emails are sent.",
@@ -1652,11 +1727,41 @@
     "username": "Username",
     "password": "Password",
     "enterPassword": "Enter password",
-    "fromEmail": "From Email",
-    "fromName": "From Name",
     "required": "required",
     "ignoreSslErrors": "Ignore SSL/TLS certificate errors",
-    "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications."
+    "ignoreSslWarning": "Warning: Disabling certificate verification makes the connection vulnerable to man-in-the-middle attacks. Only enable this if you trust the SMTP server and understand the security implications.",
+    "brandingTitle": "Email Branding",
+    "brandingDescription": "Customize the colors used in email templates. Changes apply to the header bar, buttons, links, and footer background.",
+    "primaryColor": "Primary Color",
+    "primaryColorHint": "Used for header, buttons, and links",
+    "secondaryColor": "Footer Background",
+    "secondaryColorHint": "Used for footer section background",
+    "saveEmailColors": "Save Email Colors",
+    "editor": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "bulletList": "Bullet List",
+      "numberedList": "Numbered List",
+      "blockquote": "Blockquote",
+      "link": "Add Link",
+      "horizontalRule": "Horizontal Rule",
+      "alignLeft": "Align Left",
+      "alignCenter": "Align Center",
+      "alignRight": "Align Right",
+      "clearFormatting": "Clear Formatting",
+      "undo": "Undo",
+      "redo": "Redo",
+      "insertVariable": "Insert Variable",
+      "sourceMode": "Source",
+      "visualMode": "Visual",
+      "enterUrl": "Enter URL...",
+      "addLink": "Add",
+      "cancel": "Cancel"
+    },
+    "copiedFromLanguage": "Copied content from {{language}}",
+    "noTranslation": "No translation yet",
+    "noTranslationYet": "No translation exists for this language yet. Copy from an existing language to get started:",
+    "copyFrom": "Copy from"
   },
   "cms": {
     "title": "CMS Pages",
@@ -1674,7 +1779,13 @@
     "lastUpdated": "Last updated:",
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
-    "pageUpdated": "Page updated successfully"
+    "pageUpdated": "Page updated successfully",
+    "useExternalUrl": "Use external URL",
+    "useExternalUrlHelp": "Redirect visitors to an external page instead of showing the internal content. The internal title and content stay saved as a fallback.",
+    "externalUrl": "External URL",
+    "externalUrlPlaceholder": "https://example.com/impressum",
+    "externalUrlInvalid": "Must be a valid https:// URL",
+    "externalUrlActive": "External URL is active — internal content is preserved but not shown to visitors."
   },
   "eventTypes": {
     "title": "Event Types",
@@ -1776,7 +1887,9 @@
         "upToDate": "Backup is up to date",
         "recent": "Backup is recent",
         "gettingOld": "Backup is getting old",
-        "outdated": "Backup is outdated"
+        "outdated": "Backup is outdated",
+        "failed": "Last backup failed",
+        "old": "Backup is getting old"
       },
       "stats": {
         "totalBackups": "Total Backups",
@@ -1953,7 +2066,15 @@
         "duration": "Duration",
         "actions": "Actions"
       },
-      "details": "Details",
+      "details": {
+        "backupDetails": "Backup Details",
+        "destination": "Destination",
+        "started": "Started",
+        "completed": "Completed",
+        "contentBackedUp": "Content Backed Up",
+        "errorDetails": "Error Details",
+        "manifest": "Manifest"
+      },
       "statistics": "Statistics",
       "errors": "Errors",
       "backupDetails": {
@@ -1983,15 +2104,6 @@
       "backupsWillAppear": "Backups will appear here once created",
       "messages": {
         "deleteSuccess": "Backup deleted successfully"
-      },
-      "details": {
-        "backupDetails": "Backup Details",
-        "destination": "Destination",
-        "started": "Started",
-        "completed": "Completed",
-        "contentBackedUp": "Content Backed Up",
-        "errorDetails": "Error Details",
-        "manifest": "Manifest"
       }
     },
     "restore": {
@@ -2036,26 +2148,26 @@
         "at": "at"
       },
       "restoreTypes": {
-          "full": {
-            "name": "Full Restore",
-            "description": "Restore everything including database, photos, and archives",
-            "warning": "This will replace all current data"
-          },
-          "database": {
-            "name": "Database Only",
-            "description": "Restore only the database (settings, events, users)",
-            "warning": "Current database will be replaced"
-          },
-          "files": {
-            "name": "Files Only",
-            "description": "Restore only photos and archives",
-            "warning": "Existing files may be overwritten"
-          },
-          "selective": {
-            "name": "Selective Restore",
-            "description": "Choose specific items to restore",
-            "warning": "Only selected items will be restored"
-          }
+        "full": {
+          "name": "Full Restore",
+          "description": "Restore everything including database, photos, and archives",
+          "warning": "This will replace all current data"
+        },
+        "database": {
+          "name": "Database Only",
+          "description": "Restore only the database (settings, events, users)",
+          "warning": "Current database will be replaced"
+        },
+        "files": {
+          "name": "Files Only",
+          "description": "Restore only photos and archives",
+          "warning": "Existing files may be overwritten"
+        },
+        "selective": {
+          "name": "Selective Restore",
+          "description": "Choose specific items to restore",
+          "warning": "Only selected items will be restored"
+        }
       },
       "options": {
         "title": "Restore Options",
@@ -2265,7 +2377,12 @@
       "comments": "Comments",
       "commentsDesc": "Text comments on photos",
       "favorites": "Favorites",
-      "favoritesDesc": "Mark photos as favorites"
+      "favoritesDesc": "Mark photos as favorites",
+      "identityMode": "Identity Mode",
+      "identityModeSimple": "Simple feedback",
+      "identityModeSimpleDesc": "Anonymous, device-based. All visitors on the same device share state.",
+      "identityModeGuest": "Per-guest selections",
+      "identityModeGuestDesc": "Each visitor enters their name. Enables per-guest tracking and admin insights."
     }
   },
   "filter": {
@@ -2281,7 +2398,9 @@
     "fiveStarsOnly": "5 Stars Only",
     "hasLikes": "Has likes",
     "hasFavorites": "Has favorites",
-    "hasComments": "Has comments"
+    "hasComments": "Has comments",
+    "showingPhotos": "Total photos",
+    "withRatings": "With ratings"
   },
   "adminLogin": {
     "title": "Admin Login",
@@ -2306,5 +2425,48 @@
     "needHelp": "Need help? Contact",
     "poweredBy": "Powered by PicPeak",
     "devModeHint": "Development Mode: Use email: admin@example.com, password: admin123"
+  },
+  "clientAccess": {
+    "title": "Client Access",
+    "description": "Review photos and manage visibility before the gallery is shared with guests.",
+    "pinLabel": "Client PIN",
+    "pinPlaceholder": "Enter your client PIN",
+    "enterPin": "Please enter your client PIN",
+    "invalidPin": "Invalid PIN. Please try again.",
+    "loginFailed": "Authentication failed. Please try again.",
+    "loginButton": "Access Gallery",
+    "guestHint": "Looking for the guest gallery?",
+    "guestLink": "Go to guest view",
+    "banner": "Client Mode",
+    "visibleCount": "{{visible}} of {{total}} photos visible to guests",
+    "hideSelected": "Hide Selected",
+    "showSelected": "Show Selected",
+    "adminTitle": "Client Access",
+    "enableToggle": "Enable Client Access",
+    "enableDescription": "Allow clients to review and hide photos before the gallery is shared with guests.",
+    "pinHelperText": "The client will use this PIN to access the review page.",
+    "pinUpdated": "Client PIN updated",
+    "setPin": "Set PIN",
+    "linkLabel": "Client Access Link",
+    "regenerateToken": "Regenerate link",
+    "tokenRegenerated": "Client access link regenerated"
+  },
+  "export": {
+    "button": "Export",
+    "success": "Export downloaded successfully",
+    "error": "Export failed: ",
+    "exportSelected": "Export {{count}} selected",
+    "exportFiltered": "Export filtered photos",
+    "hint": "Select photos or apply filters to export"
+  },
+  "photoSort": {
+    "defaultSort": "Default Photo Sort",
+    "uploadDateNewest": "Upload Date (Newest First)",
+    "uploadDateOldest": "Upload Date (Oldest First)",
+    "captureDateNewest": "Date Taken (Newest First)",
+    "captureDateOldest": "Date Taken (Oldest First)",
+    "filenameAZ": "Filename (A-Z)",
+    "filenameZA": "Filename (Z-A)",
+    "dateTaken": "Date Taken"
   }
 }

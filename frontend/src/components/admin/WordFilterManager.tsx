@@ -300,7 +300,7 @@ export const WordFilterManager: React.FC = () => {
                           type="checkbox"
                           checked={filter.is_active}
                           onChange={() => handleToggleActive(filter)}
-                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                          className="w-4 h-4 text-accent rounded focus:ring-primary-500"
                         />
                         <span className="font-medium text-neutral-900 dark:text-neutral-100">{filter.word}</span>
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getSeverityBadgeClass(filter.severity)}`}>

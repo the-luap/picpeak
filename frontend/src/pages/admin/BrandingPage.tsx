@@ -31,6 +31,7 @@ export const BrandingPage: React.FC = () => {
     logo_display_hero: true,
     logo_display_mode: 'logo_and_text',
     hide_powered_by: false,
+    force_color_mode: null,
   });
 
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(theme);
@@ -71,6 +72,11 @@ export const BrandingPage: React.FC = () => {
     mutationFn: settingsService.updateTheme,
     onSuccess: () => {
       toast.success(t('toast.themeUpdated'));
+      // Refresh both the admin settings cache (which the page reads from) and
+      // the public-settings cache (which the gallery reads from) so the saved
+      // theme is reflected without a manual reload (#317).
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['public-settings'] });
     },
     onError: () => {
       toast.error(t('toast.saveError'));
@@ -101,9 +107,16 @@ export const BrandingPage: React.FC = () => {
           setBrandingSettings(prev => ({ ...prev, logo_url: formatted.logoUrl }));
         }
 
-        // Try to identify which preset this matches
+        // Try to identify which preset this matches. Compare only on the
+        // fields the preset itself defines so saved themes carrying extras
+        // like a `logoUrl` (preserved through preset changes — see
+        // handlePresetChange) still match the original preset shape.
         for (const [key, preset] of Object.entries(GALLERY_THEME_PRESETS)) {
-          if (JSON.stringify(preset.config) === JSON.stringify(formatted)) {
+          const keys = Object.keys(preset.config);
+          const matches = keys.every((k) =>
+            JSON.stringify((preset.config as any)[k]) === JSON.stringify((formatted as any)[k])
+          );
+          if (matches) {
             setCurrentThemeName(key);
             break;
           }
@@ -116,14 +129,35 @@ export const BrandingPage: React.FC = () => {
     setBrandingSettings(prev => ({ ...prev, [key]: value }));
   };
 
+  /**
+   * Force color mode is the only branding setting that auto-saves on click —
+   * users expect a toggle that takes effect immediately, not a setting they
+   * have to remember to click "Save" for. We keep all other branding fields
+   * on the bulk-save flow because typing in a text input shouldn't trigger
+   * a network round-trip per keystroke. Auto-save here invalidates the
+   * public-settings query so AdminDarkModeContext reapplies live without
+   * waiting for its 30-second poll.
+   */
+  const handleForceColorModeChange = (value: 'dark' | 'light' | null) => {
+    const next = { ...brandingSettings, force_color_mode: value };
+    setBrandingSettings(next);
+    brandingMutation.mutate(next);
+  };
+
   const handleThemeChange = (newTheme: ThemeConfig) => {
-    setCurrentTheme(newTheme);
-    // Also update logo URL in branding settings if it changed
-    if (newTheme.logoUrl !== currentTheme.logoUrl) {
+    // Preset configs don't carry a logoUrl, so a preset change inside the
+    // customizer arrives here with newTheme.logoUrl=undefined. Keep the
+    // existing logo instead of wiping branding_logo_url on save (#317).
+    const mergedTheme: ThemeConfig = {
+      ...newTheme,
+      logoUrl: newTheme.logoUrl ?? currentTheme.logoUrl
+    };
+    setCurrentTheme(mergedTheme);
+    if (newTheme.logoUrl !== undefined && newTheme.logoUrl !== currentTheme.logoUrl) {
       setBrandingSettings(prev => ({ ...prev, logo_url: newTheme.logoUrl || '' }));
     }
     if (isPreviewMode) {
-      setTheme(newTheme);
+      setTheme(mergedTheme);
     }
   };
 
@@ -132,9 +166,10 @@ export const BrandingPage: React.FC = () => {
     // Get the preset theme config
     const preset = GALLERY_THEME_PRESETS[presetName];
     if (preset) {
-      setCurrentTheme(preset.config);
+      // Preserve the existing logo when switching presets (#317).
+      setCurrentTheme(prev => ({ ...preset.config, logoUrl: prev.logoUrl }));
       if (isPreviewMode) {
-        setTheme(preset.config);
+        setTheme({ ...preset.config, logoUrl: currentTheme.logoUrl });
       }
     }
   };
@@ -201,10 +236,12 @@ export const BrandingPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      // Sync logo URL from theme to branding settings
+      // Sync logo URL from theme to branding settings, but never let an
+      // undefined/empty theme.logoUrl wipe a logo that is still configured in
+      // branding settings (#317 — preset selection does not imply logo removal).
       const updatedBrandingSettings = {
         ...brandingSettings,
-        logo_url: currentTheme.logoUrl || ''
+        logo_url: currentTheme.logoUrl || brandingSettings.logo_url || ''
       };
       
       // Save branding settings to database
@@ -457,7 +494,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('logo_position', position)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         brandingSettings.logo_position === position
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-accent-dark text-white'
                           : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                       }`}
                     >
@@ -490,7 +527,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_header !== false}
                     onChange={(e) => handleBrandingChange('logo_display_header', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -507,7 +544,7 @@ export const BrandingPage: React.FC = () => {
                     type="checkbox"
                     checked={brandingSettings.logo_display_hero !== false}
                     onChange={(e) => handleBrandingChange('logo_display_hero', e.target.checked)}
-                    className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -530,7 +567,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.hide_powered_by === true}
                 onChange={(e) => handleBrandingChange('hide_powered_by', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -549,7 +586,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={brandingSettings.watermark_enabled}
                 onChange={(e) => handleBrandingChange('watermark_enabled', e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <div>
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{t('branding.enableWatermarks')}</span>
@@ -628,7 +665,7 @@ export const BrandingPage: React.FC = () => {
                       onClick={() => handleBrandingChange('watermark_position', position.value)}
                       className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
                         brandingSettings.watermark_position === position.value
-                          ? 'bg-primary-600 text-white border-primary-600'
+                          ? 'bg-accent-dark text-white border-accent-dark'
                           : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-700'
                       }`}
                     >
@@ -711,7 +748,7 @@ export const BrandingPage: React.FC = () => {
                 type="checkbox"
                 checked={isPreviewMode}
                 onChange={(e) => setIsPreviewMode(e.target.checked)}
-                className="rounded border-neutral-300 dark:border-neutral-600 text-primary-600 focus:ring-primary-500"
+                className="rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
               />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('branding.applyLivePreview')}</span>
             </label>
@@ -724,9 +761,10 @@ export const BrandingPage: React.FC = () => {
                 onChange={handleThemeChange}
                 presetName={currentThemeName}
                 onPresetChange={handlePresetChange}
-                isPreviewMode={isPreviewMode}
                 showGalleryLayouts={true}
                 hideActions={true}
+                forceColorMode={brandingSettings.force_color_mode ?? null}
+                onForceColorModeChange={handleForceColorModeChange}
               />
             </div>
             

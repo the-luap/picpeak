@@ -64,8 +64,13 @@ interface PhotoGridWithLayoutsProps {
   heroDividerStyle?: HeroDividerStyle;
   // Hero image anchor position (#162) – keyword or "X% Y%" focal point
   heroImageAnchor?: string;
+  // Welcome message (per-event) for layouts that display it
+  welcomeMessage?: string;
   // Logout callback for full-page layouts
   onLogout?: () => void;
+  // Client visibility controls (#172)
+  isClient?: boolean;
+  onToggleVisibility?: (photoId: number, currentVisibility: string) => void;
 }
 
 export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
@@ -97,7 +102,10 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
   headerStyle,
   heroDividerStyle = 'wave',
   heroImageAnchor = 'center',
-  onLogout
+  welcomeMessage,
+  onLogout,
+  isClient = false,
+  onToggleVisibility
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -226,7 +234,10 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
     heroLogoVisible,
     heroLogoSize,
     heroLogoPosition,
+    welcomeMessage,
     onLogout,
+    isClient,
+    onToggleVisibility,
   };
 
   // Determine if we should show hero header (decoupled from layout)
@@ -282,6 +293,13 @@ export const PhotoGridWithLayouts: React.FC<PhotoGridWithLayoutsProps> = ({
           useCanvasRendering={useCanvasRendering}
           heroImageAnchor={heroImageAnchor}
         />
+      )}
+
+      {/* Welcome Message - shown for non-fullpage layouts when set */}
+      {!isFullPageLayout && welcomeMessage && (
+        <div className="mb-6 px-4 py-3 rounded-lg bg-card-theme/50 border border-border-theme text-center">
+          <p className="text-sm text-muted-theme whitespace-pre-line">{welcomeMessage}</p>
+        </div>
       )}
 
       {/* Selection Mode Controls - Not shown for carousel, full-page layouts, or when controls are hidden */}

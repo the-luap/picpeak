@@ -184,7 +184,9 @@ const validateFeedbackSettings = [
   body('allow_favorites').optional().isBoolean(),
   body('require_name_email').optional().isBoolean(),
   body('moderate_comments').optional().isBoolean(),
-  body('show_feedback_to_guests').optional().isBoolean()
+  body('show_feedback_to_guests').optional().isBoolean(),
+  body('identity_mode').optional().isIn(['simple', 'guest'])
+    .withMessage('identity_mode must be "simple" or "guest"')
 ];
 
 /**

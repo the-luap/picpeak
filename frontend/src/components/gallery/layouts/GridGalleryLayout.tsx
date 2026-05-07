@@ -1,11 +1,12 @@
 import React from 'react';
-import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video } from 'lucide-react';
+import { Download, Maximize2, Check, MessageSquare, Star, Heart, Video, Eye, EyeOff } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AuthenticatedImage } from '../../common';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import type { Photo } from '../../../types';
 
@@ -61,6 +62,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
   onLikeSuccess
 }) => {
   const { t } = useTranslation();
+  const guestIdentity = useGuestIdentityOptional();
   const [overlayVisible, setOverlayVisible] = React.useState(false);
   const [isTouchDevice, setIsTouchDevice] = React.useState(false);
   const overlayTimeoutRef = React.useRef<number | null>(null);
@@ -259,6 +261,25 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
                     className={`p-2 rounded-full transition-colors ${liked ? 'bg-red-500/90 hover:bg-red-500' : 'bg-white/90 hover:bg-white'}`}
                     onClick={async (e) => {
                       e.stopPropagation();
+                      if (guestIdentity?.identityMode === 'guest') {
+                        try {
+                          await guestIdentity.ensureIdentity();
+                        } catch {
+                          hideOverlay();
+                          return;
+                        }
+                        if (onLikeSuccess) onLikeSuccess();
+                        try {
+                          await feedbackService.submitFeedback(slug!, String(photo.id), {
+                            feedback_type: 'like',
+                          });
+                        } catch (err) {
+                          console.warn('Like submit failed, keeping optimistic UI', err);
+                        }
+                        if (onFeedbackChange) onFeedbackChange();
+                        hideOverlay();
+                        return;
+                      }
                       if (feedbackOptions?.requireNameEmail && !savedIdentity && onRequireIdentity) {
                         onRequireIdentity('like', photo.id);
                         hideOverlay();
@@ -300,7 +321,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
             className={`absolute top-2 right-2 z-20 transition-opacity ${checkboxVisibilityClass} md:group-hover:opacity-100`}
             onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
           >
-            <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-primary-600 border-primary-600' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
+            <div className={`w-6 h-6 rounded-full border-2 ${isSelected ? 'bg-accent-dark border-accent-dark' : 'bg-white/90 border-white'} flex items-center justify-center transition-colors`}>
               {isSelected && <Check className="w-4 h-4 text-white" />}
             </div>
           </button>
@@ -320,7 +341,7 @@ const GridPhoto: React.FC<GridPhotoProps> = ({
               )}
               {commentCount > 0 && (
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm" title="Commented">
-                  <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                  <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                 </span>
               )}
             </div>
@@ -365,13 +386,19 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   useEnhancedProtection = false,
   useCanvasRendering = false,
   feedbackEnabled = false,
-  feedbackOptions
+  feedbackOptions,
+  isClient = false,
+  onToggleVisibility
 }) => {
   const { theme } = useTheme();
   const gallerySettings = theme.gallerySettings || {};
   const columns = gallerySettings.gridColumns || { mobile: 2, tablet: 3, desktop: 4 };
   const spacing = gallerySettings.spacing || 'normal';
   const animation = gallerySettings.photoAnimation || 'fade';
+  const scale = gallerySettings.thumbnailScale || 'md';
+
+  const scaleOffsets: Record<string, number> = { xs: 3, sm: 1, md: 0, lg: -1, xl: -2 };
+  const applyScale = (cols: number) => Math.max(1, cols + (scaleOffsets[scale] ?? 0));
 
   const [showIdentityModal, setShowIdentityModal] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<null | { type: 'like'; photoId: number }>(null);
@@ -379,49 +406,70 @@ export const GridGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const [savedIdentity, setSavedIdentity] = React.useState<{ name: string; email: string } | null>(null);
 
   const spacingClass = spacing === 'tight' ? 'gap-2' : spacing === 'relaxed' ? 'gap-6' : 'gap-4';
-  
+
   const gridClass = `photo-grid grid ${spacingClass}
-    grid-cols-${columns.mobile}
-    sm:grid-cols-${columns.tablet}
-    lg:grid-cols-${columns.desktop}
-    xl:grid-cols-${columns.desktop + 1}`;
+    grid-cols-${applyScale(columns.mobile)}
+    sm:grid-cols-${applyScale(columns.tablet)}
+    lg:grid-cols-${applyScale(columns.desktop)}
+    xl:grid-cols-${applyScale(columns.desktop + 1)}`;
 
   return (
     <div className={gridClass}>
-      {photos.map((photo, index) => (
-        <GridPhoto
-          key={photo.id}
-          photo={photo}
-          isSelected={selectedPhotos.has(photo.id)}
-          isSelectionMode={isSelectionMode}
-          onClick={() => onPhotoClick(index)}
-          onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
-          onDownload={(e) => onDownload(photo, e)}
-          animationType={animation}
-          allowDownloads={allowDownloads}
-          slug={slug}
-          protectionLevel={protectionLevel}
-          useEnhancedProtection={useEnhancedProtection}
-          useCanvasRendering={useCanvasRendering}
-          feedbackEnabled={feedbackEnabled}
-          feedbackOptions={feedbackOptions}
-          savedIdentity={savedIdentity}
-          onRequireIdentity={(action, photoId) => {
-            setPendingAction({ type: action, photoId });
-            setShowIdentityModal(true);
-          }}
-          onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(index)}
-          onFeedbackChange={onFeedbackChange}
-          liked={likedPhotoIds.has(photo.id)}
-          onLikeSuccess={() => {
-            setLikedPhotoIds((prev) => {
-              const next = new Set(prev);
-              next.add(photo.id);
-              return next;
-            });
-          }}
-        />
-      ))}
+      {photos.map((photo, index) => {
+        const isHidden = photo.visibility === 'hidden';
+        return (
+          <div key={photo.id} className={`relative ${isClient && isHidden ? 'opacity-40' : ''}`}>
+            <GridPhoto
+              photo={photo}
+              isSelected={selectedPhotos.has(photo.id)}
+              isSelectionMode={isSelectionMode}
+              onClick={() => onPhotoClick(index)}
+              onToggleSelect={() => onPhotoSelect && onPhotoSelect(photo.id)}
+              onDownload={(e) => onDownload(photo, e)}
+              animationType={animation}
+              allowDownloads={allowDownloads}
+              slug={slug}
+              protectionLevel={protectionLevel}
+              useEnhancedProtection={useEnhancedProtection}
+              useCanvasRendering={useCanvasRendering}
+              feedbackEnabled={feedbackEnabled}
+              feedbackOptions={feedbackOptions}
+              savedIdentity={savedIdentity}
+              onRequireIdentity={(action, photoId) => {
+                setPendingAction({ type: action, photoId });
+                setShowIdentityModal(true);
+              }}
+              onQuickComment={() => onOpenPhotoWithFeedback && onOpenPhotoWithFeedback(index)}
+              onFeedbackChange={onFeedbackChange}
+              liked={likedPhotoIds.has(photo.id)}
+              onLikeSuccess={() => {
+                setLikedPhotoIds((prev) => {
+                  const next = new Set(prev);
+                  next.add(photo.id);
+                  return next;
+                });
+              }}
+            />
+            {/* Client visibility toggle overlay (#172) */}
+            {isClient && onToggleVisibility && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleVisibility(photo.id, photo.visibility || 'visible');
+                }}
+                className={`absolute top-2 left-2 z-10 p-1.5 rounded-full shadow-md transition-colors ${
+                  isHidden
+                    ? 'bg-red-500/90 text-white hover:bg-red-600'
+                    : 'bg-white/90 text-neutral-700 hover:bg-white dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-700'
+                }`}
+                title={isHidden ? 'Hidden from guests' : 'Visible to guests'}
+              >
+                {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        );
+      })}
       <FeedbackIdentityModal
         isOpen={showIdentityModal}
         onClose={() => { setShowIdentityModal(false); setPendingAction(null); }}

@@ -126,7 +126,7 @@ export const PhotoExportMenu: React.FC<PhotoExportMenuProps> = ({
         )}
         {t('export.button', 'Export')}
         {hasSelection && (
-          <span className="bg-primary-100 text-primary-700 text-xs px-2 py-0.5 rounded-full">
+          <span className="bg-accent-dark/15 text-accent-dark text-xs px-2 py-0.5 rounded-full">
             {selectedPhotoIds.length}
           </span>
         )}

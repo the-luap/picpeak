@@ -3,9 +3,20 @@ const { db } = require('../database/db');
 const logger = require('../utils/logger');
 
 /**
- * Generate a unique identifier for the guest
+ * Generate a unique identifier for the guest.
+ *
+ * In guest identity mode, `req.guest.identifier` is a server-issued UUID
+ * unique per person per event (set by the resolveGuest middleware). When
+ * present it takes precedence, so rate limits and deduplication become
+ * per-person instead of per-device.
+ *
+ * In simple (legacy) mode, the identifier falls back to a hash of IP + UA,
+ * matching prior behavior.
  */
 function generateGuestIdentifier(req) {
+  if (req.guest && req.guest.identifier) {
+    return req.guest.identifier;
+  }
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
   return crypto

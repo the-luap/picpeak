@@ -6,7 +6,7 @@ const path = require('path');
 const router = express.Router();
 const watermarkService = require('../services/watermarkService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
-const { verifyGalleryAccess } = require('../middleware/gallery');
+const { verifyGalleryAccess, isAdminPreview } = require('../middleware/gallery');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
 const { resolvePhotoFilePath } = require('../services/photoResolver');
@@ -14,6 +14,9 @@ const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = r
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
 const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
+const downloadZipService = require('../services/downloadZipService');
+const { getStorage } = require('../services/storage');
+const fs = require('fs');
 
 // Get storage path from environment or default
 const getStoragePath = () => process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
@@ -74,7 +77,7 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
   const { slug, token } = req.params;
 
   const event = await db('events')
-    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false), is_draft: formatBoolean(false) })
     .select('id', 'share_link', 'share_token')
     .first();
 
@@ -122,7 +125,9 @@ router.get('/:slug/info', async (req, res) => {
         'hero_logo_url',
         'header_style',
         'hero_divider_style',
-        'hero_image_anchor'
+        'hero_image_anchor',
+        'is_draft',
+        'default_photo_sort'
       )
       .first();
 
@@ -138,10 +143,15 @@ router.get('/:slug/info', async (req, res) => {
       }
       return res.status(404).json({ error: 'Gallery not found' });
     }
-    
+
     // Check if event is archived
     if (event.is_archived) {
       return res.status(404).json({ error: 'Gallery has been archived and is no longer available' });
+    }
+
+    // Check if event is a draft (allow admin preview)
+    if (event.is_draft && !isAdminPreview(req)) {
+      return res.status(404).json({ error: 'Gallery is not yet published' });
     }
     
     // If token provided, verify it matches the share link
@@ -176,7 +186,8 @@ router.get('/:slug/info', async (req, res) => {
       hero_logo_url: event.hero_logo_url || null,
       header_style: event.header_style || 'standard',
       hero_divider_style: event.hero_divider_style || 'wave',
-      hero_image_anchor: event.hero_image_anchor || 'center'
+      hero_image_anchor: event.hero_image_anchor || 'center',
+      default_photo_sort: event.default_photo_sort || 'upload_date_desc'
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);
@@ -198,9 +209,26 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
 
     // Build the query with sorting
     const sortOrder = order === 'asc' ? 'asc' : 'desc';
+    const isClient = req.accessLevel === 'client';
     let photosQuery = db('photos')
       .where('photos.event_id', req.event.id)
+      // Guests/clients never see photos still being processed by the
+      // background worker — the original is on disk but the thumbnail
+      // / dimensions / EXIF haven't landed yet. Photos with a NULL
+      // processing_status are pre-async-migration rows and are treated
+      // as complete (the migration's column default is 'complete' so
+      // this is just defensive against partial migration states).
+      .where(function() {
+        this.where('photos.processing_status', 'complete').orWhereNull('photos.processing_status');
+      })
       .select('photos.*');
+
+    // Guests only see visible photos; clients see all
+    if (!isClient) {
+      photosQuery = photosQuery.where(function() {
+        this.where('photos.visibility', 'visible').orWhereNull('photos.visibility');
+      });
+    }
 
     // Apply sort option
     if (sort === 'capture_date') {
@@ -295,6 +323,11 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       }
     }
     
+    // Check if feedback should be visible to guests
+    const feedbackService = require('../services/feedbackService');
+    const feedbackSettings = await feedbackService.getEventFeedbackSettings(req.event.id);
+    const showFeedbackToGuests = isClient || feedbackSettings.show_feedback_to_guests !== false;
+
     // Then get comment counts separately
     const commentCounts = await db('photo_feedback')
       .whereIn('photo_id', photos.map(p => p.id))
@@ -383,6 +416,8 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         header_style: req.event.header_style || 'standard',
         hero_divider_style: req.event.hero_divider_style || 'wave',
         hero_image_anchor: req.event.hero_image_anchor || 'center',
+        default_photo_sort: req.event.default_photo_sort || 'upload_date_desc',
+        download_zip_ready: !!(req.event.download_zip_path && req.event.download_zip_generated_at),
         ...protectionSettings
       },
       categories: categories,
@@ -414,12 +449,20 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           height: photo.height || null,
           // Fixed: Use the calculated useJwtUrl variable instead of recalculating
           requires_token: !useJwtUrl,
-          // Feedback data
-          has_feedback: (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0),
-          average_rating: photo.average_rating || 0,
-          comment_count: commentMap[photo.id] || 0,
-          like_count: photo.like_count || 0,
-          favorite_count: photo.favorite_count || 0
+          // EXIF capture date
+          captured_at: photo.captured_at || null,
+          // Media type
+          media_type: photo.media_type || null,
+          mime_type: photo.mime_type || null,
+          duration: photo.duration || null,
+          // Feedback data (hidden when show_feedback_to_guests is disabled)
+          has_feedback: showFeedbackToGuests ? (commentMap[photo.id] > 0 || photo.average_rating > 0 || photo.like_count > 0) : false,
+          average_rating: showFeedbackToGuests ? (photo.average_rating || 0) : 0,
+          comment_count: showFeedbackToGuests ? (commentMap[photo.id] || 0) : 0,
+          like_count: showFeedbackToGuests ? (photo.like_count || 0) : 0,
+          favorite_count: showFeedbackToGuests ? (photo.favorite_count || 0) : 0,
+          // Visibility (only included for clients)
+          ...(isClient ? { visibility: photo.visibility || 'visible' } : {})
         };
       })
     });
@@ -429,24 +472,91 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
   }
 });
 
+// Toggle photo visibility (client-only)
+router.patch('/:slug/photos/:photoId/visibility', verifyGalleryAccess, async (req, res) => {
+  try {
+    if (req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Client access required' });
+    }
+
+    const { photoId } = req.params;
+    const { visibility } = req.body;
+
+    if (!['visible', 'hidden'].includes(visibility)) {
+      return res.status(400).json({ error: 'Invalid visibility value' });
+    }
+
+    const photo = await db('photos')
+      .where({ id: photoId, event_id: req.event.id })
+      .first();
+
+    if (!photo) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    await db('photos')
+      .where({ id: photoId, event_id: req.event.id })
+      .update({ visibility });
+
+    res.json({ message: 'Photo visibility updated', visibility });
+  } catch (error) {
+    logger.error('Error updating photo visibility:', error);
+    res.status(500).json({ error: 'Failed to update photo visibility' });
+  }
+});
+
+// Bulk toggle photo visibility (client-only)
+router.patch('/:slug/photos/visibility/bulk', verifyGalleryAccess, async (req, res) => {
+  try {
+    if (req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Client access required' });
+    }
+
+    const { photoIds, visibility } = req.body;
+
+    if (!Array.isArray(photoIds) || photoIds.length === 0) {
+      return res.status(400).json({ error: 'Invalid photo IDs' });
+    }
+
+    if (!['visible', 'hidden'].includes(visibility)) {
+      return res.status(400).json({ error: 'Invalid visibility value' });
+    }
+
+    const count = await db('photos')
+      .whereIn('id', photoIds)
+      .where('event_id', req.event.id)
+      .update({ visibility });
+
+    res.json({ message: `${count} photos updated`, visibility });
+  } catch (error) {
+    logger.error('Error bulk updating photo visibility:', error);
+    res.status(500).json({ error: 'Failed to update photo visibility' });
+  }
+});
+
 // Download single photo
 router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => {
   try {
     const { photoId } = req.params;
-    
+
     // Check if downloads are allowed for this event
     if (req.event.allow_downloads === false) {
       return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
     }
-    
+
     const photo = await db('photos')
       .where({ id: photoId, event_id: req.event.id })
       .first();
-    
+
     if (!photo) {
       return res.status(404).json({ error: 'Photo not found' });
     }
-    
+
+    // Block guest access to hidden photos
+    if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+      return res.status(403).json({ error: 'Photo not available' });
+    }
+
     // Update download count
     await db('photos').where('id', photoId).increment('download_count', 1);
     
@@ -525,32 +635,86 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     if (req.event.allow_downloads === false) {
       return res.status(403).json({ error: 'Downloads are disabled for this gallery' });
     }
-    
+
+    // Try to serve pre-generated zip (instant download with Content-Length)
+    const zipInfo = await downloadZipService.getZipInfo(req.event.id);
+    if (zipInfo) {
+      const storage = getStorage();
+
+      // Per-event presigned-URL fast path (#328 follow-up). Conditions:
+      //   1. STORAGE_BACKEND=s3 (presigned URLs are S3-only)
+      //   2. event.allow_presigned_download is true (admin opted in)
+      //   3. Watermarking is OFF for this event — presigned URLs bypass the
+      //      backend, which means no watermark on bytes leaving S3.
+      // Falls through to streaming on any condition mismatch.
+      const wantsPresigned = req.event.allow_presigned_download === true || req.event.allow_presigned_download === 1;
+      const watermarkOnEvent = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
+      if (wantsPresigned && storage.kind() === 's3' && !watermarkOnEvent) {
+        try {
+          const url = await storage.signedUrl(zipInfo.key, 300); // 5 min
+          db('access_logs').insert({
+            event_id: req.event.id,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent'],
+            action: 'download_all_presigned'
+          }).catch(() => {});
+          res.redirect(302, url);
+          return;
+        } catch (err) {
+          logger.warn('presigned download-all failed, falling back to stream', {
+            eventId: req.event.id,
+            error: err.message,
+          });
+        }
+      }
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Length', zipInfo.size);
+      res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
+      const stream = await storage.get(zipInfo.key);
+      stream.pipe(res);
+
+      // Log bulk download
+      db('access_logs').insert({
+        event_id: req.event.id,
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        action: 'download_all'
+      }).catch(() => {});
+      return;
+    }
+
+    // Fallback: on-the-fly streaming (existing behavior)
+    // Also trigger background zip generation for next time
+    downloadZipService.generateZip(req.event.id).catch(err =>
+      logger.warn('Background zip generation failed', { eventId: req.event.id, error: err.message })
+    );
+
     // Fetch photos
     const photos = await db('photos')
       .where('photos.event_id', req.event.id)
       .select('photos.*')
       .orderBy('photos.type', 'asc')
       .orderBy('photos.uploaded_at', 'desc');
-    
+
     if (photos.length === 0) {
       return res.status(404).json({ error: 'No photos found' });
     }
-    
+
     // Count unique types
     const uniqueTypes = new Set(photos.map(p => p.type)).size;
     const hasMultipleTypes = uniqueTypes > 1;
-    
+
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${req.event.slug}.zip"`);
-    
+
     const archive = archiver('zip', { zlib: { level: 5 } });
     archive.on('error', (err) => {
       throw err;
     });
-    
+
     archive.pipe(res);
-    
+
     // Get watermark settings - apply if global setting OR event-level setting is enabled
     const watermarkSettings = await watermarkService.getWatermarkSettings();
     const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
@@ -561,51 +725,54 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
       text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
     } : null;
 
-    // Add photos to archive
+    // Add photos to archive — managed photos via storage backend, external via local path.
+    const { resolvePhotoStorageKey } = require('../services/photoResolver');
+    const storage = getStorage();
     for (const photo of photos) {
-      let filePath;
-      try {
-        filePath = resolvePhotoFilePath(req.event, photo);
-      } catch (resolveError) {
-        logger.warn('Skipping photo in bulk download due to unresolved path', {
-          slug: req.params.slug,
-          photoId: photo.id,
-          eventId: req.event.id,
-          error: resolveError.message,
-        });
-        continue;
-      }
-
-      // Determine the file name in the archive
+      const storageKey = resolvePhotoStorageKey(req.event, photo);
       let archiveName;
       if (hasMultipleTypes) {
-        // Use photo type as folder
         const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
         archiveName = path.join(folderName, photo.filename);
       } else {
-        // No folders, just the filename
         archiveName = photo.filename;
       }
 
-      if (shouldApplyWatermark && effectiveSettings) {
-        try {
-          const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
+      try {
+        if (shouldApplyWatermark && effectiveSettings) {
+          // Watermark service operates on a local path. For managed photos in
+          // S3 mode, materialize a tmp local copy first.
+          const { withLocalCopy } = require('../services/imageProcessor');
+          const sourceForWatermark = storageKey
+            ? null
+            : resolvePhotoFilePath(req.event, photo);
+
+          const watermarkedBuffer = storageKey
+            ? await withLocalCopy(storageKey, (localPath) =>
+                watermarkService.applyWatermark(localPath, effectiveSettings)
+              )
+            : await watermarkService.applyWatermark(sourceForWatermark, effectiveSettings);
+
           archive.append(watermarkedBuffer, { name: archiveName });
-        } catch (watermarkError) {
-          logger.warn('Failed to watermark photo for bulk download, skipping original to avoid leak', {
-            slug: req.params.slug,
-            photoId: photo.id,
-            eventId: req.event.id,
-            error: watermarkError.message,
-          });
+        } else if (storageKey) {
+          const stream = await storage.get(storageKey);
+          archive.append(stream, { name: archiveName });
+        } else {
+          const filePath = resolvePhotoFilePath(req.event, photo);
+          archive.file(filePath, { name: archiveName });
         }
-      } else {
-        archive.file(filePath, { name: archiveName });
+      } catch (err) {
+        logger.warn('Skipping photo in bulk download due to error', {
+          slug: req.params.slug,
+          photoId: photo.id,
+          eventId: req.event.id,
+          error: err.message,
+        });
       }
     }
-    
+
     await archive.finalize();
-    
+
     // Log bulk download
     await db('access_logs').insert({
       event_id: req.event.id,
@@ -686,31 +853,32 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
       text: req.event.watermark_text || watermarkSettings?.text || 'Protected'
     } : null;
 
+    const { resolvePhotoStorageKey: resolveSelectedKey } = require('../services/photoResolver');
+    const { withLocalCopy: withSelectedLocalCopy } = require('../services/imageProcessor');
+    const selectedStorage = getStorage();
     for (const photo of photos) {
+      const name = photo.filename || `photo-${photo.id}.jpg`;
+      const storageKey = resolveSelectedKey(req.event, photo);
       try {
-        const filePath = resolvePhotoFilePath(req.event, photo);
-        const name = photo.filename || `photo-${photo.id}.jpg`;
         if (shouldApplyWatermark && effectiveSettings) {
-          try {
-            const watermarkedBuffer = await watermarkService.applyWatermark(filePath, effectiveSettings);
-            archive.append(watermarkedBuffer, { name });
-          } catch (watermarkError) {
-            logger.warn('Failed to watermark selected photo, skipping original to avoid leak', {
-              slug: req.params.slug,
-              photoId: photo.id,
-              eventId: req.event.id,
-              error: watermarkError.message,
-            });
-          }
+          const buf = storageKey
+            ? await withSelectedLocalCopy(storageKey, (lp) =>
+                watermarkService.applyWatermark(lp, effectiveSettings)
+              )
+            : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), effectiveSettings);
+          archive.append(buf, { name });
+        } else if (storageKey) {
+          const stream = await selectedStorage.get(storageKey);
+          archive.append(stream, { name });
         } else {
-          archive.file(filePath, { name });
+          archive.file(resolvePhotoFilePath(req.event, photo), { name });
         }
-      } catch (resolveError) {
-        logger.warn('Skipping selected photo due to unresolved path', {
+      } catch (err) {
+        logger.warn('Skipping selected photo due to error', {
           slug: req.params.slug,
           photoId: photo.id,
           eventId: req.event.id,
-          error: resolveError.message,
+          error: err.message,
         });
       }
     }
@@ -745,9 +913,13 @@ router.get('/:slug/photo/:photoId',
         .where({ id: photoId, event_id: req.event.id })
         .first();
 
-
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
       }
 
       // Check if this is a video
@@ -935,6 +1107,11 @@ router.get('/:slug/thumbnail/:photoId',
         return res.status(404).json({ error: 'Photo not found' });
       }
 
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
+      }
+
       // Ensure thumbnail exists and is valid, regenerate if needed
       const thumbnailPath = await ensureThumbnail(photo);
 
@@ -1011,6 +1188,11 @@ router.get('/:slug/hero/:photoId',
 
       if (!photo) {
         return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      // Block guest access to hidden photos
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
       }
 
       // Check if this is a video - videos don't get hero images
@@ -1093,10 +1275,12 @@ router.get('/:slug/feedback-settings', verifyGalleryAccess, async (req, res) => 
     res.json({
       feedback_enabled: settings.feedback_enabled || false,
       allow_ratings: settings.allow_ratings,
-      allow_likes: settings.allow_likes, 
+      allow_likes: settings.allow_likes,
       allow_comments: settings.allow_comments,
       allow_favorites: settings.allow_favorites,
-      show_feedback_to_guests: settings.show_feedback_to_guests
+      show_feedback_to_guests: settings.show_feedback_to_guests,
+      require_name_email: settings.require_name_email || false,
+      identity_mode: settings.identity_mode || 'simple'
     });
   } catch (error) {
     console.error('Error fetching feedback settings:', error);
@@ -1205,18 +1389,31 @@ router.post('/:eventId/upload', verifyGalleryAccess, async (req, res) => {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No files uploaded' });
       }
-      
-      const { processUploadedPhotos } = require('../services/photoProcessor');
-      const categoryId = req.body.category_id || req.event.upload_category_id || null;
-      
+
+      const { queueFilesForProcessing } = require('../services/photoProcessor');
+      const rawCategory = req.body.category_id || req.event.upload_category_id || null;
+      const numericCategoryId = (() => {
+        if (rawCategory === null || rawCategory === undefined) return null;
+        const n = parseInt(rawCategory, 10);
+        return Number.isFinite(n) ? n : null;
+      })();
+
       try {
-        // Process uploaded photos
-        const results = await processUploadedPhotos(req.files, eventId, 'user', categoryId);
-        
-        res.json({ 
-          message: 'Photos uploaded successfully',
-          count: results.length,
-          photos: results
+        // Queue files as 'pending' — the background worker will process
+        // thumbnails / EXIF / dimensions off the request thread (#357).
+        const result = await queueFilesForProcessing(req.files, {
+          eventId,
+          photoType: 'individual',
+          categoryId: numericCategoryId,
+        });
+
+        res.status(202).json({
+          message: 'Photos queued for processing',
+          upload_id: result.uploadId,
+          count: result.photos.length,
+          photo_ids: result.photos.map((p) => p.id),
+          photos: result.photos,
+          errors: result.errors.length > 0 ? result.errors : undefined,
         });
       } catch (processError) {
         console.error('Photo processing error:', processError);

@@ -158,11 +158,11 @@ export const EventRenameDialog: React.FC<EventRenameDialogProps> = ({
             </div>
 
             {renameResult.newShareLink && (
-              <div className="p-3 bg-neutral-50 rounded-lg">
-                <p className="text-sm font-medium text-neutral-700 mb-1">
+              <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
+                <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200 mb-1">
                   {t('events.rename.newLink', 'New Gallery Link')}
                 </p>
-                <p className="text-sm text-neutral-900 break-all">{renameResult.newShareLink}</p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100 break-all">{renameResult.newShareLink}</p>
               </div>
             )}
 
@@ -198,7 +198,7 @@ export const EventRenameDialog: React.FC<EventRenameDialogProps> = ({
           // Renaming in progress
           <div className="space-y-4 py-8">
             <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
+              <Loader2 className="w-10 h-10 text-accent animate-spin" />
               <p className="text-neutral-700 font-medium">{renameStatus}</p>
             </div>
           </div>
@@ -258,7 +258,7 @@ export const EventRenameDialog: React.FC<EventRenameDialogProps> = ({
                     type="checkbox"
                     checked={resendEmail}
                     onChange={(e) => setResendEmail(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                    className="mt-1 w-4 h-4 text-accent border-neutral-300 rounded focus:ring-primary-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-700 flex items-center gap-1">

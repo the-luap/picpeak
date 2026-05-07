@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Download, Trash2, Eye, Package, MessageSquare, Star, Video, FolderOpen } from 'lucide-react';
+import { Check, Download, Trash2, Eye, EyeOff, Package, MessageSquare, Star, Video, FolderOpen, Cog, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { AdminPhoto } from '../../services/photos.service';
 import { photosService } from '../../services/photos.service';
+import { uploadsService } from '../../services/uploads.service';
 import { Button } from '../common';
 import { AdminAuthenticatedImage } from './AdminAuthenticatedImage';
 import { BulkCategoryModal } from './BulkCategoryModal';
@@ -32,6 +34,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
   categories = []
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -201,6 +204,34 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                   >
                     {t('photos.moveToCategory', 'Move to Category')}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await photosService.bulkUpdatePhotos(eventId, Array.from(selectedPhotos), { visibility: 'hidden' });
+                        toast.success(t('admin.photos.hiddenSuccess', 'Photos hidden'));
+                        onPhotosDeleted();
+                      } catch { toast.error(t('common.error')); }
+                    }}
+                    leftIcon={<EyeOff className="w-4 h-4" />}
+                  >
+                    {t('admin.photos.hideSelected', 'Hide')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await photosService.bulkUpdatePhotos(eventId, Array.from(selectedPhotos), { visibility: 'visible' });
+                        toast.success(t('admin.photos.visibleSuccess', 'Photos visible'));
+                        onPhotosDeleted();
+                      } catch { toast.error(t('common.error')); }
+                    }}
+                    leftIcon={<Eye className="w-4 h-4" />}
+                  >
+                    {t('admin.photos.showSelected', 'Show')}
+                  </Button>
                   <button
                     onClick={handleDeleteSelected}
                     disabled={isDeleting}
@@ -253,16 +284,59 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
             >
               <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
                 selectedPhotos.has(photo.id)
-                  ? 'bg-primary-600 border-primary-600'
+                  ? 'bg-accent-dark border-accent-dark'
                   : 'bg-white/90 border-white'
               }`}>
                 {selectedPhotos.has(photo.id) && <Check className="w-4 h-4 text-white" />}
               </div>
             </button>
 
-            {/* Thumbnail */}
+            {/* Visibility badge (#172) */}
+            {(photo as any).visibility === 'hidden' && (
+              <div className="absolute top-2 left-2 z-20">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/90 text-white text-[10px] font-medium">
+                  <EyeOff className="w-3 h-3" />
+                  {t('admin.photos.hidden', 'Hidden')}
+                </span>
+              </div>
+            )}
+
+            {/* Thumbnail (or processing placeholder for in-flight photos) */}
             <div className="aspect-square">
-              {photo.thumbnail_url ? (
+              {(photo as any).processing_status === 'pending' ||
+              (photo as any).processing_status === 'processing' ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 gap-1 px-2 text-center">
+                  <Cog className="w-7 h-7 animate-spin" />
+                  <p className="text-[10px] font-medium leading-tight">
+                    {t('admin.photos.processingStatus', 'Processing…')}
+                  </p>
+                </div>
+              ) : (photo as any).processing_status === 'failed' ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 gap-1 px-2 text-center">
+                  <AlertTriangle className="w-7 h-7" />
+                  <p className="text-[10px] font-medium leading-tight">
+                    {t('admin.photos.processingFailed', 'Failed')}
+                  </p>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await uploadsService.retryPhoto(photo.id);
+                        toast.success(t('admin.photos.retryQueued', 'Retry queued'));
+                        // Refetch grid via React Query so the placeholder
+                        // updates without a full reload.
+                        queryClient.invalidateQueries({ queryKey: ['admin-event-photos'] });
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.error || 'Retry failed');
+                      }
+                    }}
+                    className="mt-1 px-2 py-0.5 rounded bg-red-200 dark:bg-red-800 text-[10px] inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" />
+                    {t('upload.retryFailed', 'Retry')}
+                  </button>
+                </div>
+              ) : photo.thumbnail_url ? (
                 <AdminAuthenticatedImage
                   src={photo.thumbnail_url}
                   alt={photo.filename}
@@ -345,7 +419,7 @@ export const AdminPhotoGrid: React.FC<AdminPhotoGridProps> = ({
                 )}
                 {commentCount > 0 && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1" title={`${commentCount} comments`}>
-                    <MessageSquare className="w-3.5 h-3.5 text-primary-600" fill="currentColor" />
+                    <MessageSquare className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                     <span className="text-xs font-medium text-neutral-700">{commentCount}</span>
                   </div>
                 )}

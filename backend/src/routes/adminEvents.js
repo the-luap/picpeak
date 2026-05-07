@@ -20,6 +20,9 @@ const { buildShareLinkVariants } = require('../services/shareLinkService');
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 const eventTypeService = require('../services/eventTypeService');
 const { validateFileType } = require('../utils/fileSecurityUtils');
+const { requireEventOwnership } = require('../middleware/ownership');
+const { getFrontendBaseUrl } = require('../utils/frontendUrl');
+const downloadZipService = require('../services/downloadZipService');
 
 // Shared validator for hero_image_anchor – accepts legacy keywords or "X% Y%" focal point
 const validateHeroImageAnchor = (value) => {
@@ -110,9 +113,100 @@ const getEventFieldRequirements = async () => {
   }
 };
 
+// Helper to read app_settings booleans by key, used to inherit per-setting
+// defaults onto new events. Returns `undefined` for missing/non-boolean rows
+// so callers can fall back to a legacy default.
+const readBooleanSetting = async (key) => {
+  try {
+    const setting = await db('app_settings').where('setting_key', key).first();
+    if (!setting) return undefined;
+    let value = setting.setting_value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep raw */ }
+    }
+    return typeof value === 'boolean' ? value : undefined;
+  } catch (error) {
+    logger.error('Failed to read app setting', { key, error: error.message });
+    return undefined;
+  }
+};
+
+// Helper to read the global "enable_devtools_protection" admin setting so
+// new events inherit it instead of always falling back to the DB column default
+// (#317 — admin disabled it globally but new events still got it ON).
+const getDownloadProtectionDefaults = async () => {
+  return { enable_devtools_protection: await readBooleanSetting('enable_devtools_protection') };
+};
+
+// Helper to get branding defaults for new events (Feature 7: Branding Inheritance).
+//
+// Note: `branding_logo_position` (header bar — left/center/right) is a
+// different concept from `hero_logo_position` (hero block — top/center/
+// bottom) and must NOT be mapped here. A previous version copied the
+// branding value over, which wrote 'left'/'right' into per-event
+// hero_logo_position columns and broke any subsequent PUT validation
+// (#357). Migration 084 heals existing rows.
+const getBrandingDefaults = async () => {
+  try {
+    const settings = await db('app_settings')
+      .whereIn('setting_key', [
+        'branding_logo_display_hero',
+        'branding_logo_size'
+      ])
+      .select('setting_key', 'setting_value');
+
+    const defaults = {
+      hero_logo_visible: true,
+      hero_logo_size: 'medium',
+      hero_logo_position: 'top'
+    };
+
+    settings.forEach(s => {
+      let value = s.setting_value;
+      if (typeof value === 'string') {
+        try { value = JSON.parse(value); } catch (e) { /* use as-is */ }
+      }
+      if (s.setting_key === 'branding_logo_display_hero') {
+        defaults.hero_logo_visible = value !== false;
+      }
+      if (s.setting_key === 'branding_logo_size' && value) {
+        defaults.hero_logo_size = value;
+      }
+    });
+
+    return defaults;
+  } catch (error) {
+    logger.error('Failed to get branding defaults', { error: error.message });
+    return {
+      hero_logo_visible: true,
+      hero_logo_size: 'medium',
+      hero_logo_position: 'top'
+    };
+  }
+};
+
 // Use parseStringInput from shared parsers for customer data extraction
 const getCustomerNameFromPayload = (payload = {}) => parseStringInput(payload.customer_name);
 const getCustomerEmailFromPayload = (payload = {}) => parseStringInput(payload.customer_email);
+const getCustomerPhoneFromPayload = (payload = {}) => parseStringInput(payload.customer_phone);
+
+// Whether the global "phone field" toggle (#322) is enabled. Cached for
+// the request via a module-level read; drift is acceptable since this
+// only governs whether to persist the field, not security boundaries.
+const isPhoneFieldEnabled = async () => {
+  try {
+    const row = await db('app_settings').where('setting_key', 'event_phone_field_enabled').first();
+    if (!row) return false;
+    let value = row.setting_value;
+    if (typeof value === 'string') {
+      try { value = JSON.parse(value); } catch { /* keep raw */ }
+    }
+    return value === true;
+  } catch (error) {
+    logger.debug('Failed to read event_phone_field_enabled', { error: error.message });
+    return false;
+  }
+};
 
 const mapEventForApi = (event) => {
   if (!event || typeof event !== 'object') {
@@ -124,13 +218,17 @@ const mapEventForApi = (event) => {
     host_email,
     customer_name,
     customer_email,
+    customer_phone,
+    password_hash: _ph,
+    client_password_hash: _cph,
     ...rest
   } = event;
 
   return {
     ...rest,
     customer_name: customer_name ?? host_name ?? null,
-    customer_email: customer_email ?? host_email ?? null
+    customer_email: customer_email ?? host_email ?? null,
+    customer_phone: customer_phone ?? null
   };
 };
 
@@ -152,6 +250,78 @@ const hasCustomerContactColumns = async () => {
   }
 };
 
+// Cascade-delete a single event: photos, audit/access logs, queued emails,
+// the event row itself (in one transaction), then the on-disk folder /
+// archive zip / hero logo (best-effort — file failures don't unwind the DB
+// changes since the source of truth is the database). Used by both the
+// per-event DELETE /:id route and the bulk-delete route to avoid drift.
+//
+// Throws { code: 'EVENT_NOT_FOUND' } if the event id doesn't exist so the
+// bulk-delete loop can report it as a per-id failure without aborting the
+// whole batch. Any other error propagates and is the caller's problem.
+async function deleteEventCascade(eventId, adminContext) {
+  const event = await db('events').where('id', eventId).first();
+  if (!event) {
+    const err = new Error('Event not found');
+    err.code = 'EVENT_NOT_FOUND';
+    throw err;
+  }
+
+  await db.transaction(async (trx) => {
+    // 1. Delete activity logs (audit trail)
+    await trx('activity_logs').where('event_id', eventId).del();
+    // 2. Delete access logs
+    await trx('access_logs').where('event_id', eventId).del();
+    // 3. Delete email queue entries
+    await trx('email_queue').where('event_id', eventId).del();
+    // 4. Delete photos (also handles hero_photo_id foreign key)
+    await trx('photos').where('event_id', eventId).del();
+    // 5. Finally delete the event row
+    await trx('events').where('id', eventId).del();
+
+    // Best-effort filesystem cleanup. Failures are logged but don't unwind
+    // the transaction — the canonical state lives in the DB; orphan files
+    // are recoverable noise, a half-deleted DB row is a permanent mess.
+    if (event.folder_path) {
+      const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+      const eventFolderPath = path.join(storagePath, 'events', 'active', event.folder_path);
+      try {
+        await fs.rm(eventFolderPath, { recursive: true, force: true });
+      } catch (fsErr) {
+        logger.warn('Failed to delete event folder during cascade delete', { eventId, path: eventFolderPath, error: fsErr.message });
+      }
+    }
+
+    if (event.archive_path) {
+      const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+      const archiveFile = path.join(storagePath, event.archive_path);
+      try {
+        await fs.unlink(archiveFile);
+      } catch (fsErr) {
+        logger.warn('Failed to delete archive file during cascade delete', { eventId, path: archiveFile, error: fsErr.message });
+      }
+    }
+
+    if (event.hero_logo_path) {
+      try {
+        await fs.unlink(event.hero_logo_path);
+      } catch (fsErr) {
+        logger.warn('Failed to delete event logo during cascade delete', { eventId, path: event.hero_logo_path, error: fsErr.message });
+      }
+    }
+  });
+
+  // Audit trail (outside the transaction so a logging failure can't undo
+  // the actual delete).
+  await logActivity('event_deleted',
+    { event_name: event.event_name },
+    null,
+    { type: 'admin', id: adminContext.id, name: adminContext.username }
+  );
+
+  return { id: event.id, name: event.event_name };
+}
+
 // Create new event
 router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_type').notEmpty().trim().custom(async (value) => {
@@ -165,6 +335,9 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('event_date').optional({ values: 'falsy' }).isDate(),
   body('customer_name').optional().trim(),
   body('customer_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
+  body('customer_phone').optional({ nullable: true, checkFalsy: true })
+    .isString().trim()
+    .isLength({ max: 32 }).withMessage('Phone number must be at most 32 characters'),
   body('admin_email').optional({ values: 'falsy' }).isEmail().normalizeEmail(),
   body('require_password').optional().isBoolean(),
   body('password').optional().isString().custom((value, { req }) => {
@@ -197,18 +370,30 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   body('upload_category_id').optional({ nullable: true, checkFalsy: true }).isInt(),
   body('allow_downloads').optional().isBoolean(),
   body('disable_right_click').optional().isBoolean(),
+  body('enable_devtools_protection').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
+  // #328 follow-up: per-event opt-in for presigned-URL "Download All".
+  // Bypasses watermarks; admin must enable knowingly.
+  body('allow_presigned_download').optional().isBoolean(),
   body('css_template_id').optional({ nullable: true, checkFalsy: true }).isInt(),
   // Hero logo settings
   body('hero_logo_visible').optional().isBoolean(),
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
-  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('header_style').optional().isIn(['hero', 'standard', 'banner', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
-  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
+  // Client access settings (#172)
+  body('client_access_enabled').optional().isBoolean(),
+  body('client_password').optional().isString(),
+  body('default_photo_sort').optional().isIn([
+    'upload_date_desc', 'upload_date_asc',
+    'capture_date_desc', 'capture_date_asc',
+    'filename_asc', 'filename_desc'
+  ])
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -234,9 +419,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       upload_category_id = null,
       allow_downloads = true,
       disable_right_click = false,
+      enable_devtools_protection: enableDevtoolsProtectionInput,
       watermark_downloads = false,
       watermark_text = null,
-      require_password: requirePasswordInput = true,
+      allow_presigned_download = false,
+      require_password: requirePasswordInput,
       // Feedback settings
       feedback_enabled = false,
       allow_ratings = true,
@@ -256,11 +443,25 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       header_style = 'standard',
       hero_divider_style = 'wave',
       // Hero image anchor position (#162)
-      hero_image_anchor = 'center'
+      hero_image_anchor = 'center',
+      // Photo cap
+      photo_cap = null,
+      // Client access settings (#172)
+      client_access_enabled = false,
+      client_password = null,
+      // Draft mode
+      is_draft = true,
+      // Default photo sort
+      default_photo_sort = 'upload_date_desc'
     } = req.body;
 
     const customerName = getCustomerNameFromPayload(req.body);
     const customerEmail = getCustomerEmailFromPayload(req.body);
+    // Phone field is opt-in via the global setting (#322). If disabled,
+    // ignore whatever the client posted — defence in depth against form
+    // bypass.
+    const phoneEnabled = await isPhoneFieldEnabled();
+    const customerPhone = phoneEnabled ? getCustomerPhoneFromPayload(req.body) : null;
 
     const customerColumnsAvailable = await hasCustomerContactColumns();
 
@@ -283,7 +484,14 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       return res.status(400).json({ errors: validationErrors });
     }
 
-    const requirePassword = parseBooleanInput(requirePasswordInput, true);
+    // Default require_password from global "event_default_require_password"
+    // setting when the body omits it (#317 — admins want to flip the default).
+    let requirePasswordFallback = true;
+    if (requirePasswordInput === undefined) {
+      const setting = await readBooleanSetting('event_default_require_password');
+      if (setting !== undefined) requirePasswordFallback = setting;
+    }
+    const requirePassword = parseBooleanInput(requirePasswordInput, requirePasswordFallback);
 
     // Debug logging
     logger.debug('Download control values', {
@@ -385,6 +593,23 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       }
     }
 
+    // Get branding defaults for hero logo settings (Feature 7: Branding Inheritance)
+    const brandingDefaults = await getBrandingDefaults();
+    const effectiveHeroLogoVisible = req.body.hero_logo_visible !== undefined ? hero_logo_visible : brandingDefaults.hero_logo_visible;
+    const effectiveHeroLogoSize = req.body.hero_logo_size || brandingDefaults.hero_logo_size;
+    const effectiveHeroLogoPosition = req.body.hero_logo_position || brandingDefaults.hero_logo_position;
+
+    // Inherit "Detect dev tools" from the global Image Security setting unless
+    // the request explicitly overrides it (#317 — admin disabled it globally
+    // but new events still got it ON because the column default is true).
+    const protectionDefaults = await getDownloadProtectionDefaults();
+    const effectiveEnableDevtoolsProtection =
+      enableDevtoolsProtectionInput !== undefined
+        ? enableDevtoolsProtectionInput
+        : protectionDefaults.enable_devtools_protection !== undefined
+          ? protectionDefaults.enable_devtools_protection
+          : true;
+
     // Insert into database
     const insertResult = await db('events').insert({
       slug,
@@ -392,6 +617,7 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       event_name,
       event_date: event_date || null,
       ...(customerColumnsAvailable ? { customer_name: customerName, customer_email: customerEmail } : {}),
+      ...(customerPhone ? { customer_phone: customerPhone } : {}),
       host_name: customerName || null,
       host_email: customerEmail || null,
       admin_email: admin_email || null,
@@ -407,16 +633,27 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       upload_category_id,
       allow_downloads: formatBoolean(allow_downloads !== undefined ? allow_downloads : true),
       disable_right_click: formatBoolean(disable_right_click !== undefined ? disable_right_click : false),
+      enable_devtools_protection: formatBoolean(effectiveEnableDevtoolsProtection),
       watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
       watermark_text,
+      allow_presigned_download: formatBoolean(allow_presigned_download === true || allow_presigned_download === 'true'),
       require_password: formatBoolean(requirePassword),
       css_template_id: css_template_id || null,
-      hero_logo_visible: formatBoolean(hero_logo_visible !== undefined ? hero_logo_visible : true),
-      hero_logo_size: hero_logo_size || 'medium',
-      hero_logo_position: hero_logo_position || 'top',
+      hero_logo_visible: formatBoolean(effectiveHeroLogoVisible),
+      hero_logo_size: effectiveHeroLogoSize,
+      hero_logo_position: effectiveHeroLogoPosition,
       header_style: effectiveHeaderStyle || 'standard',
       hero_divider_style: effectiveDividerStyle || 'wave',
-      hero_image_anchor: hero_image_anchor || 'center'
+      hero_image_anchor: hero_image_anchor || 'center',
+      photo_cap: photo_cap || null,
+      is_draft: formatBoolean(parseBooleanInput(is_draft, true)),
+      default_photo_sort: default_photo_sort || 'upload_date_desc',
+      // Client access (#172)
+      client_access_enabled: formatBoolean(client_access_enabled),
+      ...(client_access_enabled && client_password ? {
+        client_password_hash: await bcrypt.hash(client_password, getBcryptRounds()),
+        client_share_token: crypto.randomBytes(32).toString('hex')
+      } : {})
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -440,37 +677,97 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     }
     
     // Log activity
-    await logActivity('event_created', 
-      { event_type, expires_at, require_password: requirePassword, password_strength: passwordValidation?.score }, 
-      eventId, 
+    await logActivity('event_created',
+      { event_type, expires_at, require_password: requirePassword, password_strength: passwordValidation?.score },
+      eventId,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
-    
-    // Queue creation email (only if there is a recipient)
-    // Language detection is handled by email processor
 
-    if (customerEmail) {
+    // Fire event.created webhook (#327). If the event is being published
+    // immediately (not a draft), event.published also fires below.
+    // Payload uses canonical event subject (#341) so receivers always see
+    // the same shape (id/slug/event_name + customer contact + share_*).
+    try {
+      const webhookService = require('../services/webhookService');
+      await webhookService.fire('event.created', {
+        event: {
+          ...webhookService.buildEventSubject({
+            id: eventId,
+            slug,
+            event_name,
+            event_type,
+            event_date,
+            share_url: shareUrl,
+            share_token: shareToken,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+          }),
+          is_draft: parseBooleanInput(is_draft, true),
+        },
+      });
+    } catch (e) { /* webhookService.fire never throws but be defensive */ }
+
+    // Queue creation email (only if there is a recipient and event is not a draft)
+    // Language detection is handled by email processor
+    const isDraft = parseBooleanInput(is_draft, true);
+
+    if (customerEmail && !isDraft) {
+      // Build email data with optional client access info
+      const emailData = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
+        event_name,
+        event_date: event_date,  // Pass raw date - will be formatted by email processor
+        gallery_link: shareUrl,
+        gallery_password: requirePassword ? password : 'No password required',
+        expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
+        welcome_message: welcome_message || ''
+      };
+
+      // Include client access info in email when enabled (#172)
+      if (client_access_enabled && client_password) {
+        const createdEvent = await db('events').where('id', eventId).first();
+        const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || '';
+        emailData.client_link = `${frontendUrl}/gallery/${slug}/client-access?token=${createdEvent.client_share_token}`;
+        emailData.client_password = client_password;
+      }
+
       await db('email_queue').insert({
         event_id: eventId,
         recipient_email: customerEmail,
         email_type: 'gallery_created',
-        email_data: JSON.stringify({
-          customer_name: customerName,
-          customer_email: customerEmail,
-          host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
-          event_name,
-          event_date: event_date,  // Pass raw date - will be formatted by email processor
-          gallery_link: shareUrl,
-          gallery_password: requirePassword ? password : 'No password required',
-          expiry_date: expires_at ? expires_at.toISOString() : null,  // Pass ISO string - will be formatted by email processor
-          welcome_message: welcome_message || ''
-        }),
+        email_data: JSON.stringify(emailData),
         status: 'pending',
         created_at: new Date()
         // scheduled_at will use default value
       });
     }
-    
+
+    // Fire event.published when the event is created NOT as a draft. The
+    // separate /publish endpoint fires it for the draft → live transition;
+    // this covers the "create-and-publish in one shot" path.
+    if (!isDraft) {
+      try {
+        const webhookService = require('../services/webhookService');
+        await webhookService.fire('event.published', {
+          event: webhookService.buildEventSubject({
+            id: eventId,
+            slug,
+            event_name,
+            event_type,
+            event_date,
+            share_url: shareUrl,
+            share_token: shareToken,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+          }),
+        });
+      } catch (e) { /* non-fatal */ }
+    }
+
     res.json({
       id: eventId,
       slug,
@@ -479,6 +776,8 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       customer_name: customerName,
       customer_email: customerEmail,
       require_password: requirePassword,
+      photo_cap: photo_cap || null,
+      is_draft: isDraft,
       share_link: shareUrl,
       expires_at: expires_at ? expires_at.toISOString() : null,
       created_at: new Date().toISOString()
@@ -515,6 +814,7 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
       query = query.where((builder) => {
         builder.where('event_name', 'like', `%${escapedSearch}%`)
           .orWhere('admin_email', 'like', `%${escapedSearch}%`)
+          .orWhere('customer_email', 'like', `%${escapedSearch}%`)
           .orWhere('slug', 'like', `%${escapedSearch}%`);
       });
     }
@@ -526,6 +826,8 @@ router.get('/', adminAuth, requirePermission('events.view'), async (req, res) =>
       query = query.where('is_archived', formatBoolean(true));
     } else if (status === 'inactive') {
       query = query.where('is_active', formatBoolean(false)).where('is_archived', formatBoolean(false));
+    } else if (status === 'draft') {
+      query = query.where('is_draft', formatBoolean(true));
     } else if (status === 'expiring') {
       const sevenDaysFromNow = new Date();
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
@@ -650,8 +952,88 @@ router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res)
   }
 });
 
+// Publish a draft event (set is_draft=false and queue creation email)
+router.post('/:id/publish', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await db('events').where('id', id).first();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!parseBooleanInput(event.is_draft, false)) {
+      return res.status(400).json({ error: 'Event is already published' });
+    }
+
+    // Set is_draft to false
+    await db('events').where('id', id).update({ is_draft: formatBoolean(false) });
+
+    // Queue creation email
+    const customerEmail = event.customer_email || event.host_email;
+    const customerName = event.customer_name || event.host_name;
+    if (customerEmail) {
+      const frontendBase = await getFrontendBaseUrl();
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
+
+      const emailData = {
+        customer_name: customerName,
+        customer_email: customerEmail,
+        host_name: customerName || (customerEmail ? customerEmail.split('@')[0] : null),
+        event_name: event.event_name,
+        event_date: event.event_date,
+        gallery_link: shareUrl || `${frontendBase}/gallery/${event.slug}`,
+        gallery_password: parseBooleanInput(event.require_password, true) ? '(set at creation)' : 'No password required',
+        expiry_date: event.expires_at ? new Date(event.expires_at).toISOString() : null,
+        welcome_message: event.welcome_message || ''
+      };
+
+      await db('email_queue').insert({
+        event_id: id,
+        recipient_email: customerEmail,
+        email_type: 'gallery_created',
+        email_data: JSON.stringify(emailData),
+        status: 'pending',
+        created_at: new Date()
+      });
+    }
+
+    await logActivity('event_published',
+      { event_name: event.event_name },
+      id,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    // Fire event.published webhook (#327) — draft → live transition.
+    // Canonical payload (#341): includes customer contact + share_token.
+    try {
+      const webhookService = require('../services/webhookService');
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
+      await webhookService.fire('event.published', {
+        event: webhookService.buildEventSubject({
+          id: parseInt(id, 10),
+          slug: event.slug,
+          event_name: event.event_name,
+          event_type: event.event_type,
+          event_date: event.event_date,
+          share_url: shareUrl,
+          share_token: event.share_token,
+          customer_name: event.customer_name || event.host_name,
+          customer_email: event.customer_email || event.host_email,
+          customer_phone: event.customer_phone,
+        }),
+      });
+    } catch (e) { /* non-fatal */ }
+
+    res.json({ message: 'Event published successfully', is_draft: false });
+  } catch (error) {
+    logger.error('Error publishing event:', { error: error.message });
+    res.status(500).json({ error: 'Failed to publish event' });
+  }
+});
+
 // Update event
-router.put('/:id', adminAuth, requirePermission('events.edit'), [
+router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwnership, [
   body('event_name').optional().trim().notEmpty(),
   body('admin_email').optional().isEmail(),
   body('is_active').optional().isBoolean(),
@@ -661,6 +1043,9 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('allow_user_uploads').optional().isBoolean(),
   body('customer_name').optional({ nullable: true, checkFalsy: true }).trim(),
   body('customer_email').optional().isEmail().normalizeEmail(),
+  body('customer_phone').optional({ nullable: true, checkFalsy: true })
+    .isString().trim()
+    .isLength({ max: 32 }).withMessage('Phone number must be at most 32 characters'),
   body('upload_category_id').optional().custom((value) => {
     // Accept null, undefined, or integer values
     if (value === null || value === undefined) return true;
@@ -677,6 +1062,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('disable_right_click').optional().isBoolean(),
   body('watermark_downloads').optional().isBoolean(),
   body('watermark_text').optional().trim(),
+  body('allow_presigned_download').optional().isBoolean(),
   body('source_mode').optional().isIn(['managed', 'reference']),
   body('external_path').optional({ nullable: true }).isString().trim(),
   body('require_password').optional().isBoolean(),
@@ -702,10 +1088,19 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
   body('hero_logo_size').optional().isIn(['small', 'medium', 'large', 'xlarge']),
   body('hero_logo_position').optional().isIn(['top', 'center', 'bottom']),
   // Header style settings (decoupled from layout)
-  body('header_style').optional().isIn(['hero', 'standard', 'minimal', 'none']),
+  body('header_style').optional().isIn(['hero', 'standard', 'banner', 'minimal', 'none']),
   body('hero_divider_style').optional().isIn(['wave', 'straight', 'angle', 'curve', 'none']),
   // Hero image anchor position (#162) – accepts legacy keywords or "X% Y%" focal point
-  body('hero_image_anchor').optional().custom(validateHeroImageAnchor)
+  body('hero_image_anchor').optional().custom(validateHeroImageAnchor),
+  // Client access settings (#172)
+  body('client_access_enabled').optional().isBoolean(),
+  body('client_password').optional().isString(),
+  body('regenerate_client_token').optional().isBoolean(),
+  body('default_photo_sort').optional().isIn([
+    'upload_date_desc', 'upload_date_asc',
+    'capture_date_desc', 'capture_date_asc',
+    'filename_asc', 'filename_desc'
+  ])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -750,6 +1145,19 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       }
     }
 
+    // Phone is gated on the global toggle (#322). Strip from the update
+    // unconditionally if disabled — even null/clear is rejected so an
+    // admin can't accidentally write to a field they've turned off.
+    if (Object.prototype.hasOwnProperty.call(updates, 'customer_phone')) {
+      const phoneEnabled = await isPhoneFieldEnabled();
+      if (!phoneEnabled) {
+        delete updates.customer_phone;
+      } else {
+        const nextPhone = getCustomerPhoneFromPayload(updates);
+        updates.customer_phone = nextPhone || null;
+      }
+    }
+
     const hasRequirePasswordUpdate = Object.prototype.hasOwnProperty.call(updates, 'require_password');
     let requirePasswordUpdate;
     if (hasRequirePasswordUpdate) {
@@ -783,6 +1191,25 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
     if (updates.source_mode === 'reference' && (updates.external_path === null || updates.external_path === undefined)) {
       return res.status(400).json({ error: 'external_path is required when source_mode is reference' });
     }
+
+    // Handle client access fields (#172)
+    if (Object.prototype.hasOwnProperty.call(updates, 'client_access_enabled')) {
+      updates.client_access_enabled = formatBoolean(updates.client_access_enabled);
+      // Auto-generate client share token when first enabling
+      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token) {
+        updates.client_share_token = crypto.randomBytes(32).toString('hex');
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, 'client_password') && updates.client_password) {
+      updates.client_password_hash = await bcrypt.hash(updates.client_password, getBcryptRounds());
+      delete updates.client_password;
+    } else {
+      delete updates.client_password;
+    }
+    if (updates.regenerate_client_token) {
+      updates.client_share_token = crypto.randomBytes(32).toString('hex');
+    }
+    delete updates.regenerate_client_token;
 
     // Log the update request for debugging
     logger.debug('Update event request', {
@@ -866,6 +1293,12 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    // Invalidate download zip if watermark settings changed
+    const changeKeys = Object.keys(req.body);
+    if (changeKeys.includes('watermark_downloads') || changeKeys.includes('watermark_text')) {
+      downloadZipService.invalidate(parseInt(id));
+    }
+
     res.json({ message: 'Event updated successfully' });
   } catch (error) {
     console.error('Error updating event:', error);
@@ -874,98 +1307,27 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), [
 });
 
 // Delete event
-router.delete('/:id', adminAuth, requirePermission('events.delete'), async (req, res) => {
+router.delete('/:id', adminAuth, requirePermission('events.delete'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Check if event exists
-    const event = await db('events').where('id', id).first();
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    // Start a transaction to ensure all deletions succeed or fail together
-    await db.transaction(async (trx) => {
-      // 1. Delete activity logs (audit trail)
-      await trx('activity_logs').where('event_id', id).del();
-
-      // 2. Delete access logs
-      await trx('access_logs').where('event_id', id).del();
-
-      // 3. Delete email queue entries
-      await trx('email_queue').where('event_id', id).del();
-
-      // 4. Delete photos (this will also handle hero_photo_id foreign key)
-      await trx('photos').where('event_id', id).del();
-
-      // 5. Finally delete the event
-      await trx('events').where('id', id).del();
-
-      // Delete event folder from storage if it exists
-      if (event.folder_path) {
-        const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-        const eventFolderPath = path.join(storagePath, 'events', 'active', event.folder_path);
-        
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.rm(eventFolderPath, { recursive: true, force: true });
-        } catch (err) {
-          console.error('Failed to delete event folder:', err);
-          // Don't fail the transaction if folder deletion fails
-        }
-      }
-
-      // Delete archive if exists
-      if (event.archive_path) {
-        const storagePath = process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
-        const archivePath = path.join(storagePath, event.archive_path);
-
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.unlink(archivePath);
-        } catch (err) {
-          console.error('Failed to delete archive file:', err);
-          // Don't fail the transaction if file deletion fails
-        }
-      }
-
-      // Delete custom event logo if exists
-      if (event.hero_logo_path) {
-        try {
-          const fsPromises = require('fs').promises;
-          await fsPromises.unlink(event.hero_logo_path);
-        } catch (err) {
-          logger.warn('Failed to delete event logo file during event deletion', { path: event.hero_logo_path, error: err.message });
-        }
-      }
-    });
-
-    // Log activity (outside transaction)
-    await logActivity('event_deleted',
-      { event_name: event.event_name },
-      null,
-      { type: 'admin', id: req.admin.id, name: req.admin.username }
-    );
-
+    await deleteEventCascade(id, { id: req.admin.id, username: req.admin.username });
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
-    console.error('Error deleting event:', error);
-    
-    // Provide more specific error messages
+    if (error.code === 'EVENT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    logger.error('Error deleting event', { eventId: req.params.id, error: error.message });
     if (error.message && error.message.includes('foreign key constraint')) {
-      res.status(500).json({ 
+      return res.status(500).json({
         error: 'Cannot delete event due to existing references. Please contact support.'
       });
-    } else {
-      res.status(500).json({ 
-        error: 'Failed to delete event'
-      });
     }
+    res.status(500).json({ error: 'Failed to delete event' });
   }
 });
 
 // Toggle event status
-router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1005,10 +1367,10 @@ router.post('/:id/toggle-status', adminAuth, requirePermission('events.edit'), a
 });
 
 // Reset event password
-router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
-    const { sendEmail = true } = req.body;
+    const { sendEmail = true, password: clientPassword } = req.body;
 
     let eventQuery = db('events').where('id', id);
     // Editor role can only edit their own events
@@ -1024,10 +1386,29 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
       return res.status(400).json({ error: 'Cannot reset password for archived event' });
     }
 
-    // Generate new password
-    const { generateReadablePassword } = require('../utils/passwordGenerator');
-    const newPassword = generateReadablePassword();
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    // Use the admin-supplied password when provided; otherwise auto-generate
+    // (preserves the previous one-click behaviour for callers/cron that don't
+    // pass a body). Validation matches the create-event flow so the same
+    // strength rules apply both ways.
+    let newPassword;
+    if (typeof clientPassword === 'string' && clientPassword.length > 0) {
+      const passwordValidation = await validatePasswordInContext(clientPassword, 'gallery', {
+        eventName: event.event_name
+      });
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          error: 'Password does not meet security requirements',
+          details: passwordValidation.errors,
+          score: passwordValidation.score,
+          feedback: passwordValidation.feedback
+        });
+      }
+      newPassword = clientPassword;
+    } else {
+      const { generateReadablePassword } = require('../utils/passwordGenerator');
+      newPassword = generateReadablePassword();
+    }
+    const passwordHash = await bcrypt.hash(newPassword, getBcryptRounds());
 
     // Update event with new password
     await db('events')
@@ -1047,6 +1428,9 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
     if (sendEmail) {
       const recipientEmail = event.customer_email || event.host_email;
       const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+      // event.share_link is the path-only form (`/gallery/<slug>/<token>`).
+      // Use the full URL so customers can click straight from the email.
+      const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
       await queueEmail(id, recipientEmail, 'gallery_created', {
         customer_name: recipientName,
@@ -1054,13 +1438,13 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
         host_name: recipientName,
         event_name: event.event_name,
         event_date: event.event_date,  // Pass raw date - will be formatted by email processor
-        gallery_link: event.share_link,
+        gallery_link: shareUrl,
         gallery_password: newPassword,
         expiry_date: event.expires_at  // Pass raw date - will be formatted by email processor
       });
     }
 
-    res.json({ 
+    res.json({
       message: 'Password reset successfully',
       newPassword: newPassword,
       emailSent: sendEmail
@@ -1072,7 +1456,7 @@ router.post('/:id/reset-password', adminAuth, requirePermission('events.edit'), 
 });
 
 // Resend creation email
-router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1112,6 +1496,9 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
     // Queue the email
     const recipientEmail = event.customer_email || event.host_email;
     const recipientName = event.customer_name || event.host_name || (recipientEmail ? recipientEmail.split('@')[0] : null);
+    // event.share_link is the path-only form; use the full URL so the
+    // customer's mail client renders a clickable absolute link.
+    const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
     await queueEmail(id, recipientEmail, 'gallery_created', {
       customer_name: recipientName,
@@ -1119,7 +1506,7 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
       host_name: recipientName,
       event_name: event.event_name,
       event_date: event.event_date,  // Pass raw date - will be formatted by email processor
-      gallery_link: event.share_link,
+      gallery_link: shareUrl,
       gallery_password: galleryPassword,
       expiry_date: event.expires_at,  // Pass raw date - will be formatted by email processor
       welcome_message: event.welcome_message || '',
@@ -1156,7 +1543,7 @@ router.post('/:id/resend-email', adminAuth, requirePermission('events.edit'), as
 });
 
 // Archive event
-router.post('/:id/archive', adminAuth, requirePermission('events.archive'), async (req, res) => {
+router.post('/:id/archive', adminAuth, requirePermission('events.archive'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1265,8 +1652,84 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   }
 });
 
+// Bulk delete — destructive, irreversible. Requires the calling admin to
+// re-enter their password as a confirmation gate (verified against the
+// stored bcrypt hash, same pattern as /auth/admin/change-password). Caps at
+// 100 events per request to keep request time bounded; the per-event
+// cascade touches 5 DB tables + 3 filesystem paths so 1000 events would
+// risk timing out the request. Loops via deleteEventCascade so the per-
+// event delete behaviour stays in lock-step with DELETE /:id.
+const BULK_DELETE_MAX = 100;
+router.post('/bulk-delete', adminAuth, requirePermission('events.delete'), [
+  body('eventIds').isArray({ min: 1, max: BULK_DELETE_MAX }).withMessage(`eventIds must be an array of 1-${BULK_DELETE_MAX} ids`),
+  body('eventIds.*').isInt().withMessage('Each eventId must be an integer'),
+  body('password').isString().notEmpty().withMessage('Password is required for confirmation')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { eventIds, password } = req.body;
+
+    // Verify the admin's password before doing anything destructive.
+    // Same pattern as /auth/admin/change-password (auth.js).
+    const admin = await db('admin_users').where({ id: req.admin.id }).first();
+    if (!admin) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const validPassword = await bcrypt.compare(password, admin.password_hash);
+    if (!validPassword) {
+      logger.warn('Incorrect password on bulk-delete attempt', { adminId: req.admin.id, eventCount: eventIds.length });
+      return res.status(401).json({ error: 'Incorrect password', code: 'INVALID_PASSWORD' });
+    }
+
+    // Editor-role events.delete permission is already gated by the route
+    // middleware. We do NOT additionally filter to created_by here because
+    // the per-event delete-cascade is global (matches DELETE /:id which
+    // also has no role-based filter — that's why events.delete is a
+    // sensitive permission).
+
+    const results = { successful: [], failed: [] };
+    const adminContext = { id: req.admin.id, username: req.admin.username };
+
+    for (const eventId of eventIds) {
+      try {
+        const deleted = await deleteEventCascade(eventId, adminContext);
+        results.successful.push(deleted);
+      } catch (err) {
+        results.failed.push({
+          id: eventId,
+          name: null,
+          error: err.code === 'EVENT_NOT_FOUND' ? 'Event not found' : 'Failed to delete event'
+        });
+        logger.warn('Bulk-delete: per-event failure', { eventId, error: err.message });
+      }
+    }
+
+    await logActivity('bulk_delete_completed',
+      {
+        totalEvents: eventIds.length,
+        successfulCount: results.successful.length,
+        failedCount: results.failed.length
+      },
+      null,
+      { type: 'admin', id: req.admin.id, name: req.admin.username }
+    );
+
+    res.json({
+      message: `Bulk delete completed: ${results.successful.length} succeeded, ${results.failed.length} failed`,
+      results
+    });
+  } catch (error) {
+    logger.error('Error in bulk delete', { error: error.message });
+    res.status(500).json({ error: 'Failed to perform bulk delete' });
+  }
+});
+
 // Upload event custom logo
-router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoUpload.single('logo'), async (req, res) => {
+router.post('/:id/logo', adminAuth, requirePermission('events.edit'), requireEventOwnership, eventLogoUpload.single('logo'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1321,7 +1784,7 @@ router.post('/:id/logo', adminAuth, requirePermission('events.edit'), eventLogoU
 });
 
 // Delete event custom logo
-router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), async (req, res) => {
+router.delete('/:id/logo', adminAuth, requirePermission('events.edit'), requireEventOwnership, async (req, res) => {
   try {
     const { id } = req.params;
 

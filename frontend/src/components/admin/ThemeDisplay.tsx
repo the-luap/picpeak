@@ -93,32 +93,30 @@ export const ThemeDisplay: React.FC<ThemeDisplayProps> = ({
 
       {showDetails && (
         <>
-          {/* Color Palette */}
+          {/* Color Palette — show all 8 tokens of the active theme.
+              Each swatch only renders if its token is set so legacy themes
+              (pre-8-token migration) still render their original 4 swatches. */}
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-neutral-500 dark:text-neutral-300" />
             <span className="text-sm text-neutral-600 dark:text-neutral-200">{t('branding.colors')}:</span>
             <div className="flex gap-1">
-              {themeConfig.primaryColor && (
+              {[
+                { value: themeConfig.backgroundColor, title: t('branding.backgroundColor', 'Background') },
+                { value: themeConfig.surfaceColor, title: t('branding.surfaceColor', 'Surface') },
+                { value: themeConfig.elevatedColor, title: t('branding.elevatedColor', 'Elevated') },
+                { value: themeConfig.surfaceBorderColor, title: t('branding.borderColor', 'Border') },
+                { value: themeConfig.textColor, title: t('branding.textColor', 'Text') },
+                { value: themeConfig.mutedTextColor, title: t('branding.mutedTextColor', 'Muted text') },
+                { value: themeConfig.accentColor, title: t('branding.accentColor', 'Accent') },
+                { value: themeConfig.accentDarkColor || themeConfig.primaryColor, title: t('branding.accentDarkColor', 'Accent (filled)') },
+              ].filter((s) => !!s.value).map((s, i) => (
                 <div
+                  key={i}
                   className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
-                  style={{ backgroundColor: themeConfig.primaryColor }}
-                  title={t('branding.primaryColor')}
+                  style={{ backgroundColor: s.value }}
+                  title={s.title}
                 />
-              )}
-              {themeConfig.accentColor && (
-                <div
-                  className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
-                  style={{ backgroundColor: themeConfig.accentColor }}
-                  title={t('branding.accentColor')}
-                />
-              )}
-              {themeConfig.backgroundColor && (
-                <div
-                  className="w-6 h-6 rounded border border-neutral-300 dark:border-neutral-600"
-                  style={{ backgroundColor: themeConfig.backgroundColor }}
-                  title={t('branding.backgroundColor')}
-                />
-              )}
+              ))}
             </div>
           </div>
 

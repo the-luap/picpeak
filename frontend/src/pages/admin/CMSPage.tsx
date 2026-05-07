@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { FileText, Globe, Clock, Sparkles, ShieldCheck } from 'lucide-react';
+import { FileText, Globe, Clock, Sparkles, ShieldCheck, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { debounce } from 'lodash';
 import DOMPurify from 'dompurify';
@@ -11,6 +11,7 @@ import { CMSEditor } from '../../components/admin/CMSEditor';
 import { cmsService } from '../../services/cms.service';
 import type { CMSPage as CMSPageType } from '../../services/cms.service';
 import { settingsService, PublicSiteBranding } from '../../services/settings.service';
+import { buildResourceUrl } from '../../utils/url';
 
 export const CMSPage: React.FC = () => {
   const { t } = useTranslation();
@@ -181,6 +182,53 @@ export const CMSPage: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
+  const handleUseExternalUrlChange = (val: boolean) => {
+    setEditForm(prev => ({ ...prev, use_external_url: val }));
+    setHasUnsavedChanges(true);
+  };
+
+  const handleExternalUrlChange = (val: string) => {
+    setEditForm(prev => ({ ...prev, external_url: val }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Inline URL validation. Empty input while typing is not an error
+  // (avoid flagging mid-edit). Backend re-validates on save regardless.
+  const externalUrlError = useMemo(() => {
+    if (!editForm.use_external_url) return null;
+    const v = (editForm.external_url || '').trim();
+    if (!v) return null;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'https:') return t('cms.externalUrlInvalid');
+      return null;
+    } catch {
+      return t('cms.externalUrlInvalid');
+    }
+  }, [editForm.use_external_url, editForm.external_url, t]);
+
+  // Per-page logo upload (#324). Only meaningful for the customisable
+  // error pages right now, but harmless if exposed for any slug.
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file: File) => cmsService.uploadPageLogo(selectedPage, file),
+    onSuccess: ({ logo_url }) => {
+      setEditForm(prev => ({ ...prev, logo_url }));
+      queryClient.invalidateQueries({ queryKey: ['cms-pages'] });
+      toast.success(t('cms.logoUploaded', 'Logo uploaded'));
+    },
+    onError: () => toast.error(t('toast.uploadError')),
+  });
+  const clearLogoMutation = useMutation({
+    mutationFn: async () => cmsService.clearPageLogo(selectedPage),
+    onSuccess: () => {
+      setEditForm(prev => ({ ...prev, logo_url: null }));
+      queryClient.invalidateQueries({ queryKey: ['cms-pages'] });
+      toast.success(t('cms.logoCleared', 'Logo cleared'));
+    },
+    onError: () => toast.error(t('toast.saveError')),
+  });
+
   // Warn before leaving with unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -333,7 +381,7 @@ export const CMSPage: React.FC = () => {
         <Card className="space-y-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-primary-600 mb-1">
+              <div className="flex items-center gap-2 text-accent mb-1">
                 <Globe className="w-5 h-5" />
                 <span className="text-sm font-semibold uppercase tracking-wide">{t('settings.publicSite.badge')}</span>
               </div>
@@ -350,7 +398,7 @@ export const CMSPage: React.FC = () => {
               <span
                 aria-hidden="true"
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  publicSiteEnabled ? 'bg-primary-600' : 'bg-neutral-300'
+                  publicSiteEnabled ? 'bg-accent-dark' : 'bg-neutral-300'
                 }`}
               >
                 <span
@@ -374,11 +422,11 @@ export const CMSPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2">
-                    <Sparkles className="w-4 h-4 text-primary-500" />
+                    <Sparkles className="w-4 h-4 text-accent" />
                     {t('settings.publicSite.htmlLabel')}
                   </label>
                   <textarea
-                    className="w-full h-64 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
+                    className="w-full h-64 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-accent-dark disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
                     value={publicSiteHtml}
                     onChange={(event) => setPublicSiteHtml(event.target.value)}
                     disabled={!publicSiteEnabled}
@@ -391,11 +439,11 @@ export const CMSPage: React.FC = () => {
 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2">
-                    <ShieldCheck className="w-4 h-4 text-primary-500" />
+                    <ShieldCheck className="w-4 h-4 text-accent" />
                     {t('settings.publicSite.cssLabel')}
                   </label>
                   <textarea
-                    className="w-full h-48 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
+                    className="w-full h-48 font-mono text-sm rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-accent-dark disabled:bg-neutral-100 dark:disabled:bg-neutral-700 disabled:text-neutral-500 dark:disabled:text-neutral-400"
                     value={publicSiteCss}
                     onChange={(event) => setPublicSiteCss(event.target.value)}
                     disabled={!publicSiteEnabled}
@@ -439,7 +487,7 @@ export const CMSPage: React.FC = () => {
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">{t('settings.publicSite.previewSandboxed')}</span>
                 </div>
                 {publicSiteEnabled ? (
-                  <div className="rounded-xl border border-neutral-200 overflow-hidden shadow-sm bg-white">
+                  <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm bg-white dark:bg-neutral-800">
                     <iframe
                       title="public-site-preview"
                       sandbox="allow-same-origin"
@@ -475,15 +523,20 @@ export const CMSPage: React.FC = () => {
                     }
                     setSelectedPage(page.slug);
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center gap-3 border ${
                     selectedPage === page.slug
-                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-700'
-                      : 'bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
+                      ? 'tile-selected'
+                      : 'bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-neutral-900 dark:text-neutral-100'
                   }`}
                 >
                   <FileText className="w-5 h-5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{t(`legal.${page.slug}`)}</p>
+                    {/* Fall back to the page's own English title for slugs
+                        that don't have a fixed translation key (e.g. the new
+                        not-found / gallery-not-found error pages). */}
+                    <p className="font-medium truncate">
+                      {t(`legal.${page.slug}`, { defaultValue: page.title_en || page.slug })}
+                    </p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">/{page.slug}</p>
                   </div>
                   {selectedPage === page.slug && hasUnsavedChanges && (
@@ -501,7 +554,7 @@ export const CMSPage: React.FC = () => {
                 href={`${window.location.origin}/${selectedPage}?lang=en`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-primary-600 hover:text-primary-700"
+                className="flex items-center gap-2 text-accent hover:opacity-80"
               >
                 <Globe className="w-4 h-4" />
                 {t('cms.englishVersion')}
@@ -510,7 +563,7 @@ export const CMSPage: React.FC = () => {
                 href={`${window.location.origin}/${selectedPage}?lang=de`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-primary-600 hover:text-primary-700"
+                className="flex items-center gap-2 text-accent hover:opacity-80"
               >
                 <Globe className="w-4 h-4" />
                 {t('cms.germanVersion')}
@@ -523,7 +576,7 @@ export const CMSPage: React.FC = () => {
             <Card padding="md" className="mt-4">
               <div className="text-sm">
                 {isAutoSaving && (
-                  <div className="flex items-center gap-2 text-neutral-600">
+                  <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-300">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     Auto-saving...
                   </div>
@@ -550,7 +603,7 @@ export const CMSPage: React.FC = () => {
           <Card padding="md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                {t('cms.editPage', { page: t(`legal.${selectedPage}`) })}
+                {t('cms.editPage', { page: t(`legal.${selectedPage}`, { defaultValue: currentPage?.title_en || selectedPage }) })}
               </h2>
 
               {/* Language Tabs */}
@@ -559,7 +612,7 @@ export const CMSPage: React.FC = () => {
                   onClick={() => setEditingLang('en')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     editingLang === 'en'
-                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      ? 'bg-accent-dark/15 text-accent-dark'
                       : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
                 >
@@ -569,7 +622,7 @@ export const CMSPage: React.FC = () => {
                   onClick={() => setEditingLang('de')}
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     editingLang === 'de'
-                      ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                      ? 'bg-accent-dark/15 text-accent-dark'
                       : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
                 >
@@ -579,6 +632,41 @@ export const CMSPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              {/* External URL override */}
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800/40">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                    checked={!!editForm.use_external_url}
+                    onChange={(e) => handleUseExternalUrlChange(e.target.checked)}
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {t('cms.useExternalUrl')}
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {t('cms.useExternalUrlHelp')}
+                    </span>
+                  </span>
+                </label>
+                {editForm.use_external_url && (
+                  <div className="mt-3">
+                    <Input
+                      type="url"
+                      label={t('cms.externalUrl')}
+                      value={editForm.external_url || ''}
+                      onChange={(e) => handleExternalUrlChange(e.target.value)}
+                      placeholder={t('cms.externalUrlPlaceholder')}
+                      error={externalUrlError || undefined}
+                    />
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                      {t('cms.externalUrlActive')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
@@ -602,6 +690,60 @@ export const CMSPage: React.FC = () => {
                   onSave={handleSave}
                   isSaving={updateMutation.isPending}
                 />
+              </div>
+
+              {/* Per-page logo override (#324) */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                  {t('cms.pageLogo', 'Page Logo')}
+                </label>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                  {t('cms.pageLogoHelp', 'Optional. If set, used in place of the global branding logo on this page.')}
+                </p>
+                <div className="flex items-center gap-4">
+                  {editForm.logo_url ? (
+                    <img
+                      src={buildResourceUrl(editForm.logo_url)}
+                      alt="Page logo"
+                      className="h-16 w-auto object-contain bg-neutral-50 dark:bg-neutral-700 rounded border border-neutral-200 dark:border-neutral-600 px-3 py-1"
+                    />
+                  ) : (
+                    <div className="h-16 w-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-700 rounded border border-dashed border-neutral-300 dark:border-neutral-600 text-xs text-neutral-500 dark:text-neutral-400">
+                      {t('cms.noLogo', 'no override')}
+                    </div>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadLogoMutation.mutate(file);
+                      if (logoInputRef.current) logoInputRef.current.value = '';
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<ImageIcon className="w-4 h-4" />}
+                    onClick={() => logoInputRef.current?.click()}
+                    isLoading={uploadLogoMutation.isPending}
+                  >
+                    {editForm.logo_url ? t('cms.replaceLogo', 'Replace Logo') : t('cms.uploadLogo', 'Upload Logo')}
+                  </Button>
+                  {editForm.logo_url && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={<Trash2 className="w-4 h-4" />}
+                      onClick={() => clearLogoMutation.mutate()}
+                      isLoading={clearLogoMutation.isPending}
+                    >
+                      {t('cms.clearLogo', 'Use site default')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 

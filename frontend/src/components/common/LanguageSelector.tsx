@@ -21,9 +21,37 @@ const DEFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => 
   </svg>
 );
 
+const RUFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#FFF" d="M0 0h640v160H0z"/>
+    <path fill="#0039A6" d="M0 160h640v160H0z"/>
+    <path fill="#D52B1E" d="M0 320h640v160H0z"/>
+  </svg>
+);
+
+const PTBRFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#009B3A" d="M0 0h640v480H0z"/>
+    <path fill="#FEDF00" d="M320 39.4 590.4 240 320 440.6 49.6 240z"/>
+    <circle fill="#002776" cx="320" cy="240" r="95"/>
+    <path fill="#FFF" d="M226.3 262.8c0-27 12.8-51 32.7-66.3a95.3 95.3 0 0 0-3.5 120.6c-17.8-14.8-29.2-37-29.2-54.3z" opacity=".5"/>
+  </svg>
+);
+
+const NLFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#AE1C28" d="M0 0h640v160H0z"/>
+    <path fill="#FFF" d="M0 160h640v160H0z"/>
+    <path fill="#21468B" d="M0 320h640v160H0z"/>
+  </svg>
+);
+
 const languages = [
   { code: 'en', name: 'English', Flag: GBFlag },
   { code: 'de', name: 'Deutsch', Flag: DEFlag },
+  { code: 'ru', name: 'Русский', Flag: RUFlag },
+  { code: 'pt', name: 'Português', Flag: PTBRFlag },
+  { code: 'nl', name: 'Nederlands', Flag: NLFlag },
 ];
 
 export const LanguageSelector: React.FC = () => {
@@ -56,7 +84,7 @@ export const LanguageSelector: React.FC = () => {
               onClick={() => handleLanguageChange(language.code)}
               className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-700 flex items-center gap-3 ${
                 language.code === i18n.language
-                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30'
+                  ? 'text-accent bg-accent-dark/15'
                   : 'text-neutral-700 dark:text-neutral-300'
               }`}
             >

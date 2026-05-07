@@ -8,10 +8,10 @@
  * - Tracking regeneration progress
  */
 
-const path = require('path');
 const { db } = require('../database/db');
 const watermarkService = require('./watermarkService');
-const { getStoragePath } = require('../config/storage');
+const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
+const { withLocalCopy } = require('./imageProcessor');
 
 class WatermarkGeneratorService {
   constructor() {
@@ -57,14 +57,15 @@ class WatermarkGeneratorService {
         return { success: false, error: 'Watermarking is disabled' };
       }
 
-      // Resolve the original file path
-      const originalPath = this.resolvePhotoPath(photo);
-      if (!originalPath) {
-        return { success: false, error: 'Could not resolve photo path' };
-      }
-
-      // Generate and save watermark
-      const result = await watermarkService.generateAndSaveWatermark(photo, originalPath, settings);
+      // Resolve the source via the storage backend (managed) or local disk
+      // (external reference mode). watermarkService needs a local file path.
+      const event = { slug: photo.slug, source_mode: photo.source_mode, external_path: photo.external_path };
+      const storageKey = resolvePhotoStorageKey(event, photo);
+      const result = storageKey
+        ? await withLocalCopy(storageKey, (lp) =>
+            watermarkService.generateAndSaveWatermark(photo, lp, settings)
+          )
+        : await watermarkService.generateAndSaveWatermark(photo, resolvePhotoFilePath(event, photo), settings);
 
       if (result.success) {
         // Update database with watermark path
@@ -81,31 +82,6 @@ class WatermarkGeneratorService {
       console.error(`Error generating watermark for photo ${photoId}:`, error);
       return { success: false, error: error.message };
     }
-  }
-
-  /**
-   * Resolve the full file path for a photo
-   */
-  resolvePhotoPath(photo) {
-    const storagePath = getStoragePath();
-
-    // Handle external/reference mode
-    if (photo.source_mode === 'reference' && photo.external_relpath) {
-      const externalRoot = process.env.EXTERNAL_MEDIA_PATH || path.join(storagePath, 'external');
-      return path.join(externalRoot, photo.external_path || '', photo.external_relpath);
-    }
-
-    // Standard managed mode
-    if (photo.file_path) {
-      // file_path might be absolute or relative
-      if (path.isAbsolute(photo.file_path)) {
-        return photo.file_path;
-      }
-      return path.join(storagePath, photo.file_path);
-    }
-
-    // Fallback to constructing path from slug and filename
-    return path.join(storagePath, 'events', 'active', photo.slug, photo.filename);
   }
 
   /**
@@ -189,12 +165,13 @@ class WatermarkGeneratorService {
    */
   async processPhotoWatermark(photo, settings) {
     try {
-      const originalPath = this.resolvePhotoPath(photo);
-      if (!originalPath) {
-        return { success: false, photoId: photo.id, error: 'Could not resolve path' };
-      }
-
-      const result = await watermarkService.generateAndSaveWatermark(photo, originalPath, settings);
+      const event = { slug: photo.slug, source_mode: photo.source_mode, external_path: photo.external_path };
+      const storageKey = resolvePhotoStorageKey(event, photo);
+      const result = storageKey
+        ? await withLocalCopy(storageKey, (lp) =>
+            watermarkService.generateAndSaveWatermark(photo, lp, settings)
+          )
+        : await watermarkService.generateAndSaveWatermark(photo, resolvePhotoFilePath(event, photo), settings);
 
       if (result.success) {
         await db('photos')

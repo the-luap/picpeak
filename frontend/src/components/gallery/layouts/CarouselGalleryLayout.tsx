@@ -5,6 +5,7 @@ import { AuthenticatedImage, Button } from '../../common';
 import type { BaseGalleryLayoutProps } from './BaseGalleryLayout';
 import { FeedbackIdentityModal } from '../../gallery/FeedbackIdentityModal';
 import { feedbackService } from '../../../services/feedback.service';
+import { useGuestIdentityOptional } from '../../../contexts/GuestIdentityContext';
 
 export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   photos,
@@ -66,6 +67,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
+  const guestIdentity = useGuestIdentityOptional();
   const [likedIds, setLikedIds] = useState<Set<number>>(new Set());
   const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
 
@@ -150,6 +152,20 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={async () => {
+                  if (guestIdentity?.identityMode === 'guest') {
+                    try {
+                      await guestIdentity.ensureIdentity();
+                    } catch {
+                      return;
+                    }
+                    setLikedIds(prev => new Set(prev).add(currentPhoto.id));
+                    try {
+                      await feedbackService.submitFeedback(slug!, String(currentPhoto.id), {
+                        feedback_type: 'like',
+                      });
+                    } catch (_) {}
+                    return;
+                  }
                   if (feedbackOptions?.requireNameEmail && !savedIdentity) {
                     setPendingAction({ type: 'like', photoId: currentPhoto.id });
                     setShowIdentityModal(true);

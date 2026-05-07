@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
-import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut, MessageSquare, Heart, Star } from 'lucide-react';
 import type { Photo } from '../../types';
 import { useDownloadPhoto } from '../../hooks/useGallery';
 import { AuthenticatedImage } from '../common';
@@ -8,6 +8,7 @@ import { PhotoFeedback } from './PhotoFeedback';
 import { feedbackService } from '../../services/feedback.service';
 import { FeedbackIdentityModal } from './FeedbackIdentityModal';
 import { VideoPlayer } from './VideoPlayer';
+import { useGuestIdentityOptional } from '../../contexts/GuestIdentityContext';
 
 interface PhotoLightboxProps {
   photos: Photo[];
@@ -46,6 +47,24 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [touchDistance, setTouchDistance] = useState<number | null>(null);
+  // Ref (not state) so handleTouchEnd reads the value set by handleTouchStart
+  // even when both fire in the same render batch.
+  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  // Carousel swipe state. A 3-slide track (prev/current/next) is shifted
+  // so the current slide is centered; the user's finger drags the track,
+  // and the track snaps to the neighbour or springs back when released.
+  // Percentage-based transforms avoid the need to measure the container
+  // before the first paint.
+  // - 'idle': showing the current slide, no transition
+  // - 'dragging': finger is down, track follows the finger (no transition)
+  // - 'committing': finger lifted past the threshold, animating to the
+  //   neighbouring slot. On transitionend we advance currentIndex and reset.
+  // - 'springing': finger lifted below threshold, animating back to center.
+  const trackContainerRef = useRef<HTMLDivElement>(null);
+  const [dragX, setDragX] = useState(0);
+  const [phase, setPhase] = useState<'idle' | 'dragging' | 'committing' | 'springing'>('idle');
+  const [commitDirection, setCommitDirection] = useState<-1 | 1>(1);
   const [showFeedback, setShowFeedback] = useState(initialShowFeedback);
   const [isSmallScreen, setIsSmallScreen] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [feedbackSettings, setFeedbackSettings] = useState<{
@@ -62,7 +81,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like' | 'rating'; rating?: number }>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const guestIdentity = useGuestIdentityOptional();
+  const isGuestMode = guestIdentity?.identityMode === 'guest';
 
   useEffect(() => {
     const onResize = () => setIsSmallScreen(window.innerWidth < 640);
@@ -70,11 +90,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Reset image loaded state when changing photos
-  useEffect(() => {
-    setImageLoaded(false);
-  }, [currentIndex]);
-  
+
   const downloadPhotoMutation = useDownloadPhoto();
   const currentPhoto = photos[currentIndex];
   
@@ -203,6 +219,33 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   }, [slug, currentPhoto.id, feedbackSettings?.feedback_enabled]);
 
   const submitLike = async () => {
+    // Guest identity mode: ensure we have a per-person guest token. The
+    // server reads name/email from the token — body values are ignored.
+    if (isGuestMode && guestIdentity) {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        // User cancelled the prompt — abort silently.
+        return;
+      }
+      try {
+        await feedbackService.submitFeedback(slug, String(currentPhoto.id), {
+          feedback_type: 'like',
+        });
+        setMyLiked(prev => {
+          const next = !prev;
+          setLikeCount(c => Math.max(0, c + (next ? 1 : -1)));
+          return next;
+        });
+        if (onFeedbackChange) onFeedbackChange();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Like submit failed', err);
+      }
+      return;
+    }
+
+    // Simple mode: legacy inline identity modal flow.
     const needIdentity = feedbackSettings?.require_name_email && !savedIdentity;
     if (needIdentity) {
       setPendingAction({ type: 'like' });
@@ -222,6 +265,33 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   };
 
   const submitRating = async (value: number) => {
+    // Guest identity mode.
+    if (isGuestMode && guestIdentity) {
+      try {
+        await guestIdentity.ensureIdentity();
+      } catch {
+        return;
+      }
+      try {
+        await feedbackService.submitFeedback(slug, String(currentPhoto.id), {
+          feedback_type: 'rating',
+          rating: value,
+        });
+        setMyRating(value);
+        try {
+          const fresh = await feedbackService.getPhotoFeedback(slug, String(currentPhoto.id));
+          setAvgRating(Number(fresh.summary?.average_rating) || 0);
+          setTotalRatings(Number(fresh.summary?.total_ratings) || 0);
+        } catch {}
+        if (onFeedbackChange) onFeedbackChange();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Rating submit failed', err);
+      }
+      return;
+    }
+
+    // Simple mode: legacy inline identity modal flow.
     const needIdentity = feedbackSettings?.require_name_email && !savedIdentity;
     if (needIdentity) {
       setPendingAction({ type: 'rating', rating: value });
@@ -305,7 +375,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
     }
   };
 
-  // Touch event handlers for pinch-to-zoom
+  // Touch event handlers: pinch-to-zoom (2 fingers) + single-finger
+  // carousel-style swipe nav. Swipe is suppressed while zoomed in so the
+  // user can pan instead. The carousel is also disabled mid-animation.
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const touch1 = e.touches[0];
@@ -315,6 +387,22 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientY - touch1.clientY
       );
       setTouchDistance(distance);
+      swipeStartRef.current = null;
+      // Cancel any in-progress carousel motion when a pinch starts —
+      // spring the track back so the image doesn't jerk under the user.
+      if (phase === 'dragging') {
+        if (dragX === 0) {
+          setPhase('idle');
+        } else {
+          setPhase('springing');
+          setDragX(0);
+        }
+      }
+    } else if (e.touches.length === 1 && zoom <= 1 && (phase === 'idle' || phase === 'dragging')) {
+      const t = e.touches[0];
+      swipeStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+      setPhase('dragging');
+      setDragX(0);
     }
   };
 
@@ -326,17 +414,128 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         touch2.clientX - touch1.clientX,
         touch2.clientY - touch1.clientY
       );
-      
+
       const scale = newDistance / touchDistance;
       const newZoom = Math.max(1, Math.min(3, zoom * scale));
       setZoom(newZoom);
       setTouchDistance(newDistance);
+      return;
+    }
+
+    if (phase === 'dragging' && e.touches.length === 1 && swipeStartRef.current) {
+      const t = e.touches[0];
+      const dx = t.clientX - swipeStartRef.current.x;
+      const dy = t.clientY - swipeStartRef.current.y;
+      // Cancel the carousel drag if the gesture turns out to be vertical
+      // (e.g. an accidental scroll attempt while not zoomed). If we
+      // haven't moved horizontally yet, snap straight to idle — there's
+      // no transition to wait on — otherwise let the spring carry it back.
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 24) {
+        swipeStartRef.current = null;
+        if (dragX === 0) {
+          setPhase('idle');
+        } else {
+          setPhase('springing');
+          setDragX(0);
+        }
+        return;
+      }
+      setDragX(dx);
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setTouchDistance(null);
+    const start = swipeStartRef.current;
+    if (phase === 'dragging' && start && e.changedTouches.length > 0) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      const dt = Math.max(1, Date.now() - start.t);
+      const velocity = Math.abs(dx) / dt; // px / ms
+      const containerWidth = trackContainerRef.current?.offsetWidth ?? 0;
+      const threshold = Math.max(60, containerWidth * 0.2);
+      const isHorizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+      const shouldCommit = isHorizontal && (Math.abs(dx) > threshold || (velocity > 0.5 && Math.abs(dx) > 40));
+
+      if (shouldCommit) {
+        setCommitDirection(dx < 0 ? 1 : -1);
+        setDragX(dx);
+        setPhase('committing');
+      } else if (dragX === 0) {
+        // Tap with no movement — no transition would fire, so skip the
+        // springing phase to avoid getting stuck waiting for transitionend.
+        setPhase('idle');
+      } else {
+        setPhase('springing');
+        setDragX(0);
+      }
+    } else if (phase === 'dragging') {
+      // Touch ended without changedTouches data (rare) — reset cleanly.
+      setPhase('idle');
+      setDragX(0);
+    }
+    swipeStartRef.current = null;
+  };
+
+  const handleTouchCancel = () => {
+    // System took over the gesture (incoming call, edge swipe, etc.).
+    // Spring back if the carousel was being dragged.
+    if (phase === 'dragging') {
+      if (dragX === 0) {
+        setPhase('idle');
+      } else {
+        setPhase('springing');
+        setDragX(0);
+      }
+    }
+    swipeStartRef.current = null;
     setTouchDistance(null);
   };
+
+  // Track transform. Percentages on translateX are self-referential (a
+  // 300%-wide track translated -33.333% moves left by exactly one container
+  // width), so we never need to know the container width to position the
+  // slides. The drag delta is added in pixels.
+  // - idle / springing target: -33.333% (current centered)
+  // - dragging: -33.333% + dragX px (finger follows)
+  // - committing next: -66.666% (next centered)
+  // - committing prev: 0% (previous centered)
+  const trackTransform = (() => {
+    if (phase === 'dragging') return `translate3d(calc(-33.3333% + ${dragX}px), 0, 0)`;
+    if (phase === 'committing') {
+      return commitDirection === 1
+        ? 'translate3d(-66.6666%, 0, 0)'
+        : 'translate3d(0%, 0, 0)';
+    }
+    return 'translate3d(-33.3333%, 0, 0)'; // idle | springing
+  })();
+
+  const trackTransition = phase === 'committing' || phase === 'springing'
+    ? 'transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1)'
+    : 'none';
+
+  const handleTrackTransitionEnd = (e: React.TransitionEvent) => {
+    if (e.propertyName !== 'transform') return;
+    if (phase === 'committing') {
+      if (commitDirection === 1) {
+        setCurrentIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
+      } else {
+        setCurrentIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
+      }
+      setDragX(0);
+      setPhase('idle');
+    } else if (phase === 'springing') {
+      setPhase('idle');
+    }
+  };
+
+  const prevPhoto = photos.length > 1
+    ? photos[(currentIndex - 1 + photos.length) % photos.length]
+    : null;
+  const nextPhoto = photos.length > 1
+    ? photos[(currentIndex + 1) % photos.length]
+    : null;
 
   // Apply protection class to the lightbox container
   const lightboxClass = useEnhancedProtection ? 
@@ -348,12 +547,16 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
   return (
     <div className={lightboxClass}>
-      {/* Close button */}
+      {/* Close button. top respects iOS safe-area (notch) so it doesn't
+         disappear under the camera/dynamic-island. */}
       <button
         onClick={onClose}
-        className="absolute top-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
+        className="absolute p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-30"
         aria-label="Close"
-        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : '1rem' }}
+        style={{
+          top: 'max(1rem, env(safe-area-inset-top))',
+          right: isDesktopFeedback ? `${desktopFeedbackWidth + 16}px` : 'max(1rem, env(safe-area-inset-right))'
+        }}
       >
         <X className="w-6 h-6 text-white" />
       </button>
@@ -378,19 +581,25 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </button>
       ) : null}
 
-      {/* Bottom toolbar */}
+      {/* Bottom toolbar. flex-wrap + reduced gap/padding on mobile prevent
+         the action row from clipping when feedback (likes / 5-star ratings /
+         comments) is enabled. pb-[env(safe-area-inset-bottom)] keeps the
+         buttons above the iOS home indicator. */}
       <div
-        className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-20"
-        style={{ right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0 }}
+        className="absolute bottom-0 left-0 bg-gradient-to-t from-black/80 to-transparent px-3 pt-3 pb-3 sm:p-4 z-20"
+        style={{
+          right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))'
+        }}
       >
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="text-white">
             <p className="text-sm opacity-75">
               {currentIndex + 1} / {photos.length}
             </p>
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
             <button
               onClick={handleZoomOut}
               disabled={zoom <= 1}
@@ -468,7 +677,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               >
                 <MessageSquare className="w-5 h-5 text-white" />
                 {((currentPhoto.comment_count ?? 0) > 0 || (currentPhoto.average_rating ?? 0) > 0) && (
-                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-accent-dark/150 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {(currentPhoto.comment_count ?? 0) > 0 ? currentPhoto.comment_count ?? 0 : '★'}
                   </span>
                 )}
@@ -478,92 +687,158 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </div>
       </div>
 
-      {/* Image/Video container */}
-      <div
-        className="absolute top-0 left-0 bottom-0 flex items-center justify-center z-0"
-        onClick={currentPhoto.media_type === 'video' ? undefined : handleImageClick}
-        onMouseDown={currentPhoto.media_type === 'video' ? undefined : handleMouseDown}
-        onMouseMove={currentPhoto.media_type === 'video' ? undefined : handleMouseMove}
-        onMouseUp={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
-        onMouseLeave={currentPhoto.media_type === 'video' ? undefined : handleMouseUp}
-        onTouchStart={currentPhoto.media_type === 'video' ? undefined : handleTouchStart}
-        onTouchMove={currentPhoto.media_type === 'video' ? undefined : handleTouchMove}
-        onTouchEnd={currentPhoto.media_type === 'video' ? undefined : handleTouchEnd}
-        style={{
-          cursor: currentPhoto.media_type === 'video' ? 'default' : (zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'),
-          right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
-        }}
-      >
-        {/* Loading spinner */}
-        {!imageLoaded && currentPhoto.media_type !== 'video' && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <Loader2 className="w-12 h-12 text-white animate-spin" />
-          </div>
-        )}
+      {/* Image/Video container.
+         For photos this hosts a 3-slide carousel (prev/current/next) so
+         swipe gestures animate the track and the neighbour images preload
+         while the user views the current one. Videos still render as a
+         single player — sliding video elements during a drag is awkward
+         and the carousel adds nothing for that case. */}
+      {(() => {
+        const isVideoCurrent = currentPhoto.media_type === 'video';
 
-        {currentPhoto.media_type === 'video' ? (
-          <VideoPlayer
-            src={currentPhoto.url}
-            poster={currentPhoto.thumbnail_url}
-            className="max-w-full max-h-full"
-            controls={true}
-            autoPlay={false}
-          />
-        ) : (
-          <AuthenticatedImage
-            src={currentPhoto.url}
-            alt={currentPhoto.filename}
-            fallbackSrc={currentPhoto.thumbnail_url || undefined}
-            className="max-w-full max-h-full object-contain select-none"
+        const renderSlide = (photo: Photo | null, isCurrent: boolean) => {
+          // Reserve the slot even when there's no neighbour (single-photo
+          // gallery) so the flex layout keeps slides aligned.
+          if (!photo) {
+            return <div className="h-full" style={{ flex: '0 0 33.3333%' }} aria-hidden="true" />;
+          }
+
+          // Neighbouring slides are plain thumbnails — they're only on
+          // screen during the swipe animation, so we save the work of a
+          // protected canvas pipeline for them. The current slide keeps
+          // the full protection chain.
+          if (!isCurrent) {
+            return (
+              <div className="h-full flex items-center justify-center px-2" style={{ flex: '0 0 33.3333%' }}>
+                {photo.media_type === 'video' && photo.thumbnail_url ? (
+                  <img
+                    src={photo.thumbnail_url}
+                    alt={photo.filename}
+                    className="max-w-full max-h-full object-contain select-none pointer-events-none"
+                    draggable={false}
+                  />
+                ) : (
+                  <AuthenticatedImage
+                    src={photo.url}
+                    alt={photo.filename}
+                    fallbackSrc={photo.thumbnail_url || undefined}
+                    className="max-w-full max-h-full object-contain select-none pointer-events-none"
+                    draggable={false}
+                    isGallery={true}
+                    slug={slug}
+                    photoId={photo.id}
+                    requiresToken={photo.requires_token}
+                    secureUrlTemplate={photo.secure_url_template}
+                  />
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div
+              className="h-full flex items-center justify-center"
+              style={{ flex: '0 0 33.3333%' }}
+              onClick={handleImageClick}
+            >
+              <AuthenticatedImage
+                src={photo.url}
+                alt={photo.filename}
+                fallbackSrc={photo.thumbnail_url || undefined}
+                className="max-w-full max-h-full object-contain select-none"
+                style={{
+                  transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.2s',
+                }}
+                draggable={false}
+                useWatermark={useEnhancedProtection}
+                watermarkText={useEnhancedProtection ? `${photo.filename} - Protected` : undefined}
+                isGallery={true}
+                slug={slug}
+                photoId={photo.id}
+                requiresToken={photo.requires_token}
+                secureUrlTemplate={photo.secure_url_template}
+                protectFromDownload={!allowDownloads || useEnhancedProtection}
+                protectionLevel={protectionLevel}
+                useEnhancedProtection={useEnhancedProtection}
+                useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
+                fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+                blockKeyboardShortcuts={useEnhancedProtection}
+                detectPrintScreen={useEnhancedProtection}
+                detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
+                onProtectionViolation={(violationType) => {
+                  console.warn(`Protection violation in lightbox for photo ${photo.id}: ${violationType}`);
+
+                  if (typeof window !== 'undefined' && (window as any).umami) {
+                    (window as any).umami.track('lightbox_protection_violation', {
+                      photoId: photo.id,
+                      violationType,
+                      protectionLevel,
+                      zoom
+                    });
+                  }
+
+                  if (protectionLevel === 'maximum' &&
+                      ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
+                    onClose();
+                  }
+                }}
+              />
+            </div>
+          );
+        };
+
+        return (
+          <div
+            ref={trackContainerRef}
+            className="absolute top-0 left-0 bottom-0 overflow-hidden z-0"
+            onClick={isVideoCurrent ? undefined : handleImageClick}
+            onMouseDown={isVideoCurrent ? undefined : handleMouseDown}
+            onMouseMove={isVideoCurrent ? undefined : handleMouseMove}
+            onMouseUp={isVideoCurrent ? undefined : handleMouseUp}
+            onMouseLeave={isVideoCurrent ? undefined : handleMouseUp}
+            onTouchStart={isVideoCurrent ? undefined : handleTouchStart}
+            onTouchMove={isVideoCurrent ? undefined : handleTouchMove}
+            onTouchEnd={isVideoCurrent ? undefined : handleTouchEnd}
+            onTouchCancel={isVideoCurrent ? undefined : handleTouchCancel}
             style={{
-              transform: `scale(${zoom}) translate(${dragOffset.x / zoom}px, ${dragOffset.y / zoom}px)`,
-              transition: isDragging ? 'none' : 'transform 0.2s',
-              opacity: imageLoaded ? 1 : 0,
+              cursor: isVideoCurrent ? 'default' : (zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'),
+              right: isDesktopFeedback ? `${desktopFeedbackWidth}px` : 0,
+              // Tell the browser we handle horizontal gestures ourselves so
+              // it doesn't fight us with edge-swipe back navigation, native
+              // pinch-zoom, etc. Videos keep default touch behaviour.
+              touchAction: isVideoCurrent ? 'auto' : 'none',
             }}
-            draggable={false}
-            onLoad={() => setImageLoaded(true)}
-            useWatermark={useEnhancedProtection}
-            watermarkText={useEnhancedProtection ? `${currentPhoto.filename} - Protected` : undefined}
-            isGallery={true}
-            slug={slug}
-            photoId={currentPhoto.id}
-            requiresToken={currentPhoto.requires_token}
-            secureUrlTemplate={currentPhoto.secure_url_template}
-            protectFromDownload={!allowDownloads || useEnhancedProtection}
-            protectionLevel={protectionLevel}
-            useEnhancedProtection={useEnhancedProtection}
-            useCanvasRendering={useCanvasRendering || protectionLevel === 'maximum'}
-            fragmentGrid={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-            blockKeyboardShortcuts={useEnhancedProtection}
-            detectPrintScreen={useEnhancedProtection}
-            detectDevTools={protectionLevel === 'enhanced' || protectionLevel === 'maximum'}
-            onProtectionViolation={(violationType) => {
-              console.warn(`Protection violation in lightbox for photo ${currentPhoto.id}: ${violationType}`);
-
-            // Track analytics
-            if (typeof window !== 'undefined' && (window as any).umami) {
-              (window as any).umami.track('lightbox_protection_violation', {
-                photoId: currentPhoto.id,
-                violationType,
-                protectionLevel,
-                zoom
-              });
-            }
-
-            // For maximum protection, close lightbox on violation
-            if (protectionLevel === 'maximum' &&
-                ['devtools_detected', 'print_screen_detected', 'canvas_access_blocked'].includes(violationType)) {
-              onClose();
-            }
-          }}
-        />
-        )}
-      </div>
-
-      {/* Touch/swipe indicators for mobile */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-white text-sm opacity-50 pointer-events-none md:hidden z-20">
-        Swipe to navigate
-      </div>
+          >
+            {isVideoCurrent ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <VideoPlayer
+                  src={currentPhoto.url}
+                  poster={currentPhoto.thumbnail_url}
+                  className="max-w-full max-h-full"
+                  controls={true}
+                  autoPlay={false}
+                />
+              </div>
+            ) : (
+              <div
+                className="absolute inset-0 flex items-stretch"
+                style={{
+                  width: '300%',
+                  transform: trackTransform,
+                  transition: trackTransition,
+                  willChange: 'transform',
+                }}
+                onTransitionEnd={handleTrackTransitionEnd}
+              >
+                {renderSlide(prevPhoto, false)}
+                {renderSlide(currentPhoto, true)}
+                {renderSlide(nextPhoto, false)}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Feedback Panel */}
       {showFeedback && (
