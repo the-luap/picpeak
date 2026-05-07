@@ -56,6 +56,38 @@ interface GalleryLayoutProps {
   children: React.ReactNode;
 }
 
+/**
+ * Accent-coloured "Download" CTA shown immediately to the left of the
+ * Logout button. Identical markup is rendered in three header variants
+ * (standard/banner, minimal, hero) — extracted into a small component
+ * here so changes (label, icon, contrast) only need to happen in one
+ * place. Background reads `--color-accent`; text reads `--color-accent-fg`
+ * which `ThemeContext.applyTheme` derives from the accent's luminance,
+ * so a pale accent automatically gets dark text and a saturated accent
+ * gets white. Falls back to white if the variable isn't set (legacy
+ * deployments before the contrast helper landed).
+ */
+const HeaderDownloadButton: React.FC<{
+  onClick: () => void;
+  isDownloading?: boolean;
+  label: string;
+}> = ({ onClick, isDownloading = false, label }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={isDownloading}
+    aria-label={label}
+    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+    style={{
+      backgroundColor: 'var(--color-accent)',
+      color: 'var(--color-accent-fg, #ffffff)',
+    }}
+  >
+    <Download className="w-4 h-4" />
+    <span className="hidden sm:inline">{label}</span>
+  </button>
+);
+
 export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   event,
   brandingSettings,
@@ -259,22 +291,15 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                 {/*
                  * "Download" CTA — accent-coloured button immediately left of
                  * Logout, always visible when the gallery allows downloads.
-                 * Uses var(--color-accent) inline so the same colour token
-                 * shared with the 8-token palette (PR #400) resolves to the
-                 * admin's chosen accent regardless of which PR merges first.
+                 * Markup lives in HeaderDownloadButton above; reused in the
+                 * minimal and hero headers below.
                  */}
                 {showHeaderDownload && onHeaderDownload && (
-                  <button
-                    type="button"
+                  <HeaderDownloadButton
                     onClick={onHeaderDownload}
-                    disabled={isDownloading}
-                    aria-label={t('gallery.download', 'Download')}
-                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
-                  </button>
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
                 )}
 
                 {/* Logout button */}
@@ -344,17 +369,11 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     style. Intentionally NOT shown in the no-header variant
                     where the gallery is fully chromeless by design. */}
                 {showHeaderDownload && onHeaderDownload && (
-                  <button
-                    type="button"
+                  <HeaderDownloadButton
                     onClick={onHeaderDownload}
-                    disabled={isDownloading}
-                    aria-label={t('gallery.download', 'Download')}
-                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
-                  </button>
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
                 )}
                 {showLogout && onLogout && (
                   <Button
@@ -441,17 +460,11 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
                     Intentionally NOT shown in the no-header variant where
                     the gallery is fully chromeless by design. */}
                 {showHeaderDownload && onHeaderDownload && (
-                  <button
-                    type="button"
+                  <HeaderDownloadButton
                     onClick={onHeaderDownload}
-                    disabled={isDownloading}
-                    aria-label={t('gallery.download', 'Download')}
-                    className="gallery-btn gallery-btn-download inline-flex items-center gap-2 px-3 sm:px-4 h-9 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                    style={{ backgroundColor: 'var(--color-accent)', color: '#ffffff' }}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('gallery.download', 'Download')}</span>
-                  </button>
+                    isDownloading={isDownloading}
+                    label={t('gallery.download', 'Download')}
+                  />
                 )}
 
                 {/* Logout button */}

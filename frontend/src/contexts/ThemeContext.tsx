@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ThemeConfig, EventTheme, GALLERY_THEME_PRESETS } from '../types/theme.types';
 import { fontsService, extractFamilyName, type FontDefinition } from '../services/fonts.service';
 import { applyForceColorMode } from '../utils/themeMigration';
+import { getReadableForeground } from '../utils/contrast';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 
 // Self-hosted font loader. Resolves the available-fonts list once (cached for
@@ -136,6 +137,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     if (themeConfig.accentColor) {
       root.style.setProperty('--color-accent', themeConfig.accentColor);
+      // Pick a readable foreground (white or black) for text/icons sitting
+      // on top of `--color-accent`. The gallery header Download CTA reads
+      // this via `var(--color-accent-fg, #ffffff)` so a pale accent doesn't
+      // leave the button text unreadable (PR #401 review follow-up).
+      root.style.setProperty('--color-accent-fg', getReadableForeground(themeConfig.accentColor));
     }
 
     // Accent-dark: filled CTA background. Falls back to primaryColor for
@@ -144,6 +150,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     const accentDark = themeConfig.accentDarkColor || themeConfig.primaryColor;
     if (accentDark) {
       root.style.setProperty('--color-accent-dark', accentDark);
+      // Same readable-foreground treatment for filled CTAs (.btn-primary
+      // and .tile-selected) that paint on top of accent-dark.
+      root.style.setProperty('--color-accent-dark-fg', getReadableForeground(accentDark));
     }
     
     if (themeConfig.backgroundColor) {
