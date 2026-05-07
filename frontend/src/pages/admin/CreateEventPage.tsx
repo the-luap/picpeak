@@ -245,12 +245,21 @@ export const CreateEventPage: React.FC = () => {
   // This is the "always inherit colours from Branding" guarantee — every new
   // gallery starts with the site palette unless the admin then picks a preset
   // or hits Sync from Branding inside the customizer to re-pull it later.
-  const brandingThemeApplied = useRef(false);
+  //
+  // Track the last theme_config we applied as a stringified hash rather than
+  // a boolean ref. React Query can hand us cached (stale) settings on first
+  // observer render and then push fresh data once the network call resolves;
+  // a boolean ref locks in the stale theme and ignores the fresh one (#323-B
+  // / smoke spec 07). With a hash, we re-apply when the source actually
+  // changes — including the stale → fresh transition — but skip when nothing
+  // new has arrived.
+  const lastAppliedThemeHashRef = useRef<string | null>(null);
   useEffect(() => {
-    if (brandingThemeApplied.current) return;
     const brandingTheme = settings?.theme_config as ThemeConfig | undefined;
     if (!brandingTheme || Object.keys(brandingTheme).length === 0) return;
-    brandingThemeApplied.current = true;
+    const hash = JSON.stringify(brandingTheme);
+    if (lastAppliedThemeHashRef.current === hash) return;
+    lastAppliedThemeHashRef.current = hash;
 
     // Identify which preset (if any) the Branding theme matches. Compare
     // only on the preset's own fields so saved themes carrying extras

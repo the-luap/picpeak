@@ -60,5 +60,12 @@ USER nodejs
 
 EXPOSE 3000
 
+# Healthcheck hits the same /health endpoint already used by the e2e
+# runner and by the docker-compose `depends_on: condition: service_healthy`
+# checks. wget is part of the Alpine base image. Long start-period covers
+# the wait-for-db.sh delay before the Node process starts listening.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["./wait-for-db.sh", "node", "server.js"]
