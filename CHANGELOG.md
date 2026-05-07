@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.41.0-beta.0...v3.42.0-beta.0) (2026-05-07)
+
+
+### Features
+
+* **gallery:** icon-only menu, accent Download CTA ([#386](https://github.com/the-luap/picpeak/issues/386)) ([876b35b](https://github.com/the-luap/picpeak/commit/876b35b4a512f70cfc19561e35ce9d915a599547))
+
 ## [3.41.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.40.1-beta.0...v3.41.0-beta.0) (2026-05-06)
 
 
