@@ -1062,12 +1062,10 @@
     "bulkDelete": {
       "title": "{{count}} Veranstaltungen endgültig löschen?",
       "warning": "Die ausgewählten Veranstaltungen, alle ihre Fotos, Archive und Audit-Logs werden endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
-      "passwordLabel": "Zur Bestätigung Ihr Passwort erneut eingeben",
-      "passwordPlaceholder": "Ihr Admin-Passwort",
-      "passwordHelp": "Wir benötigen Ihr Passwort als Schutz vor versehentlichen Massenlöschungen.",
+      "confirmLabel": "Geben Sie {{literal}} ein, um zu bestätigen",
+      "confirmHelp": "Eine getippte Bestätigung verhindert versehentliche Löschungen und ist nicht von Browser-Autofill oder Passkey-Verknüpfungen betroffen.",
       "submit": "{{count}} Veranstaltungen löschen",
       "processing": "{{count}} Veranstaltungen werden gelöscht. Dies kann einige Minuten dauern — bitte schließen Sie dieses Fenster nicht.",
-      "incorrectPassword": "Falsches Passwort. Es wurden keine Veranstaltungen gelöscht.",
       "successAll": "{{count}} Veranstaltungen endgültig gelöscht",
       "successPartial": "{{success}} Veranstaltungen gelöscht, {{failed}} fehlgeschlagen",
       "errorGeneric": "Veranstaltungen konnten nicht gelöscht werden"

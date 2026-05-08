@@ -1652,18 +1652,23 @@ router.post('/bulk-archive', adminAuth, requirePermission('events.archive'), [
   }
 });
 
-// Bulk delete — destructive, irreversible. Requires the calling admin to
-// re-enter their password as a confirmation gate (verified against the
-// stored bcrypt hash, same pattern as /auth/admin/change-password). Caps at
-// 100 events per request to keep request time bounded; the per-event
-// cascade touches 5 DB tables + 3 filesystem paths so 1000 events would
-// risk timing out the request. Loops via deleteEventCascade so the per-
-// event delete behaviour stays in lock-step with DELETE /:id.
+// Bulk delete — destructive, irreversible. Caps at 100 events per request
+// to keep request time bounded; the per-event cascade touches 5 DB tables
+// + 3 filesystem paths so 1000 events would risk timing out the request.
+// Loops via deleteEventCascade so the per-event delete behaviour stays in
+// lock-step with DELETE /:id.
+//
+// Confirmation is enforced client-side via the typed-DELETE pattern in
+// BulkDeleteModal (#417). The previous server-side bcrypt-password gate
+// was dropped because the destructive single-event DELETE /:id has never
+// required a password either — events.delete permission + admin session
+// is the auth boundary for both. The typed-literal client gate is the
+// "accidental click" safeguard, and unlike a password input it isn't
+// affected by passkey/Windows Hello autofill that auto-submits the form.
 const BULK_DELETE_MAX = 100;
 router.post('/bulk-delete', adminAuth, requirePermission('events.delete'), [
   body('eventIds').isArray({ min: 1, max: BULK_DELETE_MAX }).withMessage(`eventIds must be an array of 1-${BULK_DELETE_MAX} ids`),
-  body('eventIds.*').isInt().withMessage('Each eventId must be an integer'),
-  body('password').isString().notEmpty().withMessage('Password is required for confirmation')
+  body('eventIds.*').isInt().withMessage('Each eventId must be an integer')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -1671,19 +1676,7 @@ router.post('/bulk-delete', adminAuth, requirePermission('events.delete'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { eventIds, password } = req.body;
-
-    // Verify the admin's password before doing anything destructive.
-    // Same pattern as /auth/admin/change-password (auth.js).
-    const admin = await db('admin_users').where({ id: req.admin.id }).first();
-    if (!admin) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    const validPassword = await bcrypt.compare(password, admin.password_hash);
-    if (!validPassword) {
-      logger.warn('Incorrect password on bulk-delete attempt', { adminId: req.admin.id, eventCount: eventIds.length });
-      return res.status(401).json({ error: 'Incorrect password', code: 'INVALID_PASSWORD' });
-    }
+    const { eventIds } = req.body;
 
     // Editor-role events.delete permission is already gated by the route
     // middleware. We do NOT additionally filter to created_by here because
