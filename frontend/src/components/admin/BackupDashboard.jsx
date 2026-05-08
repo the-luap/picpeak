@@ -106,7 +106,7 @@ export const BackupDashboard = ({ status, config, onRunBackup, isBackupRunning }
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{t('backup.dashboard.health.title')}</h3>
           <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${healthColors[health.status]}-100 dark:bg-${healthColors[health.status]}-900/40 text-${healthColors[health.status]}-700 dark:text-${healthColors[health.status]}-300`}>
-            {health.status.charAt(0).toUpperCase() + health.status.slice(1)}
+            {t(`backup.dashboard.healthStatus.${health.status}`)}
           </span>
         </div>
         

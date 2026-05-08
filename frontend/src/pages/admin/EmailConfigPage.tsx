@@ -23,14 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { emailService, type EmailConfig, type EmailTemplate, type EmailTemplateTranslation } from '../../services/email.service';
 import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
-
-const SUPPORTED_LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-];
+import { SUPPORTED_LANGUAGES } from "../../components/common/LanguageSelector.tsx";
 
 const defaultTemplateKeys = [
   {
@@ -795,7 +788,7 @@ export const EmailConfigPage: React.FC = () => {
                           : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                       }`}
                     >
-                      <span>{lang.flag}</span>
+                      <lang.Flag/>
                       <span>{lang.name}</span>
                       {!hasContent && lang.code !== 'en' && (
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={t('email.noTranslation')} />
