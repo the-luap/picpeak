@@ -582,12 +582,10 @@
     "bulkDelete": {
       "title": "Permanently delete {{count}} events?",
       "warning": "This will permanently delete the selected events, all their photos, archives, and audit logs. This action cannot be undone.",
-      "passwordLabel": "Re-enter your password to confirm",
-      "passwordPlaceholder": "Your admin password",
-      "passwordHelp": "We require your password as a safeguard against accidental bulk deletions.",
+      "confirmLabel": "Type {{literal}} to confirm",
+      "confirmHelp": "A typed confirmation prevents accidental deletions and isn't affected by browser autofill or passkey shortcuts.",
       "submit": "Delete {{count}} events",
       "processing": "Deleting {{count}} events. This may take a few minutes — please don't close this window.",
-      "incorrectPassword": "Incorrect password. No events were deleted.",
       "successAll": "Permanently deleted {{count}} events",
       "successPartial": "Deleted {{success}} events, {{failed}} failed",
       "errorGeneric": "Failed to delete events"

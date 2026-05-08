@@ -148,10 +148,12 @@ export const eventsService = {
     return response.data;
   },
 
-  // Bulk delete events (admin) — destructive. Requires the calling admin's
-  // password as a server-side confirmation gate. On 401 the server returns
-  // { error, code: 'INVALID_PASSWORD' } and no events are touched.
-  async bulkDeleteEvents(eventIds: number[], password: string): Promise<{
+  // Bulk delete events (admin) — destructive. The client-side confirmation
+  // gate is a typed-literal pattern in the modal (issue #417); no password
+  // is sent because passkey/autofill flows on a password input could
+  // auto-submit the form. The admin session JWT remains the auth boundary,
+  // matching DELETE /admin/events/:id which has never required a password.
+  async bulkDeleteEvents(eventIds: number[]): Promise<{
     message: string;
     results: {
       successful: Array<{ id: number; name: string }>;
@@ -160,7 +162,6 @@ export const eventsService = {
   }> {
     const response = await api.post('/admin/events/bulk-delete', {
       eventIds,
-      password,
     });
     return response.data;
   },
