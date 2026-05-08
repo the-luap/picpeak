@@ -161,7 +161,14 @@
   "navigation": {
     "dashboard": "Painel",
     "events": "Eventos",
-    "settings": "Configurações"
+    "settings": "Configurações",
+    "archives": "Arquivos",
+    "emailSettings": "Configurações de e-mail",
+    "branding": "Identidade visual",
+    "eventTypes": "Tipos de evento",
+    "backup": "Backup e Restauração",
+    "cmsPages": "Páginas CMS",
+    "users": "Utilizadores"
   },
   "archives": {
     "title": "Arquivos",
@@ -1312,7 +1319,37 @@
     "noTemplate": "Sem modelo",
     "noTemplateDescription": "Usar apenas as definições de tema sem modelo CSS",
     "templateSlot": "Posição {{slot}}",
-    "eventCustomCSS": "CSS personalizado por evento"
+    "eventCustomCSS": "CSS personalizado por evento",
+    "layoutDescriptions": {
+      "grid": "Grelha clássica com tamanhos de foto uniformes",
+      "masonry": "Estilo Pinterest com alturas variadas",
+      "carousel": "Apresentação a ecrã inteiro com navegação",
+      "timeline": "Fotos organizadas por data",
+      "mosaic": "Disposição artística com tamanhos mistos",
+      "gallery-premium": "Tema claro elegante com hero e masonry (Beta)",
+      "gallery-story": "Tema escuro cinemático com secções de cena (Beta)"
+    },
+    "headerStyleOptions": {
+      "hero": "Imagem Hero",
+      "standard": "Standard",
+      "banner": "Banner",
+      "minimal": "Mínimo",
+      "none": "Sem cabeçalho"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Imagem de altura total com sobreposição de info do evento",
+      "standard": "Cabeçalho compacto com detalhes do evento",
+      "banner": "Cabeçalho standard com banner colorido acima",
+      "minimal": "Cabeçalho compacto com informações essenciais",
+      "none": "Ocultar cabeçalho completamente"
+    },
+    "dividerOptions": {
+      "none": "Nenhum",
+      "wave": "Onda",
+      "straight": "Reto",
+      "angle": "Ângulo",
+      "curve": "Curva"
+    }
   },
   "admin": {
     "title": "Painel Admin",
@@ -1326,7 +1363,10 @@
     "archivedEvents": "Eventos Arquivados",
     "systemHealth": "Saúde do Sistema",
     "health": {
-      "checking": "Verificando..."
+      "checking": "Verificando...",
+      "healthy": "Saudável",
+      "warning": "Aviso",
+      "error": "Erro"
     },
     "updates": {
       "available": "Atualização Disponível",
@@ -1490,8 +1530,70 @@
       "loadingDetail": "A carregar seleções…",
       "detail": {
         "noComments": "Sem comentários",
-        "empty": "Sem seleções nesta categoria"
+        "empty": "Sem seleções nesta categoria",
+        "all": "Todos",
+        "liked": "Gostou",
+        "favorited": "Favorito",
+        "rated": "Avaliado",
+        "commented": "Comentado"
+      },
+      "inviteStatus": {
+        "pending": "Pendente",
+        "redeemed": "Utilizado",
+        "revoked": "Revogado"
       }
+    },
+    "analytics": "Análise",
+    "activities": {
+      "event_created": "Novo evento criado: {{eventName}}",
+      "photos_uploaded": "{{count}} fotos carregadas para {{eventName}}",
+      "event_archived": "Evento arquivado: {{eventName}}",
+      "archive_restored": "Arquivo restaurado: {{eventName}}",
+      "archive_deleted": "Arquivo eliminado: {{eventName}}",
+      "archive_downloaded": "Arquivo descarregado: {{eventName}}",
+      "email_config_updated": "Configuração de e-mail atualizada",
+      "email_template_updated": "Modelo de e-mail atualizado: {{template}}",
+      "branding_updated": "Definições de identidade visual atualizadas",
+      "theme_updated": "Definições de tema atualizadas",
+      "bulk_download": "{{count}} fotos descarregadas de {{eventName}}",
+      "gallery_password_entry": "Palavra-passe inserida para {{eventName}}",
+      "expiration_warning_viewed": "Aviso de expiração visualizado para {{eventName}}",
+      "event_updated": "Evento atualizado: {{eventName}}",
+      "event_deleted": "Evento eliminado: {{eventName}}",
+      "event_activated": "Evento ativado: {{eventName}}",
+      "event_deactivated": "Evento desativado: {{eventName}}",
+      "bulk_archive_completed": "Arquivamento em massa concluído",
+      "photo_deleted": "Foto eliminada de {{eventName}}",
+      "photos_bulk_deleted": "{{count}} fotos eliminadas de {{eventName}}",
+      "password_changed": "Palavra-passe alterada",
+      "admin_logout": "Admin {{actorName}} terminou sessão",
+      "category_created": "Categoria criada: {{categoryName}}",
+      "category_updated": "Categoria atualizada: {{categoryName}}",
+      "category_deleted": "Categoria eliminada: {{categoryName}}",
+      "feedback_settings_updated": "Definições de feedback atualizadas",
+      "feedback_moderated": "Feedback moderado",
+      "feedback_deleted": "Feedback eliminado",
+      "word_filter_added": "Filtro de palavras adicionado",
+      "cms_page_updated": "Página CMS atualizada: {{page}}",
+      "email_resent": "E-mail de criação reenviado para: {{eventName}}",
+      "settings_updated": "Definições atualizadas",
+      "favicon_uploaded": "Favicon carregado",
+      "password_reset": "Palavra-passe redefinida para: {{eventName}}",
+      "external_import_completed": "Importação de média externo concluída ({{imported}} importados, {{skipped}} ignorados)",
+      "photo_like": "Foto curtida em {{eventName}}",
+      "photo_favorite": "Foto adicionada aos favoritos em {{eventName}}",
+      "general_settings_updated": "Definições gerais atualizadas",
+      "analytics_settings_updated": "Definições de análise atualizadas",
+      "security_settings_updated": "Definições de segurança atualizadas",
+      "event_renamed": "Evento renomeado: {{eventName}}",
+      "photo_rating": "Foto avaliada em {{eventName}}",
+      "photo_comment": "Foto comentada em {{eventName}}",
+      "guest_feedback_like": "Convidado curtiu uma foto em {{eventName}}",
+      "guest_feedback_favorite": "Convidado adicionou uma foto aos favoritos em {{eventName}}",
+      "guest_feedback_rating": "Convidado avaliou uma foto em {{eventName}}",
+      "guest_feedback_comment": "Convidado comentou uma foto em {{eventName}}",
+      "system_activity": "Atividade do sistema: {{type}}",
+      "unknown": "Atividade desconhecida"
     }
   },
   "acceptInvitation": {
@@ -1824,7 +1926,13 @@
       },
       "storageDestination": "Destino do Armazenamento",
       "backupType": "Backup {{type}}",
-      "noDestinationSet": "Nenhum destino definido"
+      "noDestinationSet": "Nenhum destino definido",
+      "healthStatus": {
+        "warning": "Aviso",
+        "excellent": "Excelente",
+        "good": "Bom",
+        "critical": "Crítico"
+      }
     },
     "configuration": {
       "enableBackup": "Ativar Backups Automáticos",
@@ -2284,7 +2392,14 @@
     "hasComments": "Possui comentários",
     "showingPhotos": "Total de fotos",
     "withRatings": "Com avaliações",
-    "combineWith": "Combinar com"
+    "combineWith": "Combinar com",
+    "allPhotos": "Todas as fotos",
+    "anyRating": "Qualquer avaliação",
+    "oneStarPlus": "1+ estrela",
+    "twoStarsPlus": "2+ estrelas",
+    "threeStarsPlus": "3+ estrelas",
+    "fourStarsPlus": "4+ estrelas",
+    "fiveStarsOnly": "Apenas 5 estrelas"
   },
   "adminLogin": {
     "title": "Login Administrativo",

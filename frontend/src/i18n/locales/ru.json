@@ -164,7 +164,14 @@
   "navigation": {
     "dashboard": "Панель управления",
     "events": "События",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "archives": "Архивы",
+    "emailSettings": "Настройки e-mail",
+    "branding": "Брендинг",
+    "eventTypes": "Типы событий",
+    "backup": "Резервное копирование",
+    "cmsPages": "CMS-страницы",
+    "users": "Пользователи"
   },
   "archives": {
     "title": "Архивы",
@@ -1329,7 +1336,37 @@
     "noTemplate": "Без шаблона",
     "noTemplateDescription": "Использовать только настройки темы без CSS-шаблона",
     "templateSlot": "Слот {{slot}}",
-    "eventCustomCSS": "Пользовательский CSS для события"
+    "eventCustomCSS": "Пользовательский CSS для события",
+    "layoutDescriptions": {
+      "grid": "Классическая сетка с одинаковыми размерами фото",
+      "masonry": "Макет в стиле Pinterest с разной высотой",
+      "carousel": "Полноэкранное слайд-шоу с навигацией",
+      "timeline": "Фото, упорядоченные по дате",
+      "mosaic": "Художественный макет с разными размерами",
+      "gallery-premium": "Элегантная светлая тема с hero и masonry (Бета)",
+      "gallery-story": "Кинематографическая тёмная тема с разделами сцен (Бета)"
+    },
+    "headerStyleOptions": {
+      "hero": "Изображение Hero",
+      "standard": "Стандартный",
+      "banner": "Баннер",
+      "minimal": "Минимальный",
+      "none": "Без заголовка"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Изображение в полную высоту с наложением информации о событии",
+      "standard": "Компактный встроенный заголовок с деталями события",
+      "banner": "Стандартный заголовок плюс цветной баннер сверху",
+      "minimal": "Компактный заголовок с основной информацией",
+      "none": "Полностью скрыть заголовок"
+    },
+    "dividerOptions": {
+      "none": "Нет",
+      "wave": "Волна",
+      "straight": "Прямой",
+      "angle": "Угол",
+      "curve": "Кривая"
+    }
   },
   "admin": {
     "title": "Панель администратора",
@@ -1343,7 +1380,10 @@
     "archivedEvents": "Архивированных событий",
     "systemHealth": "Состояние системы",
     "health": {
-      "checking": "Проверка..."
+      "checking": "Проверка...",
+      "healthy": "Исправно",
+      "warning": "Предупреждение",
+      "error": "Ошибка"
     },
     "updates": {
       "available": "Доступно обновление",
@@ -1515,8 +1555,70 @@
       "loadingDetail": "Загрузка выборок…",
       "detail": {
         "noComments": "Нет комментариев",
-        "empty": "Нет выборок в этой категории"
+        "empty": "Нет выборок в этой категории",
+        "all": "Все",
+        "liked": "Понравилось",
+        "favorited": "В избранном",
+        "rated": "Оценено",
+        "commented": "Прокомментировано"
+      },
+      "inviteStatus": {
+        "pending": "Ожидает",
+        "redeemed": "Использовано",
+        "revoked": "Отозвано"
       }
+    },
+    "analytics": "Аналитика",
+    "activities": {
+      "event_created": "Новое событие создано: {{eventName}}",
+      "photos_uploaded": "{{count}} фото загружено в {{eventName}}",
+      "event_archived": "Событие архивировано: {{eventName}}",
+      "archive_restored": "Архив восстановлен: {{eventName}}",
+      "archive_deleted": "Архив удалён: {{eventName}}",
+      "archive_downloaded": "Архив скачан: {{eventName}}",
+      "email_config_updated": "Конфигурация e-mail обновлена",
+      "email_template_updated": "Шаблон e-mail обновлён: {{template}}",
+      "branding_updated": "Настройки брендинга обновлены",
+      "theme_updated": "Настройки темы обновлены",
+      "bulk_download": "{{count}} фото скачано из {{eventName}}",
+      "gallery_password_entry": "Введён пароль для {{eventName}}",
+      "expiration_warning_viewed": "Предупреждение об истечении просмотрено для {{eventName}}",
+      "event_updated": "Событие обновлено: {{eventName}}",
+      "event_deleted": "Событие удалено: {{eventName}}",
+      "event_activated": "Событие активировано: {{eventName}}",
+      "event_deactivated": "Событие деактивировано: {{eventName}}",
+      "bulk_archive_completed": "Массовое архивирование завершено",
+      "photo_deleted": "Фото удалено из {{eventName}}",
+      "photos_bulk_deleted": "{{count}} фото удалено из {{eventName}}",
+      "password_changed": "Пароль изменён",
+      "admin_logout": "Администратор {{actorName}} вышел из системы",
+      "category_created": "Категория создана: {{categoryName}}",
+      "category_updated": "Категория обновлена: {{categoryName}}",
+      "category_deleted": "Категория удалена: {{categoryName}}",
+      "feedback_settings_updated": "Настройки отзывов обновлены",
+      "feedback_moderated": "Отзыв промодерирован",
+      "feedback_deleted": "Отзыв удалён",
+      "word_filter_added": "Фильтр слов добавлен",
+      "cms_page_updated": "Страница CMS обновлена: {{page}}",
+      "email_resent": "E-mail создания повторно отправлен для: {{eventName}}",
+      "settings_updated": "Настройки обновлены",
+      "favicon_uploaded": "Favicon загружен",
+      "password_reset": "Пароль сброшен для: {{eventName}}",
+      "external_import_completed": "Импорт внешних медиафайлов завершён ({{imported}} импортировано, {{skipped}} пропущено)",
+      "photo_like": "Фото понравилось в {{eventName}}",
+      "photo_favorite": "Фото добавлено в избранное в {{eventName}}",
+      "general_settings_updated": "Общие настройки обновлены",
+      "analytics_settings_updated": "Настройки аналитики обновлены",
+      "security_settings_updated": "Настройки безопасности обновлены",
+      "event_renamed": "Событие переименовано: {{eventName}}",
+      "photo_rating": "Фото оценено в {{eventName}}",
+      "photo_comment": "Фото прокомментировано в {{eventName}}",
+      "guest_feedback_like": "Гость поставил лайк фото в {{eventName}}",
+      "guest_feedback_favorite": "Гость добавил фото в избранное в {{eventName}}",
+      "guest_feedback_rating": "Гость оценил фото в {{eventName}}",
+      "guest_feedback_comment": "Гость прокомментировал фото в {{eventName}}",
+      "system_activity": "Системная активность: {{type}}",
+      "unknown": "Неизвестная активность"
     }
   },
   "acceptInvitation": {
@@ -1849,7 +1951,13 @@
       },
       "storageDestination": "Место хранения",
       "backupType": "Резервная копия {{type}}",
-      "noDestinationSet": "Место хранения не задано"
+      "noDestinationSet": "Место хранения не задано",
+      "healthStatus": {
+        "warning": "Предупреждение",
+        "excellent": "Отлично",
+        "good": "Хорошо",
+        "critical": "Критически"
+      }
     },
     "configuration": {
       "enableBackup": "Включить автоматическое резервное копирование",
@@ -2314,7 +2422,14 @@
     "hasComments": "Есть комментарии",
     "showingPhotos": "Всего фото",
     "withRatings": "С оценками",
-    "combineWith": "Объединить с"
+    "combineWith": "Объединить с",
+    "allPhotos": "Все фото",
+    "anyRating": "Любая оценка",
+    "oneStarPlus": "1+ звезда",
+    "twoStarsPlus": "2+ звезды",
+    "threeStarsPlus": "3+ звезды",
+    "fourStarsPlus": "4+ звезды",
+    "fiveStarsOnly": "Только 5 звёзд"
   },
   "adminLogin": {
     "title": "Вход для администратора",

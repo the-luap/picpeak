@@ -158,7 +158,14 @@
   "navigation": {
     "dashboard": "Dashboard",
     "events": "Events",
-    "settings": "Settings"
+    "archives": "Archives",
+    "settings": "Settings",
+    "eventTypes": "Event Types",
+    "branding": "Branding",
+    "emailSettings": "Email Settings",
+    "backup": "Backup & Restore",
+    "cmsPages": "CMS Pages",
+    "users": "Users"
   },
   "archives": {
     "title": "Archives",
@@ -1295,7 +1302,37 @@
     "noTemplate": "No Template",
     "noTemplateDescription": "Use only theme settings without a CSS template",
     "templateSlot": "Slot {{slot}}",
-    "eventCustomCSS": "Event-specific Custom CSS"
+    "eventCustomCSS": "Event-specific Custom CSS",
+    "layoutDescriptions": {
+      "grid": "Classic grid layout with consistent photo sizes",
+      "masonry": "Pinterest-style layout with varied heights",
+      "carousel": "Full-screen slideshow with navigation",
+      "timeline": "Photos organized by date",
+      "mosaic": "Artistic layout with mixed sizes",
+      "gallery-premium": "Elegant light theme with hero and masonry (Beta)",
+      "gallery-story": "Cinematic dark theme with scene sections (Beta)"
+    },
+    "headerStyleOptions": {
+      "hero": "Hero Image",
+      "standard": "Standard",
+      "banner": "Banner",
+      "minimal": "Minimal",
+      "none": "No Header"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Full-height image with event info overlay",
+      "standard": "Compact inline header with event details",
+      "banner": "Standard header plus a colored banner above",
+      "minimal": "Compact header with essential info",
+      "none": "Hide header completely"
+    },
+    "dividerOptions": {
+      "wave": "Wave",
+      "straight": "Straight",
+      "angle": "Angle",
+      "curve": "Curve",
+      "none": "None"
+    }
   },
   "admin": {
     "title": "Admin Panel",
@@ -1309,6 +1346,9 @@
     "archivedEvents": "Archived Events",
     "systemHealth": "System Health",
     "health": {
+      "healthy": "Healthy",
+      "warning": "Warning",
+      "error": "Error",
       "checking": "Checking..."
     },
     "updates": {
@@ -1465,8 +1505,70 @@
       "loadingDetail": "Loading selections...",
       "detail": {
         "noComments": "No comments",
-        "empty": "No selections in this category"
+        "empty": "No selections in this category",
+        "all": "All",
+        "liked": "Liked",
+        "favorited": "Favorited",
+        "rated": "Rated",
+        "commented": "Commented"
+      },
+      "inviteStatus": {
+        "pending": "Pending",
+        "redeemed": "Redeemed",
+        "revoked": "Revoked"
       }
+    },
+    "analytics": "Analytics",
+    "activities": {
+      "event_created": "New event created: {{eventName}}",
+      "photos_uploaded": "{{count}} photos uploaded to {{eventName}}",
+      "event_archived": "Event archived: {{eventName}}",
+      "archive_restored": "Archive restored: {{eventName}}",
+      "archive_deleted": "Archive deleted: {{eventName}}",
+      "archive_downloaded": "Archive downloaded: {{eventName}}",
+      "email_config_updated": "Email configuration updated",
+      "email_template_updated": "Email template updated: {{template}}",
+      "branding_updated": "Branding settings updated",
+      "theme_updated": "Theme settings updated",
+      "bulk_download": "{{count}} photos downloaded from {{eventName}}",
+      "gallery_password_entry": "Password entered for {{eventName}}",
+      "expiration_warning_viewed": "Expiration warning viewed for {{eventName}}",
+      "feedback_settings_updated": "Feedback settings updated",
+      "feedback_moderated": "Feedback moderated",
+      "feedback_deleted": "Feedback deleted",
+      "photo_like": "Photo liked in {{eventName}}",
+      "photo_favorite": "Photo favorited in {{eventName}}",
+      "photo_rating": "Photo rated in {{eventName}}",
+      "photo_comment": "Photo commented in {{eventName}}",
+      "guest_feedback_like": "Guest liked a photo in {{eventName}}",
+      "guest_feedback_favorite": "Guest favorited a photo in {{eventName}}",
+      "guest_feedback_rating": "Guest rated a photo in {{eventName}}",
+      "guest_feedback_comment": "Guest commented on a photo in {{eventName}}",
+      "word_filter_added": "Word filter added",
+      "external_import_completed": "External media import completed ({{imported}} imported, {{skipped}} skipped)",
+      "bulk_archive_completed": "Bulk archive completed",
+      "event_activated": "Event activated: {{eventName}}",
+      "event_deactivated": "Event deactivated: {{eventName}}",
+      "photo_deleted": "Photo deleted from {{eventName}}",
+      "photos_bulk_deleted": "{{count}} photos deleted from {{eventName}}",
+      "settings_updated": "Settings updated",
+      "event_updated": "Event updated: {{eventName}}",
+      "event_renamed": "Event renamed: {{eventName}}",
+      "event_deleted": "Event deleted: {{eventName}}",
+      "password_changed": "Password changed",
+      "email_resent": "Creation email resent for: {{eventName}}",
+      "category_created": "Category created: {{categoryName}}",
+      "category_updated": "Category updated: {{categoryName}}",
+      "category_deleted": "Category deleted: {{categoryName}}",
+      "general_settings_updated": "General settings updated",
+      "favicon_uploaded": "Favicon uploaded",
+      "analytics_settings_updated": "Analytics settings updated",
+      "cms_page_updated": "CMS page updated: {{page}}",
+      "security_settings_updated": "Security settings updated",
+      "password_reset": "Password reset for: {{eventName}}",
+      "admin_logout": "Admin {{actorName}} logged out",
+      "system_activity": "System activity: {{type}}",
+      "unknown": "Unknown activity"
     }
   },
   "acceptInvitation": {
@@ -1799,7 +1901,13 @@
       },
       "storageDestination": "Storage Destination",
       "backupType": "{{type}} backup",
-      "noDestinationSet": "No destination set"
+      "noDestinationSet": "No destination set",
+      "healthStatus": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "warning": "Warning",
+        "critical": "Critical"
+      }
     },
     "configuration": {
       "enableBackup": "Enable Automated Backups",
@@ -2254,7 +2362,14 @@
     "hasComments": "Has comments",
     "showingPhotos": "Total photos",
     "withRatings": "With ratings",
-    "combineWith": "Combine with"
+    "combineWith": "Combine with",
+    "allPhotos": "All Photos",
+    "anyRating": "Any Rating",
+    "oneStarPlus": "1+ Stars",
+    "twoStarsPlus": "2+ Stars",
+    "threeStarsPlus": "3+ Stars",
+    "fourStarsPlus": "4+ Stars",
+    "fiveStarsOnly": "5 Stars Only"
   },
   "adminLogin": {
     "title": "Admin Login",

@@ -158,7 +158,14 @@
   "navigation": {
     "dashboard": "Dashboard",
     "events": "Evenementen",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "archives": "Archieven",
+    "emailSettings": "E-mailinstellingen",
+    "branding": "Huisstijl",
+    "eventTypes": "Evenementtypes",
+    "backup": "Back-up en herstel",
+    "cmsPages": "CMS-pagina's",
+    "users": "Gebruikers"
   },
   "archives": {
     "title": "Archieven",
@@ -1295,7 +1302,37 @@
     "noTemplate": "Geen sjabloon",
     "noTemplateDescription": "Alleen thema-instellingen gebruiken zonder CSS-sjabloon",
     "templateSlot": "Slot {{slot}}",
-    "eventCustomCSS": "Evenement-specifieke aangepaste CSS"
+    "eventCustomCSS": "Evenement-specifieke aangepaste CSS",
+    "layoutDescriptions": {
+      "grid": "Klassieke rasterindeling met uniforme fotogroottes",
+      "masonry": "Pinterest-stijl indeling met variabele hoogtes",
+      "carousel": "Volledig scherm diashow met navigatie",
+      "timeline": "Foto's gerangschikt op datum",
+      "mosaic": "Artistieke indeling met gemengde groottes",
+      "gallery-premium": "Elegant licht thema met hero en masonry (Beta)",
+      "gallery-story": "Cinematisch donker thema met scènesecties (Beta)"
+    },
+    "headerStyleOptions": {
+      "hero": "Hero-afbeelding",
+      "standard": "Standaard",
+      "banner": "Banner",
+      "minimal": "Minimaal",
+      "none": "Geen koptekst"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Volledige hoogte afbeelding met evenementinfo overlay",
+      "standard": "Compacte inline koptekst met evenementdetails",
+      "banner": "Standaard koptekst plus een gekleurde banner erboven",
+      "minimal": "Compacte koptekst met essentiële info",
+      "none": "Koptekst volledig verbergen"
+    },
+    "dividerOptions": {
+      "none": "Geen",
+      "wave": "Golf",
+      "straight": "Recht",
+      "angle": "Hoek",
+      "curve": "Boog"
+    }
   },
   "admin": {
     "title": "Beheerpaneel",
@@ -1309,7 +1346,10 @@
     "archivedEvents": "Gearchiveerde evenementen",
     "systemHealth": "Systeemgezondheid",
     "health": {
-      "checking": "Controleren..."
+      "checking": "Controleren...",
+      "healthy": "Gezond",
+      "warning": "Waarschuwing",
+      "error": "Fout"
     },
     "updates": {
       "available": "Update beschikbaar",
@@ -1465,8 +1505,70 @@
       "loadingDetail": "Selecties laden…",
       "detail": {
         "noComments": "Geen opmerkingen",
-        "empty": "Geen selecties in deze categorie"
+        "empty": "Geen selecties in deze categorie",
+        "all": "Alle",
+        "liked": "Geliked",
+        "favorited": "Favoriet",
+        "rated": "Beoordeeld",
+        "commented": "Becommentarieerd"
+      },
+      "inviteStatus": {
+        "pending": "In behandeling",
+        "redeemed": "Ingewisseld",
+        "revoked": "Ingetrokken"
       }
+    },
+    "analytics": "Analyse",
+    "activities": {
+      "event_created": "Nieuw evenement aangemaakt: {{eventName}}",
+      "photos_uploaded": "{{count}} foto's geüpload naar {{eventName}}",
+      "event_archived": "Evenement gearchiveerd: {{eventName}}",
+      "archive_restored": "Archief hersteld: {{eventName}}",
+      "archive_deleted": "Archief verwijderd: {{eventName}}",
+      "archive_downloaded": "Archief gedownload: {{eventName}}",
+      "email_config_updated": "E-mailconfiguratie bijgewerkt",
+      "email_template_updated": "E-mailsjabloon bijgewerkt: {{template}}",
+      "branding_updated": "Huisstijlinstellingen bijgewerkt",
+      "theme_updated": "Thema-instellingen bijgewerkt",
+      "bulk_download": "{{count}} foto's gedownload van {{eventName}}",
+      "gallery_password_entry": "Wachtwoord ingevoerd voor {{eventName}}",
+      "expiration_warning_viewed": "Verloopwaarschuwing bekeken voor {{eventName}}",
+      "event_updated": "Evenement bijgewerkt: {{eventName}}",
+      "event_deleted": "Evenement verwijderd: {{eventName}}",
+      "event_activated": "Evenement geactiveerd: {{eventName}}",
+      "event_deactivated": "Evenement gedeactiveerd: {{eventName}}",
+      "bulk_archive_completed": "Bulkarchivering voltooid",
+      "photo_deleted": "Foto verwijderd van {{eventName}}",
+      "photos_bulk_deleted": "{{count}} foto's verwijderd van {{eventName}}",
+      "password_changed": "Wachtwoord gewijzigd",
+      "admin_logout": "Beheerder {{actorName}} uitgelogd",
+      "category_created": "Categorie aangemaakt: {{categoryName}}",
+      "category_updated": "Categorie bijgewerkt: {{categoryName}}",
+      "category_deleted": "Categorie verwijderd: {{categoryName}}",
+      "feedback_settings_updated": "Feedbackinstellingen bijgewerkt",
+      "feedback_moderated": "Feedback gemodereerd",
+      "feedback_deleted": "Feedback verwijderd",
+      "word_filter_added": "Woordfilter toegevoegd",
+      "cms_page_updated": "CMS-pagina bijgewerkt: {{page}}",
+      "email_resent": "Aanmaak-e-mail opnieuw verzonden voor: {{eventName}}",
+      "settings_updated": "Instellingen bijgewerkt",
+      "favicon_uploaded": "Favicon geüpload",
+      "password_reset": "Wachtwoord gereset voor: {{eventName}}",
+      "external_import_completed": "Externe media-import voltooid ({{imported}} geïmporteerd, {{skipped}} overgeslagen)",
+      "photo_like": "Foto geliked in {{eventName}}",
+      "photo_favorite": "Foto als favoriet gemarkeerd in {{eventName}}",
+      "general_settings_updated": "Algemene instellingen bijgewerkt",
+      "analytics_settings_updated": "Analyse-instellingen bijgewerkt",
+      "security_settings_updated": "Beveiligingsinstellingen bijgewerkt",
+      "event_renamed": "Evenement hernoemd: {{eventName}}",
+      "photo_rating": "Foto beoordeeld in {{eventName}}",
+      "photo_comment": "Foto becommentarieerd in {{eventName}}",
+      "guest_feedback_like": "Gast heeft een foto geliked in {{eventName}}",
+      "guest_feedback_favorite": "Gast heeft een foto als favoriet gemarkeerd in {{eventName}}",
+      "guest_feedback_rating": "Gast heeft een foto beoordeeld in {{eventName}}",
+      "guest_feedback_comment": "Gast heeft een opmerking geplaatst op een foto in {{eventName}}",
+      "system_activity": "Systeemactiviteit: {{type}}",
+      "unknown": "Onbekende activiteit"
     }
   },
   "acceptInvitation": {
@@ -1799,7 +1901,13 @@
       },
       "storageDestination": "Opslagbestemming",
       "backupType": "{{type}} back-up",
-      "noDestinationSet": "Geen bestemming ingesteld"
+      "noDestinationSet": "Geen bestemming ingesteld",
+      "healthStatus": {
+        "warning": "Waarschuwing",
+        "excellent": "Uitstekend",
+        "good": "Goed",
+        "critical": "Kritiek"
+      }
     },
     "configuration": {
       "enableBackup": "Geautomatiseerde back-ups inschakelen",
@@ -2254,7 +2362,14 @@
     "hasComments": "Heeft opmerkingen",
     "showingPhotos": "Totaal foto's",
     "withRatings": "Met beoordelingen",
-    "combineWith": "Combineren met"
+    "combineWith": "Combineren met",
+    "allPhotos": "Alle foto's",
+    "anyRating": "Elke beoordeling",
+    "oneStarPlus": "1+ ster",
+    "twoStarsPlus": "2+ sterren",
+    "threeStarsPlus": "3+ sterren",
+    "fourStarsPlus": "4+ sterren",
+    "fiveStarsOnly": "Alleen 5 sterren"
   },
   "export": {
     "button": "Exporteren",

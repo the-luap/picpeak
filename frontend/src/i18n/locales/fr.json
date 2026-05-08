@@ -161,7 +161,14 @@
   "navigation": {
     "dashboard": "Tableau de bord",
     "events": "Événements",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "archives": "Archives",
+    "emailSettings": "Paramètres e-mail",
+    "branding": "Identité visuelle",
+    "eventTypes": "Types d'événements",
+    "backup": "Sauvegarde et Restauration",
+    "cmsPages": "Pages CMS",
+    "users": "Utilisateurs"
   },
   "archives": {
     "title": "Archives",
@@ -1307,7 +1314,37 @@
     "noTemplate": "Aucun modèle",
     "noTemplateDescription": "Utiliser uniquement les paramètres de thème sans modèle CSS",
     "templateSlot": "Emplacement {{slot}}",
-    "eventCustomCSS": "CSS personnalisé par événement"
+    "eventCustomCSS": "CSS personnalisé par événement",
+    "layoutDescriptions": {
+      "grid": "Disposition en grille classique avec tailles de photos uniformes",
+      "masonry": "Disposition de type Pinterest avec hauteurs variées",
+      "carousel": "Diaporama plein écran avec navigation",
+      "timeline": "Photos organisées par date",
+      "mosaic": "Disposition artistique avec tailles mixtes",
+      "gallery-premium": "Thème clair élégant avec hero et masonry (Bêta)",
+      "gallery-story": "Thème sombre cinématographique avec sections de scènes (Bêta)"
+    },
+    "headerStyleOptions": {
+      "hero": "Image Hero",
+      "standard": "Standard",
+      "banner": "Bannière",
+      "minimal": "Minimal",
+      "none": "Pas d'en-tête"
+    },
+    "headerStyleDescriptions": {
+      "hero": "Image pleine hauteur avec superposition d'informations sur l'événement",
+      "standard": "En-tête compact avec détails de l'événement",
+      "banner": "En-tête standard avec bannière colorée au-dessus",
+      "minimal": "En-tête compact avec informations essentielles",
+      "none": "Masquer complètement l'en-tête"
+    },
+    "dividerOptions": {
+      "none": "Aucun",
+      "wave": "Vague",
+      "straight": "Droit",
+      "angle": "Angle",
+      "curve": "Courbe"
+    }
   },
   "admin": {
     "title": "Panneau d'administration",
@@ -1321,7 +1358,10 @@
     "archivedEvents": "Événements archivés",
     "systemHealth": "Santé système",
     "health": {
-      "checking": "Vérification..."
+      "checking": "Vérification...",
+      "healthy": "Sain",
+      "warning": "Avertissement",
+      "error": "Erreur"
     },
     "updates": {
       "available": "Mise à jour disponible",
@@ -1475,7 +1515,17 @@
       "loadingDetail": "Chargement des sélections…",
       "detail": {
         "noComments": "Aucun commentaire",
-        "empty": "Aucune sélection dans cette catégorie"
+        "empty": "Aucune sélection dans cette catégorie",
+        "all": "Tout",
+        "liked": "Aimé",
+        "favorited": "Favori",
+        "rated": "Noté",
+        "commented": "Commenté"
+      },
+      "inviteStatus": {
+        "pending": "En attente",
+        "redeemed": "Utilisé",
+        "revoked": "Révoqué"
       }
     },
     "photos": {
@@ -1487,6 +1537,58 @@
       "processingStatus": "En cours…",
       "processingFailed": "Échoué",
       "retryQueued": "Nouvelle tentative en file d'attente"
+    },
+    "analytics": "Analytique",
+    "activities": {
+      "event_created": "Nouvel événement créé : {{eventName}}",
+      "photos_uploaded": "{{count}} photos téléversées vers {{eventName}}",
+      "event_archived": "Événement archivé : {{eventName}}",
+      "archive_restored": "Archive restaurée : {{eventName}}",
+      "archive_deleted": "Archive supprimée : {{eventName}}",
+      "archive_downloaded": "Archive téléchargée : {{eventName}}",
+      "email_config_updated": "Configuration e-mail mise à jour",
+      "email_template_updated": "Modèle e-mail mis à jour : {{template}}",
+      "branding_updated": "Paramètres d'identité visuelle mis à jour",
+      "theme_updated": "Paramètres de thème mis à jour",
+      "bulk_download": "{{count}} photos téléchargées depuis {{eventName}}",
+      "gallery_password_entry": "Mot de passe saisi pour {{eventName}}",
+      "expiration_warning_viewed": "Avertissement d'expiration consulté pour {{eventName}}",
+      "event_updated": "Événement mis à jour : {{eventName}}",
+      "event_deleted": "Événement supprimé : {{eventName}}",
+      "event_activated": "Événement activé : {{eventName}}",
+      "event_deactivated": "Événement désactivé : {{eventName}}",
+      "bulk_archive_completed": "Archivage en masse terminé",
+      "photo_deleted": "Photo supprimée de {{eventName}}",
+      "photos_bulk_deleted": "{{count}} photos supprimées de {{eventName}}",
+      "password_changed": "Mot de passe modifié",
+      "admin_logout": "Admin {{actorName}} déconnecté",
+      "category_created": "Catégorie créée : {{categoryName}}",
+      "category_updated": "Catégorie mise à jour : {{categoryName}}",
+      "category_deleted": "Catégorie supprimée : {{categoryName}}",
+      "feedback_settings_updated": "Paramètres d'avis mis à jour",
+      "feedback_moderated": "Avis modéré",
+      "feedback_deleted": "Avis supprimé",
+      "word_filter_added": "Filtre de mots ajouté",
+      "cms_page_updated": "Page CMS mise à jour : {{page}}",
+      "email_resent": "E-mail de création renvoyé pour : {{eventName}}",
+      "settings_updated": "Paramètres mis à jour",
+      "favicon_uploaded": "Favicon téléversé",
+      "password_reset": "Mot de passe réinitialisé pour : {{eventName}}",
+      "external_import_completed": "Importation de médias externes terminée ({{imported}} importés, {{skipped}} ignorés)",
+      "photo_like": "Photo aimée dans {{eventName}}",
+      "photo_favorite": "Photo ajoutée aux favoris dans {{eventName}}",
+      "general_settings_updated": "Paramètres généraux mis à jour",
+      "analytics_settings_updated": "Paramètres d'analytique mis à jour",
+      "security_settings_updated": "Paramètres de sécurité mis à jour",
+      "event_renamed": "Événement renommé : {{eventName}}",
+      "photo_rating": "Photo notée dans {{eventName}}",
+      "photo_comment": "Photo commentée dans {{eventName}}",
+      "guest_feedback_like": "Un invité a aimé une photo dans {{eventName}}",
+      "guest_feedback_favorite": "Un invité a mis en favori une photo dans {{eventName}}",
+      "guest_feedback_rating": "Un invité a noté une photo dans {{eventName}}",
+      "guest_feedback_comment": "Un invité a commenté une photo dans {{eventName}}",
+      "system_activity": "Activité système : {{type}}",
+      "unknown": "Activité inconnue"
     }
   },
   "acceptInvitation": {
@@ -1819,7 +1921,13 @@
       },
       "storageDestination": "Destination",
       "backupType": "Sauvegarde {{type}}",
-      "noDestinationSet": "Pas de destination"
+      "noDestinationSet": "Pas de destination",
+      "healthStatus": {
+        "warning": "Avertissement",
+        "excellent": "Excellent",
+        "good": "Bon",
+        "critical": "Critique"
+      }
     },
     "configuration": {
       "enableBackup": "Activer les sauvegardes auto",
@@ -2279,7 +2387,14 @@
     "hasComments": "Avec Commentaires",
     "combineWith": "Combiner avec",
     "showingPhotos": "Total photos",
-    "withRatings": "Avec notes"
+    "withRatings": "Avec notes",
+    "allPhotos": "Toutes les photos",
+    "anyRating": "Toute note",
+    "oneStarPlus": "1+ étoile",
+    "twoStarsPlus": "2+ étoiles",
+    "threeStarsPlus": "3+ étoiles",
+    "fourStarsPlus": "4+ étoiles",
+    "fiveStarsOnly": "5 étoiles uniquement"
   },
   "adminLogin": {
     "title": "Connexion Admin",

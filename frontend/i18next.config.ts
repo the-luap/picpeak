@@ -1,4 +1,6 @@
 import { defineConfig } from 'i18next-cli';
+import { typescriptPlugin } from "./scripts/i18nextExtractionHelper";
+
 
 export default defineConfig({
   locales: ['en', 'de', 'nl', 'pt', 'ru', 'fr'],
@@ -18,6 +20,7 @@ export default defineConfig({
     preserveContextVariants: true,
 
     indentation: 2,
-    sort:false
+    sort: false,
   },
+  plugins: [typescriptPlugin(["./src/App.tsx"]) ]
 });

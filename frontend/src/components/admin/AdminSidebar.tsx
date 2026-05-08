@@ -25,15 +25,8 @@ interface AdminSidebarProps {
   onClose: () => void;
 }
 
-interface NavItem {
-  nameKey: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  permission?: string;
-}
-
-const navigation: NavItem[] = [
-  { nameKey: 'navigation.dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+const navigation = [
+  { nameKey: 'navigation.dashboard', href: '/admin/dashboard', icon: LayoutDashboard, permission: false },
   { nameKey: 'navigation.events', href: '/admin/events', icon: Calendar, permission: 'events.view' },
   { nameKey: 'navigation.archives', href: '/admin/archives', icon: Archive, permission: 'archives.view' },
   { nameKey: 'admin.analytics', href: '/admin/analytics', icon: BarChart3, permission: 'analytics.view' },
@@ -44,7 +37,7 @@ const navigation: NavItem[] = [
   { nameKey: 'navigation.backup', href: '/admin/backup', icon: HardDrive, permission: 'backup.view' },
   { nameKey: 'navigation.cmsPages', href: '/admin/cms', icon: FileText, permission: 'cms.view' },
   { nameKey: 'navigation.users', href: '/admin/users', icon: Users, permission: 'users.view' },
-];
+] as const;
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
