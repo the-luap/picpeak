@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+* **event:** fix updating client access ([ee85e1d](https://github.com/the-luap/picpeak/commit/ee85e1d))
+
 ### Features
 
 * **i18n:** add French (fr) language support with full translation coverage
