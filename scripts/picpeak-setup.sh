@@ -490,6 +490,13 @@ SMTP_FROM=${SMTP_USER:-noreply@localhost}
 FRONTEND_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 
+# Auth cookie behavior — 'auto' emits Secure on HTTPS, omits it on HTTP.
+# Without this, first-time HTTP installs (no reverse proxy yet) silently
+# fail at login because the browser drops Secure cookies over HTTP (#427).
+# On HTTPS via reverse proxy, req.secure is true → Secure flag is still
+# emitted, so this is not a security regression for production deploys.
+COOKIE_SECURE=auto
+
 # Features
 ENABLE_FILE_WATCHER=true
 ENABLE_EXPIRATION_CHECKER=true
@@ -499,27 +506,27 @@ EOF
 
     # Ensure bind mounts are writable by mapped user
     chown -R "$host_uid":"$host_gid" "$app_dir"/storage "$app_dir"/logs "$app_dir"/backup "$app_dir"/data "$app_dir"/events 2>/dev/null || true
-    
+
     # Create docker-compose.yml if it doesn't exist
     if [[ ! -f "$app_dir/docker-compose.yml" ]]; then
         log_step "Creating Docker Compose configuration..."
         create_docker_compose_file "$app_dir"
     fi
-    
+
     # Set up SSL if requested
     if [[ "$ENABLE_SSL" == "true" ]] && [[ -n "$DOMAIN_NAME" ]]; then
         setup_ssl_docker "$app_dir"
     fi
-    
+
     # Start services
     log_step "Starting services..."
     cd "$app_dir"
     docker compose up -d
-    
+
     # Wait for services to be ready
     log_step "Waiting for services to initialize..."
     sleep 10
-    
+
     # Run database migrations
     log_step "Running database migrations..."
     docker compose exec -T backend npm run migrate
@@ -532,7 +539,28 @@ EOF
             log_warn "Automatic admin password reset failed; run reset-admin-password.js inside the backend container."
         fi
     fi
-    
+
+    # Always surface the admin credentials file (#427: iSchumi reported
+    # admins couldn't find the generated password — the migration writes it
+    # to the in-container path and we never copied it to the host unless
+    # --reset-admin-password was used). Best-effort: a missing file just
+    # means the migration ran on a pre-existing DB and didn't generate one.
+    if docker compose cp backend:/app/data/ADMIN_CREDENTIALS.txt "$app_dir/data/ADMIN_CREDENTIALS.txt" 2>/dev/null; then
+        chown "$host_uid":"$host_gid" "$app_dir/data/ADMIN_CREDENTIALS.txt" 2>/dev/null || true
+        chmod 600 "$app_dir/data/ADMIN_CREDENTIALS.txt" 2>/dev/null || true
+        log_step "Admin credentials saved to: $app_dir/data/ADMIN_CREDENTIALS.txt"
+        # Show the password in the install output so the operator can log
+        # in immediately. The file remains as a backup record.
+        echo
+        echo "--------------------------------------------------"
+        grep -E '^Email:|^Password:' "$app_dir/data/ADMIN_CREDENTIALS.txt" 2>/dev/null || true
+        echo "--------------------------------------------------"
+        echo "  Login URL: ${DOMAIN_NAME:+https://$DOMAIN_NAME}${DOMAIN_NAME:-http://YOUR_HOST_IP:3000}/admin"
+        echo "  Full credentials file: $app_dir/data/ADMIN_CREDENTIALS.txt"
+        echo "  Delete the file after recording the password."
+        echo
+    fi
+
     log_success "Docker installation completed!"
 }
 
@@ -766,6 +794,9 @@ SMTP_FROM=${SMTP_USER:-noreply@localhost}
 FRONTEND_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 ADMIN_URL=${DOMAIN_NAME:+https://$DOMAIN_NAME}
 
+# Auth cookie behavior — see Docker .env block above for rationale (#427).
+COOKIE_SECURE=auto
+
 # Features
 ENABLE_FILE_WATCHER=true
 ENABLE_EXPIRATION_CHECKER=true
@@ -780,11 +811,11 @@ LOG_LEVEL=info
 SERVE_FRONTEND=true
 FRONTEND_DIR=$NATIVE_APP_DIR/app/frontend/dist
 EOF
-    
+
     # Set permissions
     chown -R $NATIVE_APP_USER:$NATIVE_APP_USER "$NATIVE_APP_DIR"
     chmod 600 "$NATIVE_APP_DIR/app/backend/.env"
-    
+
     # Run database migrations
     log_step "Initializing database..."
     cd "$NATIVE_APP_DIR/app/backend"
@@ -796,7 +827,22 @@ EOF
             log_warn "Automatic admin password reset failed; please run reset-admin-password.js manually."
         fi
     fi
-    
+
+    # Always surface the admin credentials file (#427).
+    local creds_path="$NATIVE_APP_DIR/app/backend/data/ADMIN_CREDENTIALS.txt"
+    if [[ -f "$creds_path" ]]; then
+        chmod 600 "$creds_path" 2>/dev/null || true
+        log_step "Admin credentials saved to: $creds_path"
+        echo
+        echo "--------------------------------------------------"
+        grep -E '^Email:|^Password:' "$creds_path" 2>/dev/null || true
+        echo "--------------------------------------------------"
+        echo "  Login URL: ${DOMAIN_NAME:+https://$DOMAIN_NAME}${DOMAIN_NAME:-http://YOUR_HOST_IP:${CUSTOM_PORT:-$DEFAULT_PORT}}/admin"
+        echo "  Full credentials file: $creds_path"
+        echo "  Delete the file after recording the password."
+        echo
+    fi
+
     # Create systemd services
     create_systemd_services
     
