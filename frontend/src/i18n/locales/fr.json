@@ -952,11 +952,11 @@
       "loadError": "Échec du chargement",
       "infoTitle": "À propos des vignettes",
       "infoText": "Ce sont des aperçus réduits de vos originaux.",
-      "fit_fill": "",
-      "fit_cover": "",
-      "fit_contain": "",
-      "fit_inside": "",
-      "fit_outside": ""
+      "fit_fill": "Remplir (étirer)",
+      "fit_cover": "Recouvrir (recadrer pour remplir)",
+      "fit_contain": "Contenir (ajuster dans les limites)",
+      "fit_inside": "Intérieur (réduire pour ajuster)",
+      "fit_outside": "Extérieur (agrandir pour recouvrir)"
     },
     "seo": {
       "title": "SEO et Robots",
