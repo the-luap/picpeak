@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.2-beta.0...v3.43.3-beta.0) (2026-05-09)
+
+
+### Bug Fixes
+
+* **gallery:** serve thumbnails / photos / hero via storage abstraction ([#432](https://github.com/the-luap/picpeak/issues/432)) ([d3007b0](https://github.com/the-luap/picpeak/commit/d3007b0dd29d37a46ce26e8b4eb15908e0f8e3d2))
+
 ## [3.43.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.1-beta.0...v3.43.2-beta.0) (2026-05-09)
 
 
