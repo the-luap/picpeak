@@ -1277,7 +1277,7 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     if (Object.prototype.hasOwnProperty.call(updates, 'client_access_enabled')) {
       updates.client_access_enabled = formatBoolean(updates.client_access_enabled);
       // Auto-generate client share token when first enabling
-      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token) {
+      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token && !updates.client_share_token) {
         updates.client_share_token = crypto.randomBytes(32).toString('hex');
       }
     }
