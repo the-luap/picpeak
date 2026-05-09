@@ -5,6 +5,24 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.7-beta.0...v3.43.0-beta.0) (2026-05-09)
+
+
+### Features
+
+* **localization:** add French translations for fit options in thumbnails ([2c12885](https://github.com/the-luap/picpeak/commit/2c1288583fe787c1514c3cace0e2d92a212bb3a3))
+* **localization:** add i18next configuration and CLI commands for localization management ([74e87b9](https://github.com/the-luap/picpeak/commit/74e87b968b3152603dbfca72fae06372b7c7f519))
+* **localization:** add i18next extraction helper & refactor backup configuration component to tsx ([e7228b0](https://github.com/the-luap/picpeak/commit/e7228b07805a40aa67ccb7e3592848218eabbca2))
+* **localization:** add missing translations ([86ee6c8](https://github.com/the-luap/picpeak/commit/86ee6c80aa1f26b2ad47775337ebed301193e662))
+* **localization:** improve English translations for clarity and consistency ([46b99c6](https://github.com/the-luap/picpeak/commit/46b99c629215832e66d9215a210fd6eaf8c89fb4))
+* **localization:** update thumbnail settings and add fit options translations ([5fc427c](https://github.com/the-luap/picpeak/commit/5fc427c74b5cdda6ce1568006d9a94abdc692b3b))
+* **translations:** add French language support and improve localization handling ([a5db4bd](https://github.com/the-luap/picpeak/commit/a5db4bd46e6a5cc84c9563588f90d3461c277528))
+
+
+### Documentation
+
+* **localization:** enhance French language support and improve i18next configuration ([d1bc5e0](https://github.com/the-luap/picpeak/commit/d1bc5e030f55c15bf09f37b97f8e1608578a2395))
+
 ## [Unreleased]
 
 ### Features
