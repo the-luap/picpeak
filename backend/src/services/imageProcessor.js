@@ -101,10 +101,17 @@ const contentTypeFor = (format) => {
  *
  * Callers must ensure the source is on the local filesystem. For S3 mode
  * regeneration flows, fetch via `withLocalCopy(storage, sourceKey, fn)` first.
+ *
+ * options.outputBasename — override the basename portion of the thumbnail
+ * filename (default: basename of imagePath). Used for external/reference
+ * photos where the source basename can collide across events (#423) — the
+ * import path passes a per-photo unique basename so two events both
+ * referencing `IMG_0001.jpg` don't clobber each other's thumbnail.
  */
 async function generateThumbnail(imagePath, options = {}) {
-  const filename = path.basename(imagePath);
-  const thumbnailFilename = `thumb_${filename}`;
+  const sourceBasename = path.basename(imagePath);
+  const outputBasename = options.outputBasename || sourceBasename;
+  const thumbnailFilename = `thumb_${outputBasename}`;
   const thumbnailRelKey = path.posix.join('thumbnails', thumbnailFilename);
   const storage = getStorage();
 
@@ -168,7 +175,7 @@ async function generateThumbnail(imagePath, options = {}) {
     return thumbnailRelKey;
   } catch (error) {
     const msg = (error && error.message) ? error.message : String(error);
-    logger.error(`Failed to generate thumbnail for ${filename}: ${msg}`);
+    logger.error(`Failed to generate thumbnail for ${sourceBasename}: ${msg}`);
 
     // Clean up any partially uploaded object
     await storage.delete(thumbnailRelKey).catch(() => {});
@@ -220,22 +227,25 @@ async function withLocalCopy(sourceKey, fn) {
 }
 
 /**
- * Regenerate thumbnail if it's broken or missing
+ * Regenerate thumbnail if it's broken or missing.
+ *
+ * Works for both managed photos (stored via the storage backend, possibly
+ * S3) and external/reference photos (#423 — sourced from a local mount
+ * outside the managed storage tree, e.g. NAS over SMB/NFS). External
+ * photos historically had thumbnail_path=null, which forced the gallery
+ * to fall back to streaming the full original on every tile — minutes of
+ * load time for a 100-photo NAS-mounted gallery.
  */
 async function ensureThumbnail(photo) {
-  const { resolvePhotoStorageKey } = require('./photoResolver');
-  let sourceKey;
-  try {
-    const event = await db('events').where('id', photo.event_id).first();
-    sourceKey = resolvePhotoStorageKey(event, photo);
-    logger.info(`Ensuring thumbnail for photo ${photo.id} from key: ${sourceKey}`);
-  } catch (e) {
-    const msg = (e && e.message) ? e.message : String(e);
-    logger.error(`Failed to resolve original key for thumbnail (photo ${photo.id}): ${msg}`);
+  const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
+
+  const event = await db('events').where('id', photo.event_id).first();
+  if (!event) {
+    logger.error(`ensureThumbnail: event ${photo.event_id} not found for photo ${photo.id}`);
     return null;
   }
 
-  // Check if thumbnail exists and is valid
+  // Check if thumbnail exists and is valid (works for any source).
   if (photo.thumbnail_path) {
     const isValid = await isThumbnailValid(photo.thumbnail_path);
     if (isValid) {
@@ -244,10 +254,38 @@ async function ensureThumbnail(photo) {
     logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
   }
 
-  // Generate new thumbnail (sources via withLocalCopy so this works in S3 mode)
-  const newThumbnailPath = await withLocalCopy(sourceKey, (localPath) =>
-    generateThumbnail(localPath, { regenerate: true })
-  );
+  const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
+
+  let newThumbnailPath;
+  if (isExternal) {
+    // External: source is on a local mount path. No withLocalCopy needed
+    // (storage-backend abstraction doesn't apply — this is a direct fs
+    // read). Use a per-photo unique outputBasename so two events both
+    // referencing the same NAS basename can't clobber each other's thumb.
+    let localPath;
+    try {
+      localPath = resolvePhotoFilePath(event, photo);
+    } catch (e) {
+      logger.error(`Failed to resolve external file for thumbnail (photo ${photo.id}): ${e.message}`);
+      return null;
+    }
+    const sourceBasename = path.basename(photo.external_relpath || photo.filename || `photo-${photo.id}`);
+    const outputBasename = `ext${photo.id}_${sourceBasename}`;
+    logger.info(`Ensuring thumbnail for external photo ${photo.id} from ${localPath}`);
+    newThumbnailPath = await generateThumbnail(localPath, { regenerate: true, outputBasename });
+  } else {
+    let sourceKey;
+    try {
+      sourceKey = resolvePhotoStorageKey(event, photo);
+    } catch (e) {
+      logger.error(`Failed to resolve original key for thumbnail (photo ${photo.id}): ${e.message}`);
+      return null;
+    }
+    logger.info(`Ensuring thumbnail for photo ${photo.id} from key: ${sourceKey}`);
+    newThumbnailPath = await withLocalCopy(sourceKey, (localPath) =>
+      generateThumbnail(localPath, { regenerate: true })
+    );
+  }
 
   if (newThumbnailPath) {
     await db('photos')
