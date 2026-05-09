@@ -1192,14 +1192,6 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
       return res.status(400).json({ error: 'external_path is required when source_mode is reference' });
     }
 
-    // Handle client access fields (#172)
-    if (Object.prototype.hasOwnProperty.call(updates, 'client_access_enabled')) {
-      updates.client_access_enabled = formatBoolean(updates.client_access_enabled);
-      // Auto-generate client share token when first enabling
-      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token) {
-        updates.client_share_token = crypto.randomBytes(32).toString('hex');
-      }
-    }
     if (Object.prototype.hasOwnProperty.call(updates, 'client_password') && updates.client_password) {
       updates.client_password_hash = await bcrypt.hash(updates.client_password, getBcryptRounds());
       delete updates.client_password;
@@ -1278,6 +1270,15 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
         }
       } catch (_) {
         // color_theme is not JSON (e.g. preset name) – nothing to extract
+      }
+    }
+
+    // Handle client access fields (#172)
+    if (Object.prototype.hasOwnProperty.call(updates, 'client_access_enabled')) {
+      updates.client_access_enabled = formatBoolean(updates.client_access_enabled);
+      // Auto-generate client share token when first enabling
+      if (parseBooleanInput(updates.client_access_enabled, false) && !event.client_share_token && !updates.client_share_token) {
+        updates.client_share_token = crypto.randomBytes(32).toString('hex');
       }
     }
 
