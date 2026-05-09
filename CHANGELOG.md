@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.6-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.5-beta.0...v3.42.6-beta.0) (2026-05-09)
+
+
+### Bug Fixes
+
+* **external-media:** pre-generate thumbnails so reference-mode galleries load fast ([#423](https://github.com/the-luap/picpeak/issues/423)) ([e2ffd9f](https://github.com/the-luap/picpeak/commit/e2ffd9f93d228f9e16408fe424c65b26db67ac8e))
+* **external-media:** pre-generate thumbnails so reference-mode galleries load fast ([#423](https://github.com/the-luap/picpeak/issues/423)) ([f3d0f16](https://github.com/the-luap/picpeak/commit/f3d0f161c9e554a5149e6b4eafdb0ac42bebf277))
+
 ## [3.42.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.4-beta.0...v3.42.5-beta.0) (2026-05-08)
 
 
