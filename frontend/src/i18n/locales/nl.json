@@ -535,15 +535,8 @@
     "deleteSelected": "Geselecteerde verwijderen",
     "bulkDelete": {
       "warning": "De geselecteerde evenementen, al hun foto's, archieven en auditlogboeken worden permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
-      "passwordLabel": "Voer ter bevestiging uw wachtwoord opnieuw in",
-      "passwordPlaceholder": "Uw beheerderswachtwoord",
-      "passwordHelp": "We vragen om uw wachtwoord als bescherming tegen onbedoelde bulkverwijderingen.",
-      "incorrectPassword": "Onjuist wachtwoord. Er zijn geen evenementen verwijderd.",
       "confirmLabel": "Typ {{literal}} om te bevestigen",
       "confirmHelp": "Een getypte bevestiging voorkomt onbedoelde verwijderingen en wordt niet beïnvloed door browser-autofill of passkey-snelkoppelingen.",
-      "submit": "{{count}} evenementen verwijderen",
-      "processing": "{{count}} evenementen worden verwijderd. Dit kan enkele minuten duren — sluit dit venster niet.",
-      "successAll": "{{count}} evenementen permanent verwijderd",
       "successPartial": "{{success}} evenementen verwijderd, {{failed}} mislukt",
       "errorGeneric": "Kan evenementen niet verwijderen",
       "successAll_one": "{{count}} evenement definitief verwijderd",
@@ -941,7 +934,12 @@
       "saveError": "Kan miniatuurinstellingen niet opslaan",
       "loadError": "Kan miniatuurinstellingen niet laden",
       "infoTitle": "Over miniaturen",
-      "infoText": "Miniaturen zijn kleinere voorbeeldafbeeldingen die worden gegenereerd van uw originelen. Het vergroten van de afmetingen of kwaliteit verbetert hoe foto's er uitzien in het galerijraster, maar gebruikt meer opslag en bandbreedte. Na het wijzigen van instellingen, gebruik \"Alle miniaturen opnieuw genereren\" om bestaande foto's bij te werken."
+      "infoText": "Miniaturen zijn kleinere voorbeeldafbeeldingen die worden gegenereerd van uw originelen. Het vergroten van de afmetingen of kwaliteit verbetert hoe foto's er uitzien in het galerijraster, maar gebruikt meer opslag en bandbreedte. Na het wijzigen van instellingen, gebruik \"Alle miniaturen opnieuw genereren\" om bestaande foto's bij te werken.",
+      "fit_cover": "Cover (bijsnijden om te vullen)",
+      "fit_contain": "Contain (passend binnen)",
+      "fit_fill": "Vullen (uitrekken)",
+      "fit_inside": "Binnenkant (verkleinen om te passen)",
+      "fit_outside": "Buitenkant (vergroten om te bedekken)"
     },
     "seo": {
       "title": "SEO & Robots",

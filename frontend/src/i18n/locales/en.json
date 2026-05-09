@@ -535,15 +535,8 @@
     "deleteSelected": "Delete Selected",
     "bulkDelete": {
       "warning": "This will permanently delete the selected events, all their photos, archives, and audit logs. This action cannot be undone.",
-      "passwordLabel": "Re-enter your password to confirm",
-      "passwordPlaceholder": "Your admin password",
-      "passwordHelp": "We require your password as a safeguard against accidental bulk deletions.",
-      "incorrectPassword": "Incorrect password. No events were deleted.",
       "confirmLabel": "Type {{literal}} to confirm",
       "confirmHelp": "A typed confirmation prevents accidental deletions and isn't affected by browser autofill or passkey shortcuts.",
-      "submit": "Delete {{count}} events",
-      "processing": "Deleting {{count}} events. This may take a few minutes — please don't close this window.",
-      "successAll": "Permanently deleted {{count}} events",
       "successPartial": "Deleted {{success}} events, {{failed}} failed",
       "errorGeneric": "Failed to delete events",
       "successAll_one": "events.bulkDelete.successAll",
@@ -941,7 +934,12 @@
       "saveError": "Failed to save thumbnail settings",
       "loadError": "Failed to load thumbnail settings",
       "infoTitle": "About Thumbnails",
-      "infoText": "Thumbnails are smaller preview images generated from your originals. Increasing the size or quality improves how photos look in the gallery grid but uses more storage and bandwidth. After changing settings, use \"Regenerate All Thumbnails\" to update existing photos."
+      "infoText": "Thumbnails are smaller preview images generated from your originals. Increasing the size or quality improves how photos look in the gallery grid but uses more storage and bandwidth. After changing settings, use \"Regenerate All Thumbnails\" to update existing photos.",
+      "fit_cover": "Cover (crop to fill)",
+      "fit_contain": "Contain (fit within)",
+      "fit_fill": "Fill (stretch)",
+      "fit_inside": "Inside (shrink to fit)",
+      "fit_outside": "Outside (expand to cover)"
     },
     "seo": {
       "title": "SEO & Robots",

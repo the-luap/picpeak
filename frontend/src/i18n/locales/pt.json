@@ -543,15 +543,8 @@
     "deleteSelected": "Excluir selecionados",
     "bulkDelete": {
       "warning": "Os eventos selecionados, todas as suas fotos, arquivos e logs de auditoria serão excluídos permanentemente. Esta ação não pode ser desfeita.",
-      "passwordLabel": "Digite sua senha novamente para confirmar",
-      "passwordPlaceholder": "Sua senha de administrador",
-      "passwordHelp": "Solicitamos sua senha como proteção contra exclusões em massa acidentais.",
-      "incorrectPassword": "Senha incorreta. Nenhum evento foi excluído.",
       "confirmLabel": "Digite {{literal}} para confirmar",
       "confirmHelp": "Uma confirmação digitada evita exclusões acidentais e não é afetada pelo autopreenchimento do navegador ou atalhos de passkey.",
-      "submit": "Excluir {{count}} eventos",
-      "processing": "Excluindo {{count}} eventos. Isso pode levar alguns minutos — não feche esta janela.",
-      "successAll": "{{count}} eventos excluídos permanentemente",
       "successPartial": "{{success}} eventos excluídos, {{failed}} com falha",
       "errorGeneric": "Falha ao excluir eventos",
       "successAll_many": "{{count}} eventos eliminados permanentemente",
@@ -958,7 +951,12 @@
       "saveError": "Falha ao salvar configurações",
       "loadError": "Falha ao carregar configurações",
       "infoTitle": "Sobre Miniaturas",
-      "infoText": "Miniaturas são versões menores das fotos. Aumentar o tamanho melhora a aparência, mas usa mais espaço e banda."
+      "infoText": "Miniaturas são versões menores das fotos. Aumentar o tamanho melhora a aparência, mas usa mais espaço e banda.",
+      "fit_cover": "Cover (cortar para preencher)",
+      "fit_contain": "Contain (ajustar ao espaço)",
+      "fit_fill": "Fill (esticar)",
+      "fit_inside": "Inside (encolher para caber)",
+      "fit_outside": "Outside (expandir para cobrir)"
     },
     "seo": {
       "title": "SEO e Robots",

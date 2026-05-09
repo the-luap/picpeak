@@ -583,7 +583,6 @@
       "successAll_one": "{{count}} événement supprimé définitivement",
       "successAll_other": "{{count}} événements supprimés définitivement",
       "successPartial": "{{success}} événements supprimés, {{failed}} échoués",
-      "incorrectPassword": "Mot de passe incorrect. Aucun événement supprimé.",
       "errorGeneric": "Échec de la suppression des événements",
       "title_many": "Supprimer définitivement {{count}} événements ?",
       "title_one": "Supprimer définitivement {{count}} événement ?",
@@ -592,12 +591,11 @@
       "processing_one": "Suppression de {{count}} événement. Cela peut prendre quelques minutes — ne fermez pas cette fenêtre.",
       "processing_other": "Suppression de {{count}} événements. Cela peut prendre quelques minutes — ne fermez pas cette fenêtre.",
       "warning": "Cette action supprimera définitivement les événements sélectionnés, toutes leurs photos, archives et journaux d'audit. Cette action est irréversible.",
-      "passwordLabel": "Ressaisissez votre mot de passe pour confirmer",
-      "passwordPlaceholder": "Votre mot de passe administrateur",
-      "passwordHelp": "Votre mot de passe est requis pour éviter les suppressions accidentelles en masse.",
       "submit_many": "Supprimer {{count}} événements",
       "submit_one": "Supprimer {{count}} événement",
-      "submit_other": "Supprimer {{count}} événements"
+      "submit_other": "Supprimer {{count}} événements",
+      "confirmLabel": "Ecris {{literal}} pour confirmer",
+      "confirmHelp": "Une confirmation saisie au clavier évite les suppressions accidentelles et n'est pas affectée par la fonction de remplissage automatique du navigateur ni par les raccourcis clavier."
     },
     "draft": "Brouillon",
     "expired": "Expiré",
@@ -953,7 +951,12 @@
       "saveError": "Échec de l'enregistrement",
       "loadError": "Échec du chargement",
       "infoTitle": "À propos des vignettes",
-      "infoText": "Ce sont des aperçus réduits de vos originaux."
+      "infoText": "Ce sont des aperçus réduits de vos originaux.",
+      "fit_fill": "",
+      "fit_cover": "",
+      "fit_contain": "",
+      "fit_inside": "",
+      "fit_outside": ""
     },
     "seo": {
       "title": "SEO et Robots",
