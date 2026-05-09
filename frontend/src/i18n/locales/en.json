@@ -327,10 +327,10 @@
     "photosCount_one": "{{count}} photo",
     "photosCount_other": "{{count}} photos",
     "poweredBy": "Powered by PicPeak",
-    "photosSelected_one": "gallery.photosSelected",
-    "photosSelected_other": "gallery.photosSelected",
-    "downloadSelected_one": "gallery.downloadSelected",
-    "downloadSelected_other": "gallery.downloadSelected"
+    "photosSelected_one": "{{count}} photo selected",
+    "photosSelected_other": "{{count}} photos selected",
+    "downloadSelected_one": "Download {{count}} photo",
+    "downloadSelected_other": "Download {{count}} photos"
   },
   "categories": {
     "title": "Photo Categories",
@@ -539,8 +539,8 @@
       "confirmHelp": "A typed confirmation prevents accidental deletions and isn't affected by browser autofill or passkey shortcuts.",
       "successPartial": "Deleted {{success}} events, {{failed}} failed",
       "errorGeneric": "Failed to delete events",
-      "successAll_one": "events.bulkDelete.successAll",
-      "successAll_other": "events.bulkDelete.successAll",
+      "successAll_one": "Permanently deleted {{count}} event",
+      "successAll_other": "Permanently deleted {{count}} events",
       "title_one": "Permanently delete {{count}} events?",
       "title_other": "Permanently delete {{count}} events?",
       "processing_one": "Deleting {{count}} events. This may take a few minutes — please don't close this window.",
@@ -1020,7 +1020,7 @@
       "statusRevoked": "Revoked",
       "statusExpired": "Expired",
       "statusActive": "Active",
-      "confirmRevoke": "settings.apiTokens.confirmRevoke",
+      "confirmRevoke": "Do you want to revoke this token? This action cannot be undone.",
       "revoke": "Revoke",
       "empty": "No tokens yet. Generate one above to get started."
     },
@@ -1648,7 +1648,7 @@
     "expirationRange": "Expiration must be between 1 and 365 days",
     "required": "This field is required",
     "expirationRequired": "Expiration date is required.",
-    "eventDateRequired": "validation.eventDateRequired",
+    "eventDateRequired": "Event date is required.",
     "passwordTooSimple": "Password cannot be just numbers. Consider using a date format like \"04.07.2025\""
   },
   "legal": {
@@ -2342,7 +2342,7 @@
     "namePlaceholder": "Enter your name",
     "emailPlaceholder": "Enter your email",
     "submitFeedback": "Submit Feedback",
-    "moderationSuccess": "feedback.moderationSuccess",
+    "moderationSuccess": "Feedback moderated successfully",
     "pendingModeration": "Pending Moderation",
     "pending": "pending",
     "noPendingComments": "No comments pending moderation",
