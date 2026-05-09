@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.0-beta.0...v3.43.1-beta.0) (2026-05-09)
+
+
+### Bug Fixes
+
+* **event:** correct updating client access ([d00f6fa](https://github.com/the-luap/picpeak/commit/d00f6fa7de59bdbd30efe9ce824e795cf05616f4))
+* **event:** ensure client share token is generated only when necessary ([916580a](https://github.com/the-luap/picpeak/commit/916580adefd464417729e418aa1727b67566fea3))
+
 ## [3.43.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.7-beta.0...v3.43.0-beta.0) (2026-05-09)
 
 
