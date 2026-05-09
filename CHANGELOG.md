@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.7-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.6-beta.0...v3.42.7-beta.0) (2026-05-09)
+
+
+### Bug Fixes
+
+* **auth:** default COOKIE_SECURE to 'auto' in production + first-install UX ([#427](https://github.com/the-luap/picpeak/issues/427)) ([e1c9382](https://github.com/the-luap/picpeak/commit/e1c93823c4a3095dd2afa618f393a061806f18a3))
+
 ## [3.42.6-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.5-beta.0...v3.42.6-beta.0) (2026-05-09)
 
 
