@@ -5,6 +5,22 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+* **i18n:** add French (fr) language support with full translation coverage
+* **i18n:** add i18next configuration with language detection and namespace setup
+* **i18n:** add CLI commands for localization management (extraction, validation)
+* **i18n:** add `i18nextExtractionHelper` developer script for auditing missing translation keys
+* **i18n:** complete and restructure translation files for EN, DE, NL, PT, RU with consistent key naming
+
+### Code Refactoring
+
+* **admin:** convert `BackupConfiguration`, `BackupDashboard`, and `BackupManagement` from JSX to TSX with full i18n support
+* **admin:** remove stale `.d.ts` declaration files replaced by TSX components
+* **i18n:** clean up `useLocalizedTimeAgo` hook and update `useLocalizedDate`
+
 ## [3.42.7-beta.0](https://github.com/the-luap/picpeak/compare/v3.42.6-beta.0...v3.42.7-beta.0) (2026-05-09)
 
 

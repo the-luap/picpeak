@@ -24,8 +24,8 @@ const defaultSettings: ThumbnailSettings = {
 
 interface FetchedSettings {
   settings: Record<string, { value: string; description: string }>;
-  fitOptions: string[];
-  formatOptions: string[];
+  fitOptions: Array<'cover' | 'contain' | 'fill' | 'inside' | 'outside'>;
+  formatOptions: Array<'jpeg' | 'png' | 'webp'>;
 }
 
 export const ThumbnailsTab: React.FC = () => {

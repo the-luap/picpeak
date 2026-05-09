@@ -38,9 +38,60 @@ export interface SystemHealth {
   };
 }
 
+export type ActivityType =
+  | "event_created"
+  | "photos_uploaded"
+  | "event_archived"
+  | "archive_restored"
+  | "archive_deleted"
+  | "archive_downloaded"
+  | "email_config_updated"
+  | "email_template_updated"
+  | "branding_updated"
+  | "theme_updated"
+  | "bulk_download"
+  | "gallery_password_entry"
+  | "expiration_warning_viewed"
+  | "feedback_settings_updated"
+  | "feedback_moderated"
+  | "feedback_deleted"
+  | "photo_like"
+  | "photo_favorite"
+  | "photo_rating"
+  | "photo_comment"
+  | "guest_feedback_like"
+  | "guest_feedback_favorite"
+  | "guest_feedback_rating"
+  | "guest_feedback_comment"
+  | "word_filter_added"
+  | "external_import_completed"
+  | "bulk_archive_completed"
+  | "event_activated"
+  | "event_deactivated"
+  | "photo_deleted"
+  | "photos_bulk_deleted"
+  | "settings_updated"
+  | "event_updated"
+  | "event_renamed"
+  | "event_deleted"
+  | "password_changed"
+  | "email_resent"
+  | "category_created"
+  | "category_updated"
+  | "category_deleted"
+  | "general_settings_updated"
+  | "favicon_uploaded"
+  | "analytics_settings_updated"
+  | "cms_page_updated"
+  | "security_settings_updated"
+  | "password_reset"
+  | "admin_logout"
+  | "system_activity"
+  | "unknown"
+
 export interface Activity {
   id: number;
-  type: string;
+  type: ActivityType;
   actorType: string;
   actorName: string;
   eventName?: string;
