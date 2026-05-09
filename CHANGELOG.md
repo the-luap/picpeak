@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.1-beta.0...v3.43.2-beta.0) (2026-05-09)
+
+
+### Documentation
+
+* **contributing:** update branch reference from main to beta ([ed37caf](https://github.com/the-luap/picpeak/commit/ed37caf3d898d9b2db985e6c6ff203457fd4aa38))
+
 ## [3.43.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.0-beta.0...v3.43.1-beta.0) (2026-05-09)
 
 
