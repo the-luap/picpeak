@@ -13,7 +13,7 @@ const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
-const { ensureThumbnail, ensureHeroImage } = require('../services/imageProcessor');
+const { ensureThumbnail, ensureHeroImage, withLocalCopy } = require('../services/imageProcessor');
 const downloadZipService = require('../services/downloadZipService');
 const { getStorage } = require('../services/storage');
 const fs = require('fs');
@@ -749,8 +749,8 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
 
           const watermarkedBuffer = storageKey
             ? await withLocalCopy(storageKey, (localPath) =>
-                watermarkService.applyWatermark(localPath, effectiveSettings)
-              )
+              watermarkService.applyWatermark(localPath, effectiveSettings)
+            )
             : await watermarkService.applyWatermark(sourceForWatermark, effectiveSettings);
 
           archive.append(watermarkedBuffer, { name: archiveName });
@@ -863,8 +863,8 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
         if (shouldApplyWatermark && effectiveSettings) {
           const buf = storageKey
             ? await withSelectedLocalCopy(storageKey, (lp) =>
-                watermarkService.applyWatermark(lp, effectiveSettings)
-              )
+              watermarkService.applyWatermark(lp, effectiveSettings)
+            )
             : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), effectiveSettings);
           archive.append(buf, { name });
         } else if (storageKey) {
@@ -937,58 +937,83 @@ router.get('/:slug/photo/:photoId',
         });
       }
 
-      // Resolve the absolute file path for this photo, supporting both managed and external reference modes
-      const { resolvePhotoFilePath } = require('../services/photoResolver');
-      const fs = require('fs');
+      // Resolve where to read the photo bytes from. For external/reference
+      // photos the source is always a local mount path. For managed photos
+      // we go through the storage abstraction so S3 deployments work too
+      // (#432 — previously this route did fs.* directly and 500'd in S3
+      // mode because the file wasn't on the container's local fs).
+      const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('../services/photoResolver');
+      const storage = getStorage();
+      const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
+      const useStorageBackend = !isExternal;
 
-      let filePath;
-      try {
-        filePath = resolvePhotoFilePath(req.event, photo);
-      } catch (resolveError) {
-        logger.error('Failed to resolve photo path', {
-          slug: req.params.slug,
-          photoId,
-          eventId: req.event.id,
-          error: resolveError.message,
-          photoPath: photo.path,
-          photoFilename: photo.filename
-        });
-        return res.status(404).json({ error: 'Photo file not found' });
+      let filePath = null;     // Local fs path (external photos OR LocalFs storage)
+      let storageKey = null;   // Relative storage key (managed photos via storage abstraction)
+      let stat;
+      let fileSize;
+
+      if (useStorageBackend) {
+        try {
+          storageKey = resolvePhotoStorageKey(req.event, photo);
+        } catch (resolveError) {
+          logger.error('Failed to resolve photo storage key', {
+            slug: req.params.slug,
+            photoId,
+            eventId: req.event.id,
+            error: resolveError.message,
+            photoPath: photo.path,
+            photoFilename: photo.filename
+          });
+          return res.status(404).json({ error: 'Photo file not found' });
+        }
+        stat = await storage.stat(storageKey);
+        if (!stat) {
+          logger.error('Photo not found in storage backend', {
+            slug: req.params.slug,
+            photoId,
+            eventId: req.event.id,
+            storageKey
+          });
+          return res.status(404).json({ error: 'Photo file not found' });
+        }
+        fileSize = stat.size;
+      } else {
+        try {
+          filePath = resolvePhotoFilePath(req.event, photo);
+        } catch (resolveError) {
+          logger.error('Failed to resolve photo path', {
+            slug: req.params.slug,
+            photoId,
+            eventId: req.event.id,
+            error: resolveError.message,
+            photoPath: photo.path,
+            photoFilename: photo.filename
+          });
+          return res.status(404).json({ error: 'Photo file not found' });
+        }
+        if (!fs.existsSync(filePath)) {
+          logger.error('Photo file does not exist at resolved path', {
+            slug: req.params.slug,
+            photoId,
+            eventId: req.event.id,
+            resolvedPath: filePath,
+            photoPath: photo.path
+          });
+          return res.status(404).json({ error: 'Photo file not found' });
+        }
+        stat = fs.statSync(filePath);
+        fileSize = stat.size;
       }
-
-      // Verify file exists before attempting to serve
-      if (!fs.existsSync(filePath)) {
-        logger.error('Photo file does not exist at resolved path', {
-          slug: req.params.slug,
-          photoId,
-          eventId: req.event.id,
-          resolvedPath: filePath,
-          photoPath: photo.path
-        });
-        return res.status(404).json({ error: 'Photo file not found' });
-      }
-
-      // Log access - temporarily disabled for debugging
-      // await secureImageService.logImageAccess(
-      //   photoId,
-      //   req.event.id,
-      //   req.clientInfo,
-      //   'view_basic'
-      // );
 
       // Handle video streaming with range requests
       if (isVideo) {
-        const stat = fs.statSync(filePath);
-        const fileSize = stat.size;
         const range = req.headers.range;
 
         if (range) {
-          // Parse range header
           const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
           const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
           const chunksize = (end - start) + 1;
-          const file = fs.createReadStream(filePath, { start, end });
 
           res.writeHead(206, {
             'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -999,9 +1024,11 @@ router.get('/:slug/photo/:photoId',
             'X-Protection-Level': 'basic'
           });
 
+          const file = useStorageBackend
+            ? await storage.getRange(storageKey, start, end)
+            : fs.createReadStream(filePath, { start, end });
           file.pipe(res);
         } else {
-          // No range request, send entire file
           res.writeHead(200, {
             'Content-Length': fileSize,
             'Content-Type': photo.mime_type || 'video/mp4',
@@ -1009,53 +1036,69 @@ router.get('/:slug/photo/:photoId',
             'Cache-Control': 'private, max-age=1800',
             'X-Protection-Level': 'basic'
           });
-
-          fs.createReadStream(filePath).pipe(res);
+          const file = useStorageBackend
+            ? await storage.get(storageKey)
+            : fs.createReadStream(filePath);
+          file.pipe(res);
         }
         return;
       }
 
-      // Handle images (existing logic)
-      // Get watermark settings
+      // Image path
       const watermarkSettings = await watermarkService.getWatermarkSettings();
 
-      // Generate ETag based on photo id, modification time, and watermark settings
-      // This ensures cache invalidation when watermark settings change
-      const stat = fs.statSync(filePath);
+      const mtimeMs = stat.mtime ? stat.mtime.getTime() : 0;
       const watermarkHash = watermarkSettings?.enabled
         ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
         : '-nowm';
-      const etag = `"${photoId}-${stat.mtime.getTime()}${watermarkHash}"`;
+      const etag = `"${photoId}-${mtimeMs}${watermarkHash}"`;
 
-      // Check if client has valid cached version
       if (req.headers['if-none-match'] === etag) {
         return res.status(304).end();
       }
 
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Try to serve pre-generated watermarked file for instant loading
+        // Pre-generated watermarked file: served via the storage backend
+        // (managed) or directly from local fs (external).
         if (photo.watermark_path) {
-          const watermarkFilePath = path.join(getStoragePath(), photo.watermark_path);
           try {
-            // Check if pre-generated watermark file exists
-            if (fs.existsSync(watermarkFilePath)) {
-              res.set({
-                'Content-Type': photo.mime_type || 'image/jpeg',
-                'Cache-Control': 'private, max-age=1800',
-                'ETag': etag,
-                'X-Protection-Level': 'basic'
-              });
-              return res.sendFile(watermarkFilePath);
+            if (useStorageBackend) {
+              const wmStat = await storage.stat(photo.watermark_path);
+              if (wmStat) {
+                res.set({
+                  'Content-Type': photo.mime_type || 'image/jpeg',
+                  'Content-Length': wmStat.size,
+                  'Cache-Control': 'private, max-age=1800',
+                  'ETag': etag,
+                  'X-Protection-Level': 'basic'
+                });
+                const wmStream = await storage.get(photo.watermark_path);
+                return wmStream.pipe(res);
+              }
+            } else {
+              const watermarkFilePath = path.join(getStoragePath(), photo.watermark_path);
+              if (fs.existsSync(watermarkFilePath)) {
+                res.set({
+                  'Content-Type': photo.mime_type || 'image/jpeg',
+                  'Cache-Control': 'private, max-age=1800',
+                  'ETag': etag,
+                  'X-Protection-Level': 'basic'
+                });
+                return res.sendFile(watermarkFilePath);
+              }
             }
           } catch (err) {
-            // File doesn't exist or error, fall through to on-the-fly generation
             logger.warn(`Pre-generated watermark not found for photo ${photoId}, falling back to on-the-fly`);
           }
         }
 
-        // Fallback: Apply watermark on-the-fly (slower, but ensures image is served)
-        // Also queue regeneration for next time
-        const watermarkedBuffer = await watermarkService.applyWatermark(filePath, watermarkSettings);
+        // Fallback: apply watermark on-the-fly. applyWatermark needs a
+        // local file path (sharp + fs.readFile) — for managed photos in
+        // S3 mode, withLocalCopy materializes to a tmp file and cleans up.
+        const watermarkedBuffer = useStorageBackend
+          ? await withLocalCopy(storageKey, (localPath) =>
+            watermarkService.applyWatermark(localPath, watermarkSettings))
+          : await watermarkService.applyWatermark(filePath, watermarkSettings);
 
         // Queue watermark generation in background for next request
         watermarkGeneratorService.generateForPhoto(photo.id)
@@ -1063,22 +1106,27 @@ router.get('/:slug/photo/:photoId',
 
         res.set({
           'Content-Type': photo.mime_type || 'image/jpeg',
-          'Cache-Control': 'private, max-age=1800', // Cache for 30 minutes
+          'Cache-Control': 'private, max-age=1800',
           'ETag': etag,
           'X-Protection-Level': 'basic'
         });
 
         res.send(watermarkedBuffer);
       } else {
-        // Send original file with basic protection headers
         res.set({
           'Cache-Control': 'private, max-age=1800',
           'ETag': etag,
           'X-Protection-Level': 'basic'
         });
-        // Ensure absolute path for res.sendFile
-        const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
-        res.sendFile(absolutePath);
+        if (useStorageBackend) {
+          res.set('Content-Length', stat.size);
+          if (photo.mime_type) res.set('Content-Type', photo.mime_type);
+          const stream = await storage.get(storageKey);
+          stream.pipe(res);
+        } else {
+          const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+          res.sendFile(absolutePath);
+        }
       }
     } catch (error) {
       logger.error('Error serving photo:', {
@@ -1120,7 +1168,16 @@ router.get('/:slug/thumbnail/:photoId',
         return res.status(404).json({ error: 'Thumbnail generation failed' });
       }
 
-      const thumbPath = path.join(getStoragePath(), thumbnailPath);
+      // Read thumbnail metadata via the storage abstraction so we work in
+      // both LocalFs and S3 modes (#432). The previous fs.statSync on the
+      // resolved local path 500'd in S3 deployments because the thumbnail
+      // only exists in the bucket, not on the container's local fs.
+      const storage = getStorage();
+      const stat = await storage.stat(thumbnailPath);
+      if (!stat) {
+        logger.error(`Thumbnail not found in storage backend for photo ${photoId}`, { thumbnailPath });
+        return res.status(404).json({ error: 'Thumbnail not found' });
+      }
 
       // Log thumbnail access
       await secureImageService.logImageAccess(
@@ -1133,13 +1190,12 @@ router.get('/:slug/thumbnail/:photoId',
       // Check if watermarks are enabled and apply to thumbnail
       const watermarkSettings = await watermarkService.getWatermarkSettings();
 
-      // Generate ETag based on photo id, thumbnail modification time, and watermark settings
-      const fs = require('fs');
-      const stat = fs.statSync(thumbPath);
+      // ETag uses storage stat mtime + photo id + watermark hash.
+      const mtimeMs = stat.mtime ? stat.mtime.getTime() : 0;
       const watermarkHash = watermarkSettings?.enabled
         ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
         : '-nowm';
-      const etag = `"thumb-${photoId}-${stat.mtime.getTime()}${watermarkHash}"`;
+      const etag = `"thumb-${photoId}-${mtimeMs}${watermarkHash}"`;
 
       // Check if client has valid cached version
       if (req.headers['if-none-match'] === etag) {
@@ -1157,12 +1213,17 @@ router.get('/:slug/thumbnail/:photoId',
       });
 
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Apply watermark to thumbnail
-        const watermarkedBuffer = await watermarkService.applyWatermark(thumbPath, watermarkSettings);
+        // Watermarking needs a local file path (sharp + fs.readFile).
+        // Materialize via withLocalCopy — no-op in local mode, downloads
+        // to a tmp file then cleans up in S3 mode.
+        const watermarkedBuffer = await withLocalCopy(thumbnailPath, (localPath) =>
+          watermarkService.applyWatermark(localPath, watermarkSettings)
+        );
         res.send(watermarkedBuffer);
       } else {
-        // Send file without watermark
-        res.sendFile(path.resolve(thumbPath));
+        res.setHeader('Content-Length', stat.size);
+        const stream = await storage.get(thumbnailPath);
+        stream.pipe(res);
       }
     } catch (error) {
       logger.error('Error serving thumbnail:', {
@@ -1211,30 +1272,27 @@ router.get('/:slug/hero/:photoId',
         return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
       }
 
-      const heroFullPath = path.join(getStoragePath(), heroPath);
-      const fs = require('fs');
-
-      // Verify file exists before attempting to serve
-      if (!fs.existsSync(heroFullPath)) {
-        logger.error('Hero image file does not exist at resolved path', {
+      // Hero images are always written via the storage abstraction (see
+      // imageProcessor.generateHeroImage), so they're a managed-storage
+      // key in both LocalFs and S3 modes (#432). Read via storage.
+      const storage = getStorage();
+      const stat = await storage.stat(heroPath);
+      if (!stat) {
+        logger.error('Hero image file does not exist in storage backend', {
           slug: req.params.slug,
           photoId,
           eventId: req.event.id,
-          resolvedPath: heroFullPath
+          heroPath
         });
         return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
       }
 
-      // Get file stats for ETag
-      const stat = fs.statSync(heroFullPath);
-      const etag = `"hero-${photoId}-${stat.mtime.getTime()}"`;
-
-      // Check if client has valid cached version
+      const mtimeMs = stat.mtime ? stat.mtime.getTime() : 0;
+      const etag = `"hero-${photoId}-${mtimeMs}"`;
       if (req.headers['if-none-match'] === etag) {
         return res.status(304).end();
       }
 
-      // Check if watermarks should be applied
       const watermarkSettings = await watermarkService.getWatermarkSettings();
 
       res.set({
@@ -1247,12 +1305,16 @@ router.get('/:slug/hero/:photoId',
       });
 
       if (watermarkSettings && watermarkSettings.enabled) {
-        // Apply watermark to hero image
-        const watermarkedBuffer = await watermarkService.applyWatermark(heroFullPath, watermarkSettings);
+        // applyWatermark needs a local file path; materialize via
+        // withLocalCopy so this works in S3 mode too.
+        const watermarkedBuffer = await withLocalCopy(heroPath, (localPath) =>
+          watermarkService.applyWatermark(localPath, watermarkSettings)
+        );
         res.send(watermarkedBuffer);
       } else {
-        // Send hero image without watermark
-        res.sendFile(path.resolve(heroFullPath));
+        res.setHeader('Content-Length', stat.size);
+        const stream = await storage.get(heroPath);
+        stream.pipe(res);
       }
     } catch (error) {
       logger.error('Error serving hero image:', {
