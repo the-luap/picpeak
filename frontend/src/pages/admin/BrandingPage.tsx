@@ -847,6 +847,14 @@ export const BrandingPage: React.FC = () => {
           )}
         </Card>
 
+        {/* Customer dashboard branding (#354). Sits between "Company
+            Information" and "Gallery Theme" so it stays adjacent to the
+            other brand-visibility controls. Self-hides when the
+            customerPortal feature flag is off. */}
+        <div className="mb-6">
+          <CustomerDashboardBrandingSection />
+        </div>
+
         {/* Theme Customization */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
@@ -907,11 +915,6 @@ export const BrandingPage: React.FC = () => {
             </div>
           </div>
         </Card>
-
-        {/* Customer dashboard branding (#354) — only render when the
-            customerPortal feature flag is on, since these toggles only
-            affect /customer/* surfaces. */}
-        <CustomerDashboardBrandingSection />
       </div>
     </ErrorBoundary>
   );
