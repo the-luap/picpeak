@@ -127,7 +127,12 @@ router.get('/:slug/info', async (req, res) => {
         'hero_divider_style',
         'hero_image_anchor',
         'is_draft',
-        'default_photo_sort'
+        'default_photo_sort',
+        // Per-event promotional override (#440). Resolution into a
+        // ready-to-render markdown string happens below so the
+        // frontend doesn't have to know about modes.
+        'promo_mode',
+        'promo_markdown'
       )
       .first();
 
@@ -187,7 +192,11 @@ router.get('/:slug/info', async (req, res) => {
       header_style: event.header_style || 'standard',
       hero_divider_style: event.hero_divider_style || 'wave',
       hero_image_anchor: event.hero_image_anchor || 'center',
-      default_photo_sort: event.default_photo_sort || 'upload_date_desc'
+      default_photo_sort: event.default_photo_sort || 'upload_date_desc',
+      // Per-event promotional override (#440). Frontend resolves
+      // 'inherit' against branding_promo_markdown from public settings.
+      promo_mode: event.promo_mode || 'inherit',
+      promo_markdown: event.promo_markdown || null
     });
   } catch (error) {
     console.error('Error fetching gallery info:', error);

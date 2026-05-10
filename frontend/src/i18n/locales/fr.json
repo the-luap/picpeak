@@ -333,7 +333,8 @@
     },
     "footer": {
       "forgetMeConfirm": "Votre nom et vos sélections seront supprimés de cette galerie.",
-      "forgetMe": "M'oublier ({{name}})"
+      "forgetMe": "M'oublier ({{name}})",
+      "socials": "Réseaux sociaux"
     },
     "photosCount_many": "{{count}} photos",
     "photosCount_one": "{{count}} photo",
@@ -653,6 +654,15 @@
       "generatedLabel": "Mot de passe de galerie généré automatiquement",
       "saveSecurelyNote": "Important : Sauvegardez ce mot de passe en lieu sûr. Il ne pourra pas être récupéré une fois cette fenêtre fermée.",
       "done": "Terminé"
+    },
+    "promoBanner": {
+      "title": "Bannière promotionnelle",
+      "help": "Choisissez comment cette galerie gère la bannière promotionnelle. « Hériter » utilise la valeur par défaut globale ; « Personnalisé » la remplace pour cet événement ; « Désactivé » masque la bannière.",
+      "mode_inherit": "Hériter de la valeur par défaut",
+      "mode_custom": "Personnalisé pour cet événement",
+      "mode_off": "Désactivé (masquer pour cet événement)",
+      "placeholder": "Contenu Markdown (ex. **Offre :** [réservez votre prochaine séance](https://example.com))",
+      "preview": "Aperçu"
     }
   },
   "settings": {

@@ -65,6 +65,18 @@ router.get('/', async (req, res) => {
       branding_logo_display_hero: settingsObject.branding_logo_display_hero !== false,
       branding_logo_display_mode: settingsObject.branding_logo_display_mode || 'logo_and_text',
       branding_hide_powered_by: settingsObject.branding_hide_powered_by === true,
+      // Footer overhaul (#441 + #440). Empty strings hide each social
+      // icon individually; promo_markdown empty hides the slot for
+      // events in 'inherit' mode.
+      branding_facebook_url: settingsObject.branding_facebook_url || '',
+      branding_instagram_url: settingsObject.branding_instagram_url || '',
+      branding_whatsapp_url: settingsObject.branding_whatsapp_url || '',
+      branding_twitter_url: settingsObject.branding_twitter_url || '',
+      branding_youtube_url: settingsObject.branding_youtube_url || '',
+      branding_promo_markdown: settingsObject.branding_promo_markdown || '',
+      branding_promo_position: settingsObject.branding_promo_position === 'below_footer'
+        ? 'below_footer'
+        : 'above_footer',
       // Force a specific color mode site-wide. When set, the user toggle
       // is hidden and the value overrides per-theme/system preference.
       // Allowed values: 'dark' | 'light' | null (null = no force).

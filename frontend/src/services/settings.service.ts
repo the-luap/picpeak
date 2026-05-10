@@ -25,6 +25,16 @@ export interface BrandingSettings {
    * `colorMode` override is ignored. `null` means no force (default behavior).
    */
   force_color_mode?: 'dark' | 'light' | null;
+  // Footer overhaul (#441 + #440). Empty strings hide each social
+  // icon individually; promo_markdown empty hides the slot for events
+  // in 'inherit' mode. Position controls global default placement.
+  facebook_url?: string;
+  instagram_url?: string;
+  whatsapp_url?: string;
+  twitter_url?: string;
+  youtube_url?: string;
+  promo_markdown?: string;
+  promo_position?: 'above_footer' | 'below_footer';
 }
 
 export interface ThemeSettings {

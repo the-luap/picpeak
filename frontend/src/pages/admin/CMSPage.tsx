@@ -667,6 +667,28 @@ export const CMSPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Footer visibility (#441). Lets admins hide a CMS page
+                  from the gallery footer when their jurisdiction
+                  doesn't require it. Defaults to true on existing rows. */}
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800/40">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                    checked={editForm.show_in_footer !== false}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, show_in_footer: e.target.checked }))}
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {t('cms.showInFooter', 'Show in gallery footer')}
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {t('cms.showInFooterHelp', 'When off, this page is hidden from the public gallery footer. The page itself remains accessible at its direct URL.')}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

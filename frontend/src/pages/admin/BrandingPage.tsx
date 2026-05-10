@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Eye, Palette, Upload } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Button, Card, Input, ErrorBoundary, Loading } from '../../components/common';
+import { Button, Card, Input, ErrorBoundary, Loading, MarkdownContent } from '../../components/common';
 import { ThemeCustomizerEnhanced, GalleryPreview } from '../../components/admin';
 import { useTheme, type ThemeConfig, GALLERY_THEME_PRESETS } from '../../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,13 @@ export const BrandingPage: React.FC = () => {
     logo_display_mode: 'logo_and_text',
     hide_powered_by: false,
     force_color_mode: null,
+    facebook_url: '',
+    instagram_url: '',
+    whatsapp_url: '',
+    twitter_url: '',
+    youtube_url: '',
+    promo_markdown: '',
+    promo_position: 'above_footer',
   });
 
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(theme);
@@ -346,6 +353,108 @@ export const BrandingPage: React.FC = () => {
                 rows={2}
                 placeholder={`© ${new Date().getFullYear()} Your Company. All rights reserved.`}
               />
+            </div>
+          </div>
+
+          {/* Social media links (#441) — appear as icons in the gallery
+              footer above the legal-links row. Empty = hidden. */}
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
+              {t('branding.socialMedia.title', 'Social Media')}
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+              {t('branding.socialMedia.help', 'Add URLs to render social-media icons in the gallery footer. Leave a field empty to hide that icon.')}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Input
+                label="Facebook"
+                type="url"
+                value={brandingSettings.facebook_url || ''}
+                onChange={(e) => handleBrandingChange('facebook_url', e.target.value)}
+                placeholder="https://facebook.com/yourstudio"
+              />
+              <Input
+                label="Instagram"
+                type="url"
+                value={brandingSettings.instagram_url || ''}
+                onChange={(e) => handleBrandingChange('instagram_url', e.target.value)}
+                placeholder="https://instagram.com/yourstudio"
+              />
+              <Input
+                label="WhatsApp"
+                type="text"
+                value={brandingSettings.whatsapp_url || ''}
+                onChange={(e) => handleBrandingChange('whatsapp_url', e.target.value)}
+                placeholder="https://wa.me/491234567890 or +491234567890"
+                helperText={t('branding.socialMedia.whatsappHelp', 'A wa.me URL or a phone number with country code (will be converted).')}
+              />
+              <Input
+                label="X / Twitter"
+                type="url"
+                value={brandingSettings.twitter_url || ''}
+                onChange={(e) => handleBrandingChange('twitter_url', e.target.value)}
+                placeholder="https://x.com/yourstudio"
+              />
+              <Input
+                label="YouTube"
+                type="url"
+                value={brandingSettings.youtube_url || ''}
+                onChange={(e) => handleBrandingChange('youtube_url', e.target.value)}
+                placeholder="https://youtube.com/@yourstudio"
+              />
+            </div>
+          </div>
+
+          {/* Promotional banner (#440) — markdown content rendered above
+              or below the gallery footer. Per-event override is set on
+              the Edit Event form; this is the global default. */}
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
+              {t('branding.promo.title', 'Gallery Promotional Banner')}
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+              {t('branding.promo.help', 'Markdown shown above or below the gallery footer (e.g. seasonal offer, print discount). Per-event overrides take priority.')}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('branding.promo.position', 'Position')}
+                </label>
+                <select
+                  value={brandingSettings.promo_position || 'above_footer'}
+                  onChange={(e) => handleBrandingChange('promo_position', e.target.value as 'above_footer' | 'below_footer')}
+                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="above_footer">{t('branding.promo.aboveFooter', 'Above footer')}</option>
+                  <option value="below_footer">{t('branding.promo.belowFooter', 'Below footer')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('branding.promo.content', 'Content (markdown)')}
+                </label>
+                <textarea
+                  value={brandingSettings.promo_markdown || ''}
+                  onChange={(e) => handleBrandingChange('promo_markdown', e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+                  rows={5}
+                  placeholder={t('branding.promo.placeholder', '**Spring offer**: 20% off prints with code SPRING — see the [print shop](https://example.com).')}
+                />
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('branding.promo.markdownHelp', 'Bold, italic, links, lists, and headings supported. HTML is stripped.')}
+                </p>
+              </div>
+              {brandingSettings.promo_markdown && brandingSettings.promo_markdown.trim() && (
+                <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800/40">
+                  <div className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
+                    {t('branding.promo.preview', 'Preview')}
+                  </div>
+                  <MarkdownContent
+                    source={brandingSettings.promo_markdown}
+                    className="text-sm text-neutral-800 dark:text-neutral-200 prose-sm prose-a:text-primary-600 dark:prose-a:text-primary-400"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

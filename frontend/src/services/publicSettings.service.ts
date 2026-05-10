@@ -25,6 +25,14 @@ export interface PublicSettings {
    * AdminDarkModeContext + ThemeContext both honor this.
    */
   branding_force_color_mode?: 'dark' | 'light' | null;
+  // Footer overhaul (#441 + #440). Empty strings mean "hide".
+  branding_facebook_url?: string;
+  branding_instagram_url?: string;
+  branding_whatsapp_url?: string;
+  branding_twitter_url?: string;
+  branding_youtube_url?: string;
+  branding_promo_markdown?: string;
+  branding_promo_position?: 'above_footer' | 'below_footer';
   theme_config: any;
   default_language: string;
   enable_analytics: boolean;

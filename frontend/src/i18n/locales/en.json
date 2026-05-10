@@ -324,7 +324,8 @@
     },
     "footer": {
       "forgetMeConfirm": "Your name and selections will be removed from this gallery.",
-      "forgetMe": "Forget me ({{name}})"
+      "forgetMe": "Forget me ({{name}})",
+      "socials": "Social media"
     },
     "photosCount_one": "{{count}} photo",
     "photosCount_other": "{{count}} photos",
@@ -639,7 +640,16 @@
     "importExternal": "Import from External Folder",
     "externalImportInfo": "All pictures from the selected folder will be imported.",
     "selectExternalFolder": "Select external folder under /external-media",
-    "importFromSelectedFolder": "Import from selected folder"
+    "importFromSelectedFolder": "Import from selected folder",
+    "promoBanner": {
+      "title": "Promotional Banner",
+      "help": "Choose how this gallery handles the promotional banner. \"Inherit\" uses your global default; \"Custom\" overrides it for this event; \"Off\" hides it entirely.",
+      "mode_inherit": "Inherit global default",
+      "mode_custom": "Custom override for this event",
+      "mode_off": "Off (hide for this event)",
+      "placeholder": "Markdown content (e.g. **Special offer:** [book your next session](https://example.com))",
+      "preview": "Preview"
+    }
   },
   "settings": {
     "title": "System Settings",
