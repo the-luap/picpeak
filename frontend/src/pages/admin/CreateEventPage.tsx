@@ -17,6 +17,7 @@ import { toast } from 'react-toastify';
 
 import { Button, Input, Card, PasswordGenerator } from '../../components/common';
 import { ThemeCustomizerEnhanced, GalleryPreview, WelcomeMessageEditor, FeedbackSettings } from '../../components/admin';
+import { CustomerAccountPicker } from '../../components/admin/CustomerAccountPicker';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
@@ -68,6 +69,10 @@ interface FormData {
   client_password: string;
   // Default photo sort
   default_photo_sort: string;
+  // Customer accounts assigned to this event (#354). The state holds
+  // the full picker selection so chips render without an extra fetch;
+  // only the ids are sent to the backend on submit.
+  customer_accounts: Array<{ id: number; email: string; displayName: string | null }>;
 }
 
 // Fallback event types (used when API is unavailable)
@@ -127,6 +132,7 @@ export const CreateEventPage: React.FC = () => {
     client_access_enabled: false,
     client_password: '',
     default_photo_sort: 'upload_date_desc',
+    customer_accounts: [],
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -437,6 +443,10 @@ export const CreateEventPage: React.FC = () => {
       client_password: formData.client_access_enabled ? formData.client_password : undefined,
       // Default photo sort
       default_photo_sort: formData.default_photo_sort,
+      // Customer accounts assigned to this event (#354). Sent as a flat
+      // array of ids; the backend service diffs against the existing
+      // assignments and applies adds/removes inside one transaction.
+      customer_account_ids: formData.customer_accounts.map((c) => c.id),
     };
 
     createMutation.mutate(payload);
@@ -754,6 +764,15 @@ export const CreateEventPage: React.FC = () => {
                   onChange={handleInputChange('customer_phone')}
                 />
               )}
+
+              {/* Customer accounts (#354). The picker is decoupled from
+                  the freeform customer_name / customer_email fields above
+                  — those stay as the event's primary contact while
+                  customer_account_ids drives login-level access. */}
+              <CustomerAccountPicker
+                value={formData.customer_accounts}
+                onChange={(next) => setFormData((prev) => ({ ...prev, customer_accounts: next }))}
+              />
 
               <Input
                 type="email"

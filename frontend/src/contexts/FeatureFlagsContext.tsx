@@ -19,6 +19,12 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   messaging: false,
   analytics: true,
   userManagement: true,
+  // Customer portal (#354) defaults OFF on a fresh install — picpeak
+  // ships as a focused gallery delivery tool, recurring-customer
+  // logins are opt-in. Migration 094 flips this to TRUE on existing
+  // installs (events>0) so the customer-portal foundation isn't
+  // silently disabled mid-deployment.
+  customerPortal: false,
 };
 
 export const FEATURE_FLAGS_QUERY_KEY = ['feature-flags'] as const;
@@ -50,8 +56,26 @@ function applyDependencyRules(flags: FeatureFlags): FeatureFlags {
   out.galleries = true;                            // foundation — always on
   if (out.quotes === false) out.bills = false;     // bills depend on quotes
   if (out.calendar === false) out.calendarBooking = false;  // booking depends on calendar
+  // Customer-portal-dependent flags: if the customer portal is OFF the
+  // customer-side dashboard never renders, so the calendar/quotes/bills/
+  // messaging customer-side surfaces have nowhere to live. Their server
+  // toggles can stay at whatever the admin set (so re-enabling the
+  // portal restores the previous state), but the dependency is
+  // documented here for the FeaturesTab UI to disable child cards
+  // visually when customerPortal is off.
   return out;
 }
+
+/**
+ * Flags whose customer-side surface only renders when the customer
+ * portal is on. The FeaturesTab uses this to disable the toggle on
+ * child cards when customerPortal=false (with a "requires Customer
+ * portal" tooltip), so the admin doesn't flip something that has no
+ * visible effect.
+ */
+export const CUSTOMER_PORTAL_DEPENDENT_FLAGS: FeatureKey[] = [
+  'calendar', 'calendarBooking', 'quotes', 'bills', 'messaging',
+];
 
 function flagsEqual(a: FeatureFlags, b: FeatureFlags): boolean {
   return (Object.keys(a) as FeatureKey[]).every((k) => a[k] === b[k]);

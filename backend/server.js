@@ -555,7 +555,6 @@ app.use('/api/gallery', require('./src/routes/galleryGuests'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
-app.use('/api/admin/feature-flags', require('./src/routes/adminFeatureFlags'));
 app.use('/api/admin/backup', require('./src/routes/adminBackup'));
 app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));
@@ -568,6 +567,21 @@ app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
+// Customer-portal feature gate (#354 follow-up). When the master
+// toggle in Settings → Advanced features is OFF, the customer surface
+// returns 410 Gone for end-user routes and 403 for admin-side
+// management routes. The gate fires before the route handler so we
+// don't pay for auth checks against a disabled feature.
+const {
+  requireCustomerPortalEnabled,
+  requireCustomerPortalEnabledAdmin,
+} = require('./src/middleware/requireCustomerPortal');
+
+app.use('/api/admin/customers', requireCustomerPortalEnabledAdmin, require('./src/routes/adminCustomers'));
+// Customer-side surface (#354). Strictly separate from /api/admin/* —
+// distinct token type, distinct cookie, distinct middleware.
+app.use('/api/customer/auth', requireCustomerPortalEnabled, require('./src/routes/customerAuth'));
+app.use('/api/customer', requireCustomerPortalEnabled, require('./src/routes/customer'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
 app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));

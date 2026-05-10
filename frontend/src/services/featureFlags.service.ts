@@ -9,7 +9,14 @@ export type FeatureKey =
   | 'bills'
   | 'messaging'
   | 'analytics'
-  | 'userManagement';
+  | 'userManagement'
+  // Foundation flag for the customer-side surface (#354). Gates the
+  // /customer/* routes (login, dashboard, profile, accept-invite,
+  // reset-password) and the admin Customers management page. The
+  // calendar / calendarBooking / quotes / bills / messaging flags
+  // above hang off this — they only appear in the customer dashboard
+  // when customerPortal is also ON.
+  | 'customerPortal';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;
 

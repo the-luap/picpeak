@@ -22,9 +22,23 @@ import {
   AnalyticsPage,
   SettingsPage,
   UserManagementPage,
+  CustomerManagementPage,
+  CustomerDetailPage,
   WebhookDeliveriesPage
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
+import {
+  CustomerLoginPage,
+  CustomerDashboardPage,
+  CustomerAcceptInvitePage,
+  CustomerLayout,
+  CustomerProfilePage,
+  CustomerCalendarPage,
+  CustomerQuotesPage,
+  CustomerBillsPage,
+  CustomerResetPasswordPage,
+} from './pages/customer';
+import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
 import { RequireFeature } from './components/admin/RequireFeature';
 import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags, CMSContentBlock } from './components/common';
@@ -132,6 +146,13 @@ function App() {
                       <Route element={<RequireFeature flag="userManagement" />}>
                         <Route path="users" element={<UserManagementPage />} />
                       </Route>
+                      {/* Customer accounts (#354) — admin-side management.
+                          Hidden from sidebar + redirected away when the
+                          customerPortal flag is off. */}
+                      <Route element={<RequireFeature flag="customerPortal" />}>
+                        <Route path="customers" element={<CustomerManagementPage />} />
+                        <Route path="customers/:id" element={<CustomerDetailPage />} />
+                      </Route>
 
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="webhooks/:id/deliveries" element={<WebhookDeliveriesPage />} />
@@ -152,6 +173,38 @@ function App() {
 
                   {/* Public invitation acceptance page */}
                   <Route path="/invite/:token" element={<AcceptInvitePage />} />
+
+                  {/* Customer surface (#354). Strictly separate provider /
+                      cookie / API surface from /admin/*. Gated by the
+                      customerPortal feature flag — when off, all
+                      /customer/* URLs redirect to /admin/dashboard. */}
+                  <Route element={<RequireFeature flag="customerPortal" fallback="/admin/login" />}>
+                    <Route path="/customer/*" element={
+                      <CustomerAuthProvider>
+                        <Routes>
+                          {/* Public surfaces: login, accept-invite, reset —
+                              no CustomerLayout (their own branded shells). */}
+                          <Route path="login" element={<CustomerLoginPage />} />
+                          <Route path="invite/:token" element={<CustomerAcceptInvitePage />} />
+                          <Route path="reset-password/:token" element={<CustomerResetPasswordPage />} />
+
+                          {/* Authenticated surfaces share the sidebar layout
+                              (Outlet pattern, mirrors AdminLayout). The
+                              CustomerLayout itself enforces auth — bouncing
+                              unauthenticated visitors to /customer/login. */}
+                          <Route element={<CustomerLayout />}>
+                            <Route path="dashboard" element={<CustomerDashboardPage />} />
+                            <Route path="calendar" element={<CustomerCalendarPage />} />
+                            <Route path="quotes" element={<CustomerQuotesPage />} />
+                            <Route path="bills" element={<CustomerBillsPage />} />
+                            <Route path="profile" element={<CustomerProfilePage />} />
+                          </Route>
+
+                          <Route index element={<Navigate to="/customer/dashboard" replace />} />
+                        </Routes>
+                      </CustomerAuthProvider>
+                    } />
+                  </Route>
 
                   {/* Public legal pages */}
                   <Route path="/impressum" element={<LegalPage />} />

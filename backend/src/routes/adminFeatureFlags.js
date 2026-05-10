@@ -32,6 +32,9 @@ const KNOWN_FLAGS = [
   'messaging',
   'analytics',
   'userManagement',
+  // Foundation flag for the customer-side surface (#354). See migration
+  // 094 for the seeding rule.
+  'customerPortal',
 ];
 
 // Spec defaults for any flag missing from the DB (e.g. a row added by a

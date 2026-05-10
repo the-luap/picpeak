@@ -11,6 +11,7 @@ import {
   Receipt,
   BarChart3,
   Users,
+  UserCog,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Card } from '../../../components/common';
@@ -104,6 +105,26 @@ export const FeaturesTab: React.FC = () => {
               'settings.features.galleries.locked',
               "Galleries are the foundation of PicPeak and can't be turned off.",
             )}
+          />
+        </Section>
+
+        {/* Customer accounts (#354) — recurring customer logins. The
+            calendar / quotes / bills / messaging cards below are
+            customer-side surfaces; they only render in the customer
+            dashboard when this is on. */}
+        <Section title={t('settings.features.sections.customers', 'Customers')}>
+          <FeatureCard
+            icon={UserCog}
+            title={t('settings.features.customerPortal.title', 'Customer portal')}
+            description={t(
+              'settings.features.customerPortal.description',
+              'Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Foundation for Calendar / Quotes / Bills (which only render in the customer dashboard when this is on).',
+            )}
+            status="beta"
+            statusLabel={statusLabel('beta')}
+            sidebarLabel={t('navigation.customers', 'Customers')}
+            enabled={staged.customerPortal}
+            onToggle={(next) => setFlag('customerPortal', next)}
           />
         </Section>
 

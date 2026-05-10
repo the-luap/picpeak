@@ -167,7 +167,8 @@
     "backup": "Backup & Wiederherstellung",
     "cmsPages": "CMS-Seiten",
     "users": "Benutzer",
-    "calendar": "Kalender"
+    "calendar": "Kalender",
+    "customers": "Kunden"
   },
   "eventTypes": {
     "title": "Veranstaltungsarten",
@@ -1446,7 +1447,8 @@
         "communication": "Kommunikation",
         "scheduling": "Terminplanung",
         "sales": "Vertrieb",
-        "insights": "Auswertungen & Zugriff"
+        "insights": "Auswertungen & Zugriff",
+        "customers": "Kunden"
       },
       "status": {
         "stable": "stabil",
@@ -1492,6 +1494,10 @@
         "title": "Benutzerverwaltung",
         "description": "Multi-Admin-Unterstützung mit rollenbasierten Berechtigungen. Deaktivieren Sie dies, wenn Sie ein Einzelbetreiber sind.",
         "warning": "Bestehende Benutzerkonten bleiben gültig; die Admin-Oberfläche für deren Verwaltung wird ausgeblendet, bis Sie dies wieder aktivieren."
+      },
+      "customerPortal": {
+        "title": "Kundenportal",
+        "description": "Persistente Kunden-Logins. Wiederkehrende Kunden sehen alle zugeordneten Galerien an einem Ort — keine Passwörter pro Event. Grundlage für Kalender / Angebote / Rechnungen (die nur im Kundendashboard erscheinen, wenn diese Option aktiviert ist)."
       }
     }
   },
@@ -2540,5 +2546,290 @@
     "movedToCategory_other": "{{count}} Fotos nach {{category}} verschoben",
     "moveToCategoryFailed": "Fotos konnten nicht in die Kategorie verschoben werden",
     "moveToCategory": "In Kategorie verschieben"
+  },
+  "customer": {
+    "login": {
+      "title": "Kunden-Login",
+      "subtitle": "Zugriff auf alle Ihre Fotogalerien an einem Ort.",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "emailRequired": "E-Mail ist erforderlich",
+      "invalidEmail": "Bitte geben Sie eine gültige E-Mail ein",
+      "passwordRequired": "Passwort ist erforderlich",
+      "showPassword": "Passwort anzeigen",
+      "hidePassword": "Passwort verbergen",
+      "signIn": "Anmelden",
+      "loginSuccess": "Willkommen zurück!",
+      "invalidCredentials": "E-Mail oder Passwort ist falsch",
+      "tooManyAttempts": "Zu viele Versuche — bitte später erneut versuchen.",
+      "networkError": "Server nicht erreichbar. Bitte erneut versuchen.",
+      "generalError": "Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+      "acceptedToast": "Konto bereit — bitte anmelden.",
+      "adminHint": "Sie suchen das Admin-Panel? Besuchen Sie /admin/login.",
+      "emailPlaceholder": "du@beispiel.de",
+      "passwordPlaceholder": "Dein Passwort",
+      "needHelp": "Brauchst du Hilfe?",
+      "poweredBy": "Bereitgestellt von PicPeak"
+    },
+    "acceptInvite": {
+      "title": "Konto einrichten",
+      "invalidToken": "Dieser Einladungslink ist ungültig oder abgelaufen. Bitte kontaktieren Sie Ihren Fotografen für eine neue Einladung.",
+      "emailWillBe": "Ihre Konto-E-Mail wird ",
+      "invitedBy": ", eingeladen von ",
+      "name": "Ihr Name",
+      "nameRequired": "Bitte geben Sie Ihren Namen ein",
+      "password": "Passwort wählen",
+      "confirm": "Passwort bestätigen",
+      "passwordTooShort": "Passwort muss mindestens 8 Zeichen haben",
+      "passwordsMismatch": "Passwörter stimmen nicht überein",
+      "passwordHint": "Mindestens 8 Zeichen, mit einem Großbuchstaben und einer Zahl.",
+      "submit": "Konto erstellen",
+      "successToast": "Konto erstellt — bitte anmelden.",
+      "alreadyExists": "Es existiert bereits ein Konto mit dieser E-Mail. Bitte melden Sie sich stattdessen an.",
+      "invalidSubmission": "Konto konnte nicht erstellt werden.",
+      "generalError": "Konto konnte nicht erstellt werden. Bitte erneut versuchen.",
+      "subtitle": "Bestätige oder ergänze deine Daten. Du kannst alles später im Profil bearbeiten.",
+      "displayName": "Anzeigename",
+      "section": {
+        "personal": "Persönlich",
+        "contact": "Kontakt & Firma (optional)",
+        "address": "Rechnungsadresse (optional)",
+        "password": "Passwort wählen"
+      }
+    },
+    "dashboard": {
+      "title": "Deine Galerien",
+      "subtitle": "Klicke auf eine Galerie, um sie zu öffnen. Der Download-Button bündelt alle Fotos als ZIP.",
+      "loadError": "Galerien konnten nicht geladen werden. Bitte erneut versuchen.",
+      "emptyTitle": "Noch keine Galerien",
+      "emptyBody": "Sobald Ihr Fotograf Sie einer Galerie zuweist, erscheint sie hier.",
+      "openAria": "Galerie {{name}} öffnen",
+      "opening": "Wird geöffnet…",
+      "expiresOn": "Läuft ab am {{date}}",
+      "expiredOn": "Abgelaufen am {{date}}",
+      "eventExpired": "Diese Galerie ist abgelaufen.",
+      "eventForbidden": "Sie haben keinen Zugriff mehr auf diese Galerie.",
+      "openError": "Galerie konnte nicht geöffnet werden. Bitte erneut versuchen.",
+      "download": "Herunterladen",
+      "preparingDownload": "Wird vorbereitet…",
+      "quickDownloadAria": "Alle Fotos für {{name}} herunterladen",
+      "downloadStarted": "Download gestartet für {{name}}",
+      "downloadError": "Download konnte nicht gestartet werden. Bitte erneut versuchen.",
+      "sortLabel": "Sortieren nach",
+      "sortNewest": "Neueste zuerst",
+      "sortOldest": "Älteste zuerst",
+      "sortName": "Nach Name",
+      "open": "Öffnen"
+    },
+    "layout": {
+      "greeting": "Hallo, {{name}}"
+    },
+    "nav": {
+      "galleries": "Galerien",
+      "calendar": "Kalender",
+      "quotes": "Angebote",
+      "bills": "Rechnungen",
+      "profile": "Profil",
+      "soon": "Bald"
+    },
+    "comingSoon": {
+      "tag": "Demnächst"
+    },
+    "calendar": {
+      "title": "Kalender",
+      "body": "Bevorstehende Termine, Liefertermine für Galerien und weitere Shoot-Ereignisse landen hier. Wir geben Bescheid, sobald es soweit ist."
+    },
+    "quotes": {
+      "title": "Angebote",
+      "body": "Angebote für kommende Shoots an einem Ort prüfen und annehmen. Wir bauen das noch — bis dahin schickt dir dein Fotograf Angebote wie gewohnt."
+    },
+    "bills": {
+      "title": "Rechnungen",
+      "body": "Rechnungen und Zahlungshistorie zu deinen Shoots findest du hier. Wir senden eine E-Mail, sobald es live ist."
+    },
+    "profile": {
+      "title": "Kundenprofil",
+      "subtitle": "Halte Kontakt- und Rechnungsdaten aktuell — sie erscheinen auf Angeboten und Rechnungen, sobald diese Funktionen live sind.",
+      "savedToast": "Profil gespeichert",
+      "saveError": "Profil konnte nicht gespeichert werden.",
+      "loadError": "Profil konnte nicht geladen werden.",
+      "save": "Änderungen speichern",
+      "salutation": {
+        "none": "— Keine Angabe —",
+        "herr": "Herr",
+        "frau": "Frau",
+        "mx": "Mx",
+        "dr": "Dr."
+      },
+      "section": {
+        "personal": "Persönliche Angaben",
+        "contact": "Kontakt & Firma",
+        "address": "Rechnungsadresse",
+        "password": "Passwort ändern"
+      },
+      "field": {
+        "email": "E-Mail (Login)",
+        "emailHint": "Wende dich an deinen Fotografen, wenn du deine Login-E-Mail ändern möchtest.",
+        "salutation": "Anrede",
+        "firstName": "Vorname",
+        "lastName": "Nachname",
+        "displayName": "Anzeigename",
+        "displayNameHint": "So begrüßen wir dich im Dashboard.",
+        "phone": "Telefon",
+        "companyName": "Firmenname",
+        "vatId": "USt-IdNr.",
+        "addressLine1": "Adresszeile 1",
+        "addressLine2": "Adresszeile 2",
+        "postalCode": "Postleitzahl",
+        "city": "Stadt",
+        "state": "Bundesland / Region",
+        "countryCode": "Land"
+      },
+      "password": {
+        "current": "Aktuelles Passwort",
+        "next": "Neues Passwort",
+        "confirm": "Neues Passwort bestätigen",
+        "submit": "Passwort aktualisieren",
+        "hint": "Mindestens 8 Zeichen, ein Großbuchstabe und eine Ziffer.",
+        "currentRequired": "Aktuelles Passwort eingeben",
+        "tooShort": "Mindestens 8 Zeichen",
+        "mismatch": "Passwörter stimmen nicht überein",
+        "wrong": "Aktuelles Passwort ist falsch",
+        "savedToast": "Passwort aktualisiert",
+        "error": "Passwort konnte nicht geändert werden"
+      }
+    },
+    "resetPassword": {
+      "title": "Passwort zurücksetzen",
+      "invalidToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordere bei deinem Fotografen einen neuen an.",
+      "forEmail": "Neues Passwort wird gesetzt für ",
+      "password": "Neues Passwort",
+      "confirm": "Neues Passwort bestätigen",
+      "submit": "Passwort aktualisieren",
+      "hint": "Mindestens 8 Zeichen, ein Großbuchstabe und eine Ziffer.",
+      "tooShort": "Passwort muss mindestens 8 Zeichen lang sein",
+      "mismatch": "Passwörter stimmen nicht überein",
+      "successToast": "Passwort aktualisiert. Bitte einloggen.",
+      "invalidSubmission": "Passwort konnte nicht aktualisiert werden.",
+      "generalError": "Passwort konnte nicht aktualisiert werden. Bitte erneut versuchen."
+    }
+  },
+  "customers": {
+    "pageTitle": "Kunden",
+    "pageSubtitle": "Wiederkehrende Kundenkonten, die sich unter /customer/login anmelden können.",
+    "unnamed": "Unbenannt",
+    "empty": "Noch keine Kunden. Klicken Sie auf „Kunden einladen“, um einen hinzuzufügen.",
+    "loadError": "Kunden konnten nicht geladen werden",
+    "loadInvitationsError": "Einladungen konnten nicht geladen werden",
+    "tabs": {
+      "customers": "Kunden",
+      "invitations": "Einladungen"
+    },
+    "search": {
+      "placeholder": "Nach E-Mail, Name oder Firma suchen"
+    },
+    "table": {
+      "name": "Name",
+      "email": "E-Mail",
+      "company": "Firma",
+      "eventCount": "Events",
+      "lastLogin": "Letzte Anmeldung",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Deaktiviert"
+    },
+    "invite": {
+      "button": "Kunden einladen",
+      "title": "Kunden einladen",
+      "description": "Der Kunde erhält eine E-Mail mit einem Link zum Einrichten des Kontos. Nach Annahme können Sie ihn Events zuordnen.",
+      "email": "E-Mail",
+      "submit": "Einladung senden",
+      "success": "Einladung gesendet",
+      "error": "Einladung konnte nicht gesendet werden.",
+      "conflict": "Ein Kunde mit dieser E-Mail existiert bereits oder hat eine offene Einladung.",
+      "invalidEmail": "Bitte geben Sie eine gültige E-Mail ein",
+      "showPrefill": "+ Kontaktdaten hinzufügen (optional)",
+      "hidePrefill": "− Kontaktdaten ausblenden",
+      "prefillHint": "Alles, was du ausfüllst, wird auf der Anmeldeseite des Kunden vorausgefüllt — er kann es weiterhin bearbeiten."
+    },
+    "invitations": {
+      "empty": "Keine offenen Einladungen.",
+      "email": "E-Mail",
+      "invitedBy": "Eingeladen von",
+      "expiresAt": "Läuft ab",
+      "createdAt": "Erstellt",
+      "cancel": "Stornieren"
+    },
+    "deactivate": {
+      "button": "Deaktivieren",
+      "title": "Kunde deaktivieren?",
+      "body": "Der Kunde kann sich nicht mehr anmelden. Sie können ihn später erneut einladen.",
+      "success": "Kunde deaktiviert",
+      "error": "Kunde konnte nicht deaktiviert werden"
+    },
+    "cancelInvitation": {
+      "title": "Einladung stornieren?",
+      "body": "Der Einladungslink funktioniert sofort nicht mehr.",
+      "success": "Einladung storniert",
+      "error": "Einladung konnte nicht storniert werden"
+    },
+    "detail": {
+      "loadError": "Kunde konnte nicht geladen werden",
+      "saved": "Kunde gespeichert",
+      "saveError": "Änderungen konnten nicht gespeichert werden.",
+      "emailConflict": "Diese E-Mail wird bereits von einem anderen Kunden verwendet.",
+      "save": "Änderungen speichern",
+      "expires": "läuft ab",
+      "accountSection": "Konto",
+      "personalSection": "Persönliche Daten",
+      "billingSection": "Adresse & Rechnung",
+      "notesSection": "Interne Notizen",
+      "eventsSection": "Zugewiesene Events",
+      "noEvents": "Noch keinem Event zugewiesen. Fügen Sie diesen Kunden über das Event-Formular hinzu.",
+      "email": "E-Mail",
+      "preferredLanguage": "Bevorzugte Sprache",
+      "salutation": "Anrede",
+      "salutationNone": "—",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "displayName": "Anzeigename",
+      "phone": "Telefon",
+      "company": "Firma",
+      "billingEmail": "Rechnungs-E-Mail",
+      "vatId": "USt-IdNr.",
+      "addressLine1": "Adresse Zeile 1",
+      "addressLine2": "Adresse Zeile 2",
+      "postalCode": "Postleitzahl",
+      "city": "Stadt",
+      "state": "Bundesland / Region",
+      "countryCode": "Land (ISO-2)",
+      "notesHint": "Nur für Administratoren sichtbar. Wird dem Kunden nie gezeigt.",
+      "featuresSection": "Kundenfunktionen",
+      "featuresHint": "Pro-Kunde-Überschreibungen für die Kundenoberflächen-Tabs. Die globalen Schalter in Einstellungen → Kundenoberfläche sind der Master-Schalter — wenn global AUS, sieht niemand den Tab, unabhängig von der Einstellung hier. Standard ist AN, schalte einen Eintrag AUS, um diesen Tab für diesen Kunden auszublenden.",
+      "passwordSection": "Kontoaktionen",
+      "passwordHint": "Sendet einen einmalig nutzbaren Reset-Link (7 Tage gültig) an die E-Mail-Adresse des Kunden. Das aktuelle Passwort bleibt gültig, bis der Kunde den Link öffnet und ein neues setzt.",
+      "passwordReset": {
+        "button": "Passwort-Reset-E-Mail senden",
+        "success": "Passwort-Reset-E-Mail gesendet",
+        "error": "Passwort-Reset konnte nicht gesendet werden",
+        "inactive": "Aktiviere den Kunden, bevor du einen Reset sendest."
+      }
+    },
+    "reactivate": {
+      "button": "Reaktivieren",
+      "success": "Kunde reaktiviert",
+      "error": "Kunde konnte nicht reaktiviert werden"
+    },
+    "erase": {
+      "button": "Kundendaten löschen",
+      "title": "Kundendaten löschen?",
+      "body": "Entfernt Name, E-Mail, Telefon, Adresse, Firma und Login-Daten des Kunden. Der Kontoeintrag bleibt, damit historische Galerie-Zugriffe und Audit-Logs ihn weiter referenzieren können. Dies ist unwiderruflich — die Daten können danach nicht wiederhergestellt werden.",
+      "confirm": "Endgültig löschen",
+      "confirmInFlight": "Lösche…",
+      "success": "Kunde gelöscht",
+      "error": "Kunde konnte nicht gelöscht werden"
+    }
   }
 }
