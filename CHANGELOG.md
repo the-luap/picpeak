@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.44.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.3-beta.0...v3.44.0-beta.0) (2026-05-10)
+
+
+### Features
+
+* **settings:** Features tab + sidebar reorg with feature-flag gating ([c3798e1](https://github.com/the-luap/picpeak/commit/c3798e19c8f928eac0ca1d7694d1ecfd78a1e437))
+* **settings:** Features tab + sidebar reorg with feature-flag gating ([15e3336](https://github.com/the-luap/picpeak/commit/15e333681fe4ce94afa8e5b477b339b179d0195a))
+
 ## [3.43.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.43.2-beta.0...v3.43.3-beta.0) (2026-05-09)
 
 
