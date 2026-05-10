@@ -1237,14 +1237,13 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     }
 
     // Enforce expires_at requirement based on app settings
-    if (Object.prototype.hasOwnProperty.call(updates, 'expires_at')) {
-      if (!updates.expires_at) {
-        const fieldReqs = await getEventFieldRequirements();
-        if (fieldReqs.require_expiration) {
-          return res.status(400).json({ error: 'Expiration date is required.' });
-        }
-        updates.expires_at = null;
-      }
+    // Allow admins to clear `expires_at` on edit even when the global
+    // `event_require_expiration` setting is ON (#426). The setting now
+    // controls only the create-time default — once an event exists, an
+    // admin editing it can override and remove the expiration. Empty /
+    // null values normalize to NULL in the column ("never expires").
+    if (Object.prototype.hasOwnProperty.call(updates, 'expires_at') && !updates.expires_at) {
+      updates.expires_at = null;
     }
 
     // Format hero logo settings if provided
