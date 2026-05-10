@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.45.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.44.2-beta.0...v3.45.0-beta.0) (2026-05-10)
+
+
+### Features
+
+* **footer:** hideable legal links + socials + promo banner ([#441](https://github.com/the-luap/picpeak/issues/441) + [#440](https://github.com/the-luap/picpeak/issues/440)) ([f3505c2](https://github.com/the-luap/picpeak/commit/f3505c2631cc5b4ae13a0f0d593a1ddd95fefdcb))
+
 ## [3.44.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.44.1-beta.0...v3.44.2-beta.0) (2026-05-10)
 
 
