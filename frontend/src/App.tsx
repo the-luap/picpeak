@@ -175,36 +175,41 @@ function App() {
                   <Route path="/invite/:token" element={<AcceptInvitePage />} />
 
                   {/* Customer surface (#354). Strictly separate provider /
-                      cookie / API surface from /admin/*. Gated by the
-                      customerPortal feature flag — when off, all
-                      /customer/* URLs redirect to /admin/dashboard. */}
-                  <Route element={<RequireFeature flag="customerPortal" fallback="/admin/login" />}>
-                    <Route path="/customer/*" element={
-                      <CustomerAuthProvider>
-                        <Routes>
-                          {/* Public surfaces: login, accept-invite, reset —
-                              no CustomerLayout (their own branded shells). */}
-                          <Route path="login" element={<CustomerLoginPage />} />
-                          <Route path="invite/:token" element={<CustomerAcceptInvitePage />} />
-                          <Route path="reset-password/:token" element={<CustomerResetPasswordPage />} />
+                      cookie / API surface from /admin/*. The customerPortal
+                      feature flag hides the *admin-side* surfaces (sidebar
+                      entry, /admin/customers routes, CustomerAccountPicker)
+                      via RequireFeature. The customer-side /customer/*
+                      tree stays publicly reachable so existing customers
+                      can still log in even if the admin temporarily flips
+                      the flag off — and because RequireFeature reads from
+                      FeatureFlagsProvider (admin-only context), gating
+                      these routes here would crash unauthenticated
+                      visitors with an unmounted-provider error. */}
+                  <Route path="/customer/*" element={
+                    <CustomerAuthProvider>
+                      <Routes>
+                        {/* Public surfaces: login, accept-invite, reset —
+                            no CustomerLayout (their own branded shells). */}
+                        <Route path="login" element={<CustomerLoginPage />} />
+                        <Route path="invite/:token" element={<CustomerAcceptInvitePage />} />
+                        <Route path="reset-password/:token" element={<CustomerResetPasswordPage />} />
 
-                          {/* Authenticated surfaces share the sidebar layout
-                              (Outlet pattern, mirrors AdminLayout). The
-                              CustomerLayout itself enforces auth — bouncing
-                              unauthenticated visitors to /customer/login. */}
-                          <Route element={<CustomerLayout />}>
-                            <Route path="dashboard" element={<CustomerDashboardPage />} />
-                            <Route path="calendar" element={<CustomerCalendarPage />} />
-                            <Route path="quotes" element={<CustomerQuotesPage />} />
-                            <Route path="bills" element={<CustomerBillsPage />} />
-                            <Route path="profile" element={<CustomerProfilePage />} />
-                          </Route>
+                        {/* Authenticated surfaces share the sidebar layout
+                            (Outlet pattern, mirrors AdminLayout). The
+                            CustomerLayout itself enforces auth — bouncing
+                            unauthenticated visitors to /customer/login. */}
+                        <Route element={<CustomerLayout />}>
+                          <Route path="dashboard" element={<CustomerDashboardPage />} />
+                          <Route path="calendar" element={<CustomerCalendarPage />} />
+                          <Route path="quotes" element={<CustomerQuotesPage />} />
+                          <Route path="bills" element={<CustomerBillsPage />} />
+                          <Route path="profile" element={<CustomerProfilePage />} />
+                        </Route>
 
-                          <Route index element={<Navigate to="/customer/dashboard" replace />} />
-                        </Routes>
-                      </CustomerAuthProvider>
-                    } />
-                  </Route>
+                        <Route index element={<Navigate to="/customer/dashboard" replace />} />
+                      </Routes>
+                    </CustomerAuthProvider>
+                  } />
 
                   {/* Public legal pages */}
                   <Route path="/impressum" element={<LegalPage />} />
