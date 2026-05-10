@@ -220,7 +220,17 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_hero,
       logo_display_mode,
       hide_powered_by,
-      force_color_mode
+      force_color_mode,
+      // Footer overhaul (#441 + #440). Socials are URL strings (empty
+      // hides the icon). Promo content is markdown (rendered via
+      // marked → DOMPurify on the frontend, no raw HTML accepted).
+      facebook_url,
+      instagram_url,
+      whatsapp_url,
+      twitter_url,
+      youtube_url,
+      promo_markdown,
+      promo_position
     } = req.body;
 
     // Normalize force_color_mode: only 'dark' | 'light' | null are valid.
@@ -232,6 +242,11 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
 
     // Get current watermark settings hash for change detection
     const oldSettingsHash = await watermarkService.getSettingsHash();
+
+    // Normalize promo_position: only 'above_footer' | 'below_footer' valid.
+    const normalizedPromoPosition = promo_position === 'below_footer'
+      ? 'below_footer'
+      : 'above_footer';
 
     const brandingSettings = {
       company_name,
@@ -252,7 +267,17 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_hero,
       logo_display_mode,
       hide_powered_by,
-      force_color_mode: normalizedForceColorMode
+      force_color_mode: normalizedForceColorMode,
+      // Footer overhaul (#441 + #440). String fields normalize empty/
+      // undefined → '' so the column is always a known type. Only persist
+      // when the request actually included the key (partial PUTs).
+      ...(facebook_url !== undefined  && { facebook_url:  String(facebook_url  || '').trim() }),
+      ...(instagram_url !== undefined && { instagram_url: String(instagram_url || '').trim() }),
+      ...(whatsapp_url !== undefined  && { whatsapp_url:  String(whatsapp_url  || '').trim() }),
+      ...(twitter_url !== undefined   && { twitter_url:   String(twitter_url   || '').trim() }),
+      ...(youtube_url !== undefined   && { youtube_url:   String(youtube_url   || '').trim() }),
+      ...(promo_markdown !== undefined && { promo_markdown: typeof promo_markdown === 'string' ? promo_markdown : '' }),
+      ...(promo_position !== undefined && { promo_position: normalizedPromoPosition })
     };
 
     // Handle favicon deletion if empty string or null is provided

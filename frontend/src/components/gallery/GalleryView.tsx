@@ -243,6 +243,16 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         logo_display_hero: settingsData.branding_logo_display_hero !== false,
         logo_display_mode: settingsData.branding_logo_display_mode || 'logo_and_text',
         hide_powered_by: settingsData.branding_hide_powered_by === true,
+        // Footer overhaul (#441 + #440). All five socials are optional;
+        // empty strings → that icon is hidden. promo_markdown is the
+        // global default; per-event override happens in GalleryLayout.
+        facebook_url: settingsData.branding_facebook_url || '',
+        instagram_url: settingsData.branding_instagram_url || '',
+        whatsapp_url: settingsData.branding_whatsapp_url || '',
+        twitter_url: settingsData.branding_twitter_url || '',
+        youtube_url: settingsData.branding_youtube_url || '',
+        promo_markdown: settingsData.branding_promo_markdown || '',
+        promo_position: settingsData.branding_promo_position === 'below_footer' ? 'below_footer' : 'above_footer',
       });
     }
   }, [settingsData]);
@@ -726,7 +736,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
       ) : null}
 
       <GalleryLayout
-        event={event}
+        event={{
+          ...event,
+          // Per-event promo override (#440). Sourced from the gallery
+          // /info response so the layout can decide between inherit /
+          // custom / off without a second fetch.
+          promo_mode: (data?.event as { promo_mode?: 'inherit' | 'custom' | 'off' })?.promo_mode,
+          promo_markdown: (data?.event as { promo_markdown?: string | null })?.promo_markdown,
+        }}
         brandingSettings={brandingSettings}
         headerStyle={data?.event?.header_style || theme.headerStyle}
         showLogout={true}

@@ -57,7 +57,7 @@ const safeParseDate = (dateValue: unknown): Date | null => {
 import { toast } from 'react-toastify';
 import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
-import { Button, Input, Card, Loading } from '../../components/common';
+import { Button, Input, Card, Loading, MarkdownContent } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu, AdminGuestsList } from '../../components/admin';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
@@ -284,6 +284,12 @@ export const EventDetailsPage: React.FC = () => {
     photo_cap: number;
     // Default photo sort
     default_photo_sort: string;
+    // Per-event promotional override (#440). Three-way mode:
+    //   inherit → use the global branding_promo_markdown
+    //   custom  → render this event's promo_markdown
+    //   off     → no promo for this event regardless of global
+    promo_mode: 'inherit' | 'custom' | 'off';
+    promo_markdown: string;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -321,6 +327,9 @@ export const EventDetailsPage: React.FC = () => {
     photo_cap: 0,
     // Default photo sort
     default_photo_sort: 'upload_date_desc',
+    // Per-event promotional override (#440)
+    promo_mode: 'inherit',
+    promo_markdown: '',
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -576,6 +585,9 @@ export const EventDetailsPage: React.FC = () => {
       photo_cap: event.photo_cap || 0,
       // Default photo sort
       default_photo_sort: event.default_photo_sort || 'upload_date_desc',
+      // Per-event promotional override (#440)
+      promo_mode: ((event as { promo_mode?: 'inherit' | 'custom' | 'off' }).promo_mode) || 'inherit',
+      promo_markdown: (event as { promo_markdown?: string }).promo_markdown || '',
     });
 
     setShowNewPassword(false);
@@ -718,6 +730,10 @@ export const EventDetailsPage: React.FC = () => {
       // Header style settings (decoupled from layout, #158)
       header_style: currentTheme?.headerStyle || 'standard',
       hero_divider_style: currentTheme?.heroDividerStyle || 'wave',
+      // Per-event promotional override (#440). Backend nulls
+      // promo_markdown automatically when mode != 'custom'.
+      promo_mode: editForm.promo_mode,
+      promo_markdown: editForm.promo_mode === 'custom' ? editForm.promo_markdown : null,
     };
     
     // Only include fields that have defined values
@@ -1363,6 +1379,52 @@ export const EventDetailsPage: React.FC = () => {
                     settings={feedbackSettings}
                     onChange={setFeedbackSettings}
                   />
+                </div>
+
+                {/* Promotional Banner Override (#440) — three-way: inherit / custom / off */}
+                <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 mb-3">
+                    {t('events.promoBanner.title', 'Promotional Banner')}
+                  </h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+                    {t('events.promoBanner.help', 'Choose how this gallery handles the promotional banner. "Inherit" uses your global default; "Custom" overrides it for this event; "Off" hides it entirely.')}
+                  </p>
+                  <div className="space-y-2">
+                    {(['inherit', 'custom', 'off'] as const).map((mode) => (
+                      <label key={mode} className="flex items-center">
+                        <input
+                          type="radio"
+                          name="promo_mode"
+                          value={mode}
+                          checked={editForm.promo_mode === mode}
+                          onChange={() => setEditForm(prev => ({ ...prev, promo_mode: mode }))}
+                          className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 focus:ring-primary-500"
+                        />
+                        <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">
+                          {t(`events.promoBanner.mode_${mode}`, mode === 'inherit' ? 'Inherit global default' : mode === 'custom' ? 'Custom override for this event' : 'Off (hide for this event)')}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {editForm.promo_mode === 'custom' && (
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        value={editForm.promo_markdown}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, promo_markdown: e.target.value }))}
+                        rows={5}
+                        placeholder={t('events.promoBanner.placeholder', 'Markdown content (e.g. **Special offer:** [book your next session](https://example.com))')}
+                        className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-accent-dark font-mono text-sm"
+                      />
+                      {editForm.promo_markdown.trim() && (
+                        <div className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 bg-neutral-50 dark:bg-neutral-900">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400 mb-2">
+                            {t('events.promoBanner.preview', 'Preview')}
+                          </p>
+                          <MarkdownContent source={editForm.promo_markdown} className="text-sm text-neutral-800 dark:text-neutral-200 prose-sm prose-a:text-primary-600 dark:prose-a:text-primary-400" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Download Protection Settings */}

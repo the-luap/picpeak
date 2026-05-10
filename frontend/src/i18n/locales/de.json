@@ -689,7 +689,8 @@
     },
     "footer": {
       "forgetMeConfirm": "Ihr Name und Ihre Auswahl werden aus dieser Galerie entfernt.",
-      "forgetMe": "Vergiss mich ({{name}})"
+      "forgetMe": "Vergiss mich ({{name}})",
+      "socials": "Soziale Netzwerke"
     },
     "photosCount_one": "{{count}} Foto",
     "photosCount_other": "{{count}} Fotos",
@@ -1000,7 +1001,16 @@
     "importExternal": "Aus externem Ordner importieren",
     "externalImportInfo": "Alle Bilder aus dem ausgewählten Ordner werden importiert.",
     "selectExternalFolder": "Externen Ordner unter /external-media auswählen",
-    "importFromSelectedFolder": "Aus ausgewähltem Ordner importieren"
+    "importFromSelectedFolder": "Aus ausgewähltem Ordner importieren",
+    "promoBanner": {
+      "title": "Werbebanner",
+      "help": "Lege fest, wie diese Galerie das Werbebanner behandelt. „Übernehmen\" nutzt die globale Vorgabe; „Eigene\" überschreibt sie für dieses Event; „Aus\" blendet das Banner für dieses Event aus.",
+      "mode_inherit": "Globale Vorgabe übernehmen",
+      "mode_custom": "Eigene Inhalte für dieses Event",
+      "mode_off": "Aus (für dieses Event ausblenden)",
+      "placeholder": "Markdown-Inhalt (z. B. **Aktion:** [jetzt Termin buchen](https://example.com))",
+      "preview": "Vorschau"
+    }
   },
   "settings": {
     "title": "Systemeinstellungen",

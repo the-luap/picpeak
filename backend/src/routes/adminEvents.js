@@ -393,7 +393,13 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     'upload_date_desc', 'upload_date_asc',
     'capture_date_desc', 'capture_date_asc',
     'filename_asc', 'filename_desc'
-  ])
+  ]),
+  // Per-event promotional override (#440). Three-way mode:
+  //   inherit → fall back to global branding_promo_markdown
+  //   custom  → render this event's promo_markdown verbatim
+  //   off     → suppress entirely for this event
+  body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
+  body('promo_markdown').optional({ nullable: true }).isString()
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -1100,7 +1106,13 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     'upload_date_desc', 'upload_date_asc',
     'capture_date_desc', 'capture_date_asc',
     'filename_asc', 'filename_desc'
-  ])
+  ]),
+  // Per-event promotional override (#440). Three-way mode:
+  //   inherit → fall back to global branding_promo_markdown
+  //   custom  → render this event's promo_markdown verbatim
+  //   off     → suppress entirely for this event
+  body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
+  body('promo_markdown').optional({ nullable: true }).isString()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -1249,6 +1261,21 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     // Format hero logo settings if provided
     if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
       updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
+    }
+
+    // Per-event promotional override (#440). Normalize promo_markdown to
+    // NULL when mode is anything other than 'custom' so we don't carry
+    // stale text after the admin switches modes. Empty markdown also
+    // becomes NULL.
+    if (Object.prototype.hasOwnProperty.call(updates, 'promo_mode')
+      || Object.prototype.hasOwnProperty.call(updates, 'promo_markdown')) {
+      const mode = updates.promo_mode;
+      if (mode && mode !== 'custom') {
+        updates.promo_markdown = null;
+      } else if (Object.prototype.hasOwnProperty.call(updates, 'promo_markdown')) {
+        const md = typeof updates.promo_markdown === 'string' ? updates.promo_markdown.trim() : '';
+        updates.promo_markdown = md || null;
+      }
     }
 
     // Sync header_style / hero_divider_style from color_theme JSON when not

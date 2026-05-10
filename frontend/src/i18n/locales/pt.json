@@ -335,7 +335,8 @@
     },
     "footer": {
       "forgetMeConfirm": "O seu nome e seleções serão removidos desta galeria.",
-      "forgetMe": "Esquecer-me ({{name}})"
+      "forgetMe": "Esquecer-me ({{name}})",
+      "socials": "Redes sociais"
     },
     "photosCount_many": "{{count}} fotos",
     "photosCount_one": "{{count}} foto",
@@ -655,7 +656,16 @@
     "importExternal": "Importar de pasta externa",
     "externalImportInfo": "Todas as imagens da pasta selecionada serão importadas.",
     "selectExternalFolder": "Selecionar pasta externa em /external-media",
-    "importFromSelectedFolder": "Importar da pasta selecionada"
+    "importFromSelectedFolder": "Importar da pasta selecionada",
+    "promoBanner": {
+      "title": "Banner Promocional",
+      "help": "Escolha como esta galeria lida com o banner promocional. \"Herdar\" usa o padrão global; \"Personalizado\" substitui apenas neste evento; \"Desligado\" oculta o banner para este evento.",
+      "mode_inherit": "Herdar padrão global",
+      "mode_custom": "Personalizado para este evento",
+      "mode_off": "Desligado (ocultar neste evento)",
+      "placeholder": "Conteúdo em Markdown (ex.: **Oferta especial:** [agende sua próxima sessão](https://example.com))",
+      "preview": "Pré-visualização"
+    }
   },
   "settings": {
     "title": "Configurações do Sistema",

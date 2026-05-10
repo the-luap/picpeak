@@ -328,7 +328,8 @@
     },
     "footer": {
       "forgetMeConfirm": "Uw naam en selecties worden verwijderd uit deze galerij.",
-      "forgetMe": "Vergeet mij ({{name}})"
+      "forgetMe": "Vergeet mij ({{name}})",
+      "socials": "Sociale media"
     },
     "photosCount_one": "{{count}} foto",
     "photosCount_other": "{{count}} foto's",
@@ -639,7 +640,16 @@
     "importExternal": "Importeren vanuit externe map",
     "externalImportInfo": "Alle afbeeldingen uit de geselecteerde map worden geïmporteerd.",
     "selectExternalFolder": "Externe map selecteren onder /external-media",
-    "importFromSelectedFolder": "Importeren vanuit geselecteerde map"
+    "importFromSelectedFolder": "Importeren vanuit geselecteerde map",
+    "promoBanner": {
+      "title": "Promotiebanner",
+      "help": "Kies hoe deze galerij de promotiebanner toont. \"Overnemen\" gebruikt de globale standaard; \"Aangepast\" overschrijft deze voor dit evenement; \"Uit\" verbergt de banner volledig.",
+      "mode_inherit": "Globale standaard overnemen",
+      "mode_custom": "Aangepast voor dit evenement",
+      "mode_off": "Uit (verbergen voor dit evenement)",
+      "placeholder": "Markdown-inhoud (bijv. **Aanbieding:** [boek je volgende sessie](https://example.com))",
+      "preview": "Voorbeeld"
+    }
   },
   "settings": {
     "title": "Systeeminstellingen",
