@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.44.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.44.1-beta.0...v3.44.2-beta.0) (2026-05-10)
+
+
+### Bug Fixes
+
+* **events:** clamp page state when totalPages drops below current page ([#442](https://github.com/the-luap/picpeak/issues/442)) ([b4e30a4](https://github.com/the-luap/picpeak/commit/b4e30a4293c77e6dc34e955741ee113b9d530718))
+* **events:** clamp page state when totalPages drops below current page ([#442](https://github.com/the-luap/picpeak/issues/442)) ([9c4a96f](https://github.com/the-luap/picpeak/commit/9c4a96fe977b7a0907f5dea99491385195b76184))
+
 ## [3.44.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.44.0-beta.0...v3.44.1-beta.0) (2026-05-10)
 
 
