@@ -121,9 +121,10 @@
     "done": "Done",
     "retry": "Retry",
     "characters": "characters",
-    "saveChanges": "Save Changes",
+    "saveChanges": "Save changes",
     "resetChanges": "Reset Changes",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "discard": "Discard"
   },
   "upload": {
     "photoCategory": "Photo Category",
@@ -165,7 +166,8 @@
     "emailSettings": "Email Settings",
     "backup": "Backup & Restore",
     "cmsPages": "CMS Pages",
-    "users": "Users"
+    "users": "Users",
+    "calendar": "Calendar"
   },
   "archives": {
     "title": "Archives",
@@ -998,7 +1000,9 @@
       "display": "Display",
       "privacySecurity": "Privacy & Security",
       "integrations": "Integrations",
-      "system": "System"
+      "system": "System",
+      "appearance": "Content & Appearance",
+      "communication": "Communication"
     },
     "apiTokens": {
       "title": "API Tokens",
@@ -1039,7 +1043,86 @@
       "empty": "No webhooks yet. Create one above to start receiving event notifications."
     },
     "sectionLabel": "Settings section",
-    "navAriaLabel": "Settings navigation"
+    "navAriaLabel": "Settings navigation",
+    "eventTypes": {
+      "title": "Event Types"
+    },
+    "cms": {
+      "title": "CMS Pages"
+    },
+    "email": {
+      "title": "Email Settings"
+    },
+    "backup": {
+      "title": "Backup"
+    },
+    "branding": {
+      "title": "Branding"
+    },
+    "features": {
+      "title": "Features",
+      "intro": "Turn product surfaces on or off. Enabled features appear in the left navigation and become available to your team. Some features are still in beta — flip them on to try them, off to hide them.",
+      "notYetAvailable": "Not yet available — this toggle activates when the feature ships.",
+      "sidebarHidden": "No sidebar item — runs in the background",
+      "unsavedChanges": "You have unsaved changes",
+      "preview": {
+        "title": "Sidebar preview",
+        "note": "Reflects unsaved changes",
+        "legend": "Green tinted items are controlled by toggles above."
+      },
+      "sections": {
+        "core": "Core",
+        "communication": "Communication",
+        "scheduling": "Scheduling",
+        "sales": "Sales",
+        "insights": "Insights & Access"
+      },
+      "status": {
+        "stable": "stable",
+        "beta": "beta",
+        "new": "new",
+        "experimental": "experimental",
+        "roadmap": "roadmap"
+      },
+      "galleries": {
+        "title": "Galleries",
+        "description": "The core PicPeak surface. Always available.",
+        "locked": "Galleries are the foundation of PicPeak and can't be turned off."
+      },
+      "reminderEmails": {
+        "title": "Reminder Emails",
+        "description": "Automatic nudges to guests before their gallery expires and to admins about pending uploads."
+      },
+      "messaging": {
+        "title": "Messaging",
+        "description": "In-app threads with guests, attached to a gallery. Email is genuinely fine for most teams — this is for studios that want everything in one place.",
+        "sidebar": "Messages"
+      },
+      "calendar": {
+        "title": "Calendar",
+        "description": "See all upcoming and past events on a month/week view. Optionally accept new bookings from clients.",
+        "sidebar": "Calendar"
+      },
+      "quotes": {
+        "title": "Quotes",
+        "description": "Send line-itemed quotes to clients. They can accept or decline from a public link; payment is tracked manually.",
+        "sidebar": "Quotes"
+      },
+      "bills": {
+        "title": "Bills",
+        "description": "Generate a bill from any accepted quote. Mark paid manually — no payment processor integration.",
+        "sidebar": "Bills"
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Storage usage, gallery views, download counts, and per-event stats."
+      },
+      "userManagement": {
+        "title": "User Management",
+        "description": "Multi-admin support with role-based permissions. Turn off if you're a single-operator studio.",
+        "warning": "Existing user accounts stay valid; the admin UI for managing them will be hidden until you re-enable this."
+      }
+    }
   },
   "analytics": {
     "title": "Analytics Dashboard",

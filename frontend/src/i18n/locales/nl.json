@@ -123,7 +123,8 @@
     "characters": "tekens",
     "saveChanges": "Wijzigingen opslaan",
     "resetChanges": "Wijzigingen ongedaan maken",
-    "dismiss": "Sluiten"
+    "dismiss": "Sluiten",
+    "discard": "Verwerpen"
   },
   "upload": {
     "photoCategory": "Fotocategorie",
@@ -165,7 +166,8 @@
     "eventTypes": "Evenementtypes",
     "backup": "Back-up en herstel",
     "cmsPages": "CMS-pagina's",
-    "users": "Gebruikers"
+    "users": "Gebruikers",
+    "calendar": "Agenda"
   },
   "archives": {
     "title": "Archieven",
@@ -998,7 +1000,9 @@
       "display": "Weergave",
       "privacySecurity": "Privacy & Beveiliging",
       "integrations": "Integraties",
-      "system": "Systeem"
+      "system": "Systeem",
+      "appearance": "Inhoud & Weergave",
+      "communication": "Communicatie"
     },
     "apiTokens": {
       "title": "API-tokens",
@@ -1039,7 +1043,86 @@
       "empty": "Nog geen webhooks. Maak er een aan hierboven om evenementmeldingen te ontvangen."
     },
     "sectionLabel": "Instellingensectie",
-    "navAriaLabel": "Instellingennavigatie"
+    "navAriaLabel": "Instellingennavigatie",
+    "eventTypes": {
+      "title": "Evenementtypes"
+    },
+    "cms": {
+      "title": "CMS-pagina's"
+    },
+    "email": {
+      "title": "E-mailinstellingen"
+    },
+    "backup": {
+      "title": "Back-up"
+    },
+    "branding": {
+      "title": "Huisstijl"
+    },
+    "features": {
+      "title": "Functies",
+      "intro": "Schakel productonderdelen aan of uit. Ingeschakelde functies verschijnen in de linker navigatie en worden beschikbaar voor uw team. Sommige functies zijn nog in beta — schakel ze aan om ze te proberen, uit om ze te verbergen.",
+      "notYetAvailable": "Nog niet beschikbaar — deze schakelaar wordt actief zodra de functie wordt uitgebracht.",
+      "sidebarHidden": "Geen item in de zijbalk — draait op de achtergrond",
+      "unsavedChanges": "U heeft niet-opgeslagen wijzigingen",
+      "preview": {
+        "title": "Zijbalk-voorbeeld",
+        "note": "Toont niet-opgeslagen wijzigingen",
+        "legend": "Groen gekleurde items worden bestuurd door de schakelaars hierboven."
+      },
+      "sections": {
+        "core": "Kern",
+        "communication": "Communicatie",
+        "scheduling": "Planning",
+        "sales": "Verkoop",
+        "insights": "Inzichten & Toegang"
+      },
+      "status": {
+        "stable": "stabiel",
+        "beta": "beta",
+        "new": "nieuw",
+        "experimental": "experimenteel",
+        "roadmap": "roadmap"
+      },
+      "galleries": {
+        "title": "Galerijen",
+        "description": "Het kernoppervlak van PicPeak. Altijd beschikbaar.",
+        "locked": "Galerijen zijn de basis van PicPeak en kunnen niet worden uitgeschakeld."
+      },
+      "reminderEmails": {
+        "title": "Herinneringsmails",
+        "description": "Automatische herinneringen aan gasten voordat hun galerij verloopt en aan admins over openstaande uploads."
+      },
+      "messaging": {
+        "title": "Berichten",
+        "description": "In-app gesprekken met gasten, gekoppeld aan een galerij. E-mail volstaat voor de meeste teams — dit is voor studios die alles op één plek willen.",
+        "sidebar": "Berichten"
+      },
+      "calendar": {
+        "title": "Agenda",
+        "description": "Bekijk alle aankomende en eerdere evenementen in een maand- of weekoverzicht. Accepteer optioneel boekingen van klanten.",
+        "sidebar": "Agenda"
+      },
+      "quotes": {
+        "title": "Offertes",
+        "description": "Stuur offertes met regelitems naar klanten. Ze kunnen accepteren of afwijzen via een openbare link; betaling wordt handmatig bijgehouden.",
+        "sidebar": "Offertes"
+      },
+      "bills": {
+        "title": "Facturen",
+        "description": "Genereer een factuur uit elke geaccepteerde offerte. Markeer handmatig als betaald — geen integratie met betaalproviders.",
+        "sidebar": "Facturen"
+      },
+      "analytics": {
+        "title": "Analyses",
+        "description": "Opslaggebruik, galerijweergaven, downloadtellingen en statistieken per evenement."
+      },
+      "userManagement": {
+        "title": "Gebruikersbeheer",
+        "description": "Multi-admin ondersteuning met rolgebaseerde rechten. Schakel dit uit als u een eenmansstudio bent.",
+        "warning": "Bestaande gebruikersaccounts blijven geldig; de admin-interface om ze te beheren wordt verborgen totdat u dit weer inschakelt."
+      }
+    }
   },
   "analytics": {
     "title": "Statistiekendashboard",

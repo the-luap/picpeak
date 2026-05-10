@@ -3,51 +3,61 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calendar,
-  Mail,
   Archive,
   BarChart3,
   Settings,
   X,
-  Palette,
-  FileText,
-  HardDrive,
   Users,
-  Tags
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { settingsService } from '../../services/settings.service';
 import { VersionInfo } from './VersionInfo';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useFeatureFlags, type FeatureKey } from '../../contexts/FeatureFlagsContext';
 
 interface AdminSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const navigation = [
+interface NavItem {
+  nameKey: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permission?: string | false;
+  featureFlag?: FeatureKey;
+}
+
+// Sidebar shape after the Settings reorg (#feature-flags-settings-reorg).
+//
+// Removed (now live as Settings tabs, with redirects from the old
+// top-level paths so bookmarks keep working):
+//   /admin/email, /admin/branding, /admin/event-types, /admin/backup,
+//   /admin/cms.
+//
+// Feature-gated (only render when the corresponding feature flag is on):
+//   Analytics → flags.analytics
+//   Users     → flags.userManagement
+const navigation: NavItem[] = [
   { nameKey: 'navigation.dashboard', href: '/admin/dashboard', icon: LayoutDashboard, permission: false },
-  { nameKey: 'navigation.events', href: '/admin/events', icon: Calendar, permission: 'events.view' },
-  { nameKey: 'navigation.archives', href: '/admin/archives', icon: Archive, permission: 'archives.view' },
-  { nameKey: 'admin.analytics', href: '/admin/analytics', icon: BarChart3, permission: 'analytics.view' },
-  { nameKey: 'navigation.emailSettings', href: '/admin/email', icon: Mail, permission: 'email.view' },
-  { nameKey: 'navigation.branding', href: '/admin/branding', icon: Palette, permission: 'branding.view' },
-  { nameKey: 'navigation.settings', href: '/admin/settings', icon: Settings, permission: 'settings.view' },
-  { nameKey: 'navigation.eventTypes', href: '/admin/event-types', icon: Tags, permission: 'settings.view' },
-  { nameKey: 'navigation.backup', href: '/admin/backup', icon: HardDrive, permission: 'backup.view' },
-  { nameKey: 'navigation.cmsPages', href: '/admin/cms', icon: FileText, permission: 'cms.view' },
-  { nameKey: 'navigation.users', href: '/admin/users', icon: Users, permission: 'users.view' },
-] as const;
+  { nameKey: 'navigation.events',    href: '/admin/events',    icon: Calendar,        permission: 'events.view' },
+  { nameKey: 'navigation.archives',  href: '/admin/archives',  icon: Archive,         permission: 'archives.view' },
+  { nameKey: 'admin.analytics',      href: '/admin/analytics', icon: BarChart3,       permission: 'analytics.view', featureFlag: 'analytics' },
+  { nameKey: 'navigation.settings',  href: '/admin/settings',  icon: Settings,        permission: 'settings.view' },
+  { nameKey: 'navigation.users',     href: '/admin/users',     icon: Users,           permission: 'users.view',     featureFlag: 'userManagement' },
+];
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
+  const { flags } = useFeatureFlags();
 
-  // Filter navigation items based on permissions
-  const filteredNavigation = navigation.filter(item => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
+  const filteredNavigation = navigation.filter((item) => {
+    if (item.permission && !hasPermission(item.permission as string)) return false;
+    if (item.featureFlag && !flags[item.featureFlag]) return false;
+    return true;
   });
 
   return (

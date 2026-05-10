@@ -18,19 +18,15 @@ import {
   CreateEventPage,
   EventDetailsPage,
   EventFeedbackPage,
-  EmailConfigPage,
   ArchivesPage,
   AnalyticsPage,
-  BrandingPage,
   SettingsPage,
-  BackupManagement,
-  CMSPage,
   UserManagementPage,
-  EventTypesPage,
   WebhookDeliveriesPage
 } from './pages/admin';
 import { AcceptInvitePage } from './pages/public/AcceptInvitePage';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
+import { RequireFeature } from './components/admin/RequireFeature';
 import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags, CMSContentBlock } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
 import { GlobalThemeProvider } from './components/GlobalThemeProvider';
@@ -128,15 +124,28 @@ function App() {
                       <Route path="events/:id" element={<EventDetailsPage />} />
                       <Route path="events/:id/feedback" element={<EventFeedbackPage />} />
                       <Route path="archives" element={<ArchivesPage />} />
-                      <Route path="email" element={<EmailConfigPage />} />
-                      <Route path="analytics" element={<AnalyticsPage />} />
-                      <Route path="branding" element={<BrandingPage />} />
+
+                      {/* Feature-gated surfaces — redirect to /admin/dashboard when flag is off. */}
+                      <Route element={<RequireFeature flag="analytics" />}>
+                        <Route path="analytics" element={<AnalyticsPage />} />
+                      </Route>
+                      <Route element={<RequireFeature flag="userManagement" />}>
+                        <Route path="users" element={<UserManagementPage />} />
+                      </Route>
+
                       <Route path="settings" element={<SettingsPage />} />
-                      <Route path="event-types" element={<EventTypesPage />} />
                       <Route path="webhooks/:id/deliveries" element={<WebhookDeliveriesPage />} />
-                      <Route path="backup" element={<BackupManagement />} />
-                      <Route path="cms" element={<CMSPage />} />
-                      <Route path="users" element={<UserManagementPage />} />
+
+                      {/* Old top-level routes — these surfaces now live as
+                          Settings tabs (#feature-flags-settings-reorg).
+                          Kept indefinitely as redirects so existing bookmarks
+                          and external links don't 404. */}
+                      <Route path="email"        element={<Navigate to="/admin/settings?tab=email"      replace />} />
+                      <Route path="branding"     element={<Navigate to="/admin/settings?tab=branding"   replace />} />
+                      <Route path="event-types"  element={<Navigate to="/admin/settings?tab=eventTypes" replace />} />
+                      <Route path="backup"       element={<Navigate to="/admin/settings?tab=backup"     replace />} />
+                      <Route path="cms"          element={<Navigate to="/admin/settings?tab=cms"        replace />} />
+
                       <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     </Route>
                   </Route>
