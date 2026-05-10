@@ -104,6 +104,17 @@ export const EventsListPage: React.FC = () => {
     setPage(1);
   }, [statusFilter, debouncedSearchTerm]);
 
+  // Clamp the active page when the result count shrinks (#442 — bulk
+  // delete of an entire page would leave the user on a now-empty
+  // page=N where N > totalPages, with no auto-correction). Triggers
+  // after each successful refetch when totalPages drops below the
+  // current page (bulk delete, individual delete, archive, anything).
+  useEffect(() => {
+    if (data?.pagination && page > data.pagination.totalPages) {
+      setPage(Math.max(1, data.pagination.totalPages));
+    }
+  }, [data?.pagination, page]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
