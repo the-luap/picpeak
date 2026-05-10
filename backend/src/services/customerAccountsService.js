@@ -761,23 +761,36 @@ async function isCustomerPortalEnabled() {
 }
 
 /**
- * Customer-surface global feature toggles. The customer-portal feature
- * flag (read above) is the master switch; calendar / quotes / bills are
- * locked behind their own maintainer-side flags (Settings → Features)
- * but those surfaces aren't yet built — return false so the customer
- * dashboard doesn't render placeholder tabs.
+ * Customer-surface global toggles. Branding visibility (logo /
+ * company name in the customer dashboard header) lives in
+ * app_settings under setting_type='customer_surface' and is edited
+ * from the Branding page (Customer dashboard card, gated by the
+ * customerPortal feature flag).
  *
- * Branding visibility (logo / company name) is no longer per-instance
- * configurable on the customer surface — the customer layout always
- * shows the configured brand to keep parity with /admin.
+ * Calendar / Quotes / Bills feature globals are intentionally OFF
+ * here — those surfaces are now governed by the maintainer's
+ * feature_flags table (Settings → Features), not by app_settings.
+ *
+ * Returns sane defaults when the keys aren't present so an install
+ * missing migration 092 doesn't crash — branding defaults ON to
+ * match the visual state before the toggle existed.
  */
 async function getCustomerSurfaceGlobals() {
+  const rows = await db('app_settings').where('setting_type', 'customer_surface').select('setting_key', 'setting_value');
+  const map = {};
+  for (const r of rows) {
+    let v = r.setting_value;
+    if (typeof v === 'string') {
+      try { v = JSON.parse(v); } catch { /* leave as-is */ }
+    }
+    map[r.setting_key] = v;
+  }
   return {
     calendarEnabled: false,
     quotesEnabled: false,
     billsEnabled: false,
-    showLogo: true,
-    showCompanyName: true,
+    showLogo:        map.customer_show_logo !== false, // default true
+    showCompanyName: map.customer_show_company_name !== false, // default true
   };
 }
 

@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService, type BrandingSettings } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 import { buildResourceUrl } from '../../utils/url';
+import { useFeatureEnabled } from '../../contexts/FeatureFlagsContext';
+import { CustomerDashboardBrandingCard } from '../../components/admin/CustomerDashboardBrandingCard';
 
 export const BrandingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -905,7 +907,23 @@ export const BrandingPage: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {/* Customer dashboard branding (#354) — only render when the
+            customerPortal feature flag is on, since these toggles only
+            affect /customer/* surfaces. */}
+        <CustomerDashboardBrandingSection />
       </div>
     </ErrorBoundary>
   );
+};
+
+/**
+ * Customer-dashboard branding card. Pulled out so the BrandingPage
+ * stays readable and the feature-flag gate is local — no conditional
+ * hooks in the parent.
+ */
+const CustomerDashboardBrandingSection: React.FC = () => {
+  const customerPortalEnabled = useFeatureEnabled('customerPortal');
+  if (!customerPortalEnabled) return null;
+  return <CustomerDashboardBrandingCard />;
 };

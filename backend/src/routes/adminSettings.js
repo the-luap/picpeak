@@ -134,6 +134,88 @@ router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) 
   }
 });
 
+/**
+ * Customer-surface branding settings (#354 follow-up).
+ *
+ * Two toggles control what shows in the customer dashboard header:
+ *   customer_show_logo          (default true)
+ *   customer_show_company_name  (default true)
+ *
+ * The Calendar / Quotes / Bills feature globals that used to live here
+ * have moved to the maintainer's Features tab (feature_flags table).
+ *
+ * IMPORTANT: both routes MUST be registered before the generic
+ * `router.get('/:type', ...)` below — Express matches routes in
+ * registration order.
+ */
+router.get('/customer-surface', adminAuth, requirePermission('settings.view'), async (req, res) => {
+  try {
+    const rows = await db('app_settings')
+      .where('setting_type', 'customer_surface')
+      .select('setting_key', 'setting_value');
+
+    const settings = {};
+    for (const r of rows) {
+      let value = r.setting_value;
+      if (value === null || value === undefined) {
+        settings[r.setting_key] = null;
+        continue;
+      }
+      if (typeof value !== 'string') {
+        settings[r.setting_key] = value;
+      } else {
+        try { settings[r.setting_key] = JSON.parse(value); }
+        catch { settings[r.setting_key] = value; }
+      }
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Customer surface settings fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch customer surface settings' });
+  }
+});
+
+router.put('/customer-surface', adminAuth, requirePermission('settings.edit'), async (req, res) => {
+  try {
+    // Branding-only whitelist (calendar/quotes/bills feature globals
+    // moved to the Features tab / feature_flags table).
+    const allowed = [
+      'customer_show_logo',
+      'customer_show_company_name',
+    ];
+    const updates = [];
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        const value = !!req.body[key];
+        updates.push({ setting_key: key, setting_value: JSON.stringify(value), setting_type: 'customer_surface' });
+      }
+    }
+
+    for (const u of updates) {
+      const existing = await db('app_settings').where('setting_key', u.setting_key).first();
+      if (existing) {
+        await db('app_settings').where('setting_key', u.setting_key).update({
+          setting_value: u.setting_value,
+          setting_type: u.setting_type,
+          updated_at: new Date(),
+        });
+      } else {
+        await db('app_settings').insert({ ...u, created_at: new Date(), updated_at: new Date() });
+      }
+    }
+
+    // Clear the public-site cache so any consumer relying on it
+    // (e.g. customer login footer if it picks these up) refetches.
+    clearPublicSiteCache();
+
+    res.json({ message: 'Customer surface settings updated', updated: updates.map((u) => u.setting_key) });
+  } catch (error) {
+    console.error('Customer surface settings save error:', error);
+    res.status(500).json({ error: 'Failed to save customer surface settings' });
+  }
+});
+
 // Get settings by type
 router.get('/:type', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {

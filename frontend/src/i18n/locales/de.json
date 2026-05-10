@@ -1499,6 +1499,17 @@
         "title": "Kundenportal",
         "description": "Persistente Kunden-Logins. Wiederkehrende Kunden sehen alle zugeordneten Galerien an einem Ort — keine Passwörter pro Event. Grundlage für Kalender / Angebote / Rechnungen (die nur im Kundendashboard erscheinen, wenn diese Option aktiviert ist)."
       }
+    },
+    "customerSurface": {
+      "brandingTitle": "Kundendashboard-Kopfzeile",
+      "brandingHint": "Bestimmt, was in der Kopfzeile von /customer/dashboard angezeigt wird. Öffentliche Galerien und Admin-Oberflächen bleiben unverändert.",
+      "showLogo": "Logo in der Kundenkopfzeile anzeigen",
+      "showLogoHint": "Verwendet das oben konfigurierte Branding-Logo.",
+      "showCompanyName": "Firmennamen in der Kundenkopfzeile anzeigen",
+      "showCompanyNameHint": "Ausblenden, wenn dein Logo den Firmennamen bereits enthält.",
+      "save": "Änderungen speichern",
+      "saved": "Branding des Kundendashboards gespeichert",
+      "error": "Einstellungen konnten nicht gespeichert werden"
     }
   },
   "branding": {
