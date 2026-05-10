@@ -123,7 +123,8 @@
     "characters": "Zeichen",
     "saveChanges": "Änderungen speichern",
     "resetChanges": "Änderungen zurücksetzen",
-    "dismiss": "Schließen"
+    "dismiss": "Schließen",
+    "discard": "Verwerfen"
   },
   "upload": {
     "photoCategory": "Fotokategorie",
@@ -165,7 +166,8 @@
     "eventTypes": "Veranstaltungstypen",
     "backup": "Backup & Wiederherstellung",
     "cmsPages": "CMS-Seiten",
-    "users": "Benutzer"
+    "users": "Benutzer",
+    "calendar": "Kalender"
   },
   "eventTypes": {
     "title": "Veranstaltungsarten",
@@ -1359,7 +1361,9 @@
       "display": "Anzeige",
       "privacySecurity": "Datenschutz & Sicherheit",
       "integrations": "Integrationen",
-      "system": "System"
+      "system": "System",
+      "appearance": "Inhalt & Erscheinungsbild",
+      "communication": "Kommunikation"
     },
     "apiTokens": {
       "title": "API-Tokens",
@@ -1400,7 +1404,86 @@
       "empty": "Noch keine Webhooks. Erstellen Sie oben einen, um Ereignisbenachrichtigungen zu erhalten."
     },
     "sectionLabel": "Einstellungsbereich",
-    "navAriaLabel": "Einstellungsnavigation"
+    "navAriaLabel": "Einstellungsnavigation",
+    "eventTypes": {
+      "title": "Veranstaltungstypen"
+    },
+    "cms": {
+      "title": "CMS-Seiten"
+    },
+    "email": {
+      "title": "E-Mail-Einstellungen"
+    },
+    "backup": {
+      "title": "Backup"
+    },
+    "branding": {
+      "title": "Branding"
+    },
+    "features": {
+      "title": "Funktionen",
+      "intro": "Schalten Sie Produktbereiche ein oder aus. Aktivierte Funktionen erscheinen in der linken Navigation und werden für Ihr Team verfügbar. Einige Funktionen sind noch im Beta-Status — schalten Sie sie ein, um sie auszuprobieren, oder aus, um sie zu verbergen.",
+      "notYetAvailable": "Noch nicht verfügbar — dieser Schalter wird aktiv, sobald die Funktion ausgeliefert wird.",
+      "sidebarHidden": "Kein Sidebar-Eintrag — läuft im Hintergrund",
+      "unsavedChanges": "Sie haben ungespeicherte Änderungen",
+      "preview": {
+        "title": "Sidebar-Vorschau",
+        "note": "Zeigt ungespeicherte Änderungen",
+        "legend": "Grün hinterlegte Einträge werden durch die Schalter oben gesteuert."
+      },
+      "sections": {
+        "core": "Kern",
+        "communication": "Kommunikation",
+        "scheduling": "Terminplanung",
+        "sales": "Vertrieb",
+        "insights": "Auswertungen & Zugriff"
+      },
+      "status": {
+        "stable": "stabil",
+        "beta": "beta",
+        "new": "neu",
+        "experimental": "experimentell",
+        "roadmap": "roadmap"
+      },
+      "galleries": {
+        "title": "Galerien",
+        "description": "Der Kern von PicPeak. Immer verfügbar.",
+        "locked": "Galerien sind die Grundlage von PicPeak und können nicht deaktiviert werden."
+      },
+      "reminderEmails": {
+        "title": "Erinnerungs-E-Mails",
+        "description": "Automatische Erinnerungen an Gäste vor Ablauf ihrer Galerie und an Admins über ausstehende Uploads."
+      },
+      "messaging": {
+        "title": "Nachrichten",
+        "description": "In-App-Konversationen mit Gästen, an eine Galerie gebunden. E-Mail ist für die meisten Teams völlig ausreichend — das hier ist für Studios, die alles an einem Ort haben möchten.",
+        "sidebar": "Nachrichten"
+      },
+      "calendar": {
+        "title": "Kalender",
+        "description": "Alle anstehenden und vergangenen Veranstaltungen in einer Monats-/Wochenansicht. Optional Buchungen von Kunden annehmen.",
+        "sidebar": "Kalender"
+      },
+      "quotes": {
+        "title": "Angebote",
+        "description": "Senden Sie Angebote mit Einzelposten an Kunden. Diese können über einen öffentlichen Link angenommen oder abgelehnt werden; Zahlungen werden manuell verfolgt.",
+        "sidebar": "Angebote"
+      },
+      "bills": {
+        "title": "Rechnungen",
+        "description": "Generieren Sie eine Rechnung aus jedem angenommenen Angebot. Manuell als bezahlt markieren — keine Integration mit Zahlungsanbietern.",
+        "sidebar": "Rechnungen"
+      },
+      "analytics": {
+        "title": "Statistiken",
+        "description": "Speichernutzung, Galerie-Aufrufe, Download-Zahlen und Statistiken pro Veranstaltung."
+      },
+      "userManagement": {
+        "title": "Benutzerverwaltung",
+        "description": "Multi-Admin-Unterstützung mit rollenbasierten Berechtigungen. Deaktivieren Sie dies, wenn Sie ein Einzelbetreiber sind.",
+        "warning": "Bestehende Benutzerkonten bleiben gültig; die Admin-Oberfläche für deren Verwaltung wird ausgeblendet, bis Sie dies wieder aktivieren."
+      }
+    }
   },
   "branding": {
     "title": "Branding & Themen",

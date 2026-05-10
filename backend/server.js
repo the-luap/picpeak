@@ -555,6 +555,7 @@ app.use('/api/gallery', require('./src/routes/galleryGuests'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/system', require('./src/routes/adminSystem'));
+app.use('/api/admin/feature-flags', require('./src/routes/adminFeatureFlags'));
 app.use('/api/admin/backup', require('./src/routes/adminBackup'));
 app.use('/api/admin/database-backup', require('./src/routes/adminDatabaseBackup'));
 app.use('/api/admin/feedback', require('./src/routes/adminFeedback'));

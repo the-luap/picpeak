@@ -121,9 +121,10 @@
     "done": "Concluído",
     "retry": "Tentar novamente",
     "characters": "caracteres",
-    "saveChanges": "Guardar alterações",
+    "saveChanges": "Salvar alterações",
     "resetChanges": "Repor alterações",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "discard": "Descartar"
   },
   "upload": {
     "photoCategory": "Categoria da Foto",
@@ -168,7 +169,8 @@
     "eventTypes": "Tipos de evento",
     "backup": "Backup e Restauração",
     "cmsPages": "Páginas CMS",
-    "users": "Utilizadores"
+    "users": "Utilizadores",
+    "calendar": "Calendário"
   },
   "archives": {
     "title": "Arquivos",
@@ -1015,7 +1017,9 @@
       "display": "Apresentação",
       "privacySecurity": "Privacidade e Segurança",
       "integrations": "Integrações",
-      "system": "Sistema"
+      "system": "Sistema",
+      "appearance": "Conteúdo e Aparência",
+      "communication": "Comunicação"
     },
     "apiTokens": {
       "title": "Tokens de API",
@@ -1056,7 +1060,86 @@
       "empty": "Ainda sem webhooks. Crie um acima para começar a receber notificações."
     },
     "sectionLabel": "Secção de configurações",
-    "navAriaLabel": "Navegação de configurações"
+    "navAriaLabel": "Navegação de configurações",
+    "eventTypes": {
+      "title": "Tipos de Evento"
+    },
+    "cms": {
+      "title": "Páginas CMS"
+    },
+    "email": {
+      "title": "Configurações de E-mail"
+    },
+    "backup": {
+      "title": "Backup"
+    },
+    "branding": {
+      "title": "Identidade Visual"
+    },
+    "features": {
+      "title": "Recursos",
+      "intro": "Ative ou desative os recursos do produto. Os recursos ativados aparecem na navegação à esquerda e ficam disponíveis para sua equipe. Alguns recursos ainda estão em beta — ative-os para experimentar ou desative-os para ocultar.",
+      "notYetAvailable": "Ainda não disponível — este controle será ativado quando o recurso for lançado.",
+      "sidebarHidden": "Sem item na barra lateral — executa em segundo plano",
+      "unsavedChanges": "Você tem alterações não salvas",
+      "preview": {
+        "title": "Visualização da barra lateral",
+        "note": "Reflete alterações não salvas",
+        "legend": "Itens em verde são controlados pelos interruptores acima."
+      },
+      "sections": {
+        "core": "Núcleo",
+        "communication": "Comunicação",
+        "scheduling": "Agendamento",
+        "sales": "Vendas",
+        "insights": "Análises & Acesso"
+      },
+      "status": {
+        "stable": "estável",
+        "beta": "beta",
+        "new": "novo",
+        "experimental": "experimental",
+        "roadmap": "planejado"
+      },
+      "galleries": {
+        "title": "Galerias",
+        "description": "A interface principal do PicPeak. Sempre disponível.",
+        "locked": "Galerias são a base do PicPeak e não podem ser desativadas."
+      },
+      "reminderEmails": {
+        "title": "E-mails de Lembrete",
+        "description": "Lembretes automáticos para convidados antes que sua galeria expire e para administradores sobre uploads pendentes."
+      },
+      "messaging": {
+        "title": "Mensagens",
+        "description": "Conversas no aplicativo com convidados, vinculadas a uma galeria. E-mail é suficiente para a maioria das equipes — isto é para estúdios que querem tudo em um só lugar.",
+        "sidebar": "Mensagens"
+      },
+      "calendar": {
+        "title": "Calendário",
+        "description": "Veja todos os eventos futuros e passados em uma visualização mensal/semanal. Opcionalmente aceite novos agendamentos de clientes.",
+        "sidebar": "Calendário"
+      },
+      "quotes": {
+        "title": "Orçamentos",
+        "description": "Envie orçamentos com itens detalhados aos clientes. Eles podem aceitar ou recusar por um link público; o pagamento é controlado manualmente.",
+        "sidebar": "Orçamentos"
+      },
+      "bills": {
+        "title": "Faturas",
+        "description": "Gere uma fatura a partir de qualquer orçamento aceito. Marque como pago manualmente — sem integração com processadores de pagamento.",
+        "sidebar": "Faturas"
+      },
+      "analytics": {
+        "title": "Análises",
+        "description": "Uso de armazenamento, visualizações de galerias, contagens de downloads e estatísticas por evento."
+      },
+      "userManagement": {
+        "title": "Gerenciamento de Usuários",
+        "description": "Suporte a múltiplos administradores com permissões baseadas em função. Desative se você é um estúdio individual.",
+        "warning": "Contas de usuário existentes permanecem válidas; a interface administrativa para gerenciá-las ficará oculta até você reativar isto."
+      }
+    }
   },
   "analytics": {
     "title": "Painel de Análise",
