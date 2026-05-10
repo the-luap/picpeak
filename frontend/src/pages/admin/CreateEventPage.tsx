@@ -283,11 +283,23 @@ export const CreateEventPage: React.FC = () => {
     }));
   }, [settings]);
 
-  // Update theme when event type changes — but only when the event type has
-  // an explicit recommended preset. Skip the generic 'default' so the global
-  // Branding theme isn't clobbered by Classic Grid for event types like
-  // "Other" (#323).
+  // Update theme when the user actively changes the event type — but only
+  // when the new type has an explicit recommended preset. Skips both the
+  // generic 'default' (so types like "Other" don't clobber the global
+  // Branding theme with Classic Grid) and the very first render (so the
+  // wedding default doesn't out-race the Branding-default effect above
+  // when eventTypes resolves AFTER settings — #323-B / smoke spec 07).
+  const prevEventTypeRef = useRef<string | null>(null);
   useEffect(() => {
+    const prev = prevEventTypeRef.current;
+    prevEventTypeRef.current = formData.event_type;
+    // First render: just record the initial value and let the
+    // Branding-default effect own the theme. Without this guard the
+    // initial-mount fire of this effect (and any later eventTypes
+    // refetch that swaps `availableEventTypes` identity) would
+    // overwrite the Branding theme with the wedding preset.
+    if (prev === null || prev === formData.event_type) return;
+
     const selectedType = availableEventTypes.find(t => t.value === formData.event_type);
     const recommendedPreset = selectedType?.theme_preset;
 
