@@ -459,7 +459,6 @@ export const EventDetailsPage: React.FC = () => {
   }, [showMediaFilter, photoFilters.media_type]);
 
   const { data: publicSettings } = usePublicSettings();
-  const requireExpiration = publicSettings?.event_require_expiration !== false;
   const phoneFieldEnabled = publicSettings?.event_phone_field_enabled === true;
 
   // Fetch categories for the event
@@ -686,10 +685,11 @@ export const EventDetailsPage: React.FC = () => {
       return;
     }
 
-    if (requireExpiration && !editForm.expires_at) {
-      toast.error(t('validation.expirationRequired', 'Expiration date is required.'));
-      return;
-    }
+    // No expiration-required validation on edit (#426). The global
+    // `event_require_expiration` setting only enforces a default at
+    // create-time — once an event exists, an admin can clear the
+    // expiration via this form. The matching backend gate was dropped
+    // in adminEvents.js.
 
     // Clean up the data - remove undefined values
     const updateData: any = {
