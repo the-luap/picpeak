@@ -1441,6 +1441,17 @@
       "straight": "Recht",
       "angle": "Hoek",
       "curve": "Boog"
+    },
+    "loginLogo": {
+      "title": "Logo op loginpagina",
+      "subtitle": "Geldt alleen voor /admin/login en /customer/login. Galerij en beheer gebruiken de logo-instellingen hierboven.",
+      "frame": "Getint kader achter het logo tonen",
+      "frameHelp": "Wanneer uitgeschakeld staat het logo direct op de pagina-achtergrond. Handig voor logo's met een eigen achtergrond.",
+      "size": "Logogrootte op loginpagina's",
+      "sizeSmall": "Klein",
+      "sizeMedium": "Middel (standaard)",
+      "sizeLarge": "Groot",
+      "sizeXLarge": "Extra groot"
     }
   },
   "admin": {

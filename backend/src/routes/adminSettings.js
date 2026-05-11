@@ -303,6 +303,16 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_mode,
       hide_powered_by,
       force_color_mode,
+      // Login-page-only branding (#354 follow-up). Both toggles apply
+      // exclusively to /admin/login and /customer/login — the gallery
+      // and admin chrome use their own logo_size / logo_max_height.
+      // - login_logo_frame_enabled: true (default) renders the tinted
+      //   square behind the logo; false drops it.
+      // - login_logo_size: 'small' | 'medium' | 'large' | 'xlarge'
+      //   matches the gallery logo_size token set but applies only to
+      //   the two login screens.
+      login_logo_frame_enabled,
+      login_logo_size,
       // Footer overhaul (#441 + #440). Socials are URL strings (empty
       // hides the icon). Promo content is markdown (rendered via
       // marked → DOMPurify on the frontend, no raw HTML accepted).
@@ -330,6 +340,13 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       ? 'below_footer'
       : 'above_footer';
 
+    // Normalize login_logo_size to the same token set as logo_size.
+    // Anything else falls back to 'medium' on the next render.
+    const allowedLoginLogoSizes = ['small', 'medium', 'large', 'xlarge'];
+    const normalizedLoginLogoSize = allowedLoginLogoSizes.includes(login_logo_size)
+      ? login_logo_size
+      : undefined;
+
     const brandingSettings = {
       company_name,
       company_tagline,
@@ -350,6 +367,11 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       logo_display_mode,
       hide_powered_by,
       force_color_mode: normalizedForceColorMode,
+      // Login-only knobs (only persist when the request actually
+      // included the key, so a partial PUT from another tab doesn't
+      // accidentally clear them).
+      ...(login_logo_frame_enabled !== undefined && { login_logo_frame_enabled }),
+      ...(normalizedLoginLogoSize !== undefined && { login_logo_size: normalizedLoginLogoSize }),
       // Footer overhaul (#441 + #440). String fields normalize empty/
       // undefined → '' so the column is always a known type. Only persist
       // when the request actually included the key (partial PUTs).

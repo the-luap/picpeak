@@ -25,6 +25,12 @@ export interface PublicSettings {
    * AdminDarkModeContext + ThemeContext both honor this.
    */
   branding_force_color_mode?: 'dark' | 'light' | null;
+  /**
+   * Login-page-only branding (#354 follow-up). Applies exclusively to
+   * /admin/login and /customer/login. Defaults: frame on, size 'medium'.
+   */
+  branding_login_logo_frame_enabled?: boolean;
+  branding_login_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
   // Footer overhaul (#441 + #440). Empty strings mean "hide".
   branding_facebook_url?: string;
   branding_instagram_url?: string;

@@ -25,6 +25,13 @@ export interface BrandingSettings {
    * `colorMode` override is ignored. `null` means no force (default behavior).
    */
   force_color_mode?: 'dark' | 'light' | null;
+  /**
+   * Login-page-only branding (#354 follow-up). Applies exclusively to
+   * /admin/login and /customer/login. Frame default is true; size
+   * default is 'medium' (matches the visual state before the toggle).
+   */
+  login_logo_frame_enabled?: boolean;
+  login_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
   // Footer overhaul (#441 + #440). Empty strings hide each social
   // icon individually; promo_markdown empty hides the slot for events
   // in 'inherit' mode. Position controls global default placement.
@@ -309,7 +316,14 @@ export const settingsService = {
         ? 'dark'
         : rawSettings.branding_force_color_mode === 'light'
           ? 'light'
-          : null
+          : null,
+      // Login-only knobs (#354). Default to frame ON, size 'medium' so
+      // installs that haven't toggled them keep the visual state shipped
+      // before the controls existed.
+      login_logo_frame_enabled: this._parseBoolean(rawSettings.branding_login_logo_frame_enabled, true),
+      login_logo_size: ['small', 'medium', 'large', 'xlarge'].includes(rawSettings.branding_login_logo_size)
+        ? rawSettings.branding_login_logo_size
+        : 'medium'
     };
   },
 

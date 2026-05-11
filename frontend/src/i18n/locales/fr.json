@@ -1379,6 +1379,17 @@
       "straight": "Droit",
       "angle": "Angle",
       "curve": "Courbe"
+    },
+    "loginLogo": {
+      "title": "Logo des pages de connexion",
+      "subtitle": "S'applique uniquement à /admin/login et /customer/login. La galerie et l'interface admin utilisent les paramètres de logo ci-dessus.",
+      "frame": "Afficher le cadre teinté derrière le logo",
+      "frameHelp": "Lorsque désactivé, le logo se pose directement sur l'arrière-plan de la page. Utile pour les logos qui ont déjà leur propre fond.",
+      "size": "Taille du logo sur les pages de connexion",
+      "sizeSmall": "Petite",
+      "sizeMedium": "Moyenne (par défaut)",
+      "sizeLarge": "Grande",
+      "sizeXLarge": "Très grande"
     }
   },
   "admin": {

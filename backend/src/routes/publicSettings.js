@@ -85,6 +85,15 @@ router.get('/', async (req, res) => {
         : settingsObject.branding_force_color_mode === 'light'
           ? 'light'
           : null,
+      // Login-page-only branding (#354 follow-up). Applies exclusively
+      // to /admin/login and /customer/login — the rest of the app keeps
+      // using branding_logo_size / branding_logo_max_height. Default
+      // true / 'medium' preserves the visual state shipped before the
+      // toggles existed.
+      branding_login_logo_frame_enabled: settingsObject.branding_login_logo_frame_enabled !== false,
+      branding_login_logo_size: ['small', 'medium', 'large', 'xlarge'].includes(settingsObject.branding_login_logo_size)
+        ? settingsObject.branding_login_logo_size
+        : 'medium',
       theme_config: settingsObject.theme_config || null,
       default_language: settingsObject.general_default_language || 'en',
       enable_analytics: settingsObject.general_enable_analytics !== false,

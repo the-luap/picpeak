@@ -1771,6 +1771,17 @@
       "straight": "Gerade",
       "angle": "Winkel",
       "curve": "Kurve"
+    },
+    "loginLogo": {
+      "title": "Logo auf Login-Seiten",
+      "subtitle": "Wirkt nur auf /admin/login und /customer/login. Galerie und Admin-Chrome verwenden die Logo-Einstellungen oben.",
+      "frame": "Hellen Rahmen hinter dem Logo anzeigen",
+      "frameHelp": "Wenn aus, sitzt das Logo direkt auf dem Seitenhintergrund. Nützlich für Logos, die bereits einen eigenen Hintergrund haben.",
+      "size": "Logogröße auf den Login-Seiten",
+      "sizeSmall": "Klein",
+      "sizeMedium": "Mittel (Standard)",
+      "sizeLarge": "Groß",
+      "sizeXLarge": "Sehr groß"
     }
   },
   "admin": {

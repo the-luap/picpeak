@@ -1441,6 +1441,17 @@
       "angle": "Angle",
       "curve": "Curve",
       "none": "None"
+    },
+    "loginLogo": {
+      "title": "Login pages logo",
+      "subtitle": "Controls only /admin/login and /customer/login. Gallery and admin chrome use the logo settings above.",
+      "frame": "Show tinted frame behind the logo",
+      "frameHelp": "When off, the logo sits directly on the page background. Useful for logos that already include their own backdrop.",
+      "size": "Logo size on login pages",
+      "sizeSmall": "Small",
+      "sizeMedium": "Medium (default)",
+      "sizeLarge": "Large",
+      "sizeXLarge": "Extra large"
     }
   },
   "admin": {

@@ -1458,6 +1458,17 @@
       "straight": "Reto",
       "angle": "Ângulo",
       "curve": "Curva"
+    },
+    "loginLogo": {
+      "title": "Logo nas páginas de login",
+      "subtitle": "Aplica-se apenas a /admin/login e /customer/login. A galeria e a interface admin usam as configurações de logo acima.",
+      "frame": "Mostrar moldura tonalizada atrás do logo",
+      "frameHelp": "Quando desativado, o logo fica diretamente sobre o fundo da página. Útil para logos que já incluem seu próprio fundo.",
+      "size": "Tamanho do logo nas páginas de login",
+      "sizeSmall": "Pequeno",
+      "sizeMedium": "Médio (padrão)",
+      "sizeLarge": "Grande",
+      "sizeXLarge": "Extra grande"
     }
   },
   "admin": {
