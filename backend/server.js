@@ -568,30 +568,36 @@ app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
-// Customer portal (#354). The customerPortal feature flag is enforced
-// in TWO places:
+// Customer portal (#354). The customerPortal feature flag is a
+// VISIBILITY toggle for the admin surface, not a kill switch for
+// customer access. Enforcement:
+//
 //   1. Frontend: RequireFeature guards + AdminSidebar visibility
-//      (handles navigation cleanly when an admin is using the app).
-//   2. Backend: the requireCustomerPortalEnabled middleware below.
-//      Belt-and-braces — a stale tab, a saved bookmark, or any
-//      third-party API client trying to hit /api/customer/* or
-//      /api/admin/customers/* gets a 410 Gone the moment the toggle
-//      is flipped off. Includes /api/customer/auth/login: flag off
-//      = nobody can log in until the admin re-enables, including
-//      already-issued customers (their sessions still have valid
-//      JWTs but every API call returns 410 → frontend boots them
-//      out). PR #458 deliberate departure from the prior design
-//      that left login alive when the rest of the surface was off.
-const {
-  requireCustomerPortalEnabled,
-  requireCustomerPortalEnabledAdmin,
-} = require('./src/middleware/requireCustomerPortal');
-
-app.use('/api/admin/customers', requireCustomerPortalEnabledAdmin, require('./src/routes/adminCustomers'));
+//      hide the Clients section when the flag is off. Customer-side
+//      /customer/* surfaces stay reachable.
+//   2. Backend: NO route-level gate. The admin surface is gated by
+//      adminAuth + permission checks (admin still has rights to
+//      manage customer records even if the section is hidden in
+//      their UI). The customer surface is gated by customerAuth +
+//      is_active checks on customer_accounts.
+//
+// For close-to-realtime access changes use the dedicated tools:
+//   - Revoke a customer's access to ONE gallery → "Manage galleries"
+//     dialog removes the event_customer_assignments row, which
+//     verifyGalleryAccess re-checks on every customer-minted JWT.
+//   - Lock out a customer entirely → "Deactivate" sets is_active=false
+//     and bumps password_changed_at, killing every outstanding JWT.
+//   - Toggle per-customer feature surfaces (calendar/quotes/bills)
+//     → toggles on the customer detail page.
+//
+// Putting the global flag in the kill-switch role was a mistake — a
+// stray click in Settings → Features would lock every paying
+// customer out at once. PR-revert moved the gate back to per-record.
+app.use('/api/admin/customers', require('./src/routes/adminCustomers'));
 // Customer-side surface (#354). Strictly separate from /api/admin/* —
 // distinct token type, distinct cookie, distinct middleware.
-app.use('/api/customer/auth', requireCustomerPortalEnabled, require('./src/routes/customerAuth'));
-app.use('/api/customer', requireCustomerPortalEnabled, require('./src/routes/customer'));
+app.use('/api/customer/auth', require('./src/routes/customerAuth'));
+app.use('/api/customer', require('./src/routes/customer'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
 app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));
