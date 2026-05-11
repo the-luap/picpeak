@@ -323,7 +323,20 @@ export const settingsService = {
       login_logo_frame_enabled: this._parseBoolean(rawSettings.branding_login_logo_frame_enabled, true),
       login_logo_size: ['small', 'medium', 'large', 'xlarge'].includes(rawSettings.branding_login_logo_size)
         ? rawSettings.branding_login_logo_size
-        : 'medium'
+        : 'medium',
+      // Footer overhaul (#441 + #440 / #460). These were added to the
+      // BrandingSettings interface but not to the read mapper, so the
+      // BrandingPage form initialised them as empty strings on every
+      // load. The next save then sent the empty form back to the
+      // backend and wiped the saved values from the DB — even though
+      // the gallery footer kept rendering them until the next save.
+      facebook_url: rawSettings.branding_facebook_url || '',
+      instagram_url: rawSettings.branding_instagram_url || '',
+      whatsapp_url: rawSettings.branding_whatsapp_url || '',
+      twitter_url: rawSettings.branding_twitter_url || '',
+      youtube_url: rawSettings.branding_youtube_url || '',
+      promo_markdown: rawSettings.branding_promo_markdown || '',
+      promo_position: rawSettings.branding_promo_position === 'below_footer' ? 'below_footer' : 'above_footer'
     };
   },
 
