@@ -671,6 +671,11 @@ async function setAssignmentsForCustomer(customerId, targetEventIds, adminId, tr
       .del();
   }
 
+  // Collect the event IDs that actually landed in the DB (i.e. survived
+  // the archived/missing filter) so the post-commit notifier knows
+  // exactly which galleries to mention in the email. Empty by default.
+  let addedEventIds = [];
+
   if (toAdd.length > 0) {
     // Validate the events exist + are not archived before inserting.
     // Mirrors the customer-side check in setAssignmentsForEvent so an
@@ -695,10 +700,121 @@ async function setAssignmentsForCustomer(customerId, targetEventIds, adminId, tr
     }));
     if (rows.length > 0) {
       await trx('event_customer_assignments').insert(rows);
+      addedEventIds = rows.map((r) => r.event_id);
     }
   }
 
-  return { added: toAdd.length, removed: toRemove.length };
+  // Notify the customer about newly-accessible galleries. Best-effort
+  // — a failure here must not roll back the assignment write, so we
+  // fire-and-forget after the transactional work is done and swallow
+  // any throw with a warn log. Skipped when no new rows were added.
+  if (addedEventIds.length > 0) {
+    notifyCustomerOfNewAssignments(customerId, addedEventIds).catch((err) => {
+      logger.warn('Failed to queue customer_gallery_assigned email', {
+        customerId, addedEventIds, error: err?.message,
+      });
+    });
+  }
+
+  return { added: toAdd.length, removed: toRemove.length, addedEventIds };
+}
+
+/**
+ * Queue a `customer_gallery_assigned` email summarising newly-granted
+ * gallery access for one customer. Called by setAssignmentsForCustomer
+ * after the transaction commits.
+ *
+ * Rules:
+ *   - One email per save (digest), not one per gallery.
+ *   - Archived + expired events are filtered out — the customer would
+ *     hit a "this gallery has expired" notice anyway, so naming them
+ *     in the email just confuses people.
+ *   - Deactivated customers (is_active=false) get no email — their
+ *     login is off, so a "you have new access" message would be
+ *     misleading.
+ *   - Customers without an email on file are skipped (silently —
+ *     should never happen for accepted accounts but defensive).
+ *   - Email failures are logged but never bubble up; the caller's
+ *     `.catch` handler logs again at a more specific call site.
+ */
+async function notifyCustomerOfNewAssignments(customerId, addedEventIds) {
+  if (!addedEventIds || addedEventIds.length === 0) return;
+
+  const customer = await db('customer_accounts')
+    .where({ id: customerId, is_active: formatBoolean(true) })
+    .select('id', 'email', 'display_name', 'first_name', 'preferred_language')
+    .first();
+  if (!customer || !customer.email) {
+    logger.info('Skip customer_gallery_assigned email: customer missing/inactive/no email', {
+      customerId,
+    });
+    return;
+  }
+
+  // Filter the added events to those the customer can actually open.
+  // Archived events are hard-skipped; expired ones (expires_at in the
+  // past) would render as "Expired DD MMM" in the dashboard and lead
+  // to a confusing "I clicked the link in the email and got a 410"
+  // experience — drop those too.
+  const now = new Date();
+  const events = await db('events')
+    .whereIn('id', addedEventIds)
+    .where('is_archived', formatBoolean(false))
+    .andWhere(function() {
+      this.whereNull('expires_at').orWhere('expires_at', '>', now);
+    })
+    .orderBy('event_date', 'desc')
+    .select('id', 'slug', 'event_name', 'event_date');
+
+  if (events.length === 0) {
+    logger.info('Skip customer_gallery_assigned email: all added events archived/expired', {
+      customerId, addedEventIds,
+    });
+    return;
+  }
+
+  // Build the gallery list block. HTML is whitelisted via
+  // HTML_PASSTHROUGH_KEYS in emailProcessor so the <ul> survives the
+  // body-html escaping pass. Names + dates come from admin-controlled
+  // DB rows; the date is server-rendered.
+  const { formatDate } = require('../utils/dateFormatter');
+  const { escapeHtml } = require('../utils/formatters');
+  const language = customer.preferred_language || 'en';
+
+  const formattedRows = await Promise.all(events.map(async (ev) => ({
+    name: ev.event_name || ev.slug,
+    date: ev.event_date ? await formatDate(ev.event_date, language) : '',
+  })));
+
+  const galleryListHtml = `<ul>\n${
+    formattedRows.map((r) => {
+      const safeName = escapeHtml(r.name);
+      const safeDate = r.date ? ` — ${escapeHtml(r.date)}` : '';
+      return `  <li>${safeName}${safeDate}</li>`;
+    }).join('\n')
+  }\n</ul>`;
+
+  const galleryListText = formattedRows
+    .map((r) => r.date ? `- ${r.name} (${r.date})` : `- ${r.name}`)
+    .join('\n');
+
+  const frontendUrl = (await getFrontendBaseUrl()) || 'http://localhost:3000';
+  const customerName = customer.display_name?.trim()
+    || customer.first_name?.trim()
+    || (customer.email ? customer.email.split('@')[0] : '');
+
+  await queueEmail(null, customer.email, 'customer_gallery_assigned', {
+    customer_name: customerName,
+    gallery_count: String(events.length),
+    // `singular` / `multiple` drive the {{#if}} blocks in the
+    // template — safeTemplateReplace treats anything non-empty +
+    // non-false as truthy, so passing literal 'true' / '' works.
+    singular: events.length === 1 ? 'true' : '',
+    multiple: events.length > 1 ? 'true' : '',
+    gallery_list_html: galleryListHtml,
+    gallery_list_text: galleryListText,
+    dashboard_link: `${frontendUrl}/customer/dashboard`,
+  });
 }
 
 /**

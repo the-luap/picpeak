@@ -388,9 +388,14 @@ function htmlToText(html) {
 // else (event_name, host_name, customer_name, …) is admin-supplied free
 // text and gets escaped to prevent stored-HTML injection in customer mail.
 const HTML_PASSTHROUGH_KEYS = new Set([
-  'welcome_message', // already HTML (formatWelcomeMessage escapes + nl2br)
-  'gallery_link',    // server-generated URL (adminEvents.js)
-  'client_link',     // server-generated URL (adminEvents.js)
+  'welcome_message',     // already HTML (formatWelcomeMessage escapes + nl2br)
+  'gallery_link',        // server-generated URL (adminEvents.js)
+  'client_link',         // server-generated URL (adminEvents.js)
+  // customer_gallery_assigned template (#354 follow-up): server-rendered
+  // <ul> of newly-added galleries. Built in customerAccountsService from
+  // trusted DB rows (event_name comes from admin-owned events; the date
+  // is server-rendered) — escaping it here would double-escape the markup.
+  'gallery_list_html',
 ]);
 
 const { escapeHtml } = require('../utils/formatters');
