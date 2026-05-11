@@ -639,6 +639,69 @@ async function setAssignmentsForEvent(eventId, targetCustomerIds, adminId, trx =
 }
 
 /**
+ * Inverse of setAssignmentsForEvent: replace the full set of events a
+ * single customer is assigned to. Backs the "Manage galleries" dialog
+ * on the customer detail page — admins pick from every available
+ * event and we diff against the existing row set.
+ *
+ * Returns { added, removed } so the caller can surface a useful toast.
+ *
+ * `targetEventIds` may be empty to clear every assignment.
+ *
+ * Access revocation: removing a row from event_customer_assignments
+ * is enough on its own — gallery middleware (galleryMiddleware.js)
+ * checks for a live assignment whenever it decodes a JWT minted via
+ * the customer access-token endpoint (decoded.via === 'customer').
+ * No separate revoked_tokens write needed; the customer's next
+ * request 401s the moment this transaction commits.
+ */
+async function setAssignmentsForCustomer(customerId, targetEventIds, adminId, trx = db) {
+  const wanted = new Set((targetEventIds || []).map(Number).filter((n) => Number.isFinite(n) && n > 0));
+  const existing = await trx('event_customer_assignments')
+    .where('customer_account_id', customerId)
+    .select('id', 'event_id');
+  const existingIds = new Set(existing.map((r) => r.event_id));
+
+  const toAdd = [...wanted].filter((id) => !existingIds.has(id));
+  const toRemove = existing.filter((r) => !wanted.has(r.event_id));
+
+  if (toRemove.length > 0) {
+    await trx('event_customer_assignments')
+      .whereIn('id', toRemove.map((r) => r.id))
+      .del();
+  }
+
+  if (toAdd.length > 0) {
+    // Validate the events exist + are not archived before inserting.
+    // Mirrors the customer-side check in setAssignmentsForEvent so an
+    // admin can't accidentally pin a customer to an archived event
+    // that they couldn't actually open anyway.
+    const valid = await trx('events')
+      .whereIn('id', toAdd)
+      .where('is_archived', formatBoolean(false))
+      .pluck('id');
+    const validSet = new Set(valid);
+    const ignored = toAdd.filter((id) => !validSet.has(id));
+    if (ignored.length > 0) {
+      logger.warn('Ignoring missing/archived event ids in customer assignment', {
+        customerId, ignored,
+      });
+    }
+    const rows = [...validSet].map((eventId) => ({
+      event_id: eventId,
+      customer_account_id: customerId,
+      assigned_by_admin_id: adminId,
+      assigned_at: new Date(),
+    }));
+    if (rows.length > 0) {
+      await trx('event_customer_assignments').insert(rows);
+    }
+  }
+
+  return { added: toAdd.length, removed: toRemove.length };
+}
+
+/**
  * Fetch the customers currently assigned to an event. Returned by the
  * admin event-detail endpoint so the picker can hydrate.
  */
@@ -961,6 +1024,7 @@ module.exports = {
   eraseCustomer,
   searchCustomers,
   setAssignmentsForEvent,
+  setAssignmentsForCustomer,
   getAssignmentsForEvent,
   listEventsForCustomer,
   customerHasAccessToEvent,
