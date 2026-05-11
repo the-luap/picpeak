@@ -168,7 +168,8 @@
     "eventTypes": "Types d'événements",
     "backup": "Sauvegarde et Restauration",
     "cmsPages": "Pages CMS",
-    "users": "Utilisateurs"
+    "users": "Utilisateurs",
+    "customers": "Clients"
   },
   "archives": {
     "title": "Archives",
@@ -1066,7 +1067,27 @@
       "empty": "Aucun webhook pour l'instant. Créez-en un ci-dessus pour recevoir des notifications."
     },
     "sectionLabel": "Section des paramètres",
-    "navAriaLabel": "Navigation des paramètres"
+    "navAriaLabel": "Navigation des paramètres",
+    "features": {
+      "sections": {
+        "customers": "Clients"
+      },
+      "customerPortal": {
+        "title": "Portail client",
+        "description": "Connexions client persistantes. Les clients récurrents voient toutes leurs galeries assignées au même endroit — plus de mots de passe par événement. Base pour Calendrier / Devis / Factures (qui n'apparaissent dans le tableau de bord client que lorsque cette option est activée)."
+      }
+    },
+    "customerSurface": {
+      "brandingTitle": "En-tête du tableau de bord client",
+      "brandingHint": "Contrôle ce qui s'affiche dans l'en-tête de /customer/dashboard. Les galeries publiques et les surfaces administratives ne sont pas affectées.",
+      "showLogo": "Afficher le logo dans l'en-tête client",
+      "showLogoHint": "Utilise le même logo de marque configuré ci-dessus.",
+      "showCompanyName": "Afficher le nom de l'entreprise dans l'en-tête client",
+      "showCompanyNameHint": "Masquer si votre logo inclut déjà le nom de l'entreprise.",
+      "save": "Enregistrer les modifications",
+      "saved": "Branding du tableau de bord client enregistré",
+      "error": "Impossible d'enregistrer les paramètres"
+    }
   },
   "analytics": {
     "title": "Tableau de bord analytique",
@@ -2490,5 +2511,290 @@
     "movedToCategory_other": "{{count}} photos déplacées vers {{category}}",
     "moveToCategoryFailed": "Échec du déplacement des photos vers la catégorie",
     "moveToCategory": "Déplacer vers la catégorie"
+  },
+  "customer": {
+    "login": {
+      "title": "Connexion client",
+      "subtitle": "Accédez à toutes vos galeries photo en un seul endroit.",
+      "email": "E-mail",
+      "password": "Mot de passe",
+      "emailRequired": "L'e-mail est obligatoire",
+      "invalidEmail": "Veuillez saisir une adresse e-mail valide",
+      "passwordRequired": "Le mot de passe est obligatoire",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "signIn": "Se connecter",
+      "loginSuccess": "Bon retour !",
+      "invalidCredentials": "E-mail ou mot de passe invalide",
+      "tooManyAttempts": "Trop de tentatives — réessayez plus tard.",
+      "networkError": "Impossible de contacter le serveur. Veuillez réessayer.",
+      "generalError": "Échec de la connexion. Veuillez réessayer.",
+      "acceptedToast": "Compte prêt — veuillez vous connecter.",
+      "adminHint": "Vous cherchez le panneau d'administration ? Visitez /admin/login.",
+      "emailPlaceholder": "vous@exemple.com",
+      "passwordPlaceholder": "Votre mot de passe",
+      "needHelp": "Besoin d'aide ?",
+      "poweredBy": "Propulsé par PicPeak"
+    },
+    "acceptInvite": {
+      "title": "Configurez votre compte",
+      "invalidToken": "Ce lien d'invitation est invalide ou expiré. Veuillez demander une nouvelle invitation à votre photographe.",
+      "emailWillBe": "L'e-mail de votre compte sera ",
+      "invitedBy": ", invité par ",
+      "name": "Votre nom",
+      "nameRequired": "Veuillez saisir votre nom",
+      "password": "Choisissez un mot de passe",
+      "confirm": "Confirmez le mot de passe",
+      "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "passwordHint": "Au moins 8 caractères, avec une majuscule et un chiffre.",
+      "submit": "Créer le compte",
+      "successToast": "Compte créé — veuillez vous connecter.",
+      "alreadyExists": "Un compte avec cet e-mail existe déjà. Veuillez plutôt vous connecter.",
+      "invalidSubmission": "Impossible de créer votre compte.",
+      "generalError": "Impossible de créer votre compte. Veuillez réessayer.",
+      "subtitle": "Confirmez ou complétez vos informations. Vous pouvez tout modifier depuis la page de profil plus tard.",
+      "displayName": "Nom affiché",
+      "section": {
+        "personal": "Personnel",
+        "contact": "Contact & entreprise (facultatif)",
+        "address": "Adresse de facturation (facultatif)",
+        "password": "Choisissez un mot de passe"
+      }
+    },
+    "dashboard": {
+      "title": "Vos galeries",
+      "subtitle": "Cliquez sur une galerie pour l'ouvrir. Le bouton Télécharger regroupe toutes les photos dans un zip.",
+      "loadError": "Impossible de charger vos galeries. Veuillez réessayer.",
+      "emptyTitle": "Aucune galerie pour le moment",
+      "emptyBody": "Dès que votre photographe vous attribuera une galerie, elle apparaîtra ici.",
+      "openAria": "Ouvrir la galerie {{name}}",
+      "opening": "Ouverture…",
+      "expiresOn": "Expire le {{date}}",
+      "expiredOn": "Expirée le {{date}}",
+      "eventExpired": "Cette galerie a expiré.",
+      "eventForbidden": "Vous n'avez plus accès à cette galerie.",
+      "openError": "Impossible d'ouvrir cette galerie. Veuillez réessayer.",
+      "download": "Télécharger",
+      "preparingDownload": "Préparation…",
+      "quickDownloadAria": "Télécharger toutes les photos de {{name}}",
+      "downloadStarted": "Téléchargement démarré pour {{name}}",
+      "downloadError": "Impossible de démarrer le téléchargement. Veuillez réessayer.",
+      "sortLabel": "Trier par",
+      "sortNewest": "Plus récents d'abord",
+      "sortOldest": "Plus anciens d'abord",
+      "sortName": "Par nom",
+      "open": "Ouvrir"
+    },
+    "layout": {
+      "greeting": "Bonjour, {{name}}"
+    },
+    "nav": {
+      "galleries": "Galeries",
+      "calendar": "Calendrier",
+      "quotes": "Devis",
+      "bills": "Factures",
+      "profile": "Profil",
+      "soon": "Bientôt"
+    },
+    "comingSoon": {
+      "tag": "Bientôt disponible"
+    },
+    "calendar": {
+      "title": "Calendrier",
+      "body": "Les prochaines séances, dates de livraison de galeries et autres événements liés à vos shootings apparaîtront ici. Nous vous préviendrons lorsque ce sera prêt."
+    },
+    "quotes": {
+      "title": "Devis",
+      "body": "Consultez et acceptez les devis pour vos prochaines séances en un seul endroit. Nous y travaillons encore — pour l'instant, votre photographe continuera à envoyer ses devis comme d'habitude."
+    },
+    "bills": {
+      "title": "Factures",
+      "body": "Les factures et l'historique des paiements pour vos séances seront disponibles ici. Nous vous enverrons un e-mail lorsque ce sera en ligne."
+    },
+    "profile": {
+      "title": "Profil client",
+      "subtitle": "Gardez vos coordonnées et informations de facturation à jour — elles apparaîtront sur les devis et factures lorsque ces fonctionnalités seront actives.",
+      "savedToast": "Profil enregistré",
+      "saveError": "Impossible d'enregistrer le profil.",
+      "loadError": "Impossible de charger votre profil.",
+      "save": "Enregistrer les modifications",
+      "salutation": {
+        "none": "— Non spécifié —",
+        "herr": "M.",
+        "frau": "Mme",
+        "mx": "Mx",
+        "dr": "Dr"
+      },
+      "section": {
+        "personal": "Informations personnelles",
+        "contact": "Contact & entreprise",
+        "address": "Adresse de facturation",
+        "password": "Changer le mot de passe"
+      },
+      "field": {
+        "email": "E-mail (identifiant)",
+        "emailHint": "Contactez votre photographe si vous devez modifier votre e-mail de connexion.",
+        "salutation": "Civilité",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "displayName": "Nom affiché",
+        "displayNameHint": "Comment nous vous saluons dans le tableau de bord.",
+        "phone": "Téléphone",
+        "companyName": "Nom de l'entreprise",
+        "vatId": "N° TVA",
+        "addressLine1": "Adresse ligne 1",
+        "addressLine2": "Adresse ligne 2",
+        "postalCode": "Code postal",
+        "city": "Ville",
+        "state": "Région / département",
+        "countryCode": "Pays"
+      },
+      "password": {
+        "current": "Mot de passe actuel",
+        "next": "Nouveau mot de passe",
+        "confirm": "Confirmez le nouveau mot de passe",
+        "submit": "Mettre à jour le mot de passe",
+        "hint": "Au moins 8 caractères avec une majuscule et un chiffre.",
+        "currentRequired": "Saisissez votre mot de passe actuel",
+        "tooShort": "Au moins 8 caractères",
+        "mismatch": "Les mots de passe ne correspondent pas",
+        "wrong": "Le mot de passe actuel est incorrect",
+        "savedToast": "Mot de passe mis à jour",
+        "error": "Impossible de modifier le mot de passe"
+      }
+    },
+    "resetPassword": {
+      "title": "Réinitialisez votre mot de passe",
+      "invalidToken": "Ce lien de réinitialisation est invalide ou expiré. Demandez à votre photographe d'en envoyer un nouveau.",
+      "forEmail": "Définition d'un nouveau mot de passe pour ",
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmez le nouveau mot de passe",
+      "submit": "Mettre à jour le mot de passe",
+      "hint": "Au moins 8 caractères avec une majuscule et un chiffre.",
+      "tooShort": "Le mot de passe doit comporter au moins 8 caractères",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "successToast": "Mot de passe mis à jour. Veuillez vous connecter.",
+      "invalidSubmission": "Impossible de mettre à jour votre mot de passe.",
+      "generalError": "Impossible de mettre à jour votre mot de passe. Veuillez réessayer."
+    }
+  },
+  "customers": {
+    "pageTitle": "Clients",
+    "pageSubtitle": "Comptes clients récurrents pouvant se connecter sur /customer/login.",
+    "unnamed": "Sans nom",
+    "empty": "Aucun client pour le moment. Cliquez sur « Inviter un client » pour en ajouter un.",
+    "loadError": "Impossible de charger les clients",
+    "loadInvitationsError": "Impossible de charger les invitations",
+    "tabs": {
+      "customers": "Clients",
+      "invitations": "Invitations"
+    },
+    "search": {
+      "placeholder": "Rechercher par e-mail, nom ou entreprise"
+    },
+    "table": {
+      "name": "Nom",
+      "email": "E-mail",
+      "company": "Entreprise",
+      "eventCount": "Événements",
+      "lastLogin": "Dernière connexion",
+      "status": "Statut"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Désactivé"
+    },
+    "invite": {
+      "button": "Inviter un client",
+      "title": "Inviter un client",
+      "description": "Il recevra un e-mail avec un lien pour configurer son compte. Une fois accepté, vous pourrez l'assigner à des événements.",
+      "email": "E-mail",
+      "submit": "Envoyer l'invitation",
+      "success": "Invitation envoyée",
+      "error": "Impossible d'envoyer l'invitation.",
+      "conflict": "Un client avec cet e-mail existe déjà ou a une invitation en attente.",
+      "invalidEmail": "Veuillez saisir un e-mail valide",
+      "showPrefill": "+ Ajouter des coordonnées (facultatif)",
+      "hidePrefill": "− Masquer les coordonnées",
+      "prefillHint": "Tout ce que vous saisirez sera pré-rempli sur la page d'inscription du client — il pourra toujours le modifier."
+    },
+    "invitations": {
+      "empty": "Aucune invitation en attente.",
+      "email": "E-mail",
+      "invitedBy": "Invité par",
+      "expiresAt": "Expire",
+      "createdAt": "Créé le",
+      "cancel": "Annuler"
+    },
+    "deactivate": {
+      "button": "Désactiver",
+      "title": "Désactiver le client ?",
+      "body": "Il ne pourra plus se connecter. Vous pourrez le ré-inviter plus tard.",
+      "success": "Client désactivé",
+      "error": "Impossible de désactiver le client"
+    },
+    "cancelInvitation": {
+      "title": "Annuler l'invitation ?",
+      "body": "Le lien d'invitation cessera immédiatement de fonctionner.",
+      "success": "Invitation annulée",
+      "error": "Impossible d'annuler l'invitation"
+    },
+    "detail": {
+      "loadError": "Impossible de charger le client",
+      "saved": "Client enregistré",
+      "saveError": "Impossible d'enregistrer les modifications.",
+      "emailConflict": "Cet e-mail est déjà utilisé par un autre client.",
+      "save": "Enregistrer les modifications",
+      "expires": "expire",
+      "accountSection": "Compte",
+      "personalSection": "Informations personnelles",
+      "billingSection": "Adresse & facturation",
+      "notesSection": "Notes internes",
+      "eventsSection": "Événements assignés",
+      "noEvents": "Non assigné à des événements. Ajoutez ce client à un événement depuis le formulaire de l'événement.",
+      "email": "E-mail",
+      "preferredLanguage": "Langue préférée",
+      "salutation": "Civilité",
+      "salutationNone": "—",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "displayName": "Nom affiché",
+      "phone": "Téléphone",
+      "company": "Entreprise",
+      "billingEmail": "E-mail de facturation",
+      "vatId": "N° TVA / fiscal",
+      "addressLine1": "Adresse ligne 1",
+      "addressLine2": "Adresse ligne 2",
+      "postalCode": "Code postal",
+      "city": "Ville",
+      "state": "Région / département",
+      "countryCode": "Pays (ISO 2)",
+      "notesHint": "Visible uniquement par les administrateurs. Jamais montré au client.",
+      "featuresSection": "Fonctionnalités client",
+      "featuresHint": "Surcharges par client pour les onglets du portail. Les bascules globales dans Paramètres → Fonctionnalités sont le commutateur principal — quand global est sur OFF personne ne voit l'onglet, quel que soit le réglage ici. Les valeurs par défaut sont ON ; mettez un bouton sur OFF pour masquer un onglet pour ce client en particulier.",
+      "passwordSection": "Actions du compte",
+      "passwordHint": "Envoie un lien de réinitialisation à usage unique (7 jours) à l'e-mail du client. Le mot de passe actuel continue de fonctionner jusqu'à ce que le client clique sur le lien et en définisse un nouveau.",
+      "passwordReset": {
+        "button": "Envoyer l'e-mail de réinitialisation",
+        "success": "E-mail de réinitialisation envoyé",
+        "error": "Impossible d'envoyer la réinitialisation",
+        "inactive": "Réactivez le client avant d'envoyer une réinitialisation."
+      }
+    },
+    "reactivate": {
+      "button": "Réactiver",
+      "success": "Client réactivé",
+      "error": "Impossible de réactiver le client"
+    },
+    "erase": {
+      "button": "Effacer les données du client",
+      "title": "Effacer les données du client ?",
+      "body": "Supprime le nom, l'e-mail, le téléphone, l'adresse, l'entreprise et les identifiants du client. La ligne de compte reste pour que les enregistrements d'accès historiques et les journaux d'audit y fassent toujours référence. Cette action est irréversible — vous ne pourrez pas restaurer les données ensuite.",
+      "confirm": "Effacer définitivement",
+      "confirmInFlight": "Effacement…",
+      "success": "Client effacé",
+      "error": "Impossible d'effacer le client"
+    }
   }
 }

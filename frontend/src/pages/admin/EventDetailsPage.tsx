@@ -59,6 +59,7 @@ import { useLocalizedDate } from '../../hooks/useLocalizedDate';
 
 import { Button, Input, Card, Loading, MarkdownContent } from '../../components/common';
 import { EventCategoryManager, AdminPhotoGrid, AdminPhotoViewer, PhotoFilters, PasswordResetModal, ThemeCustomizerEnhanced, ThemeDisplay, HeroPhotoSelector, FocalPointPicker, PhotoUploadModal, FeedbackSettings, FeedbackModerationPanel, EventRenameDialog, PhotoFilterPanel, PhotoExportMenu, AdminGuestsList } from '../../components/admin';
+import { CustomerAccountPicker } from '../../components/admin/CustomerAccountPicker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '../../services/events.service';
 import { usePublicSettings } from '../../hooks/usePublicSettings';
@@ -290,6 +291,10 @@ export const EventDetailsPage: React.FC = () => {
     //   off     → no promo for this event regardless of global
     promo_mode: 'inherit' | 'custom' | 'off';
     promo_markdown: string;
+    // Customer accounts assigned to this event (#354). Hydrated from
+    // the GET /admin/events/:id response and sent back as a flat id
+    // array on save.
+    customer_accounts: Array<{ id: number; email: string; displayName: string | null }>;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -330,6 +335,8 @@ export const EventDetailsPage: React.FC = () => {
     // Per-event promotional override (#440)
     promo_mode: 'inherit',
     promo_markdown: '',
+    // Customer accounts (#354) — hydrated from event response.
+    customer_accounts: [],
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -588,6 +595,11 @@ export const EventDetailsPage: React.FC = () => {
       // Per-event promotional override (#440)
       promo_mode: ((event as { promo_mode?: 'inherit' | 'custom' | 'off' }).promo_mode) || 'inherit',
       promo_markdown: (event as { promo_markdown?: string }).promo_markdown || '',
+      // Customer accounts (#354). The backend returns
+      // `customer_accounts: [{ id, email, display_name, ... }]`; map to
+      // the picker's shape.
+      customer_accounts: ((event as { customer_accounts?: Array<{ id: number; email: string; display_name?: string | null }> }).customer_accounts || [])
+        .map((c) => ({ id: c.id, email: c.email, displayName: c.display_name ?? null })),
     });
 
     setShowNewPassword(false);
@@ -734,6 +746,9 @@ export const EventDetailsPage: React.FC = () => {
       // promo_markdown automatically when mode != 'custom'.
       promo_mode: editForm.promo_mode,
       promo_markdown: editForm.promo_mode === 'custom' ? editForm.promo_markdown : null,
+      // Customer accounts (#354) — flat array of ids. Backend diffs
+      // against existing assignments in one transaction.
+      customer_account_ids: editForm.customer_accounts.map((c) => c.id),
     };
     
     // Only include fields that have defined values
@@ -1130,6 +1145,13 @@ export const EventDetailsPage: React.FC = () => {
                     />
                   </div>
                 )}
+
+                {/* Customer accounts (#354). Picker self-hides when the
+                    customerPortal feature flag is off. */}
+                <CustomerAccountPicker
+                  value={editForm.customer_accounts}
+                  onChange={(next) => setEditForm((prev) => ({ ...prev, customer_accounts: next }))}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

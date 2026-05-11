@@ -1,0 +1,201 @@
+/**
+ * Unit tests for customerAccountsService (#354).
+ *
+ * The service touches the DB in most call sites, so we mock the knex
+ * builder. The point of these tests is to catch the assignment-diff
+ * logic and the invitation guards — not to integration-test knex.
+ */
+
+// --- mocks --------------------------------------------------------------
+jest.mock('../database/db', () => {
+  const mockDb = jest.fn();
+  mockDb.transaction = jest.fn(async (fn) => fn(mockDb));
+  return { db: mockDb, logActivity: jest.fn() };
+});
+jest.mock('../utils/logger', () => ({
+  info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(),
+}));
+jest.mock('../services/emailProcessor', () => ({
+  queueEmail: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../utils/passwordValidation', () => ({
+  getBcryptRounds: () => 4, // fast for tests
+}));
+// frontendUrl is resolved against app_settings; mock the helper directly
+// so the test doesn't need to also stub the settings query.
+jest.mock('../utils/frontendUrl', () => ({
+  getFrontendBaseUrl: jest.fn().mockResolvedValue('https://example.test'),
+}));
+jest.mock('../utils/dbCompat', () => ({
+  formatBoolean: (v) => (v ? 1 : 0),
+}));
+
+const { db } = require('../database/db');
+const { queueEmail } = require('../services/emailProcessor');
+
+// Helper to make a chainable query builder mock that resolves to `result`.
+const chain = (result) => {
+  const q = {};
+  ['where', 'whereNull', 'whereNot', 'whereRaw', 'whereIn', 'andWhere',
+    'select', 'leftJoin', 'join', 'orderBy', 'limit', 'groupBy', 'first']
+    .forEach((m) => { q[m] = jest.fn().mockReturnValue(q); });
+  q.first = jest.fn().mockResolvedValue(result?.first);
+  q.del = jest.fn().mockResolvedValue(result?.del ?? 0);
+  // returning() must itself return a thenable that resolves to the
+  // configured insert result, since the service awaits it directly.
+  q.insert = jest.fn().mockImplementation(() => {
+    const promise = Promise.resolve(result?.insert ?? []);
+    promise.returning = () => Promise.resolve(result?.insert ?? []);
+    return promise;
+  });
+  q.pluck = jest.fn().mockResolvedValue(result?.pluck ?? []);
+  q.update = jest.fn().mockResolvedValue(result?.update ?? 0);
+  q.then = (resolve) => Promise.resolve(result?.rows ?? []).then(resolve);
+  q.catch = () => q;
+  return q;
+};
+
+beforeEach(() => {
+  db.mockReset();
+  queueEmail.mockClear();
+  db.transaction.mockImplementation(async (fn) => fn(db));
+});
+
+// ---- createInvitation --------------------------------------------------
+
+describe('createInvitation', () => {
+  it('rejects when a customer with the email already exists', async () => {
+    const svc = require('../services/customerAccountsService');
+    db.mockImplementationOnce(() => chain({ first: { id: 1, email: 'taken@example.com' } }));
+    await expect(
+      svc.createInvitation({ email: 'taken@example.com', invitedById: 9 })
+    ).rejects.toThrow(/already exists/i);
+    expect(queueEmail).not.toHaveBeenCalled();
+  });
+
+  it('rejects when a non-expired pending invitation exists', async () => {
+    const svc = require('../services/customerAccountsService');
+    db.mockImplementationOnce(() => chain({ first: null })); // no customer
+    db.mockImplementationOnce(() => chain({ first: { id: 5, email: 'pending@example.com' } }));
+    await expect(
+      svc.createInvitation({ email: 'pending@example.com', invitedById: 9 })
+    ).rejects.toThrow(/pending invitation/i);
+  });
+
+  it('queues an invitation email on success', async () => {
+    const svc = require('../services/customerAccountsService');
+    db.mockImplementationOnce(() => chain({ first: null })); // no customer
+    db.mockImplementationOnce(() => chain({ first: null })); // no pending
+    db.mockImplementationOnce(() => chain({ insert: [{ id: 42 }] })); // insert invitation
+
+    const result = await svc.createInvitation({
+      email: 'new@example.com',
+      invitedById: 9,
+    });
+
+    expect(result.email).toBe('new@example.com');
+    expect(result.token).toMatch(/^[a-f0-9]{64}$/);
+    expect(queueEmail).toHaveBeenCalledTimes(1);
+    const call = queueEmail.mock.calls[0];
+    expect(call[2]).toBe('customer_invitation');
+    expect(call[3].invite_link).toMatch(/\/customer\/invite\//);
+    // Link must honour the configured frontend URL (Site Settings →
+    // general_site_url, surfaced via getFrontendBaseUrl). Mocked above
+    // to https://example.test — the dev-day bug was the link always
+    // emitting localhost regardless of config.
+    expect(call[3].invite_link.startsWith('https://example.test/')).toBe(true);
+  });
+});
+
+// ---- setAssignmentsForEvent --------------------------------------------
+
+describe('setAssignmentsForEvent', () => {
+  it('inserts only customers that are missing and removes those not in the wanted list', async () => {
+    const svc = require('../services/customerAccountsService');
+    // existing assignments: customers 1 and 2
+    const existingChain = chain({ rows: [
+      { id: 100, customer_account_id: 1 },
+      { id: 101, customer_account_id: 2 },
+    ] });
+    // delete chain
+    const deleteChain = chain({ del: 1 });
+    // validity check chain — returns valid ids 3 only (99 is filtered out)
+    const validityChain = chain({ pluck: [3] });
+    // insert chain
+    const insertChain = chain({ insert: [] });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => deleteChain);
+    db.mockImplementationOnce(() => validityChain);
+    db.mockImplementationOnce(() => insertChain);
+
+    const summary = await svc.setAssignmentsForEvent(42, [2, 3, 99], 7);
+
+    // Should remove customer 1 (not in wanted) and only insert valid ones.
+    expect(deleteChain.whereIn).toHaveBeenCalledWith('id', [100]);
+    expect(insertChain.insert).toHaveBeenCalledWith([{
+      event_id: 42,
+      customer_account_id: 3,
+      assigned_by_admin_id: 7,
+      assigned_at: expect.any(Date),
+    }]);
+    // `added` counts attempted-additions before the validity filter — so
+    // 3 and 99 were both attempted (added: 2). The validity filter drops
+    // 99 silently (logged as a warning) before the insert. This matches
+    // the service contract; the test is asserting on it explicitly so a
+    // future refactor can't quietly change it.
+    expect(summary).toEqual({ added: 2, removed: 1 });
+  });
+
+  it('clears all assignments when wanted list is empty', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [
+      { id: 100, customer_account_id: 1 },
+      { id: 101, customer_account_id: 2 },
+    ] });
+    const deleteChain = chain({ del: 2 });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => deleteChain);
+
+    const summary = await svc.setAssignmentsForEvent(42, [], 7);
+    expect(deleteChain.whereIn).toHaveBeenCalledWith('id', [100, 101]);
+    expect(summary).toEqual({ added: 0, removed: 2 });
+  });
+
+  it('is a no-op when wanted equals existing', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [
+      { id: 100, customer_account_id: 1 },
+    ] });
+    db.mockImplementationOnce(() => existingChain);
+
+    const summary = await svc.setAssignmentsForEvent(42, [1], 7);
+    // Only the existing-rows query was called; no del or insert chain
+    // was needed because both diffs are empty.
+    expect(db).toHaveBeenCalledTimes(1);
+    expect(summary).toEqual({ added: 0, removed: 0 });
+  });
+});
+
+// ---- customerHasAccessToEvent ------------------------------------------
+
+describe('customerHasAccessToEvent', () => {
+  it('returns true when an assignment row exists', async () => {
+    const svc = require('../services/customerAccountsService');
+    const c = chain({ first: { id: 99 } });
+    db.mockImplementationOnce(() => c);
+
+    const result = await svc.customerHasAccessToEvent(1, 2);
+    expect(result).toBe(true);
+    expect(c.where).toHaveBeenCalledWith('customer_account_id', 1);
+    expect(c.where).toHaveBeenCalledWith('event_id', 2);
+  });
+
+  it('returns false when no assignment row exists', async () => {
+    const svc = require('../services/customerAccountsService');
+    db.mockImplementationOnce(() => chain({ first: undefined }));
+    const result = await svc.customerHasAccessToEvent(1, 999);
+    expect(result).toBe(false);
+  });
+});

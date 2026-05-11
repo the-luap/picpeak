@@ -416,6 +416,46 @@
     @apply text-neutral-500;
   }
 
+  /*
+   * Customer-surface scope (#354): the default .input and .card classes
+   * hard-code bg-white, and the customer surface uses theme variables
+   * rather than the admin's `.dark` class trigger. Overriding here so
+   * every <Input> and <Card> rendered inside the customer surface picks
+   * up var(--color-surface) / var(--color-text) automatically — no
+   * per-page wrapper needed. Same treatment for native <select>
+   * elements which share the .input mental model on the profile and
+   * accept-invite forms.
+   *
+   * The .customer-surface marker is set on the root <div> of every
+   * customer page (CustomerLayout, CustomerLoginPage, CustomerAcceptInvitePage,
+   * CustomerResetPasswordPage). Pages outside this scope (admin, public
+   * gallery) keep their original styling.
+   */
+  .customer-surface .card,
+  .customer-surface .card-hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-surface-border);
+  }
+
+  .customer-surface .input,
+  .customer-surface select.input,
+  .customer-surface input.input {
+    background-color: var(--color-surface);
+    border-color: var(--color-surface-border);
+    color: var(--color-text);
+  }
+
+  .customer-surface .input::placeholder {
+    color: var(--color-muted-text);
+    opacity: 0.7;
+  }
+
+  .customer-surface .input:disabled {
+    background-color: var(--color-elevated, var(--color-surface));
+    color: var(--color-muted-text);
+    opacity: 0.7;
+  }
+
   .dark .input-themed {
     @apply bg-neutral-800 border-neutral-700 text-neutral-100;
   }

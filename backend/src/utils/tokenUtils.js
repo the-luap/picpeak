@@ -2,6 +2,11 @@ const ADMIN_COOKIE_NAME = 'admin_token';
 const GALLERY_COOKIE_NAME = 'gallery_token';
 const GALLERY_COOKIE_PREFIX = 'gallery_token_';
 const GUEST_COOKIE_PREFIX = 'guest_token_';
+// Customer-account session cookie (#354). Distinct name from the admin
+// cookie so a single browser can hold both an admin and a customer
+// session without one clobbering the other (e.g. for the admin
+// dogfooding the customer dashboard).
+const CUSTOMER_COOKIE_NAME = 'customer_token';
 
 const DEFAULT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -113,6 +118,15 @@ function clearAdminAuthCookie(res) {
   res.clearCookie(ADMIN_COOKIE_NAME, buildClearCookieOptions());
 }
 
+function setCustomerAuthCookie(res, token) {
+  if (!token) return;
+  res.cookie(CUSTOMER_COOKIE_NAME, token, buildCookieOptionsWithExpiry(res));
+}
+
+function clearCustomerAuthCookie(res) {
+  res.clearCookie(CUSTOMER_COOKIE_NAME, buildClearCookieOptions());
+}
+
 function setGalleryAuthCookies(res, token, slug) {
   if (!token) return;
   const options = buildCookieOptionsWithExpiry(res);
@@ -147,6 +161,16 @@ function getAdminTokenFromRequest(req) {
     return header.substring(7);
   }
   return req.cookies?.[ADMIN_COOKIE_NAME] || null;
+}
+
+/**
+ * Customer JWT (#354). Cookie-only — deliberately no Authorization
+ * header fallback so an admin Bearer token attached by the shared
+ * events.service.ts auto-auth path can't accidentally satisfy a
+ * customer-only endpoint and trigger "wrong token type" downstream.
+ */
+function getCustomerTokenFromRequest(req) {
+  return req.cookies?.[CUSTOMER_COOKIE_NAME] || null;
 }
 
 function getGalleryTokenFromRequest(req, slug) {
@@ -209,12 +233,16 @@ module.exports = {
   GALLERY_COOKIE_NAME,
   GALLERY_COOKIE_PREFIX,
   GUEST_COOKIE_PREFIX,
+  CUSTOMER_COOKIE_NAME,
   sanitizeSlugForCookie,
   setAdminAuthCookie,
   clearAdminAuthCookie,
+  setCustomerAuthCookie,
+  clearCustomerAuthCookie,
   setGalleryAuthCookies,
   clearGalleryAuthCookies,
   getAdminTokenFromRequest,
+  getCustomerTokenFromRequest,
   getGalleryTokenFromRequest,
   getGuestTokenFromRequest,
 };

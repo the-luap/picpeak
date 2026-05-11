@@ -399,7 +399,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   //   custom  → render this event's promo_markdown verbatim
   //   off     → suppress entirely for this event
   body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
-  body('promo_markdown').optional({ nullable: true }).isString()
+  body('promo_markdown').optional({ nullable: true }).isString(),
+  // Customer accounts assigned to this event (#354). Optional array of
+  // customer_accounts.id — many-to-many via event_customer_assignments.
+  body('customer_account_ids').optional().isArray(),
+  body('customer_account_ids.*').optional().isInt({ min: 1 })
 ], async (req, res) => {
   try {
     logger.debug('Create event request body', { body: req.body });
@@ -664,7 +668,28 @@ router.post('/', adminAuth, requirePermission('events.create'), [
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
     const eventId = insertResult[0]?.id || insertResult[0];
-    
+
+    // Apply customer-account assignments (#354). Skip when the customer
+    // portal flag is off — the frontend hides the picker in that case,
+    // but a stale tab could still POST customer_account_ids; we ignore
+    // them rather than 403 the entire create.
+    if (Array.isArray(req.body.customer_account_ids)) {
+      try {
+        const customerAccountsService = require('../services/customerAccountsService');
+        if (await customerAccountsService.isCustomerPortalEnabled()) {
+          await customerAccountsService.setAssignmentsForEvent(
+            eventId,
+            req.body.customer_account_ids,
+            req.admin.id
+          );
+        }
+      } catch (e) {
+        logger.error('Failed to set customer assignments on event create', {
+          eventId, error: e.message,
+        });
+      }
+    }
+
     // Insert feedback settings if feedback is enabled
     if (feedback_enabled) {
       await db('event_feedback_settings').insert({
@@ -943,6 +968,17 @@ router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res)
       .where('event_id', id)
       .countDistinct('ip_address as uniqueVisitors');
 
+    // Customer accounts assigned to this event (#354). Hydrates the
+    // CustomerAccountPicker on the EventDetailsPage admin form. Returns
+    // an empty array on installs missing the table (e.g. pre-migrate).
+    let customerAccounts = [];
+    try {
+      const customerAccountsService = require('../services/customerAccountsService');
+      customerAccounts = await customerAccountsService.getAssignmentsForEvent(parseInt(id, 10));
+    } catch (e) {
+      logger.warn('Failed to load customer assignments for event', { eventId: id, error: e.message });
+    }
+
     res.json(mapEventForApi({
       ...event,
       photo_count: parseInt(photoCount) || 0,
@@ -950,7 +986,14 @@ router.get('/:id', adminAuth, requirePermission('events.view'), async (req, res)
       total_views: parseInt(totalViews) || 0,
       total_downloads: parseInt(totalDownloads) || 0,
       unique_visitors: parseInt(uniqueVisitors) || 0,
-      recent_photos: recentPhotos
+      recent_photos: recentPhotos,
+      customer_accounts: customerAccounts.map((c) => ({
+        id: c.id,
+        email: c.email,
+        display_name: c.display_name,
+        first_name: c.first_name,
+        last_name: c.last_name,
+      })),
     }));
   } catch (error) {
     console.error('Error fetching event:', error);
@@ -1112,7 +1155,11 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   //   custom  → render this event's promo_markdown verbatim
   //   off     → suppress entirely for this event
   body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
-  body('promo_markdown').optional({ nullable: true }).isString()
+  body('promo_markdown').optional({ nullable: true }).isString(),
+  // Customer accounts assigned to this event (#354). Optional array of
+  // customer_accounts.id — many-to-many via event_customer_assignments.
+  body('customer_account_ids').optional().isArray(),
+  body('customer_account_ids.*').optional().isInt({ min: 1 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -1312,6 +1359,26 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     await db('events')
       .where('id', id)
       .update(updates);
+
+    // Customer-account assignments (#354). Same skip semantics as POST:
+    // ignore when the customer portal flag is off so stale tabs don't
+    // 4xx the whole edit.
+    if (Array.isArray(req.body.customer_account_ids)) {
+      try {
+        const customerAccountsService = require('../services/customerAccountsService');
+        if (await customerAccountsService.isCustomerPortalEnabled()) {
+          await customerAccountsService.setAssignmentsForEvent(
+            parseInt(id, 10),
+            req.body.customer_account_ids,
+            req.admin.id
+          );
+        }
+      } catch (e) {
+        logger.error('Failed to set customer assignments on event update', {
+          eventId: id, error: e.message,
+        });
+      }
+    }
 
     // Log activity
     await logActivity('event_updated',

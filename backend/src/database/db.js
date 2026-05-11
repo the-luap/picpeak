@@ -554,11 +554,23 @@ async function ensureGlobalCategories() {
 // Helper function to log activities
 async function logActivity(activityType, metadata = {}, eventId = null, actor = null) {
   try {
+    // actor_id is integer-typed; some legacy callers pass a hex-string
+    // identifier (e.g. a 16-char guest fingerprint) which makes Postgres
+    // throw "invalid input syntax for type integer" and drop the entire
+    // log entry. Coerce anything non-integer to null and surface the
+    // string in actor_name so we don't lose the audit trail. Customer/
+    // admin actors are unaffected — their ids are already numeric.
+    const rawId = actor?.id;
+    const actorIdInt = Number.isInteger(rawId) ? rawId
+      : (typeof rawId === 'string' && /^\d+$/.test(rawId) ? Number(rawId) : null);
+    const actorName = actor?.name
+      || (actorIdInt === null && rawId !== undefined && rawId !== null ? String(rawId) : null);
+
     await db('activity_logs').insert({
       activity_type: activityType,
       actor_type: actor?.type || 'system',
-      actor_id: actor?.id || null,
-      actor_name: actor?.name || null,
+      actor_id: actorIdInt,
+      actor_name: actorName,
       metadata: JSON.stringify(metadata),
       event_id: eventId
     });

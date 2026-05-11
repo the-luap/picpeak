@@ -170,7 +170,8 @@
     "backup": "Backup e Restauração",
     "cmsPages": "Páginas CMS",
     "users": "Utilizadores",
-    "calendar": "Calendário"
+    "calendar": "Calendário",
+    "customers": "Clientes"
   },
   "archives": {
     "title": "Arquivos",
@@ -1102,7 +1103,8 @@
         "communication": "Comunicação",
         "scheduling": "Agendamento",
         "sales": "Vendas",
-        "insights": "Análises & Acesso"
+        "insights": "Análises & Acesso",
+        "customers": "Clientes"
       },
       "status": {
         "stable": "estável",
@@ -1148,7 +1150,22 @@
         "title": "Gerenciamento de Usuários",
         "description": "Suporte a múltiplos administradores com permissões baseadas em função. Desative se você é um estúdio individual.",
         "warning": "Contas de usuário existentes permanecem válidas; a interface administrativa para gerenciá-las ficará oculta até você reativar isto."
+      },
+      "customerPortal": {
+        "title": "Portal do cliente",
+        "description": "Logins persistentes para clientes. Clientes recorrentes veem todas as galerias atribuídas em um só lugar — sem senhas por evento. Base para Calendário / Orçamentos / Faturas (que só aparecem no painel do cliente quando isto está ativo)."
       }
+    },
+    "customerSurface": {
+      "brandingTitle": "Cabeçalho do painel do cliente",
+      "brandingHint": "Controla o que aparece no cabeçalho de /customer/dashboard. Galerias públicas e áreas administrativas não são afetadas.",
+      "showLogo": "Mostrar logo no cabeçalho do cliente",
+      "showLogoHint": "Usa o mesmo logo de branding configurado acima.",
+      "showCompanyName": "Mostrar nome da empresa no cabeçalho do cliente",
+      "showCompanyNameHint": "Oculte se seu logo já inclui o nome da empresa.",
+      "save": "Salvar alterações",
+      "saved": "Branding do painel do cliente salvo",
+      "error": "Não foi possível salvar as configurações"
     }
   },
   "analytics": {
@@ -2573,5 +2590,290 @@
     "movedToCategory_other": "{{count}} fotos movidas para {{category}}",
     "moveToCategoryFailed": "Falha ao mover fotos para categoria",
     "moveToCategory": "Mover para categoria"
+  },
+  "customer": {
+    "login": {
+      "title": "Acesso do cliente",
+      "subtitle": "Acesse todas as suas galerias de fotos em um só lugar.",
+      "email": "E-mail",
+      "password": "Senha",
+      "emailRequired": "O e-mail é obrigatório",
+      "invalidEmail": "Informe um e-mail válido",
+      "passwordRequired": "A senha é obrigatória",
+      "showPassword": "Mostrar senha",
+      "hidePassword": "Ocultar senha",
+      "signIn": "Entrar",
+      "loginSuccess": "Bem-vindo de volta!",
+      "invalidCredentials": "E-mail ou senha inválidos",
+      "tooManyAttempts": "Muitas tentativas — tente novamente mais tarde.",
+      "networkError": "Não foi possível acessar o servidor. Tente novamente.",
+      "generalError": "Falha no login. Tente novamente.",
+      "acceptedToast": "Conta pronta — faça login.",
+      "adminHint": "Procurando o painel de administração? Acesse /admin/login.",
+      "emailPlaceholder": "voce@exemplo.com",
+      "passwordPlaceholder": "Sua senha",
+      "needHelp": "Precisa de ajuda?",
+      "poweredBy": "Desenvolvido por PicPeak"
+    },
+    "acceptInvite": {
+      "title": "Configure sua conta",
+      "invalidToken": "Este link de convite é inválido ou expirou. Peça um novo convite ao seu fotógrafo.",
+      "emailWillBe": "Seu e-mail de conta será ",
+      "invitedBy": ", convidado por ",
+      "name": "Seu nome",
+      "nameRequired": "Informe seu nome",
+      "password": "Escolha uma senha",
+      "confirm": "Confirmar senha",
+      "passwordTooShort": "A senha deve ter pelo menos 8 caracteres",
+      "passwordsMismatch": "As senhas não coincidem",
+      "passwordHint": "Pelo menos 8 caracteres, com uma letra maiúscula e um número.",
+      "submit": "Criar conta",
+      "successToast": "Conta criada — faça login.",
+      "alreadyExists": "Já existe uma conta com este e-mail. Faça login.",
+      "invalidSubmission": "Não foi possível criar sua conta.",
+      "generalError": "Não foi possível criar sua conta. Tente novamente.",
+      "subtitle": "Confirme ou preencha seus dados. Você pode editar tudo depois na página de perfil.",
+      "displayName": "Nome de exibição",
+      "section": {
+        "personal": "Pessoal",
+        "contact": "Contato & empresa (opcional)",
+        "address": "Endereço de cobrança (opcional)",
+        "password": "Escolha uma senha"
+      }
+    },
+    "dashboard": {
+      "title": "Suas galerias",
+      "subtitle": "Clique em uma galeria para abri-la. O botão Baixar empacota todas as fotos em um zip.",
+      "loadError": "Não foi possível carregar suas galerias. Tente novamente.",
+      "emptyTitle": "Nenhuma galeria ainda",
+      "emptyBody": "Assim que seu fotógrafo te atribuir a uma galeria, ela aparecerá aqui.",
+      "openAria": "Abrir galeria {{name}}",
+      "opening": "Abrindo…",
+      "expiresOn": "Expira em {{date}}",
+      "expiredOn": "Expirou em {{date}}",
+      "eventExpired": "Esta galeria expirou.",
+      "eventForbidden": "Você não tem mais acesso a esta galeria.",
+      "openError": "Não foi possível abrir esta galeria. Tente novamente.",
+      "download": "Baixar",
+      "preparingDownload": "Preparando…",
+      "quickDownloadAria": "Baixar todas as fotos de {{name}}",
+      "downloadStarted": "Download iniciado para {{name}}",
+      "downloadError": "Não foi possível iniciar o download. Tente novamente.",
+      "sortLabel": "Ordenar por",
+      "sortNewest": "Mais recentes",
+      "sortOldest": "Mais antigos",
+      "sortName": "Por nome",
+      "open": "Abrir"
+    },
+    "layout": {
+      "greeting": "Olá, {{name}}"
+    },
+    "nav": {
+      "galleries": "Galerias",
+      "calendar": "Calendário",
+      "quotes": "Orçamentos",
+      "bills": "Faturas",
+      "profile": "Perfil",
+      "soon": "Em breve"
+    },
+    "comingSoon": {
+      "tag": "Em breve"
+    },
+    "calendar": {
+      "title": "Calendário",
+      "body": "Próximas sessões, datas de entrega de galerias e outros eventos relacionados a sessões aparecerão aqui. Avisaremos quando estiver pronto."
+    },
+    "quotes": {
+      "title": "Orçamentos",
+      "body": "Revise e aceite orçamentos para sessões futuras em um só lugar. Ainda estamos construindo — por enquanto, seu fotógrafo continuará enviando orçamentos da maneira habitual."
+    },
+    "bills": {
+      "title": "Faturas",
+      "body": "Faturas e histórico de pagamentos das suas sessões estarão disponíveis aqui. Enviaremos um e-mail quando estiver no ar."
+    },
+    "profile": {
+      "title": "Perfil do cliente",
+      "subtitle": "Mantenha seus dados de contato e cobrança atualizados — eles aparecem em orçamentos e faturas quando essas funções forem ativadas.",
+      "savedToast": "Perfil salvo",
+      "saveError": "Não foi possível salvar o perfil.",
+      "loadError": "Não foi possível carregar seu perfil.",
+      "save": "Salvar alterações",
+      "salutation": {
+        "none": "— Não especificado —",
+        "herr": "Sr.",
+        "frau": "Sra.",
+        "mx": "Mx",
+        "dr": "Dr."
+      },
+      "section": {
+        "personal": "Informações pessoais",
+        "contact": "Contato & empresa",
+        "address": "Endereço de cobrança",
+        "password": "Alterar senha"
+      },
+      "field": {
+        "email": "E-mail (login)",
+        "emailHint": "Contate seu fotógrafo se precisar mudar o e-mail de login.",
+        "salutation": "Saudação",
+        "firstName": "Nome",
+        "lastName": "Sobrenome",
+        "displayName": "Nome de exibição",
+        "displayNameHint": "Como te cumprimentamos no painel.",
+        "phone": "Telefone",
+        "companyName": "Nome da empresa",
+        "vatId": "CNPJ / IVA",
+        "addressLine1": "Endereço linha 1",
+        "addressLine2": "Endereço linha 2",
+        "postalCode": "CEP",
+        "city": "Cidade",
+        "state": "Estado / região",
+        "countryCode": "País"
+      },
+      "password": {
+        "current": "Senha atual",
+        "next": "Nova senha",
+        "confirm": "Confirmar nova senha",
+        "submit": "Atualizar senha",
+        "hint": "Pelo menos 8 caracteres com uma letra maiúscula e um número.",
+        "currentRequired": "Informe sua senha atual",
+        "tooShort": "Pelo menos 8 caracteres",
+        "mismatch": "As senhas não coincidem",
+        "wrong": "Senha atual incorreta",
+        "savedToast": "Senha atualizada",
+        "error": "Não foi possível alterar a senha"
+      }
+    },
+    "resetPassword": {
+      "title": "Redefinir sua senha",
+      "invalidToken": "Este link de redefinição é inválido ou expirou. Peça ao seu fotógrafo um novo.",
+      "forEmail": "Definindo uma nova senha para ",
+      "password": "Nova senha",
+      "confirm": "Confirmar nova senha",
+      "submit": "Atualizar senha",
+      "hint": "Pelo menos 8 caracteres com uma letra maiúscula e um número.",
+      "tooShort": "A senha deve ter pelo menos 8 caracteres",
+      "mismatch": "As senhas não coincidem",
+      "successToast": "Senha atualizada. Faça login.",
+      "invalidSubmission": "Não foi possível atualizar sua senha.",
+      "generalError": "Não foi possível atualizar sua senha. Tente novamente."
+    }
+  },
+  "customers": {
+    "pageTitle": "Clientes",
+    "pageSubtitle": "Contas de clientes recorrentes que podem entrar em /customer/login.",
+    "unnamed": "Sem nome",
+    "empty": "Nenhum cliente ainda. Clique em \"Convidar cliente\" para adicionar um.",
+    "loadError": "Não foi possível carregar os clientes",
+    "loadInvitationsError": "Não foi possível carregar os convites",
+    "tabs": {
+      "customers": "Clientes",
+      "invitations": "Convites"
+    },
+    "search": {
+      "placeholder": "Buscar por e-mail, nome ou empresa"
+    },
+    "table": {
+      "name": "Nome",
+      "email": "E-mail",
+      "company": "Empresa",
+      "eventCount": "Eventos",
+      "lastLogin": "Último acesso",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Ativo",
+      "inactive": "Desativado"
+    },
+    "invite": {
+      "button": "Convidar cliente",
+      "title": "Convidar um cliente",
+      "description": "Eles receberão um e-mail com um link para configurar a conta. Após aceitarem, você pode atribuí-los a eventos.",
+      "email": "E-mail",
+      "submit": "Enviar convite",
+      "success": "Convite enviado",
+      "error": "Não foi possível enviar o convite.",
+      "conflict": "Já existe um cliente com este e-mail ou um convite pendente.",
+      "invalidEmail": "Informe um e-mail válido",
+      "showPrefill": "+ Adicionar detalhes de contato (opcional)",
+      "hidePrefill": "− Ocultar detalhes de contato",
+      "prefillHint": "Qualquer dado preenchido será pré-preenchido na página de cadastro do cliente — ele ainda pode editá-lo."
+    },
+    "invitations": {
+      "empty": "Nenhum convite pendente.",
+      "email": "E-mail",
+      "invitedBy": "Convidado por",
+      "expiresAt": "Expira",
+      "createdAt": "Criado em",
+      "cancel": "Cancelar"
+    },
+    "deactivate": {
+      "button": "Desativar",
+      "title": "Desativar cliente?",
+      "body": "Ele não conseguirá mais entrar. Você pode convidá-lo novamente depois.",
+      "success": "Cliente desativado",
+      "error": "Não foi possível desativar o cliente"
+    },
+    "cancelInvitation": {
+      "title": "Cancelar convite?",
+      "body": "O link do convite deixará de funcionar imediatamente.",
+      "success": "Convite cancelado",
+      "error": "Não foi possível cancelar o convite"
+    },
+    "detail": {
+      "loadError": "Não foi possível carregar o cliente",
+      "saved": "Cliente salvo",
+      "saveError": "Não foi possível salvar as alterações.",
+      "emailConflict": "Este e-mail já está em uso por outro cliente.",
+      "save": "Salvar alterações",
+      "expires": "expira em",
+      "accountSection": "Conta",
+      "personalSection": "Informações pessoais",
+      "billingSection": "Endereço & cobrança",
+      "notesSection": "Notas internas",
+      "eventsSection": "Eventos atribuídos",
+      "noEvents": "Ainda não atribuído a nenhum evento. Adicione este cliente a um evento pelo formulário do evento.",
+      "email": "E-mail",
+      "preferredLanguage": "Idioma preferido",
+      "salutation": "Saudação",
+      "salutationNone": "—",
+      "firstName": "Nome",
+      "lastName": "Sobrenome",
+      "displayName": "Nome de exibição",
+      "phone": "Telefone",
+      "company": "Empresa",
+      "billingEmail": "E-mail de cobrança",
+      "vatId": "CNPJ / IVA",
+      "addressLine1": "Endereço linha 1",
+      "addressLine2": "Endereço linha 2",
+      "postalCode": "CEP",
+      "city": "Cidade",
+      "state": "Estado / região",
+      "countryCode": "País (ISO 2)",
+      "notesHint": "Visível apenas para administradores. Nunca mostrado ao cliente.",
+      "featuresSection": "Funções do cliente",
+      "featuresHint": "Substituições por cliente para as abas do portal. Os toggles globais em Configurações → Recursos são a chave principal — quando o global está DESLIGADO ninguém vê a aba, independente do que você definir aqui. Os padrões são LIGADOS; desligue um para ocultar uma aba para este cliente específico.",
+      "passwordSection": "Ações da conta",
+      "passwordHint": "Envia um link de redefinição de uso único (7 dias) ao e-mail do cliente. A senha atual continua funcionando até o cliente clicar no link e definir uma nova.",
+      "passwordReset": {
+        "button": "Enviar e-mail de redefinição",
+        "success": "E-mail de redefinição enviado",
+        "error": "Não foi possível enviar a redefinição",
+        "inactive": "Reative o cliente antes de enviar uma redefinição."
+      }
+    },
+    "reactivate": {
+      "button": "Reativar",
+      "success": "Cliente reativado",
+      "error": "Não foi possível reativar o cliente"
+    },
+    "erase": {
+      "button": "Apagar dados do cliente",
+      "title": "Apagar dados do cliente?",
+      "body": "Remove nome, e-mail, telefone, endereço, empresa e credenciais do cliente. O registro da conta permanece para que registros históricos de acesso e logs de auditoria ainda o referenciem. Esta ação é irreversível — você não poderá restaurar os dados depois.",
+      "confirm": "Apagar permanentemente",
+      "confirmInFlight": "Apagando…",
+      "success": "Cliente apagado",
+      "error": "Não foi possível apagar o cliente"
+    }
   }
 }

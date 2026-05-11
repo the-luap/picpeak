@@ -41,6 +41,10 @@ interface CreateEventData {
   show_feedback_to_guests?: boolean;
   photo_cap?: number | null;
   default_photo_sort?: string;
+  // Customer accounts assigned to this event (#354). Optional array of
+  // customer_accounts.id; backend service diffs against the existing
+  // assignments and applies inserts/deletes inside the same transaction.
+  customer_account_ids?: number[];
 }
 
 interface UpdateEventData {
@@ -62,6 +66,9 @@ interface UpdateEventData {
   external_path?: string | null;
   photo_cap?: number | null;
   default_photo_sort?: string;
+  // Customer accounts (#354). Same semantics as on CreateEventData;
+  // omit the field to leave assignments untouched, send [] to clear.
+  customer_account_ids?: number[];
 }
 
 export type EventStatusFilter = 'active' | 'inactive' | 'archived' | 'draft' | 'expiring';

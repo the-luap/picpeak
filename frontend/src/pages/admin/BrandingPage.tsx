@@ -8,6 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { settingsService, type BrandingSettings } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 import { buildResourceUrl } from '../../utils/url';
+import { useFeatureEnabled } from '../../contexts/FeatureFlagsContext';
+import { CustomerDashboardBrandingCard } from '../../components/admin/CustomerDashboardBrandingCard';
 
 export const BrandingPage: React.FC = () => {
   const { t } = useTranslation();
@@ -845,6 +847,14 @@ export const BrandingPage: React.FC = () => {
           )}
         </Card>
 
+        {/* Customer dashboard branding (#354). Sits between "Company
+            Information" and "Gallery Theme" so it stays adjacent to the
+            other brand-visibility controls. Self-hides when the
+            customerPortal feature flag is off. */}
+        <div className="mb-6">
+          <CustomerDashboardBrandingSection />
+        </div>
+
         {/* Theme Customization */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4 flex items-center gap-2">
@@ -908,4 +918,15 @@ export const BrandingPage: React.FC = () => {
       </div>
     </ErrorBoundary>
   );
+};
+
+/**
+ * Customer-dashboard branding card. Pulled out so the BrandingPage
+ * stays readable and the feature-flag gate is local — no conditional
+ * hooks in the parent.
+ */
+const CustomerDashboardBrandingSection: React.FC = () => {
+  const customerPortalEnabled = useFeatureEnabled('customerPortal');
+  if (!customerPortalEnabled) return null;
+  return <CustomerDashboardBrandingCard />;
 };

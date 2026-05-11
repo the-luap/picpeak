@@ -8,6 +8,7 @@ import {
   Settings,
   X,
   Users,
+  UserCog,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,12 @@ const navigation: NavItem[] = [
   { nameKey: 'admin.analytics',      href: '/admin/analytics', icon: BarChart3,       permission: 'analytics.view', featureFlag: 'analytics' },
   { nameKey: 'navigation.settings',  href: '/admin/settings',  icon: Settings,        permission: 'settings.view' },
   { nameKey: 'navigation.users',     href: '/admin/users',     icon: Users,           permission: 'users.view',     featureFlag: 'userManagement' },
+  // Customer accounts (#354) — separate from admin users (#users.view)
+  // by design: customers log in at /customer/login with their own
+  // cookie + token type. Hidden when the customerPortal feature flag
+  // is OFF (Settings → Features). The corresponding /customer/* routes
+  // also redirect away in that case (see RequireFeature in App.tsx).
+  { nameKey: 'navigation.customers', href: '/admin/customers', icon: UserCog,         permission: 'customers.view', featureFlag: 'customerPortal' },
 ];
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
