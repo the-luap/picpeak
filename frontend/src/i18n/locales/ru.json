@@ -174,7 +174,7 @@
     "cmsPages": "CMS-страницы",
     "users": "Пользователи",
     "calendar": "Календарь",
-    "customers": "Customers"
+    "customers": "Клиенты"
   },
   "archives": {
     "title": "Архивы",
@@ -1120,7 +1120,8 @@
         "communication": "Коммуникации",
         "scheduling": "Планирование",
         "sales": "Продажи",
-        "insights": "Аналитика и доступ"
+        "insights": "Аналитика и доступ",
+        "customers": "Клиенты"
       },
       "status": {
         "stable": "стабильно",
@@ -1166,7 +1167,22 @@
         "title": "Управление пользователями",
         "description": "Поддержка нескольких администраторов с ролевыми правами. Отключите, если работаете в одиночку.",
         "warning": "Существующие учётные записи остаются действительными; интерфейс управления ими будет скрыт до повторного включения."
+      },
+      "customerPortal": {
+        "title": "Клиентский портал",
+        "description": "Постоянные логины клиентов. Постоянные клиенты видят все назначенные галереи в одном месте — без паролей для каждого события. Основа для Календаря / Смет / Счетов (которые отображаются в клиентской панели только при включённой опции)."
       }
+    },
+    "customerSurface": {
+      "brandingTitle": "Шапка панели клиента",
+      "brandingHint": "Управляет тем, что показывается в шапке /customer/dashboard. Публичные галереи и админ-разделы не затрагиваются.",
+      "showLogo": "Показывать логотип в шапке клиента",
+      "showLogoHint": "Используется тот же логотип бренда, что настроен выше.",
+      "showCompanyName": "Показывать название компании в шапке клиента",
+      "showCompanyNameHint": "Скройте, если логотип уже содержит название компании.",
+      "save": "Сохранить изменения",
+      "saved": "Брендинг панели клиента сохранён",
+      "error": "Не удалось сохранить настройки"
     }
   },
   "analytics": {
@@ -2610,176 +2626,176 @@
   },
   "customer": {
     "login": {
-      "title": "Вход клиента",
+      "title": "Вход для клиентов",
       "subtitle": "Доступ ко всем вашим фотогалереям в одном месте.",
-      "email": "E-mail",
+      "email": "Эл. почта",
       "password": "Пароль",
-      "emailRequired": "E-mail обязателен",
-      "invalidEmail": "Введите корректный e-mail",
-      "passwordRequired": "Пароль обязателен",
+      "emailRequired": "Укажите эл. почту",
+      "invalidEmail": "Введите корректный адрес эл. почты",
+      "passwordRequired": "Укажите пароль",
       "showPassword": "Показать пароль",
       "hidePassword": "Скрыть пароль",
       "signIn": "Войти",
       "loginSuccess": "С возвращением!",
       "invalidCredentials": "Неверный e-mail или пароль",
       "tooManyAttempts": "Слишком много попыток — попробуйте позже.",
-      "networkError": "Сервер недоступен. Попробуйте ещё раз.",
-      "generalError": "Ошибка входа. Попробуйте ещё раз.",
-      "acceptedToast": "Аккаунт готов — войдите.",
+      "networkError": "Не удалось связаться с сервером. Попробуйте снова.",
+      "generalError": "Не удалось войти. Попробуйте снова.",
+      "acceptedToast": "Учётная запись готова — войдите.",
       "adminHint": "Ищете админ-панель? Перейдите на /admin/login.",
       "emailPlaceholder": "you@example.com",
-      "passwordPlaceholder": "Your password",
-      "needHelp": "Need help?",
-      "poweredBy": "Powered by PicPeak"
+      "passwordPlaceholder": "Ваш пароль",
+      "needHelp": "Нужна помощь?",
+      "poweredBy": "Работает на PicPeak"
     },
     "acceptInvite": {
-      "title": "Настройте ваш аккаунт",
-      "invalidToken": "Эта ссылка-приглашение недействительна или истекла. Свяжитесь с фотографом для нового приглашения.",
-      "emailWillBe": "E-mail вашего аккаунта будет ",
-      "invitedBy": ", пригласил ",
+      "title": "Создайте учётную запись",
+      "invalidToken": "Ссылка-приглашение недействительна или просрочена. Попросите фотографа выслать новое приглашение.",
+      "emailWillBe": "Эл. почта учётной записи: ",
+      "invitedBy": ", приглашение от ",
       "name": "Ваше имя",
       "nameRequired": "Введите ваше имя",
-      "password": "Выберите пароль",
+      "password": "Придумайте пароль",
       "confirm": "Подтвердите пароль",
       "passwordTooShort": "Пароль должен содержать не менее 8 символов",
       "passwordsMismatch": "Пароли не совпадают",
-      "passwordHint": "Не менее 8 символов, с одной заглавной буквой и одной цифрой.",
-      "submit": "Создать аккаунт",
-      "successToast": "Аккаунт создан — войдите.",
-      "alreadyExists": "Аккаунт с таким e-mail уже существует. Войдите вместо этого.",
-      "invalidSubmission": "Не удалось создать аккаунт.",
-      "generalError": "Не удалось создать аккаунт. Попробуйте ещё раз.",
-      "subtitle": "Confirm or fill in your details. You can edit anything from the profile page later.",
-      "displayName": "Display name",
+      "passwordHint": "Минимум 8 символов, одна заглавная буква и одна цифра.",
+      "submit": "Создать учётную запись",
+      "successToast": "Учётная запись создана — войдите.",
+      "alreadyExists": "Учётная запись с этим e-mail уже существует. Пожалуйста, войдите.",
+      "invalidSubmission": "Не удалось создать учётную запись.",
+      "generalError": "Не удалось создать учётную запись. Попробуйте снова.",
+      "subtitle": "Подтвердите или заполните данные. Изменить их можно позже в профиле.",
+      "displayName": "Отображаемое имя",
       "section": {
-        "personal": "Personal",
-        "contact": "Contact & business (optional)",
-        "address": "Billing address (optional)",
-        "password": "Choose a password"
+        "personal": "Личное",
+        "contact": "Контакты и компания (необязательно)",
+        "address": "Адрес для счетов (необязательно)",
+        "password": "Придумайте пароль"
       }
     },
     "dashboard": {
-      "title": "Your galleries",
-      "subtitle": "Click a gallery to open it. The Download button bundles every photo as a zip.",
-      "loadError": "Не удалось загрузить ваши галереи. Попробуйте ещё раз.",
-      "emptyTitle": "Пока нет галерей",
-      "emptyBody": "Как только фотограф привяжет вас к галерее, она появится здесь.",
+      "title": "Ваши галереи",
+      "subtitle": "Нажмите на галерею, чтобы открыть её. Кнопка «Скачать» собирает все фото в zip.",
+      "loadError": "Не удалось загрузить ваши галереи. Попробуйте снова.",
+      "emptyTitle": "Галерей пока нет",
+      "emptyBody": "Как только фотограф назначит вам галерею, она появится здесь.",
       "openAria": "Открыть галерею {{name}}",
-      "opening": "Открывается…",
-      "expiresOn": "Истекает {{date}}",
-      "expiredOn": "Истёк {{date}}",
-      "eventExpired": "Эта галерея истекла.",
+      "opening": "Открываем…",
+      "expiresOn": "Срок до {{date}}",
+      "expiredOn": "Срок истёк {{date}}",
+      "eventExpired": "Срок действия этой галереи истёк.",
       "eventForbidden": "У вас больше нет доступа к этой галерее.",
-      "openError": "Не удалось открыть эту галерею. Попробуйте ещё раз.",
+      "openError": "Не удалось открыть галерею. Попробуйте снова.",
       "download": "Скачать",
-      "preparingDownload": "Подготовка…",
+      "preparingDownload": "Готовим…",
       "quickDownloadAria": "Скачать все фото для {{name}}",
-      "downloadStarted": "Скачивание начато для {{name}}",
-      "downloadError": "Не удалось начать скачивание. Попробуйте ещё раз.",
-      "sortLabel": "Sort by",
-      "sortNewest": "Newest first",
-      "sortOldest": "Oldest first",
-      "sortName": "By name",
-      "open": "Open"
+      "downloadStarted": "Загрузка начата для {{name}}",
+      "downloadError": "Не удалось начать загрузку. Попробуйте снова.",
+      "sortLabel": "Сортировать по",
+      "sortNewest": "Сначала новые",
+      "sortOldest": "Сначала старые",
+      "sortName": "По имени",
+      "open": "Открыть"
     },
     "layout": {
-      "greeting": "Привет, {{name}}"
+      "greeting": "Здравствуйте, {{name}}"
     },
     "nav": {
-      "galleries": "Galleries",
-      "calendar": "Calendar",
-      "quotes": "Quotes",
-      "bills": "Bills",
-      "profile": "Profile",
-      "soon": "Soon"
+      "galleries": "Галереи",
+      "calendar": "Календарь",
+      "quotes": "Сметы",
+      "bills": "Счета",
+      "profile": "Профиль",
+      "soon": "Скоро"
     },
     "comingSoon": {
-      "tag": "Coming soon"
+      "tag": "Скоро"
     },
     "calendar": {
-      "title": "Calendar",
-      "body": "Upcoming sessions, gallery delivery dates, and other shoot-related events will land here. We'll let you know when it's ready."
+      "title": "Календарь",
+      "body": "Предстоящие сессии, даты передачи галерей и другие события появятся здесь. Мы сообщим, когда раздел будет готов."
     },
     "quotes": {
-      "title": "Quotes",
-      "body": "Review and accept quotes for upcoming shoots in one place. We're still building this — for now, your photographer will keep sending quotes the usual way."
+      "title": "Сметы",
+      "body": "Просматривайте и принимайте сметы для будущих съёмок в одном месте. Раздел в разработке — пока фотограф будет присылать сметы как обычно."
     },
     "bills": {
-      "title": "Bills",
-      "body": "Invoices and payment history for your sessions will be available here. We'll send you an email when this is live."
+      "title": "Счета",
+      "body": "Здесь будут счета и история платежей за ваши сессии. Мы отправим письмо, когда раздел заработает."
     },
     "profile": {
-      "title": "Customer profile",
-      "subtitle": "Keep your contact and billing details up to date — they're shown on quotes and invoices once those features go live.",
-      "savedToast": "Profile saved",
-      "saveError": "Could not save profile.",
-      "loadError": "Could not load your profile.",
-      "save": "Save changes",
+      "title": "Профиль клиента",
+      "subtitle": "Поддерживайте контактные и платёжные данные в актуальном состоянии — они появятся в сметах и счетах, когда соответствующие разделы запустятся.",
+      "savedToast": "Профиль сохранён",
+      "saveError": "Не удалось сохранить профиль.",
+      "loadError": "Не удалось загрузить профиль.",
+      "save": "Сохранить изменения",
       "salutation": {
-        "none": "— Not specified —",
-        "herr": "Mr.",
-        "frau": "Ms.",
+        "none": "— Не указано —",
+        "herr": "Г-н",
+        "frau": "Г-жа",
         "mx": "Mx",
-        "dr": "Dr."
+        "dr": "Д-р"
       },
       "section": {
-        "personal": "Personal information",
-        "contact": "Contact & business",
-        "address": "Billing address",
-        "password": "Change password"
+        "personal": "Личные данные",
+        "contact": "Контакты и компания",
+        "address": "Адрес для счетов",
+        "password": "Сменить пароль"
       },
       "field": {
-        "email": "Email (login)",
-        "emailHint": "Contact your photographer if you need to change your login email.",
-        "salutation": "Salutation",
-        "firstName": "First name",
-        "lastName": "Last name",
-        "displayName": "Display name",
-        "displayNameHint": "How we greet you in the dashboard.",
-        "phone": "Phone",
-        "companyName": "Company name",
-        "vatId": "VAT ID",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
-        "postalCode": "Postal code",
-        "city": "City",
-        "state": "State / region",
-        "countryCode": "Country"
+        "email": "Эл. почта (логин)",
+        "emailHint": "Свяжитесь с фотографом, если нужно изменить эл. почту для входа.",
+        "salutation": "Обращение",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
+        "displayName": "Отображаемое имя",
+        "displayNameHint": "Как мы будем обращаться к вам в панели.",
+        "phone": "Телефон",
+        "companyName": "Название компании",
+        "vatId": "ИНН / НДС",
+        "addressLine1": "Адрес, строка 1",
+        "addressLine2": "Адрес, строка 2",
+        "postalCode": "Индекс",
+        "city": "Город",
+        "state": "Регион",
+        "countryCode": "Страна"
       },
       "password": {
-        "current": "Current password",
-        "next": "New password",
-        "confirm": "Confirm new password",
-        "submit": "Update password",
-        "hint": "At least 8 characters with one uppercase letter and one number.",
-        "currentRequired": "Enter your current password",
-        "tooShort": "At least 8 characters",
-        "mismatch": "Passwords do not match",
-        "wrong": "Current password is incorrect",
-        "savedToast": "Password updated",
-        "error": "Could not change password"
+        "current": "Текущий пароль",
+        "next": "Новый пароль",
+        "confirm": "Подтвердите новый пароль",
+        "submit": "Обновить пароль",
+        "hint": "Минимум 8 символов, одна заглавная буква и одна цифра.",
+        "currentRequired": "Введите текущий пароль",
+        "tooShort": "Минимум 8 символов",
+        "mismatch": "Пароли не совпадают",
+        "wrong": "Текущий пароль неверен",
+        "savedToast": "Пароль обновлён",
+        "error": "Не удалось изменить пароль"
       }
     },
     "resetPassword": {
-      "title": "Reset your password",
-      "invalidToken": "This reset link is invalid or has expired. Please ask your photographer to send a new one.",
-      "forEmail": "Setting a new password for ",
-      "password": "New password",
-      "confirm": "Confirm new password",
-      "submit": "Update password",
-      "hint": "At least 8 characters with one uppercase letter and one number.",
-      "tooShort": "Password must be at least 8 characters",
-      "mismatch": "Passwords do not match",
-      "successToast": "Password updated. Please log in.",
-      "invalidSubmission": "Could not update your password.",
-      "generalError": "Could not update your password. Please try again."
+      "title": "Сброс пароля",
+      "invalidToken": "Ссылка для сброса недействительна или просрочена. Попросите фотографа выслать новую.",
+      "forEmail": "Установка нового пароля для ",
+      "password": "Новый пароль",
+      "confirm": "Подтвердите новый пароль",
+      "submit": "Обновить пароль",
+      "hint": "Минимум 8 символов, одна заглавная буква и одна цифра.",
+      "tooShort": "Пароль должен содержать не менее 8 символов",
+      "mismatch": "Пароли не совпадают",
+      "successToast": "Пароль обновлён. Пожалуйста, войдите.",
+      "invalidSubmission": "Не удалось обновить пароль.",
+      "generalError": "Не удалось обновить пароль. Попробуйте снова."
     }
   },
   "customers": {
     "pageTitle": "Клиенты",
-    "pageSubtitle": "Повторные клиентские аккаунты, которые могут входить на /customer/login.",
+    "pageSubtitle": "Постоянные учётные записи клиентов, которые могут входить на /customer/login.",
     "unnamed": "Без имени",
-    "empty": "Пока нет клиентов. Нажмите «Пригласить клиента», чтобы добавить.",
+    "empty": "Клиентов пока нет. Нажмите «Пригласить клиента», чтобы добавить.",
     "loadError": "Не удалось загрузить клиентов",
     "loadInvitationsError": "Не удалось загрузить приглашения",
     "tabs": {
@@ -2791,7 +2807,7 @@
     },
     "table": {
       "name": "Имя",
-      "email": "E-mail",
+      "email": "Эл. почта",
       "company": "Компания",
       "eventCount": "События",
       "lastLogin": "Последний вход",
@@ -2799,40 +2815,40 @@
     },
     "status": {
       "active": "Активен",
-      "inactive": "Отключён"
+      "inactive": "Деактивирован"
     },
     "invite": {
       "button": "Пригласить клиента",
       "title": "Пригласить клиента",
-      "description": "Они получат e-mail со ссылкой для настройки аккаунта. После принятия их можно назначать на события.",
-      "email": "E-mail",
+      "description": "Клиент получит письмо со ссылкой на создание учётной записи. После принятия вы сможете назначать его на события.",
+      "email": "Эл. почта",
       "submit": "Отправить приглашение",
       "success": "Приглашение отправлено",
       "error": "Не удалось отправить приглашение.",
-      "conflict": "Клиент с таким e-mail уже существует или имеет ожидающее приглашение.",
+      "conflict": "Клиент с таким e-mail уже существует или есть ожидающее приглашение.",
       "invalidEmail": "Введите корректный e-mail",
-      "showPrefill": "+ Add contact details (optional)",
-      "hidePrefill": "− Hide contact details",
-      "prefillHint": "Anything you fill in will be pre-populated on the customer's sign-up page — they can still edit it."
+      "showPrefill": "+ Добавить контактные данные (необязательно)",
+      "hidePrefill": "− Скрыть контактные данные",
+      "prefillHint": "Заполненные значения будут предзаполнены на странице регистрации клиента — клиент сможет их отредактировать."
     },
     "invitations": {
       "empty": "Нет ожидающих приглашений.",
-      "email": "E-mail",
+      "email": "Эл. почта",
       "invitedBy": "Пригласил",
-      "expiresAt": "Истекает",
+      "expiresAt": "Срок",
       "createdAt": "Создано",
-      "cancel": "Отмена"
+      "cancel": "Отменить"
     },
     "deactivate": {
       "button": "Деактивировать",
       "title": "Деактивировать клиента?",
-      "body": "Они больше не смогут войти. Вы можете пригласить их повторно позже.",
+      "body": "Клиент больше не сможет входить. Позже его можно пригласить снова.",
       "success": "Клиент деактивирован",
       "error": "Не удалось деактивировать клиента"
     },
     "cancelInvitation": {
       "title": "Отменить приглашение?",
-      "body": "Ссылка-приглашение перестанет работать немедленно.",
+      "body": "Ссылка приглашения сразу перестанет работать.",
       "success": "Приглашение отменено",
       "error": "Не удалось отменить приглашение"
     },
@@ -2842,15 +2858,15 @@
       "saveError": "Не удалось сохранить изменения.",
       "emailConflict": "Этот e-mail уже используется другим клиентом.",
       "save": "Сохранить изменения",
-      "expires": "истекает",
-      "accountSection": "Аккаунт",
-      "personalSection": "Личная информация",
-      "billingSection": "Адрес и биллинг",
+      "expires": "срок",
+      "accountSection": "Учётная запись",
+      "personalSection": "Личные данные",
+      "billingSection": "Адрес и оплата",
       "notesSection": "Внутренние заметки",
       "eventsSection": "Назначенные события",
-      "noEvents": "Пока не привязан ни к одному событию. Добавьте этого клиента в форме события.",
-      "email": "E-mail",
-      "preferredLanguage": "Предпочтительный язык",
+      "noEvents": "Пока не назначен ни на одно событие. Добавьте клиента к событию через форму события.",
+      "email": "Эл. почта",
+      "preferredLanguage": "Предпочитаемый язык",
       "salutation": "Обращение",
       "salutationNone": "—",
       "firstName": "Имя",
@@ -2859,38 +2875,38 @@
       "phone": "Телефон",
       "company": "Компания",
       "billingEmail": "E-mail для счетов",
-      "vatId": "НДС / ИНН",
+      "vatId": "ИНН / НДС",
       "addressLine1": "Адрес, строка 1",
       "addressLine2": "Адрес, строка 2",
-      "postalCode": "Почтовый индекс",
+      "postalCode": "Индекс",
       "city": "Город",
-      "state": "Область / регион",
+      "state": "Регион",
       "countryCode": "Страна (ISO 2)",
-      "notesHint": "Видно только администраторам. Никогда не показывается клиенту.",
-      "featuresSection": "Customer features",
-      "featuresHint": "Per-customer overrides for the customer-surface tabs. The global toggles in Settings → Customer Surface are the master switch — when global is OFF nobody sees the tab, regardless of what you set here. Defaults are ON, so flip a switch OFF to hide a tab for this specific customer.",
-      "passwordSection": "Account actions",
-      "passwordHint": "Sends a 7-day single-use reset link to the customer's email. The customer's current password keeps working until they click the link and set a new one.",
+      "notesHint": "Видно только администраторам. Клиенту не показывается.",
+      "featuresSection": "Функции клиента",
+      "featuresHint": "Индивидуальные переопределения вкладок клиентского портала. Глобальные переключатели в Настройки → Функции — главный выключатель: если глобально ВЫКЛ, вкладку никто не увидит, что бы вы здесь ни задали. По умолчанию ВКЛ; выключите, чтобы скрыть вкладку для конкретного клиента.",
+      "passwordSection": "Действия с учётной записью",
+      "passwordHint": "Отправляет одноразовую ссылку для сброса (7 дней) на e-mail клиента. Текущий пароль продолжает работать, пока клиент не пройдёт по ссылке и не задаст новый.",
       "passwordReset": {
-        "button": "Send password reset email",
-        "success": "Password reset email sent",
-        "error": "Could not send password reset",
-        "inactive": "Reactivate the customer before sending a reset."
+        "button": "Отправить письмо для сброса пароля",
+        "success": "Письмо для сброса пароля отправлено",
+        "error": "Не удалось отправить сброс пароля",
+        "inactive": "Активируйте клиента перед отправкой сброса."
       }
     },
     "reactivate": {
-      "button": "Reactivate",
-      "success": "Customer reactivated",
-      "error": "Could not reactivate customer"
+      "button": "Активировать",
+      "success": "Клиент активирован",
+      "error": "Не удалось активировать клиента"
     },
     "erase": {
-      "button": "Erase customer data",
-      "title": "Erase customer data?",
-      "body": "Removes the customer's name, email, phone, address, company and credentials. The account row stays so historical event-access records and audit logs still reference it. This is irreversible — you cannot restore the data afterwards.",
-      "confirm": "Erase permanently",
-      "confirmInFlight": "Erasing…",
-      "success": "Customer erased",
-      "error": "Could not erase customer"
+      "button": "Стереть данные клиента",
+      "title": "Стереть данные клиента?",
+      "body": "Удаляет имя, e-mail, телефон, адрес, компанию и учётные данные клиента. Запись учётной записи остаётся, чтобы исторические записи доступа и аудита продолжали ссылаться на неё. Это необратимо — после нельзя восстановить данные.",
+      "confirm": "Стереть навсегда",
+      "confirmInFlight": "Стираем…",
+      "success": "Данные клиента стёрты",
+      "error": "Не удалось стереть данные клиента"
     }
   }
 }

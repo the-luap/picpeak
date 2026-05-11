@@ -168,7 +168,7 @@
     "cmsPages": "CMS-pagina's",
     "users": "Gebruikers",
     "calendar": "Agenda",
-    "customers": "Customers"
+    "customers": "Klanten"
   },
   "archives": {
     "title": "Archieven",
@@ -1086,7 +1086,8 @@
         "communication": "Communicatie",
         "scheduling": "Planning",
         "sales": "Verkoop",
-        "insights": "Inzichten & Toegang"
+        "insights": "Inzichten & Toegang",
+        "customers": "Klanten"
       },
       "status": {
         "stable": "stabiel",
@@ -1132,7 +1133,22 @@
         "title": "Gebruikersbeheer",
         "description": "Multi-admin ondersteuning met rolgebaseerde rechten. Schakel dit uit als u een eenmansstudio bent.",
         "warning": "Bestaande gebruikersaccounts blijven geldig; de admin-interface om ze te beheren wordt verborgen totdat u dit weer inschakelt."
+      },
+      "customerPortal": {
+        "title": "Klantenportaal",
+        "description": "Permanente klantlogins. Terugkerende klanten zien al hun toegewezen galerijen op één plek — geen wachtwoorden per evenement. Basis voor Agenda / Offertes / Facturen (die alleen in het klantdashboard verschijnen als dit aan staat)."
       }
+    },
+    "customerSurface": {
+      "brandingTitle": "Kopregel klantdashboard",
+      "brandingHint": "Bepaalt wat in de kopregel van /customer/dashboard wordt getoond. Openbare galerijen en beheerschermen blijven onveranderd.",
+      "showLogo": "Logo in klantheader tonen",
+      "showLogoHint": "Gebruikt hetzelfde brandinglogo dat hierboven is geconfigureerd.",
+      "showCompanyName": "Bedrijfsnaam in klantheader tonen",
+      "showCompanyNameHint": "Verberg dit als je logo de bedrijfsnaam al bevat.",
+      "save": "Wijzigingen opslaan",
+      "saved": "Branding van klantdashboard opgeslagen",
+      "error": "Instellingen konden niet worden opgeslagen"
     }
   },
   "analytics": {
@@ -2545,7 +2561,7 @@
   "customer": {
     "login": {
       "title": "Klantlogin",
-      "subtitle": "Bekijk al uw fotogalerieën op één plek.",
+      "subtitle": "Beheer al je fotogalerijen op één plek.",
       "email": "E-mail",
       "password": "Wachtwoord",
       "emailRequired": "E-mail is verplicht",
@@ -2559,154 +2575,154 @@
       "tooManyAttempts": "Te veel pogingen — probeer het later opnieuw.",
       "networkError": "Kan de server niet bereiken. Probeer het opnieuw.",
       "generalError": "Inloggen mislukt. Probeer het opnieuw.",
-      "acceptedToast": "Account klaar — log nu in.",
-      "adminHint": "Zoekt u het beheerderspaneel? Ga naar /admin/login.",
-      "emailPlaceholder": "you@example.com",
-      "passwordPlaceholder": "Your password",
-      "needHelp": "Need help?",
-      "poweredBy": "Powered by PicPeak"
+      "acceptedToast": "Account gereed — log nu in.",
+      "adminHint": "Op zoek naar het beheerderspaneel? Ga naar /admin/login.",
+      "emailPlaceholder": "jij@voorbeeld.com",
+      "passwordPlaceholder": "Je wachtwoord",
+      "needHelp": "Hulp nodig?",
+      "poweredBy": "Mogelijk gemaakt door PicPeak"
     },
     "acceptInvite": {
-      "title": "Account instellen",
-      "invalidToken": "Deze uitnodigingslink is ongeldig of verlopen. Neem contact op met uw fotograaf voor een nieuwe uitnodiging.",
-      "emailWillBe": "Uw account-e-mail wordt ",
+      "title": "Account aanmaken",
+      "invalidToken": "Deze uitnodigingslink is ongeldig of verlopen. Vraag je fotograaf om een nieuwe uitnodiging.",
+      "emailWillBe": "Je accountmail wordt ",
       "invitedBy": ", uitgenodigd door ",
-      "name": "Uw naam",
-      "nameRequired": "Voer uw naam in",
+      "name": "Je naam",
+      "nameRequired": "Voer je naam in",
       "password": "Kies een wachtwoord",
-      "confirm": "Wachtwoord bevestigen",
-      "passwordTooShort": "Wachtwoord moet minimaal 8 tekens bevatten",
+      "confirm": "Bevestig wachtwoord",
+      "passwordTooShort": "Wachtwoord moet minstens 8 tekens bevatten",
       "passwordsMismatch": "Wachtwoorden komen niet overeen",
-      "passwordHint": "Minimaal 8 tekens, met één hoofdletter en één cijfer.",
+      "passwordHint": "Minstens 8 tekens, met één hoofdletter en één cijfer.",
       "submit": "Account aanmaken",
       "successToast": "Account aangemaakt — log nu in.",
       "alreadyExists": "Er bestaat al een account met dit e-mailadres. Log in plaats daarvan in.",
       "invalidSubmission": "Account kon niet worden aangemaakt.",
       "generalError": "Account kon niet worden aangemaakt. Probeer het opnieuw.",
-      "subtitle": "Confirm or fill in your details. You can edit anything from the profile page later.",
-      "displayName": "Display name",
+      "subtitle": "Bevestig of vul je gegevens aan. Je kunt alles later aanpassen via je profielpagina.",
+      "displayName": "Weergavenaam",
       "section": {
-        "personal": "Personal",
-        "contact": "Contact & business (optional)",
-        "address": "Billing address (optional)",
-        "password": "Choose a password"
+        "personal": "Persoonlijk",
+        "contact": "Contact & bedrijf (optioneel)",
+        "address": "Factuuradres (optioneel)",
+        "password": "Kies een wachtwoord"
       }
     },
     "dashboard": {
-      "title": "Your galleries",
-      "subtitle": "Click a gallery to open it. The Download button bundles every photo as a zip.",
-      "loadError": "Uw galerieën konden niet worden geladen. Probeer het opnieuw.",
-      "emptyTitle": "Nog geen galerieën",
-      "emptyBody": "Zodra uw fotograaf u aan een galerie toewijst, verschijnt deze hier.",
-      "openAria": "Galerie {{name}} openen",
-      "opening": "Openen…",
-      "expiresOn": "Verloopt op {{date}}",
+      "title": "Je galerijen",
+      "subtitle": "Klik op een galerij om deze te openen. De downloadknop bundelt alle foto's in een zip.",
+      "loadError": "Je galerijen konden niet worden geladen. Probeer het opnieuw.",
+      "emptyTitle": "Nog geen galerijen",
+      "emptyBody": "Zodra je fotograaf je aan een galerij toewijst, verschijnt deze hier.",
+      "openAria": "Open galerij {{name}}",
+      "opening": "Bezig met openen…",
+      "expiresOn": "Verloopt {{date}}",
       "expiredOn": "Verlopen op {{date}}",
-      "eventExpired": "Deze galerie is verlopen.",
-      "eventForbidden": "U heeft geen toegang meer tot deze galerie.",
-      "openError": "Galerie kon niet worden geopend. Probeer het opnieuw.",
+      "eventExpired": "Deze galerij is verlopen.",
+      "eventForbidden": "Je hebt geen toegang meer tot deze galerij.",
+      "openError": "Deze galerij kon niet worden geopend. Probeer het opnieuw.",
       "download": "Downloaden",
       "preparingDownload": "Voorbereiden…",
-      "quickDownloadAria": "Alle foto's voor {{name}} downloaden",
+      "quickDownloadAria": "Download alle foto's voor {{name}}",
       "downloadStarted": "Download gestart voor {{name}}",
-      "downloadError": "Download kon niet worden gestart. Probeer het opnieuw.",
-      "sortLabel": "Sort by",
-      "sortNewest": "Newest first",
-      "sortOldest": "Oldest first",
-      "sortName": "By name",
-      "open": "Open"
+      "downloadError": "De download kon niet worden gestart. Probeer het opnieuw.",
+      "sortLabel": "Sorteer op",
+      "sortNewest": "Nieuwste eerst",
+      "sortOldest": "Oudste eerst",
+      "sortName": "Op naam",
+      "open": "Openen"
     },
     "layout": {
       "greeting": "Hallo, {{name}}"
     },
     "nav": {
-      "galleries": "Galleries",
-      "calendar": "Calendar",
-      "quotes": "Quotes",
-      "bills": "Bills",
-      "profile": "Profile",
-      "soon": "Soon"
+      "galleries": "Galerijen",
+      "calendar": "Agenda",
+      "quotes": "Offertes",
+      "bills": "Facturen",
+      "profile": "Profiel",
+      "soon": "Binnenkort"
     },
     "comingSoon": {
-      "tag": "Coming soon"
+      "tag": "Binnenkort"
     },
     "calendar": {
-      "title": "Calendar",
-      "body": "Upcoming sessions, gallery delivery dates, and other shoot-related events will land here. We'll let you know when it's ready."
+      "title": "Agenda",
+      "body": "Aankomende shoots, leverdata van galerijen en andere shoot-gerelateerde gebeurtenissen verschijnen hier. We laten je weten wanneer dit klaar is."
     },
     "quotes": {
-      "title": "Quotes",
-      "body": "Review and accept quotes for upcoming shoots in one place. We're still building this — for now, your photographer will keep sending quotes the usual way."
+      "title": "Offertes",
+      "body": "Bekijk en accepteer offertes voor aankomende shoots op één plek. We werken er nog aan — je fotograaf blijft tot dan offertes op de gebruikelijke manier sturen."
     },
     "bills": {
-      "title": "Bills",
-      "body": "Invoices and payment history for your sessions will be available here. We'll send you an email when this is live."
+      "title": "Facturen",
+      "body": "Facturen en betaalgeschiedenis voor je shoots verschijnen hier. We sturen een e-mail wanneer dit live is."
     },
     "profile": {
-      "title": "Customer profile",
-      "subtitle": "Keep your contact and billing details up to date — they're shown on quotes and invoices once those features go live.",
-      "savedToast": "Profile saved",
-      "saveError": "Could not save profile.",
-      "loadError": "Could not load your profile.",
-      "save": "Save changes",
+      "title": "Klantprofiel",
+      "subtitle": "Houd je contact- en factureringsgegevens actueel — ze verschijnen op offertes en facturen zodra die functies live zijn.",
+      "savedToast": "Profiel opgeslagen",
+      "saveError": "Profiel kon niet worden opgeslagen.",
+      "loadError": "Je profiel kon niet worden geladen.",
+      "save": "Wijzigingen opslaan",
       "salutation": {
-        "none": "— Not specified —",
-        "herr": "Mr.",
-        "frau": "Ms.",
+        "none": "— Niet opgegeven —",
+        "herr": "Dhr.",
+        "frau": "Mevr.",
         "mx": "Mx",
         "dr": "Dr."
       },
       "section": {
-        "personal": "Personal information",
-        "contact": "Contact & business",
-        "address": "Billing address",
-        "password": "Change password"
+        "personal": "Persoonlijke gegevens",
+        "contact": "Contact & bedrijf",
+        "address": "Factuuradres",
+        "password": "Wachtwoord wijzigen"
       },
       "field": {
-        "email": "Email (login)",
-        "emailHint": "Contact your photographer if you need to change your login email.",
-        "salutation": "Salutation",
-        "firstName": "First name",
-        "lastName": "Last name",
-        "displayName": "Display name",
-        "displayNameHint": "How we greet you in the dashboard.",
-        "phone": "Phone",
-        "companyName": "Company name",
-        "vatId": "VAT ID",
-        "addressLine1": "Address line 1",
-        "addressLine2": "Address line 2",
-        "postalCode": "Postal code",
-        "city": "City",
-        "state": "State / region",
-        "countryCode": "Country"
+        "email": "E-mail (login)",
+        "emailHint": "Neem contact op met je fotograaf als je je login-mail wilt wijzigen.",
+        "salutation": "Aanhef",
+        "firstName": "Voornaam",
+        "lastName": "Achternaam",
+        "displayName": "Weergavenaam",
+        "displayNameHint": "Hoe we je in het dashboard begroeten.",
+        "phone": "Telefoon",
+        "companyName": "Bedrijfsnaam",
+        "vatId": "Btw-nummer",
+        "addressLine1": "Adresregel 1",
+        "addressLine2": "Adresregel 2",
+        "postalCode": "Postcode",
+        "city": "Stad",
+        "state": "Provincie / regio",
+        "countryCode": "Land"
       },
       "password": {
-        "current": "Current password",
-        "next": "New password",
-        "confirm": "Confirm new password",
-        "submit": "Update password",
-        "hint": "At least 8 characters with one uppercase letter and one number.",
-        "currentRequired": "Enter your current password",
-        "tooShort": "At least 8 characters",
-        "mismatch": "Passwords do not match",
-        "wrong": "Current password is incorrect",
-        "savedToast": "Password updated",
-        "error": "Could not change password"
+        "current": "Huidig wachtwoord",
+        "next": "Nieuw wachtwoord",
+        "confirm": "Bevestig nieuw wachtwoord",
+        "submit": "Wachtwoord bijwerken",
+        "hint": "Minstens 8 tekens met één hoofdletter en één cijfer.",
+        "currentRequired": "Voer je huidige wachtwoord in",
+        "tooShort": "Minstens 8 tekens",
+        "mismatch": "Wachtwoorden komen niet overeen",
+        "wrong": "Huidig wachtwoord is onjuist",
+        "savedToast": "Wachtwoord bijgewerkt",
+        "error": "Wachtwoord kon niet worden gewijzigd"
       }
     },
     "resetPassword": {
-      "title": "Reset your password",
-      "invalidToken": "This reset link is invalid or has expired. Please ask your photographer to send a new one.",
-      "forEmail": "Setting a new password for ",
-      "password": "New password",
-      "confirm": "Confirm new password",
-      "submit": "Update password",
-      "hint": "At least 8 characters with one uppercase letter and one number.",
-      "tooShort": "Password must be at least 8 characters",
-      "mismatch": "Passwords do not match",
-      "successToast": "Password updated. Please log in.",
-      "invalidSubmission": "Could not update your password.",
-      "generalError": "Could not update your password. Please try again."
+      "title": "Wachtwoord opnieuw instellen",
+      "invalidToken": "Deze resetlink is ongeldig of verlopen. Vraag je fotograaf om een nieuwe.",
+      "forEmail": "Nieuw wachtwoord instellen voor ",
+      "password": "Nieuw wachtwoord",
+      "confirm": "Bevestig nieuw wachtwoord",
+      "submit": "Wachtwoord bijwerken",
+      "hint": "Minstens 8 tekens met één hoofdletter en één cijfer.",
+      "tooShort": "Wachtwoord moet minstens 8 tekens bevatten",
+      "mismatch": "Wachtwoorden komen niet overeen",
+      "successToast": "Wachtwoord bijgewerkt. Log nu in.",
+      "invalidSubmission": "Je wachtwoord kon niet worden bijgewerkt.",
+      "generalError": "Je wachtwoord kon niet worden bijgewerkt. Probeer het opnieuw."
     }
   },
   "customers": {
@@ -2738,16 +2754,16 @@
     "invite": {
       "button": "Klant uitnodigen",
       "title": "Een klant uitnodigen",
-      "description": "Zij ontvangen een e-mail met een link om hun account in te stellen. Zodra zij hebben geaccepteerd, kunt u hen toewijzen aan evenementen.",
+      "description": "Ze ontvangen een e-mail met een link om hun account aan te maken. Zodra ze deze hebben geaccepteerd, kun je ze aan evenementen toewijzen.",
       "email": "E-mail",
-      "submit": "Uitnodiging sturen",
+      "submit": "Uitnodiging versturen",
       "success": "Uitnodiging verzonden",
       "error": "Uitnodiging kon niet worden verzonden.",
-      "conflict": "Er bestaat al een klant met dit e-mailadres of er is een openstaande uitnodiging.",
+      "conflict": "Er bestaat al een klant met dit e-mailadres of er staat een uitnodiging open.",
       "invalidEmail": "Voer een geldig e-mailadres in",
-      "showPrefill": "+ Add contact details (optional)",
-      "hidePrefill": "− Hide contact details",
-      "prefillHint": "Anything you fill in will be pre-populated on the customer's sign-up page — they can still edit it."
+      "showPrefill": "+ Contactgegevens toevoegen (optioneel)",
+      "hidePrefill": "− Contactgegevens verbergen",
+      "prefillHint": "Alles wat je invult wordt voorgevuld op de inschrijfpagina van de klant — ze kunnen het nog steeds bewerken."
     },
     "invitations": {
       "empty": "Geen openstaande uitnodigingen.",
@@ -2760,13 +2776,13 @@
     "deactivate": {
       "button": "Deactiveren",
       "title": "Klant deactiveren?",
-      "body": "Zij kunnen niet meer inloggen. U kunt hen later opnieuw uitnodigen.",
+      "body": "Ze kunnen niet meer inloggen. Je kunt ze later opnieuw uitnodigen.",
       "success": "Klant gedeactiveerd",
       "error": "Klant kon niet worden gedeactiveerd"
     },
     "cancelInvitation": {
       "title": "Uitnodiging annuleren?",
-      "body": "De uitnodigingslink stopt direct met werken.",
+      "body": "De uitnodigingslink werkt direct niet meer.",
       "success": "Uitnodiging geannuleerd",
       "error": "Uitnodiging kon niet worden geannuleerd"
     },
@@ -2774,7 +2790,7 @@
       "loadError": "Klant kon niet worden geladen",
       "saved": "Klant opgeslagen",
       "saveError": "Wijzigingen konden niet worden opgeslagen.",
-      "emailConflict": "Dat e-mailadres is al in gebruik door een andere klant.",
+      "emailConflict": "Dit e-mailadres is al in gebruik bij een andere klant.",
       "save": "Wijzigingen opslaan",
       "expires": "verloopt",
       "accountSection": "Account",
@@ -2782,7 +2798,7 @@
       "billingSection": "Adres & facturering",
       "notesSection": "Interne notities",
       "eventsSection": "Toegewezen evenementen",
-      "noEvents": "Nog niet toegewezen aan evenementen. Voeg deze klant toe aan een evenement via het evenementformulier.",
+      "noEvents": "Nog niet aan evenementen toegewezen. Voeg deze klant toe aan een evenement via het evenementformulier.",
       "email": "E-mail",
       "preferredLanguage": "Voorkeurstaal",
       "salutation": "Aanhef",
@@ -2792,8 +2808,8 @@
       "displayName": "Weergavenaam",
       "phone": "Telefoon",
       "company": "Bedrijf",
-      "billingEmail": "Facturatie-e-mail",
-      "vatId": "BTW / fiscaal nummer",
+      "billingEmail": "Factuur-e-mail",
+      "vatId": "Btw / belasting-ID",
       "addressLine1": "Adresregel 1",
       "addressLine2": "Adresregel 2",
       "postalCode": "Postcode",
@@ -2801,30 +2817,30 @@
       "state": "Provincie / regio",
       "countryCode": "Land (ISO 2)",
       "notesHint": "Alleen zichtbaar voor beheerders. Wordt nooit aan de klant getoond.",
-      "featuresSection": "Customer features",
-      "featuresHint": "Per-customer overrides for the customer-surface tabs. The global toggles in Settings → Customer Surface are the master switch — when global is OFF nobody sees the tab, regardless of what you set here. Defaults are ON, so flip a switch OFF to hide a tab for this specific customer.",
-      "passwordSection": "Account actions",
-      "passwordHint": "Sends a 7-day single-use reset link to the customer's email. The customer's current password keeps working until they click the link and set a new one.",
+      "featuresSection": "Klantfuncties",
+      "featuresHint": "Per-klant overrides voor de tabbladen van de klantenomgeving. De globale schakelaars in Instellingen → Functies zijn de hoofdschakelaar — als globaal UIT staat, ziet niemand het tabblad, ongeacht wat je hier instelt. Standaard staat alles AAN; zet een schakelaar UIT om een tabblad voor deze specifieke klant te verbergen.",
+      "passwordSection": "Accountacties",
+      "passwordHint": "Stuurt een eenmalig te gebruiken resetlink (7 dagen geldig) naar het e-mailadres van de klant. Het huidige wachtwoord blijft werken totdat de klant de link gebruikt en een nieuw wachtwoord instelt.",
       "passwordReset": {
-        "button": "Send password reset email",
-        "success": "Password reset email sent",
-        "error": "Could not send password reset",
-        "inactive": "Reactivate the customer before sending a reset."
+        "button": "Wachtwoord-resetmail versturen",
+        "success": "Wachtwoord-resetmail verzonden",
+        "error": "Wachtwoordreset kon niet worden verzonden",
+        "inactive": "Reactiveer de klant voordat je een reset verstuurt."
       }
     },
     "reactivate": {
-      "button": "Reactivate",
-      "success": "Customer reactivated",
-      "error": "Could not reactivate customer"
+      "button": "Heractiveren",
+      "success": "Klant heractiveerd",
+      "error": "Klant kon niet worden heractiveerd"
     },
     "erase": {
-      "button": "Erase customer data",
-      "title": "Erase customer data?",
-      "body": "Removes the customer's name, email, phone, address, company and credentials. The account row stays so historical event-access records and audit logs still reference it. This is irreversible — you cannot restore the data afterwards.",
-      "confirm": "Erase permanently",
-      "confirmInFlight": "Erasing…",
-      "success": "Customer erased",
-      "error": "Could not erase customer"
+      "button": "Klantgegevens wissen",
+      "title": "Klantgegevens wissen?",
+      "body": "Verwijdert de naam, e-mail, telefoon, adres, bedrijf en inloggegevens van de klant. De accountrij blijft staan zodat historische toegangs- en auditgegevens nog steeds verwijzen. Dit is onomkeerbaar — je kunt de gegevens daarna niet meer herstellen.",
+      "confirm": "Definitief wissen",
+      "confirmInFlight": "Bezig met wissen…",
+      "success": "Klant gewist",
+      "error": "Klant kon niet worden gewist"
     }
   }
 }
