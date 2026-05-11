@@ -1905,7 +1905,16 @@
     "mutedTextColor": "Texto do rodapé",
     "mutedTextColorHelp": "Texto do rodapé e linha de copyright. Corresponde a Identidade Visual → Texto secundário.",
     "buttonTextColor": "Texto dos botões",
-    "buttonTextColorHelp": "Cor do texto em botões preenchidos. Deve contrastar bem com a cor primária. Geralmente branco."
+    "buttonTextColorHelp": "Cor do texto em botões preenchidos. Deve contrastar bem com a cor primária. Geralmente branco.",
+    "categories": {
+      "core": "Principal",
+      "customers": "Clientes",
+      "calendar": "Calendário",
+      "quotes": "Orçamentos",
+      "billing": "Faturamento"
+    },
+    "featureOff": "Recurso desativado",
+    "featureOffTooltip": "O recurso ao qual este modelo pertence está atualmente desativado. Você ainda pode editar o modelo — ele será usado assim que o recurso for reativado."
   },
   "cms": {
     "title": "Páginas CMS",

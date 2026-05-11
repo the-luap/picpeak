@@ -2226,7 +2226,16 @@
     "mutedTextColor": "Fußzeilentext",
     "mutedTextColorHelp": "Fußzeilentext und Copyright-Zeile. Entspricht Branding → Sekundärer Text.",
     "buttonTextColor": "Button-Text",
-    "buttonTextColorHelp": "Textfarbe auf gefüllten Buttons. Sollte klar gegen die Primärfarbe kontrastieren. Kein Branding-Äquivalent — meistens weiß."
+    "buttonTextColorHelp": "Textfarbe auf gefüllten Buttons. Sollte klar gegen die Primärfarbe kontrastieren. Kein Branding-Äquivalent — meistens weiß.",
+    "categories": {
+      "core": "Kern",
+      "customers": "Kunden",
+      "calendar": "Kalender",
+      "quotes": "Angebote",
+      "billing": "Rechnungen"
+    },
+    "featureOff": "Funktion aus",
+    "featureOffTooltip": "Die zugehörige Funktion ist derzeit deaktiviert. Du kannst die Vorlage trotzdem bearbeiten — sie wird verwendet, sobald die Funktion wieder aktiviert ist."
   },
   "cms": {
     "title": "CMS-Seiten",

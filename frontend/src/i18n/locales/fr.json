@@ -1826,7 +1826,16 @@
       "enterUrl": "Saisir une URL…",
       "addLink": "Ajouter",
       "cancel": "Annuler"
-    }
+    },
+    "categories": {
+      "core": "Principal",
+      "customers": "Clients",
+      "calendar": "Calendrier",
+      "quotes": "Devis",
+      "billing": "Facturation"
+    },
+    "featureOff": "Fonction désactivée",
+    "featureOffTooltip": "La fonctionnalité à laquelle appartient ce modèle est actuellement désactivée. Vous pouvez toujours modifier le modèle — il sera utilisé une fois la fonctionnalité réactivée."
   },
   "cms": {
     "title": "Pages CMS",
