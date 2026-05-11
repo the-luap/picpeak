@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.46.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.1-beta.0...v3.46.2-beta.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **customer-portal:** post-merge fixes for event save, theme fonts, and customer→gallery handoff ([9776d8a](https://github.com/the-luap/picpeak/commit/9776d8a6fcccb5e19e7c652b7e47557213d85731))
+* **events:** CustomerAccountPicker hooks order crashed /admin/events/new ([2a7ae07](https://github.com/the-luap/picpeak/commit/2a7ae0702dfc56e69bf845ded19888c29519414a))
+
 ## [3.46.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.0-beta.0...v3.46.1-beta.0) (2026-05-11)
 
 
