@@ -952,7 +952,8 @@
       "fit_contain": "Contain (passend binnen)",
       "fit_fill": "Vullen (uitrekken)",
       "fit_inside": "Binnenkant (verkleinen om te passen)",
-      "fit_outside": "Buitenkant (vergroten om te bedekken)"
+      "fit_outside": "Buitenkant (vergroten om te bedekken)",
+      "fitRecommendation": "Aanbeveling: gebruik \"Inside\" voor masonry/mosaic/justified-lay-outs (behoudt beeldverhouding); \"Cover\" voor uniforme 1:1-tegels."
     },
     "seo": {
       "title": "SEO & Robots",

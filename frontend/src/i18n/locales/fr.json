@@ -967,7 +967,8 @@
       "fit_cover": "Recouvrir (recadrer pour remplir)",
       "fit_contain": "Contenir (ajuster dans les limites)",
       "fit_inside": "Intérieur (réduire pour ajuster)",
-      "fit_outside": "Extérieur (agrandir pour recouvrir)"
+      "fit_outside": "Extérieur (agrandir pour recouvrir)",
+      "fitRecommendation": "Recommandation : utilisez « Inside » pour les mises en page masonry/mosaic/justified (préserve les proportions) ; « Cover » pour des tuiles 1:1 uniformes."
     },
     "seo": {
       "title": "SEO et Robots",
