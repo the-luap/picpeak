@@ -175,24 +175,32 @@ export const CustomerLayout: React.FC = () => {
                   key={item.to}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                  style={isActive ? {
-                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
-                    color: 'var(--color-accent)',
-                  } : undefined}
+                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-accent-dark text-white'
+                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100'
+                  }`}
                 >
-                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? '' : 'text-muted-theme'}`} />
-                  <span className={`flex-1 truncate ${isActive ? '' : 'text-theme'}`}>
-                    {t(item.labelKey, item.fallback)}
-                  </span>
-                  {/* Coming-soon pill for the gated entries. The pages
-                      themselves are still placeholders even when the
-                      admin has enabled access — the badge keeps that
-                      promise honest. */}
+                  {/* Mirrors AdminSidebar's active state exactly: solid
+                      accent-dark pill, white icon and label, no extra
+                      flex grow on the label so the pill width matches
+                      what the admin chrome renders. */}
+                  <Icon
+                    className={`w-5 h-5 mr-3 ${
+                      isActive ? 'text-white' : 'text-neutral-400'
+                    }`}
+                  />
+                  {t(item.labelKey, item.fallback)}
+                  {/* Coming-soon pill for the gated entries. Pushed to
+                      the right of the label with ml-auto so it doesn't
+                      add the flex-1 stretching that was throwing off
+                      the active-pill visual. */}
                   {item.feature && (
                     <span
-                      className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold"
-                      style={{
+                      className={`ml-auto text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold ${
+                        isActive ? 'bg-white/20 text-white' : ''
+                      }`}
+                      style={isActive ? undefined : {
                         backgroundColor: 'color-mix(in srgb, var(--color-accent) 14%, transparent)',
                         color: 'var(--color-accent)',
                       }}
