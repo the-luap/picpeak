@@ -168,7 +168,7 @@
     "cmsPages": "CMS-Seiten",
     "users": "Benutzer",
     "calendar": "Kalender",
-    "customers": "Kunden"
+    "clients": "Kunden"
   },
   "eventTypes": {
     "title": "Veranstaltungsarten",
@@ -1449,7 +1449,8 @@
         "scheduling": "Terminplanung",
         "sales": "Vertrieb",
         "insights": "Auswertungen & Zugriff",
-        "customers": "Kunden"
+        "customers": "Kunden",
+        "clients": "Kunden"
       },
       "status": {
         "stable": "stabil",
@@ -1497,8 +1498,12 @@
         "warning": "Bestehende Benutzerkonten bleiben gültig; die Admin-Oberfläche für deren Verwaltung wird ausgeblendet, bis Sie dies wieder aktivieren."
       },
       "customerPortal": {
-        "title": "Kundenportal",
-        "description": "Persistente Kunden-Logins. Wiederkehrende Kunden sehen alle zugeordneten Galerien an einem Ort — keine Passwörter pro Event. Grundlage für Kalender / Angebote / Rechnungen (die nur im Kundendashboard erscheinen, wenn diese Option aktiviert ist)."
+        "title": "Konten",
+        "description": "Persistente Kunden-Logins. Wiederkehrende Kunden sehen alle zugewiesenen Galerien an einem Ort — keine Passwörter pro Event. Kunden melden sich unter /customer/login an, verwaltet werden sie unter Kunden → Konten."
+      },
+      "clients": {
+        "title": "Kunden",
+        "description": "Hauptschalter für den Kunden-Bereich in der Seitenleiste. Aus blendet den Bereich und alle Unterfunktionen aus, unabhängig von deren individuellen Schaltern – beim erneuten Einschalten wird der vorherige Zustand wiederhergestellt."
       }
     },
     "customerSurface": {
@@ -1771,6 +1776,17 @@
       "straight": "Gerade",
       "angle": "Winkel",
       "curve": "Kurve"
+    },
+    "loginLogo": {
+      "title": "Logo auf Login-Seiten",
+      "subtitle": "Wirkt nur auf /admin/login und /customer/login. Galerie und Admin-Chrome verwenden die Logo-Einstellungen oben.",
+      "frame": "Hellen Rahmen hinter dem Logo anzeigen",
+      "frameHelp": "Wenn aus, sitzt das Logo direkt auf dem Seitenhintergrund. Nützlich für Logos, die bereits einen eigenen Hintergrund haben.",
+      "size": "Logogröße auf den Login-Seiten",
+      "sizeSmall": "Klein",
+      "sizeMedium": "Mittel (Standard)",
+      "sizeLarge": "Groß",
+      "sizeXLarge": "Sehr groß"
     }
   },
   "admin": {
@@ -2842,6 +2858,18 @@
       "confirmInFlight": "Lösche…",
       "success": "Kunde gelöscht",
       "error": "Kunde konnte nicht gelöscht werden"
+    }
+  },
+  "clients": {
+    "title": "Kunden",
+    "subtitle": "Kundenkonten, Termine, Angebote und Rechnungen für wiederkehrende Kunden.",
+    "navAriaLabel": "Kunden-Navigation",
+    "empty": {
+      "title": "Keine Kunden-Funktionen aktiviert",
+      "body": "Aktiviere „Konten\" (oder eine andere Kunden-Unterfunktion) unter Einstellungen → Funktionen, um loszulegen."
+    },
+    "subnav": {
+      "accounts": "Konten"
     }
   }
 }

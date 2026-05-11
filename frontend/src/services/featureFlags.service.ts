@@ -10,12 +10,15 @@ export type FeatureKey =
   | 'messaging'
   | 'analytics'
   | 'userManagement'
-  // Foundation flag for the customer-side surface (#354). Gates the
-  // /customer/* routes (login, dashboard, profile, accept-invite,
-  // reset-password) and the admin Customers management page. The
-  // calendar / calendarBooking / quotes / bills / messaging flags
-  // above hang off this — they only appear in the customer dashboard
-  // when customerPortal is also ON.
+  // Top-level "Clients" section (#354 follow-up). Parent flag that
+  // gates the /admin/clients/* sidebar entry. customerPortal,
+  // calendar, quotes, bills and messaging are conceptually its
+  // children — when `clients` is off none of them surface in the
+  // admin UI even if their individual flags are on.
+  | 'clients'
+  // Customer-side portal surface (#354). Gates /customer/* routes
+  // (login, dashboard, profile, accept-invite, reset-password) and
+  // the Accounts sub-page under Clients in the admin UI.
   | 'customerPortal';
 
 export type FeatureFlags = Record<FeatureKey, boolean>;

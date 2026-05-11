@@ -33,14 +33,17 @@ const labelFor = (c: { email: string; displayName?: string | null; companyName?:
 
 export const CustomerAccountPicker: React.FC<Props> = ({ value, onChange, disabled }) => {
   const { t } = useTranslation();
+  // Rules of Hooks: the feature-flag gate (early-return) is moved to
+  // the very end of this hook list (see end of function). The previous
+  // shape did `if (!customerPortalEnabled) return null` BEFORE the
+  // useState/useRef/useEffect calls below, which caused the hook count
+  // to differ between renders the moment the React Query for
+  // /admin/feature-flags resolved (first render: enabled=false from
+  // DEFAULT_FLAGS → return null; second render: enabled=true → hooks
+  // run → "Rendered more hooks than during the previous render"
+  // crash). That tanked the entire /admin/events/new page through
+  // the global error boundary. PR #458 reviewer flag.
   const customerPortalEnabled = useFeatureEnabled('customerPortal');
-
-  // Gate the entire picker on the customerPortal feature flag. When off,
-  // the backend returns 410 on /admin/customers/search anyway, but hiding
-  // the UI here keeps the event form clean and removes the dangling
-  // "Customer accounts" label that would otherwise appear above an
-  // empty/error placeholder.
-  if (!customerPortalEnabled) return null;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<CustomerAccountSummary[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -106,6 +109,14 @@ export const CustomerAccountPicker: React.FC<Props> = ({ value, onChange, disabl
     ),
     [t]
   );
+
+  // Feature-flag gate (deliberately placed AFTER all hooks — see the
+  // long comment at the top of this component for why). When the
+  // customerPortal flag is off the backend returns 410 on
+  // /admin/customers/search anyway, but hiding the UI here keeps the
+  // event form clean and removes the dangling "Customer accounts"
+  // label that would otherwise appear above an empty placeholder.
+  if (!customerPortalEnabled) return null;
 
   return (
     <div ref={containerRef} className="relative">
@@ -175,7 +186,7 @@ export const CustomerAccountPicker: React.FC<Props> = ({ value, onChange, disabl
             </div>
           ) : results.length === 0 ? (
             <div className="px-3 py-3 text-sm text-muted-theme">
-              {t('events.customerPicker.noResults', 'No matches. Invite this customer from /admin/customers first.')}
+              {t('events.customerPicker.noResults', 'No matches. Invite this customer from Clients → Accounts first.')}
             </div>
           ) : (
             <ul role="listbox">

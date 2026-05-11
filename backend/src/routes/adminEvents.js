@@ -1262,6 +1262,13 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     }
     delete updates.regenerate_client_token;
 
+    // customer_account_ids (#354) is a body-only field consumed
+    // separately below by customerAccountsService.setAssignmentsForEvent
+    // — it isn't a column on the events table, so spreading it into
+    // the UPDATE statement throws "column does not exist" and crashes
+    // the entire edit with 500 Failed to update event.
+    delete updates.customer_account_ids;
+
     // Log the update request for debugging
     logger.debug('Update event request', {
       id,

@@ -444,7 +444,7 @@ export const CustomerManagementPage: React.FC = () => {
                   {filteredCustomers.map((c) => (
                     <tr key={c.id} className="border-t" style={{ borderColor: 'var(--color-surface-border)' }}>
                       <td className="px-3 py-3">
-                        <Link to={`/admin/customers/${c.id}`} className="text-theme hover:underline">
+                        <Link to={`/admin/clients/accounts/${c.id}`} className="text-theme hover:underline">
                           {renderCustomerName(c)}
                         </Link>
                       </td>

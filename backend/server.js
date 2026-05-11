@@ -569,18 +569,29 @@ app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
 // Customer portal (#354). The customerPortal feature flag is enforced
-// on the frontend via <RequireFeature flag="customerPortal" /> route
-// guards (App.tsx) and AdminSidebar visibility — when the flag is off,
-// users never reach these endpoints. Defence in depth is provided by
-// customerAccountsService.isCustomerPortalEnabled() in the few backend
-// paths that matter (e.g. adminEvents customer_account_ids handling).
-// Admin routes are protected by adminAuth; customer routes by
-// customerAuth — so no additional route-level gate is needed.
-app.use('/api/admin/customers', require('./src/routes/adminCustomers'));
+// in TWO places:
+//   1. Frontend: RequireFeature guards + AdminSidebar visibility
+//      (handles navigation cleanly when an admin is using the app).
+//   2. Backend: the requireCustomerPortalEnabled middleware below.
+//      Belt-and-braces — a stale tab, a saved bookmark, or any
+//      third-party API client trying to hit /api/customer/* or
+//      /api/admin/customers/* gets a 410 Gone the moment the toggle
+//      is flipped off. Includes /api/customer/auth/login: flag off
+//      = nobody can log in until the admin re-enables, including
+//      already-issued customers (their sessions still have valid
+//      JWTs but every API call returns 410 → frontend boots them
+//      out). PR #458 deliberate departure from the prior design
+//      that left login alive when the rest of the surface was off.
+const {
+  requireCustomerPortalEnabled,
+  requireCustomerPortalEnabledAdmin,
+} = require('./src/middleware/requireCustomerPortal');
+
+app.use('/api/admin/customers', requireCustomerPortalEnabledAdmin, require('./src/routes/adminCustomers'));
 // Customer-side surface (#354). Strictly separate from /api/admin/* —
 // distinct token type, distinct cookie, distinct middleware.
-app.use('/api/customer/auth', require('./src/routes/customerAuth'));
-app.use('/api/customer', require('./src/routes/customer'));
+app.use('/api/customer/auth', requireCustomerPortalEnabled, require('./src/routes/customerAuth'));
+app.use('/api/customer', requireCustomerPortalEnabled, require('./src/routes/customer'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
 app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));

@@ -48,12 +48,15 @@ const TOKEN_TTL_SECONDS = 24 * 60 * 60; // mirrors admin tokens
 
 // ---- login -------------------------------------------------------------
 
-// The customerPortal feature flag deliberately does NOT gate this route.
-// Flipping the master toggle off in Settings → Features hides the admin
-// UI surface (sidebar entry, /admin/customers page) but does not revoke
-// access for customers who already accepted an invitation. To lock out
-// existing customers, deactivate their accounts individually
-// (customer_accounts.is_active = false) — which IS enforced below.
+// Flag-gate note: this route IS now gated by the customerPortal feature
+// flag via the requireCustomerPortalEnabled middleware mounted in
+// server.js (`app.use('/api/customer/auth', requireCustomerPortalEnabled, …)`).
+// When the admin flips the toggle off in Settings → Features, every
+// customer-side endpoint — including login — returns 410. The previous
+// design left login reachable while the rest of the surface was gated;
+// that was confusing and asymmetric. Single source of truth wins.
+// To lock out a specific customer without disabling the feature for
+// everyone, deactivate the account (customer_accounts.is_active = false).
 router.post('/login', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isString().notEmpty(),

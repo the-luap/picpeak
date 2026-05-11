@@ -120,7 +120,7 @@ export const CustomerDashboardBrandingCard: React.FC = () => {
   return (
     <Card padding="md">
       <div className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-accent-soft text-on-accent-soft flex items-center justify-center flex-shrink-0">
           <UserCog className="w-5 h-5" />
         </div>
         <div>

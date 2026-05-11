@@ -171,7 +171,7 @@
     "cmsPages": "Páginas CMS",
     "users": "Utilizadores",
     "calendar": "Calendário",
-    "customers": "Clientes"
+    "clients": "Clientes"
   },
   "archives": {
     "title": "Arquivos",
@@ -1105,7 +1105,8 @@
         "scheduling": "Agendamento",
         "sales": "Vendas",
         "insights": "Análises & Acesso",
-        "customers": "Clientes"
+        "customers": "Clientes",
+        "clients": "Clientes"
       },
       "status": {
         "stable": "estável",
@@ -1153,8 +1154,12 @@
         "warning": "Contas de usuário existentes permanecem válidas; a interface administrativa para gerenciá-las ficará oculta até você reativar isto."
       },
       "customerPortal": {
-        "title": "Portal do cliente",
-        "description": "Logins persistentes para clientes. Clientes recorrentes veem todas as galerias atribuídas em um só lugar — sem senhas por evento. Base para Calendário / Orçamentos / Faturas (que só aparecem no painel do cliente quando isto está ativo)."
+        "title": "Contas",
+        "description": "Logins persistentes para clientes. Clientes recorrentes veem todas as galerias atribuídas em um só lugar — sem senhas por evento. Os clientes entram em /customer/login e você os gerencia em Clientes → Contas."
+      },
+      "clients": {
+        "title": "Clientes",
+        "description": "Chave principal da seção Clientes na barra lateral. Desligado oculta a seção e todas as sub-funcionalidades independentemente dos seus controles individuais — reativar restaura o estado anterior."
       }
     },
     "customerSurface": {
@@ -1458,6 +1463,17 @@
       "straight": "Reto",
       "angle": "Ângulo",
       "curve": "Curva"
+    },
+    "loginLogo": {
+      "title": "Logo nas páginas de login",
+      "subtitle": "Aplica-se apenas a /admin/login e /customer/login. A galeria e a interface admin usam as configurações de logo acima.",
+      "frame": "Mostrar moldura tonalizada atrás do logo",
+      "frameHelp": "Quando desativado, o logo fica diretamente sobre o fundo da página. Útil para logos que já incluem seu próprio fundo.",
+      "size": "Tamanho do logo nas páginas de login",
+      "sizeSmall": "Pequeno",
+      "sizeMedium": "Médio (padrão)",
+      "sizeLarge": "Grande",
+      "sizeXLarge": "Extra grande"
     }
   },
   "admin": {
@@ -2875,6 +2891,18 @@
       "confirmInFlight": "Apagando…",
       "success": "Cliente apagado",
       "error": "Não foi possível apagar o cliente"
+    }
+  },
+  "clients": {
+    "title": "Clientes",
+    "subtitle": "Contas de clientes, agendamento, orçamentos e faturamento para clientes recorrentes.",
+    "navAriaLabel": "Navegação de Clientes",
+    "empty": {
+      "title": "Nenhuma funcionalidade de cliente ativada",
+      "body": "Ative Contas (ou outra sub-funcionalidade de Clientes) em Configurações → Recursos para começar."
+    },
+    "subnav": {
+      "accounts": "Contas"
     }
   }
 }

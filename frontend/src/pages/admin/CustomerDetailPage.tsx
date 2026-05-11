@@ -125,7 +125,7 @@ export const CustomerDetailPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-customer', customerId] });
       queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
       toast.success(t('customers.deactivate.success', 'Customer deactivated'));
-      navigate('/admin/customers');
+      navigate('/admin/clients/accounts');
     },
     onError: () => toast.error(t('customers.deactivate.error', 'Could not deactivate customer')),
   });
@@ -152,7 +152,7 @@ export const CustomerDetailPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-customer', customerId] });
       queryClient.invalidateQueries({ queryKey: ['admin-customers'] });
       toast.success(t('customers.erase.success', 'Customer erased'));
-      navigate('/admin/customers');
+      navigate('/admin/clients/accounts');
     },
     onError: () => toast.error(t('customers.erase.error', 'Could not erase customer')),
   });
@@ -176,7 +176,7 @@ export const CustomerDetailPage: React.FC = () => {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <Link
-            to="/admin/customers"
+            to="/admin/clients/accounts"
             className="p-2 -ml-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
             aria-label={t('common.back', 'Back')}
           >

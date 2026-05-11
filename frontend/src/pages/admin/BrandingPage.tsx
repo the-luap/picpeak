@@ -34,6 +34,8 @@ export const BrandingPage: React.FC = () => {
     logo_display_mode: 'logo_and_text',
     hide_powered_by: false,
     force_color_mode: null,
+    login_logo_frame_enabled: true,
+    login_logo_size: 'medium',
     facebook_url: '',
     instagram_url: '',
     whatsapp_url: '',
@@ -666,6 +668,58 @@ export const BrandingPage: React.FC = () => {
                     </p>
                   </div>
                 </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Login-page-only logo controls (#354 follow-up). These do
+             NOT affect gallery/admin headers — those keep their own
+             logo_size knob above. */}
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <h3 className="text-md font-semibold text-neutral-900 dark:text-neutral-100 mb-1">
+              {t('branding.loginLogo.title', 'Login pages logo')}
+            </h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+              {t('branding.loginLogo.subtitle', 'Controls only /admin/login and /customer/login. Gallery and admin chrome use the logo settings above.')}
+            </p>
+
+            <div className="space-y-4">
+              {/* Frame toggle */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={brandingSettings.login_logo_frame_enabled !== false}
+                  onChange={(e) => handleBrandingChange('login_logo_frame_enabled', e.target.checked)}
+                  className="mt-0.5 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    {t('branding.loginLogo.frame', 'Show tinted frame behind the logo')}
+                  </span>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t(
+                      'branding.loginLogo.frameHelp',
+                      'When off, the logo sits directly on the page background. Useful for logos that already include their own backdrop.',
+                    )}
+                  </p>
+                </div>
+              </label>
+
+              {/* Size selector */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                  {t('branding.loginLogo.size', 'Logo size on login pages')}
+                </label>
+                <select
+                  value={brandingSettings.login_logo_size || 'medium'}
+                  onChange={(e) => handleBrandingChange('login_logo_size', e.target.value as 'small' | 'medium' | 'large' | 'xlarge')}
+                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="small">{t('branding.loginLogo.sizeSmall', 'Small')}</option>
+                  <option value="medium">{t('branding.loginLogo.sizeMedium', 'Medium (default)')}</option>
+                  <option value="large">{t('branding.loginLogo.sizeLarge', 'Large')}</option>
+                  <option value="xlarge">{t('branding.loginLogo.sizeXLarge', 'Extra large')}</option>
+                </select>
               </div>
             </div>
           </div>

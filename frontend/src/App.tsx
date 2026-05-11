@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -40,6 +40,7 @@ import {
 } from './pages/customer';
 import { CustomerAuthProvider } from './contexts/CustomerAuthContext';
 import { AdminLayout, AdminAuthWrapper } from './components/admin';
+import { ClientsLayout } from './components/admin/ClientsLayout';
 import { RequireFeature } from './components/admin/RequireFeature';
 import { PageErrorBoundary, OfflineIndicator, SkipLink, DynamicFavicon, RobotsMetaTags, CMSContentBlock } from './components/common';
 import { MaintenanceWrapper } from './components/MaintenanceWrapper';
@@ -88,6 +89,17 @@ function AnalyticsBootstrap() {
   }, [settings, isError]);
 
   return null;
+}
+
+/**
+ * Backward-compat redirect for /admin/customers/:id → /admin/clients/accounts/:id.
+ * Needed because <Navigate to="..."> can't interpolate route params and we
+ * want stale bookmarks / email links to keep working after the Clients
+ * section reorg.
+ */
+function RedirectCustomerDetail() {
+  const { id } = useParams();
+  return <Navigate to={`/admin/clients/accounts/${id}`} replace />;
 }
 
 function App() {
@@ -146,13 +158,36 @@ function App() {
                       <Route element={<RequireFeature flag="userManagement" />}>
                         <Route path="users" element={<UserManagementPage />} />
                       </Route>
-                      {/* Customer accounts (#354) — admin-side management.
-                          Hidden from sidebar + redirected away when the
-                          customerPortal flag is off. */}
-                      <Route element={<RequireFeature flag="customerPortal" />}>
-                        <Route path="customers" element={<CustomerManagementPage />} />
-                        <Route path="customers/:id" element={<CustomerDetailPage />} />
+                      {/* Clients section (#354 follow-up). Parent route
+                          gated by the top-level `clients` flag — when off
+                          the sidebar entry is hidden and every /admin/clients/*
+                          URL redirects to /admin/dashboard. Inside, the
+                          ClientsLayout renders a Settings-style sub-nav
+                          and the active sub-feature's page through an
+                          Outlet. Each sub-route is feature-flagged
+                          independently. */}
+                      <Route element={<RequireFeature flag="clients" />}>
+                        <Route path="clients" element={<ClientsLayout />}>
+                          <Route element={<RequireFeature flag="customerPortal" />}>
+                            <Route path="accounts" element={<CustomerManagementPage />} />
+                            <Route path="accounts/:id" element={<CustomerDetailPage />} />
+                          </Route>
+                          {/* Default: send /admin/clients (no sub-path) to
+                              the first available sub-feature. Today that's
+                              always accounts; when calendar/quotes ship they
+                              get their own routes here and the empty-state
+                              in ClientsLayout handles the rare "parent on,
+                              all children off" case. */}
+                          <Route index element={<Navigate to="/admin/clients/accounts" replace />} />
+                        </Route>
                       </Route>
+
+                      {/* Old /admin/customers paths now live under
+                          /admin/clients/accounts. Kept indefinitely as
+                          redirects so existing bookmarks and email links
+                          don't 404. */}
+                      <Route path="customers"     element={<Navigate to="/admin/clients/accounts" replace />} />
+                      <Route path="customers/:id" element={<RedirectCustomerDetail />} />
 
                       <Route path="settings" element={<SettingsPage />} />
                       <Route path="webhooks/:id/deliveries" element={<WebhookDeliveriesPage />} />

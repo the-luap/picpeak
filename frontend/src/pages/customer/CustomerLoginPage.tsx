@@ -14,6 +14,7 @@ import { Button, Input, Card, ReCaptcha } from '../../components/common';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { customerService } from '../../services/customer.service';
 import { usePublicSettings } from '../../hooks/usePublicSettings';
+import { resolveLoginLogoClasses } from '../../utils/loginLogoSize';
 
 export const CustomerLoginPage: React.FC = () => {
   const { t } = useTranslation();
@@ -113,30 +114,34 @@ export const CustomerLoginPage: React.FC = () => {
       style={{ backgroundColor: 'var(--color-background, #fafafa)' }}
     >
       <div className="w-full max-w-md">
-        {/* Logo / header — matches AdminLoginPage's tinted square frame
-            so the brand presentation is identical across admin and
-            customer entry points. The frame itself is admin-controllable
-            via Branding → "Show tinted frame behind login logo" — same
-            toggle drives both login pages. */}
+        {/* Logo / header — matches AdminLoginPage. The frame and size
+            are admin-controllable via Branding → "Login pages logo"
+            settings; both toggles apply to /admin/login and
+            /customer/login exclusively (the rest of the app uses its
+            own logo_size). */}
         <div className="text-center mb-8">
-          {settingsData?.branding_login_logo_frame_enabled !== false ? (
-            <div
-              className="w-[200px] h-[150px] mx-auto mb-6 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: '#eee6d2' }}
-            >
+          {(() => {
+            const cls = resolveLoginLogoClasses(settingsData?.branding_login_logo_size);
+            const showFrame = settingsData?.branding_login_logo_frame_enabled !== false;
+            return showFrame ? (
+              <div
+                className={`${cls.frameOuter} mx-auto mb-6 rounded-2xl flex items-center justify-center`}
+                style={{ backgroundColor: '#eee6d2' }}
+              >
+                <img
+                  src={resolvedLogoUrl}
+                  alt={companyName}
+                  className={`${cls.frameInner} object-contain`}
+                />
+              </div>
+            ) : (
               <img
                 src={resolvedLogoUrl}
                 alt={companyName}
-                className="w-[180px] h-[130px] object-contain"
+                className={`${cls.bare} object-contain mx-auto mb-6`}
               />
-            </div>
-          ) : (
-            <img
-              src={resolvedLogoUrl}
-              alt={companyName}
-              className="h-24 w-auto object-contain mx-auto mb-6"
-            />
-          )}
+            );
+          })()}
           <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text, #171717)' }}>
             {t('customer.login.title', 'Customer login')}
           </h1>

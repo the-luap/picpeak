@@ -169,7 +169,7 @@
     "backup": "Sauvegarde et Restauration",
     "cmsPages": "Pages CMS",
     "users": "Utilisateurs",
-    "customers": "Clients"
+    "clients": "Clients"
   },
   "archives": {
     "title": "Archives",
@@ -1071,11 +1071,16 @@
     "navAriaLabel": "Navigation des paramètres",
     "features": {
       "sections": {
-        "customers": "Clients"
+        "customers": "Clients",
+        "clients": "Clients"
       },
       "customerPortal": {
-        "title": "Portail client",
-        "description": "Connexions client persistantes. Les clients récurrents voient toutes leurs galeries assignées au même endroit — plus de mots de passe par événement. Base pour Calendrier / Devis / Factures (qui n'apparaissent dans le tableau de bord client que lorsque cette option est activée)."
+        "title": "Comptes",
+        "description": "Connexions client persistantes. Les clients récurrents voient toutes leurs galeries assignées au même endroit — pas de mots de passe par événement. Les clients se connectent sur /customer/login et vous les gérez sous Clients → Comptes."
+      },
+      "clients": {
+        "title": "Clients",
+        "description": "Interrupteur principal pour la section Clients de la barre latérale. Désactivé, masque la section et toutes les sous-fonctionnalités quelles que soient leurs bascules individuelles — réactiver les restaure dans leur état précédent."
       }
     },
     "customerSurface": {
@@ -1379,6 +1384,17 @@
       "straight": "Droit",
       "angle": "Angle",
       "curve": "Courbe"
+    },
+    "loginLogo": {
+      "title": "Logo des pages de connexion",
+      "subtitle": "S'applique uniquement à /admin/login et /customer/login. La galerie et l'interface admin utilisent les paramètres de logo ci-dessus.",
+      "frame": "Afficher le cadre teinté derrière le logo",
+      "frameHelp": "Lorsque désactivé, le logo se pose directement sur l'arrière-plan de la page. Utile pour les logos qui ont déjà leur propre fond.",
+      "size": "Taille du logo sur les pages de connexion",
+      "sizeSmall": "Petite",
+      "sizeMedium": "Moyenne (par défaut)",
+      "sizeLarge": "Grande",
+      "sizeXLarge": "Très grande"
     }
   },
   "admin": {
@@ -2796,6 +2812,18 @@
       "confirmInFlight": "Effacement…",
       "success": "Client effacé",
       "error": "Impossible d'effacer le client"
+    }
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Comptes clients, planification, devis et facturation pour les clients récurrents.",
+    "navAriaLabel": "Navigation Clients",
+    "empty": {
+      "title": "Aucune fonctionnalité client activée",
+      "body": "Activez Comptes (ou une autre sous-fonctionnalité Clients) dans Paramètres → Fonctionnalités pour commencer."
+    },
+    "subnav": {
+      "accounts": "Comptes"
     }
   }
 }
