@@ -175,7 +175,7 @@ export const CustomerAccountPicker: React.FC<Props> = ({ value, onChange, disabl
             </div>
           ) : results.length === 0 ? (
             <div className="px-3 py-3 text-sm text-muted-theme">
-              {t('events.customerPicker.noResults', 'No matches. Invite this customer from /admin/customers first.')}
+              {t('events.customerPicker.noResults', 'No matches. Invite this customer from Clients → Accounts first.')}
             </div>
           ) : (
             <ul role="listbox">
