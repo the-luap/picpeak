@@ -568,13 +568,20 @@ app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
-// Customer portal (#354). When the `customerPortal` feature flag is
-// OFF, both the admin-facing /api/admin/customers/* surface AND the
-// customer-facing /api/customer/* surface return 410 Gone — turning
-// the toggle off in Settings → Features cleanly kills the feature
-// everywhere, not just in the UI. The frontend RequireFeature guard
-// + AdminSidebar visibility still apply for navigation, but a stale
-// tab or third-party API client can't bypass the gate.
+// Customer portal (#354). The customerPortal feature flag is enforced
+// in TWO places:
+//   1. Frontend: RequireFeature guards + AdminSidebar visibility
+//      (handles navigation cleanly when an admin is using the app).
+//   2. Backend: the requireCustomerPortalEnabled middleware below.
+//      Belt-and-braces — a stale tab, a saved bookmark, or any
+//      third-party API client trying to hit /api/customer/* or
+//      /api/admin/customers/* gets a 410 Gone the moment the toggle
+//      is flipped off. Includes /api/customer/auth/login: flag off
+//      = nobody can log in until the admin re-enables, including
+//      already-issued customers (their sessions still have valid
+//      JWTs but every API call returns 410 → frontend boots them
+//      out). PR #458 deliberate departure from the prior design
+//      that left login alive when the rest of the surface was off.
 const {
   requireCustomerPortalEnabled,
   requireCustomerPortalEnabledAdmin,
