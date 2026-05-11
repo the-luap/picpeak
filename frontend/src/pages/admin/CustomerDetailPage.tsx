@@ -284,6 +284,57 @@ export const CustomerDetailPage: React.FC = () => {
         </div>
       </Card>
 
+      {/* Section order rationale (follow-up reorder request): the
+          customer detail page now flows from "who they are" (Personal)
+          → "what we know about them" (Notes) → "what they've worked
+          with us on" (Events) → "how to bill them" (Billing) → "what
+          they can do in the portal" (Features) → "destructive admin
+          actions" (Actions). Notes + Events promoted out from below
+          billing/features because they're the surfaces admins glance
+          at most when opening a customer record. */}
+
+      {/* Notes (admin-only) */}
+      <Card padding="lg">
+        <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5" /> {t('customers.detail.notesSection', 'Internal notes')}
+        </h2>
+        <p className="text-xs text-muted-theme mb-3">
+          {t('customers.detail.notesHint', 'Visible only to admins. Never shown to the customer.')}
+        </p>
+        <textarea
+          value={form.notes || ''}
+          onChange={setField('notes') as any}
+          rows={4}
+          className="input w-full"
+        />
+      </Card>
+
+      {/* Assigned events */}
+      <Card padding="lg">
+        <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
+          <Calendar className="w-5 h-5" /> {t('customers.detail.eventsSection', 'Assigned events')}
+        </h2>
+        {customer.events.length === 0 ? (
+          <p className="text-sm text-muted-theme">
+            {t('customers.detail.noEvents', 'Not assigned to any events yet. Add this customer to an event from the event form.')}
+          </p>
+        ) : (
+          <ul className="divide-y" style={{ borderColor: 'var(--color-surface-border)' }}>
+            {customer.events.map((ev) => (
+              <li key={ev.id} className="py-2 flex items-center justify-between">
+                <Link to={`/admin/events/${ev.id}`} className="text-theme hover:underline">
+                  {ev.eventName}
+                </Link>
+                <span className="text-xs text-muted-theme">
+                  {ev.eventDate ? formatDate(ev.eventDate) : ''}
+                  {ev.expiresAt ? ` · ${t('customers.detail.expires', 'expires')} ${formatDate(ev.expiresAt)}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       {/* Address + billing */}
       <Card padding="lg">
         <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
@@ -405,48 +456,6 @@ export const CustomerDetailPage: React.FC = () => {
           <p className="text-xs text-muted-theme mt-2">
             {t('customers.detail.passwordReset.inactive', 'Reactivate the customer before sending a reset.')}
           </p>
-        )}
-      </Card>
-
-      {/* Notes (admin-only) */}
-      <Card padding="lg">
-        <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
-          <FileText className="w-5 h-5" /> {t('customers.detail.notesSection', 'Internal notes')}
-        </h2>
-        <p className="text-xs text-muted-theme mb-3">
-          {t('customers.detail.notesHint', 'Visible only to admins. Never shown to the customer.')}
-        </p>
-        <textarea
-          value={form.notes || ''}
-          onChange={setField('notes') as any}
-          rows={4}
-          className="input w-full"
-        />
-      </Card>
-
-      {/* Assigned events */}
-      <Card padding="lg">
-        <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5" /> {t('customers.detail.eventsSection', 'Assigned events')}
-        </h2>
-        {customer.events.length === 0 ? (
-          <p className="text-sm text-muted-theme">
-            {t('customers.detail.noEvents', 'Not assigned to any events yet. Add this customer to an event from the event form.')}
-          </p>
-        ) : (
-          <ul className="divide-y" style={{ borderColor: 'var(--color-surface-border)' }}>
-            {customer.events.map((ev) => (
-              <li key={ev.id} className="py-2 flex items-center justify-between">
-                <Link to={`/admin/events/${ev.id}`} className="text-theme hover:underline">
-                  {ev.eventName}
-                </Link>
-                <span className="text-xs text-muted-theme">
-                  {ev.eventDate ? formatDate(ev.eventDate) : ''}
-                  {ev.expiresAt ? ` · ${t('customers.detail.expires', 'expires')} ${formatDate(ev.expiresAt)}` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
         )}
       </Card>
 
