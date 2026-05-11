@@ -3003,7 +3003,8 @@
       "savedDiff": "Atribuições atualizadas: {{parts}}",
       "addedN": "{{count}} adicionada(s)",
       "removedN": "{{count}} removida(s)",
-      "error": "Não foi possível atualizar as atribuições"
+      "error": "Não foi possível atualizar as atribuições",
+      "clearSearchAria": "Limpar pesquisa"
     }
   },
   "clients": {

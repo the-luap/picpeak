@@ -2970,7 +2970,8 @@
       "savedDiff": "Zuweisungen aktualisiert: {{parts}}",
       "addedN": "{{count}} hinzugefügt",
       "removedN": "{{count}} entfernt",
-      "error": "Zuweisungen konnten nicht aktualisiert werden"
+      "error": "Zuweisungen konnten nicht aktualisiert werden",
+      "clearSearchAria": "Suche löschen"
     }
   },
   "clients": {

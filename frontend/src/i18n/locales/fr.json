@@ -2924,7 +2924,8 @@
       "savedDiff": "Assignations mises à jour : {{parts}}",
       "addedN": "{{count}} ajoutée(s)",
       "removedN": "{{count}} retirée(s)",
-      "error": "Impossible de mettre à jour les assignations"
+      "error": "Impossible de mettre à jour les assignations",
+      "clearSearchAria": "Effacer la recherche"
     }
   },
   "clients": {

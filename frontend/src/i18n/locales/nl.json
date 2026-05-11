@@ -2970,7 +2970,8 @@
       "savedDiff": "Toewijzingen bijgewerkt: {{parts}}",
       "addedN": "{{count}} toegevoegd",
       "removedN": "{{count}} verwijderd",
-      "error": "Toewijzingen konden niet worden bijgewerkt"
+      "error": "Toewijzingen konden niet worden bijgewerkt",
+      "clearSearchAria": "Zoekopdracht wissen"
     }
   },
   "clients": {

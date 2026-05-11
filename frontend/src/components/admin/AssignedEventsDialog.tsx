@@ -106,6 +106,16 @@ export const AssignedEventsDialog: React.FC<Props> = ({ customerId, isOpen, init
       ...prev,
       { id: ev.id, eventName: ev.event_name, eventDate: ev.event_date || null },
     ]);
+    // Keep the typed query around so the admin can continue picking
+    // additional matches from the same search (e.g. "Smith Wedding"
+    // returns both the engagement + the wedding event; adding one
+    // shouldn't force a re-type to add the other). The just-added
+    // event drops out of the results automatically — the search
+    // effect re-filters against the new `selected` set.
+    searchInputRef.current?.focus();
+  };
+
+  const clearQuery = () => {
     setQuery('');
     setResults([]);
     searchInputRef.current?.focus();
@@ -234,8 +244,25 @@ export const AssignedEventsDialog: React.FC<Props> = ({ customerId, isOpen, init
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('customers.assignedEvents.searchPlaceholder', 'Search by event name')}
                 disabled={saveMutation.isPending}
-                className="w-full pl-9 pr-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-9 pr-9 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+              {/* Inline clear button — visible only while the query has
+                  content. We keep the query through add() now so the
+                  admin needs an explicit way to wipe it before starting
+                  a new search. Esc would be lovely too but adding a
+                  global key handler inside a modal is more risk than
+                  this control is worth. */}
+              {query && (
+                <button
+                  type="button"
+                  onClick={clearQuery}
+                  disabled={saveMutation.isPending}
+                  aria-label={t('customers.assignedEvents.clearSearchAria', 'Clear search')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  <X className="w-3.5 h-3.5 text-neutral-500" />
+                </button>
+              )}
             </div>
 
             {/* Results dropdown — inline (not a popover) since this is

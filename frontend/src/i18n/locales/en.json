@@ -2970,7 +2970,8 @@
       "savedDiff": "Assignments updated: {{parts}}",
       "addedN": "{{count}} added",
       "removedN": "{{count}} removed",
-      "error": "Could not update assignments"
+      "error": "Could not update assignments",
+      "clearSearchAria": "Clear search"
     }
   },
   "clients": {
