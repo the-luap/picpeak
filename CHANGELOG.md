@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.47.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.0-beta.0...v3.47.1-beta.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **features:** customer-portal card uses 'Clients' to match sidebar wording ([441cc41](https://github.com/the-luap/picpeak/commit/441cc419377055a5872f71afb19036cc5c932b58))
+* **features:** customer-portal card uses 'Clients' to match sidebar wording ([dec2f5d](https://github.com/the-luap/picpeak/commit/dec2f5d3d2224b0d66f02bb9a562b4ddeaac77df))
+
 ## [3.47.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.3-beta.0...v3.47.0-beta.0) (2026-05-11)
 
 
