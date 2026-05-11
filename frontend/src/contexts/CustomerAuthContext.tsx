@@ -84,22 +84,37 @@ export const CustomerAuthProvider: React.FC<ProviderProps> = ({ children }) => {
    * mount-time sessionStorage cache and stays stale until a hard reload.
    */
   const refreshSession = React.useCallback(async () => {
+    // Contract (see customerService.session()):
+    //   - object → fresh data, store it.
+    //   - null   → server says we're explicitly logged out (401);
+    //              clear local state.
+    //   - throw  → transient error (network blip, 5xx, timeout).
+    //              KEEP whatever state we have — logging the user out
+    //              on a flaky network call is the wrong default. The
+    //              old code clobbered local state on any error, which
+    //              caused mysterious "customer keeps getting kicked
+    //              out" reports during unrelated admin saves and on
+    //              brief connection drops.
+    let response: Awaited<ReturnType<typeof customerService.session>>;
     try {
-      const response = await customerService.session();
-      if (response?.customer) {
-        setCustomerState(response.customer);
-        setFeatures(response.features);
-        setBranding(response.branding);
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(response.customer));
-        sessionStorage.setItem(FEATURES_KEY, JSON.stringify(response.features));
-        sessionStorage.setItem(BRANDING_KEY, JSON.stringify(response.branding));
-      } else {
-        setCustomerState(null);
-        sessionStorage.removeItem(STORAGE_KEY);
-        sessionStorage.removeItem(FEATURES_KEY);
-        sessionStorage.removeItem(BRANDING_KEY);
-      }
-    } catch {
+      response = await customerService.session();
+    } catch (err) {
+      // Transient. Don't touch state. The next focus/visibility tick
+      // will retry; if the customer really is unauthenticated the
+      // retry will see the 401 and clear properly.
+      // eslint-disable-next-line no-console
+      console.warn('[CustomerAuth] session refresh failed transiently, keeping current state', err);
+      return;
+    }
+    if (response?.customer) {
+      setCustomerState(response.customer);
+      setFeatures(response.features);
+      setBranding(response.branding);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(response.customer));
+      sessionStorage.setItem(FEATURES_KEY, JSON.stringify(response.features));
+      sessionStorage.setItem(BRANDING_KEY, JSON.stringify(response.branding));
+    } else {
+      // Explicit 401 — server says no.
       setCustomerState(null);
       sessionStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(FEATURES_KEY);
