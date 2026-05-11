@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.46.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.2-beta.0...v3.46.3-beta.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **branding:** socials + promo round-trip from DB to form ([#460](https://github.com/the-luap/picpeak/issues/460)) ([bd2288e](https://github.com/the-luap/picpeak/commit/bd2288e6a01786cec0649b3326189e9737db359e))
+* **branding:** socials + promo round-trip from DB to form ([#460](https://github.com/the-luap/picpeak/issues/460)) ([ae64a6a](https://github.com/the-luap/picpeak/commit/ae64a6acbc119f78394e65cee7bf49910e1c7013))
+
 ## [3.46.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.1-beta.0...v3.46.2-beta.0) (2026-05-11)
 
 
