@@ -1889,7 +1889,14 @@
       "billing": "Facturatie"
     },
     "featureOff": "Functie uit",
-    "featureOffTooltip": "De functie waar deze sjabloon bij hoort, is momenteel uitgeschakeld. U kunt de sjabloon nog steeds bewerken — deze wordt gebruikt zodra de functie weer is ingeschakeld."
+    "featureOffTooltip": "De functie waar deze sjabloon bij hoort, is momenteel uitgeschakeld. U kunt de sjabloon nog steeds bewerken — deze wordt gebruikt zodra de functie weer is ingeschakeld.",
+    "subcategories": {
+      "gallery": "Galerijen",
+      "admin": "Adminaccounts",
+      "backup": "Back-up & herstel",
+      "system": "Systeemupdates",
+      "other": "Overige"
+    }
   },
   "cms": {
     "title": "CMS-pagina's",

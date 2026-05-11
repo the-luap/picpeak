@@ -1889,7 +1889,14 @@
       "billing": "Billing"
     },
     "featureOff": "Feature off",
-    "featureOffTooltip": "The feature this template belongs to is currently disabled. You can still edit the template — it will be used once the feature is re-enabled."
+    "featureOffTooltip": "The feature this template belongs to is currently disabled. You can still edit the template — it will be used once the feature is re-enabled.",
+    "subcategories": {
+      "gallery": "Galleries",
+      "admin": "Admin accounts",
+      "backup": "Backup & restore",
+      "system": "System updates",
+      "other": "Other"
+    }
   },
   "cms": {
     "title": "CMS Pages",

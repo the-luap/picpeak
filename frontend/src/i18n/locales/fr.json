@@ -1835,7 +1835,14 @@
       "billing": "Facturation"
     },
     "featureOff": "Fonction désactivée",
-    "featureOffTooltip": "La fonctionnalité à laquelle appartient ce modèle est actuellement désactivée. Vous pouvez toujours modifier le modèle — il sera utilisé une fois la fonctionnalité réactivée."
+    "featureOffTooltip": "La fonctionnalité à laquelle appartient ce modèle est actuellement désactivée. Vous pouvez toujours modifier le modèle — il sera utilisé une fois la fonctionnalité réactivée.",
+    "subcategories": {
+      "gallery": "Galeries",
+      "admin": "Comptes administrateurs",
+      "backup": "Sauvegarde & restauration",
+      "system": "Mises à jour système",
+      "other": "Autres"
+    }
   },
   "cms": {
     "title": "Pages CMS",

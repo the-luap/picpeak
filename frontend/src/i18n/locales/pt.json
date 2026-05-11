@@ -1914,7 +1914,14 @@
       "billing": "Faturamento"
     },
     "featureOff": "Recurso desativado",
-    "featureOffTooltip": "O recurso ao qual este modelo pertence está atualmente desativado. Você ainda pode editar o modelo — ele será usado assim que o recurso for reativado."
+    "featureOffTooltip": "O recurso ao qual este modelo pertence está atualmente desativado. Você ainda pode editar o modelo — ele será usado assim que o recurso for reativado.",
+    "subcategories": {
+      "gallery": "Galerias",
+      "admin": "Contas de administrador",
+      "backup": "Backup & restauração",
+      "system": "Atualizações do sistema",
+      "other": "Outros"
+    }
   },
   "cms": {
     "title": "Páginas CMS",
