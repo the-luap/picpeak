@@ -69,7 +69,7 @@ export const FeaturesTab: React.FC = () => {
         {/* Header */}
         <div className="mb-6 pb-4 border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent-soft text-accent-dark flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-accent-soft text-on-accent-soft flex items-center justify-center">
               <ToggleRight className="w-5 h-5" />
             </div>
             <div>
