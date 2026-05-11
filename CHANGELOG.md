@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.47.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.1-beta.0...v3.47.2-beta.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **activity-log:** smart feature_flags_updated rendering + 33 missing activity types ([4703fd5](https://github.com/the-luap/picpeak/commit/4703fd574f57bfab327ffefec5986bb08b240c95))
+
 ## [3.47.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.0-beta.0...v3.47.1-beta.0) (2026-05-11)
 
 
