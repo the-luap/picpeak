@@ -5,6 +5,23 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.46.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.45.1-beta.0...v3.46.0-beta.0) (2026-05-11)
+
+
+### Features
+
+* **branding:** Customer dashboard header toggles in Branding page ([b252cb6](https://github.com/the-luap/picpeak/commit/b252cb67eb3645224a279fbbe9c14871438473f8))
+* customer accounts ([#354](https://github.com/the-luap/picpeak/issues/354)) — recurring logins, profile, password reset, branded customer surface ([fe52953](https://github.com/the-luap/picpeak/commit/fe5295373b0bfeec1e81086206ffab7ce1b91094))
+* **customers:** customer portal ([#354](https://github.com/the-luap/picpeak/issues/354)) on top of feature-flags reorg ([087ef45](https://github.com/the-luap/picpeak/commit/087ef45942a8a51d09af2cd8ec85aca330f6cf7f))
+
+
+### Bug Fixes
+
+* **auth:** restore COOKIE_SECURE='auto' default for production ([adfa29e](https://github.com/the-luap/picpeak/commit/adfa29e91eeea52aa672e38269c389a5178d9e5a))
+* **customer:** unwrap /customer/* from RequireFeature gate ([da08a58](https://github.com/the-luap/picpeak/commit/da08a5828ab855365a2a2a6f4854b09eb409907a))
+* **server:** drop missing requireCustomerPortal middleware import ([4fa7225](https://github.com/the-luap/picpeak/commit/4fa72257329942a6b598fa90c83c6bca7586fe33))
+* **server:** mount /api/admin/feature-flags route ([f048011](https://github.com/the-luap/picpeak/commit/f048011324bfa4cee8f89b0131b68dd520446ca2))
+
 ## [3.45.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.45.0-beta.0...v3.45.1-beta.0) (2026-05-10)
 
 
