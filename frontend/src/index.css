@@ -300,6 +300,35 @@
     color: var(--color-accent);
   }
 
+  .text-accent-dark {
+    color: var(--color-accent-dark);
+  }
+
+  /*
+   * Low-opacity accent fills used as "icon tile" / "tinted chip"
+   * backgrounds (Features tab feature icons, Sidebar Preview pills,
+   * Customer dashboard branding card header). Picks up the admin's CI
+   * accent automatically — previously these places used Tailwind's
+   * hardcoded `primary-50` palette which stayed green regardless of
+   * branding settings.
+   *
+   * color-mix is supported on every browser we ship (Chromium 111+,
+   * Safari 16.2+, Firefox 113+ — see baseline). Older browsers fall
+   * back to the var(--color-accent-dark) below.
+   */
+  .bg-accent-soft {
+    background-color: var(--color-accent-dark);
+    background-color: color-mix(in srgb, var(--color-accent-dark) 12%, transparent);
+  }
+  .dark .bg-accent-soft {
+    background-color: var(--color-accent-dark);
+    background-color: color-mix(in srgb, var(--color-accent-dark) 28%, transparent);
+  }
+  .border-accent-soft {
+    border-color: var(--color-accent-dark);
+    border-color: color-mix(in srgb, var(--color-accent-dark) 30%, transparent);
+  }
+
   /*
    * Selected-tile state for picker grids (Gallery Layout, Filter Bar Style,
    * Header Style, Hero Divider, Theme Presets). Used in place of the dim

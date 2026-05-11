@@ -60,8 +60,11 @@ export const SidebarPreview: React.FC<SidebarPreviewProps> = ({ staged }) => {
             key={item.key}
             className={clsx(
               'inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium border',
+              // Feature-driven pills pick up the admin's CI accent via
+              // .bg-accent-soft / .border-accent-soft / .text-accent-dark
+              // — previously hard-coded to Tailwind primary-50 green.
               item.featureDriven
-                ? 'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-200'
+                ? 'border-accent-soft bg-accent-soft text-accent-dark'
                 : 'border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
             )}
           >
@@ -73,7 +76,7 @@ export const SidebarPreview: React.FC<SidebarPreviewProps> = ({ staged }) => {
       <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
         {t(
           'settings.features.preview.legend',
-          'Green tinted items are controlled by toggles above.',
+          'Accent-tinted items are controlled by toggles above.',
         )}
       </p>
     </Card>
