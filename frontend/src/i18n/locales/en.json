@@ -1137,7 +1137,7 @@
         "warning": "Existing user accounts stay valid; the admin UI for managing them will be hidden until you re-enable this."
       },
       "customerPortal": {
-        "title": "Accounts",
+        "title": "Clients",
         "description": "Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Customers log in at /customer/login and you manage them under Clients → Accounts."
       },
       "clients": {
