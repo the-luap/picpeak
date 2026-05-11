@@ -296,10 +296,14 @@ export const SettingsPage: React.FC = () => {
                               : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                           }`}
                         >
+                          {/* Active-state icon paints white to sit on the
+                              accent-dark pill (matches the label colour
+                              and avoids the accent-on-accent low-contrast
+                              that the prior `text-accent` produced). */}
                           <Icon
                             className={`w-4 h-4 flex-shrink-0 ${
                               isActive
-                                ? 'text-accent'
+                                ? 'text-white'
                                 : 'text-neutral-500 dark:text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-neutral-200'
                             }`}
                           />
@@ -318,7 +322,11 @@ export const SettingsPage: React.FC = () => {
           {showSectionHeading && (
             <div className="mb-4 lg:mb-6 pb-3 border-b border-neutral-200 dark:border-neutral-700">
               <div className="flex items-center gap-2">
-                <activeItem.icon className="w-5 h-5 text-accent" />
+                {/* Section heading icon stays neutral so the Settings
+                    chrome reads as one consistent palette — no stray
+                    accent flecks. The active sidebar pill is the only
+                    place that uses the accent fill. */}
+                <activeItem.icon className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                   {activeItem.label}
                 </h2>
