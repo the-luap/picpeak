@@ -1246,7 +1246,8 @@
       "fit_contain": "Einpassen (innerhalb)",
       "fit_fill": "Strecken",
       "fit_inside": "Innen (verkleinern)",
-      "fit_outside": "Außen (vergrößern)"
+      "fit_outside": "Außen (vergrößern)",
+      "fitRecommendation": "Empfehlung: „Inside\" für Masonry-/Mosaic-/Justified-Layouts (bewahrt das Seitenverhältnis), „Cover\" für gleichförmige 1:1-Kacheln."
     },
     "categories": {
       "title": "Kategorien",

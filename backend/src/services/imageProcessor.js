@@ -15,7 +15,13 @@ sharp.concurrency(2); // Limit concurrent operations
 // Default thumbnail settings
 const DEFAULT_THUMBNAIL_WIDTH = 300;
 const DEFAULT_THUMBNAIL_HEIGHT = 300;
-const DEFAULT_THUMBNAIL_FIT = 'cover'; // 'cover' for square crops
+// 'inside' preserves the source aspect ratio (output ≤ width × height).
+// This is the right default for masonry / mosaic / justified layouts —
+// the gallery sizes each card from photo.width/height and renders the
+// thumbnail with object-cover, so a thumb that already matches the
+// source aspect doesn't get re-cropped (#447). Admins who want
+// uniform 1:1 grid tiles can switch to 'cover' in the thumbnail settings.
+const DEFAULT_THUMBNAIL_FIT = 'inside';
 const DEFAULT_THUMBNAIL_QUALITY = 85;
 const DEFAULT_THUMBNAIL_FORMAT = 'jpeg';
 

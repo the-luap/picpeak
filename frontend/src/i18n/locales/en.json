@@ -952,7 +952,8 @@
       "fit_contain": "Contain (fit within)",
       "fit_fill": "Fill (stretch)",
       "fit_inside": "Inside (shrink to fit)",
-      "fit_outside": "Outside (expand to cover)"
+      "fit_outside": "Outside (expand to cover)",
+      "fitRecommendation": "Recommendation: use \"Inside\" for masonry / mosaic / justified layouts (preserves aspect ratio); \"Cover\" for uniform 1:1 grid tiles."
     },
     "seo": {
       "title": "SEO & Robots",

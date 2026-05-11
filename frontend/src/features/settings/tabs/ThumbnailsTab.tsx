@@ -229,6 +229,9 @@ export const ThumbnailsTab: React.FC = () => {
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
             {t('settings.thumbnails.fitHelp', 'How images are resized to fit the thumbnail dimensions. "Cover" crops to fill, "Contain" fits within bounds.')}
           </p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+            {t('settings.thumbnails.fitRecommendation', 'Recommendation: use "Inside" for masonry / mosaic / justified layouts (preserves aspect ratio); "Cover" for uniform 1:1 grid tiles.')}
+          </p>
         </div>
       </Card>
 

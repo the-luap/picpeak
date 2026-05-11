@@ -220,6 +220,12 @@ async function acceptInvitation({ token, name, password, profile }) {
       country_code: merged.country_code || null,
       password_hash: passwordHash,
       is_active: formatBoolean(true),
+      // must_change_password is decorative today — accept-invite always
+      // sets a customer-chosen password, so this flag is never true and
+      // customerAuth doesn't read it. TODO when we ship an "admin
+      // pre-loads a temporary password" flow: surface a code in the
+      // login response (mirroring adminAuth's MUST_CHANGE_PASSWORD) and
+      // add a /change-password gate to customerAuth.
       must_change_password: formatBoolean(false),
       // Leave password_changed_at NULL on initial accept. Setting it here
       // creates a millisecond/second-rounding race with the JWT issued

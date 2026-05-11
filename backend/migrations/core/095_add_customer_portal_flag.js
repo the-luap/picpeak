@@ -1,5 +1,5 @@
 /**
- * Migration 094: Add `customerPortal` to feature_flags.
+ * Migration 095: Add `customerPortal` to feature_flags.
  *
  * The customer portal (#354) is the foundation feature for the
  * customer-side UI surface — login, dashboard, profile, password reset,

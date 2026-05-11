@@ -48,6 +48,12 @@ const TOKEN_TTL_SECONDS = 24 * 60 * 60; // mirrors admin tokens
 
 // ---- login -------------------------------------------------------------
 
+// The customerPortal feature flag deliberately does NOT gate this route.
+// Flipping the master toggle off in Settings → Features hides the admin
+// UI surface (sidebar entry, /admin/customers page) but does not revoke
+// access for customers who already accepted an invitation. To lock out
+// existing customers, deactivate their accounts individually
+// (customer_accounts.is_active = false) — which IS enforced below.
 router.post('/login', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isString().notEmpty(),

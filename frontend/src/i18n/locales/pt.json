@@ -969,7 +969,8 @@
       "fit_contain": "Contain (ajustar ao espaço)",
       "fit_fill": "Fill (esticar)",
       "fit_inside": "Inside (encolher para caber)",
-      "fit_outside": "Outside (expandir para cobrir)"
+      "fit_outside": "Outside (expandir para cobrir)",
+      "fitRecommendation": "Recomendação: use \"Inside\" para layouts masonry/mosaic/justified (preserva proporção); \"Cover\" para tiles 1:1 uniformes."
     },
     "seo": {
       "title": "SEO e Robots",
