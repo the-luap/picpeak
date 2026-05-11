@@ -19,11 +19,14 @@ export const DEFAULT_FLAGS: FeatureFlags = {
   messaging: false,
   analytics: true,
   userManagement: true,
-  // Customer portal (#354) defaults OFF on a fresh install — picpeak
+  // Top-level Clients section (#354 follow-up). Migration 097 mirrors
+  // the install's current customerPortal value so admins who already
+  // had the portal enabled keep seeing the section after upgrade.
+  clients: false,
+  // Customer portal (#354). Defaults OFF on a fresh install — picpeak
   // ships as a focused gallery delivery tool, recurring-customer
-  // logins are opt-in. Migration 094 flips this to TRUE on existing
-  // installs (events>0) so the customer-portal foundation isn't
-  // silently disabled mid-deployment.
+  // logins are opt-in. Migration 095 flips this to TRUE on existing
+  // installs (events>0).
   customerPortal: false,
 };
 
@@ -56,13 +59,15 @@ function applyDependencyRules(flags: FeatureFlags): FeatureFlags {
   out.galleries = true;                            // foundation — always on
   if (out.quotes === false) out.bills = false;     // bills depend on quotes
   if (out.calendar === false) out.calendarBooking = false;  // booking depends on calendar
-  // Customer-portal-dependent flags: if the customer portal is OFF the
-  // customer-side dashboard never renders, so the calendar/quotes/bills/
-  // messaging customer-side surfaces have nowhere to live. Their server
-  // toggles can stay at whatever the admin set (so re-enabling the
-  // portal restores the previous state), but the dependency is
-  // documented here for the FeaturesTab UI to disable child cards
-  // visually when customerPortal is off.
+  // Clients parent flag is DERIVED from its children. Admins don't
+  // toggle it directly — enabling any CRM-area sub-feature
+  // (Accounts today; future Calendar / Quotes / Bills / Messaging)
+  // lights up the Clients sidebar section automatically, and
+  // disabling all of them hides it again.
+  out.clients = Boolean(
+    out.customerPortal
+    // future siblings: || out.calendar || out.quotes || out.bills || out.messaging
+  );
   return out;
 }
 

@@ -12,6 +12,7 @@ import {
   BarChart3,
   Users,
   UserCog,
+  Briefcase,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Card } from '../../../components/common';
@@ -108,24 +109,30 @@ export const FeaturesTab: React.FC = () => {
           />
         </Section>
 
-        {/* Customer accounts (#354) — recurring customer logins. The
-            calendar / quotes / bills / messaging cards below are
-            customer-side surfaces; they only render in the customer
-            dashboard when this is on. */}
-        <Section title={t('settings.features.sections.customers', 'Customers')}>
+        {/* Clients (#354 follow-up). Visual grouping for the CRM-area
+            sub-features. The "Clients" sidebar section itself is gated
+            by a derived `clients` flag (computed from whether any
+            child below is on), so there's no explicit parent toggle —
+            admins just enable the specific feature they want and the
+            section appears automatically. */}
+        <Section title={t('settings.features.sections.clients', 'Clients')}>
           <FeatureCard
             icon={UserCog}
-            title={t('settings.features.customerPortal.title', 'Customer portal')}
+            title={t('settings.features.customerPortal.title', 'Accounts')}
             description={t(
               'settings.features.customerPortal.description',
-              'Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Foundation for Calendar / Quotes / Bills (which only render in the customer dashboard when this is on).',
+              'Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Customers log in at /customer/login and you manage them under Clients → Accounts.',
             )}
             status="beta"
             statusLabel={statusLabel('beta')}
-            sidebarLabel={t('navigation.customers', 'Customers')}
+            sidebarLabel={t('clients.subnav.accounts', 'Accounts')}
             enabled={staged.customerPortal}
             onToggle={(next) => setFlag('customerPortal', next)}
           />
+          {/* Future sub-features (Calendar / Quotes / Bills / Messaging)
+              slot in here as FeatureCard entries when they ship. No
+              placeholder cards today — the Clients section just shows
+              what's actually built. */}
         </Section>
 
         {/* Communication */}

@@ -168,7 +168,8 @@
     "cmsPages": "CMS Pages",
     "users": "Users",
     "calendar": "Calendar",
-    "customers": "Customers"
+    "customers": "Customers",
+    "clients": "Clients"
   },
   "archives": {
     "title": "Archives",
@@ -1088,7 +1089,8 @@
         "scheduling": "Scheduling",
         "sales": "Sales",
         "insights": "Insights & Access",
-        "customers": "Customers"
+        "customers": "Customers",
+        "clients": "Clients"
       },
       "status": {
         "stable": "stable",
@@ -1136,8 +1138,12 @@
         "warning": "Existing user accounts stay valid; the admin UI for managing them will be hidden until you re-enable this."
       },
       "customerPortal": {
-        "title": "Customer portal",
-        "description": "Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Foundation for Calendar / Quotes / Bills (which only render in the customer dashboard when this is on)."
+        "title": "Accounts",
+        "description": "Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Customers log in at /customer/login and you manage them under Clients → Accounts."
+      },
+      "clients": {
+        "title": "Clients",
+        "description": "Master switch for the Clients sidebar section. Off hides the section and every sub-feature below regardless of their individual toggles — re-enable to restore them to whatever you set last."
       }
     },
     "customerSurface": {
@@ -2853,6 +2859,18 @@
       "confirmInFlight": "Erasing…",
       "success": "Customer erased",
       "error": "Could not erase customer"
+    }
+  },
+  "clients": {
+    "title": "Clients",
+    "subtitle": "Customer accounts, scheduling, quotes and billing for recurring clients.",
+    "navAriaLabel": "Clients navigation",
+    "empty": {
+      "title": "No client features enabled",
+      "body": "Enable Accounts (or another Clients sub-feature) under Settings → Features to get started."
+    },
+    "subnav": {
+      "accounts": "Accounts"
     }
   }
 }

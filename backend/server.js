@@ -568,19 +568,23 @@ app.use('/api/admin/photo-export', require('./src/routes/adminPhotoExport'));
 app.use('/api/admin/css-templates', require('./src/routes/adminCssTemplates'));
 app.use('/api/admin/events', require('./src/routes/adminEventRename'));
 app.use('/api/admin/users', require('./src/routes/adminUsers'));
-// Customer portal (#354). The customerPortal feature flag is enforced
-// on the frontend via <RequireFeature flag="customerPortal" /> route
-// guards (App.tsx) and AdminSidebar visibility — when the flag is off,
-// users never reach these endpoints. Defence in depth is provided by
-// customerAccountsService.isCustomerPortalEnabled() in the few backend
-// paths that matter (e.g. adminEvents customer_account_ids handling).
-// Admin routes are protected by adminAuth; customer routes by
-// customerAuth — so no additional route-level gate is needed.
-app.use('/api/admin/customers', require('./src/routes/adminCustomers'));
+// Customer portal (#354). When the `customerPortal` feature flag is
+// OFF, both the admin-facing /api/admin/customers/* surface AND the
+// customer-facing /api/customer/* surface return 410 Gone — turning
+// the toggle off in Settings → Features cleanly kills the feature
+// everywhere, not just in the UI. The frontend RequireFeature guard
+// + AdminSidebar visibility still apply for navigation, but a stale
+// tab or third-party API client can't bypass the gate.
+const {
+  requireCustomerPortalEnabled,
+  requireCustomerPortalEnabledAdmin,
+} = require('./src/middleware/requireCustomerPortal');
+
+app.use('/api/admin/customers', requireCustomerPortalEnabledAdmin, require('./src/routes/adminCustomers'));
 // Customer-side surface (#354). Strictly separate from /api/admin/* —
 // distinct token type, distinct cookie, distinct middleware.
-app.use('/api/customer/auth', require('./src/routes/customerAuth'));
-app.use('/api/customer', require('./src/routes/customer'));
+app.use('/api/customer/auth', requireCustomerPortalEnabled, require('./src/routes/customerAuth'));
+app.use('/api/customer', requireCustomerPortalEnabled, require('./src/routes/customer'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
 app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));

@@ -32,8 +32,14 @@ const KNOWN_FLAGS = [
   'messaging',
   'analytics',
   'userManagement',
-  // Foundation flag for the customer-side surface (#354). See migration
-  // 094 for the seeding rule.
+  // Top-level "Clients" section (#354 follow-up). Parent flag that
+  // gates the /admin/clients/* sidebar entry. customerPortal,
+  // calendar, quotes, bills and messaging are conceptually its
+  // children — when `clients` is off none of them surface in the
+  // admin UI even if their individual flags are on.
+  'clients',
+  // Customer-side portal surface (#354). Gates /customer/* routes
+  // and the Accounts sub-page under Clients. See migration 095.
   'customerPortal',
 ];
 
@@ -49,6 +55,7 @@ const DEFAULT_FLAGS = {
   messaging: false,
   analytics: true,
   userManagement: true,
+  clients: false,
 };
 
 async function readAllFlags() {
@@ -69,13 +76,27 @@ function applyDependencyRules(flags) {
   // Sub-features can't outlive their parents.
   if (out.quotes === false) out.bills = false;
   if (out.calendar === false) out.calendarBooking = false;
+  // Clients parent flag is DERIVED from its children. Admins don't
+  // toggle it directly in the Features tab — they enable a specific
+  // sub-feature (Accounts today; Calendar/Quotes/Bills/Messaging
+  // later) and the Clients sidebar section lights up automatically.
+  // Computing the value here (rather than only on writes) means GET
+  // /admin/feature-flags also returns a consistent state if the DB
+  // ever drifts (e.g. partial migration run).
+  out.clients = Boolean(
+    out.customerPortal
+    // future siblings (out.calendar || out.quotes || out.bills || out.messaging) go here
+  );
   return out;
 }
 
 router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) => {
   try {
     const flags = await readAllFlags();
-    res.json(flags);
+    // Always run the rules so derived flags (e.g. `clients`) and
+    // hard invariants (galleries always on) are consistent even if
+    // the DB row is stale or missing.
+    res.json(applyDependencyRules(flags));
   } catch (error) {
     logger.error('Failed to read feature flags', { error: error.message });
     res.status(500).json({ error: 'Failed to read feature flags' });
