@@ -5,6 +5,23 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.47.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.3-beta.0...v3.47.0-beta.0) (2026-05-11)
+
+
+### Features
+
+* **email-templates:** categorise + link to feature flags ([84c06af](https://github.com/the-luap/picpeak/commit/84c06affb73687529e35dbbac15801deb41dc4f2))
+* **email-templates:** categorise + sub-categorise + link to feature flags ([2cae3fe](https://github.com/the-luap/picpeak/commit/2cae3fe47deb667af5991ae1a90e3b5698693119))
+* **email-templates:** group Templates UI by category + Feature off chip ([5ec26fc](https://github.com/the-luap/picpeak/commit/5ec26fc9981028163cab122e229c83cdbbf35828))
+* **email-templates:** group Templates UI by category with core sub-sections ([53eecb6](https://github.com/the-luap/picpeak/commit/53eecb6f83ff75f1f3c75d68cee5e46d114ac8d1))
+* **email-templates:** seed missing locale translations + post-075 templates ([e3150e4](https://github.com/the-luap/picpeak/commit/e3150e42130cacf19dc7beadb8c86c76c0fff340))
+* **email-templates:** seed missing nl/pt/ru/fr translations ([358f7ee](https://github.com/the-luap/picpeak/commit/358f7ee99e2941ad179d5859178b35a80886542f))
+
+
+### Bug Fixes
+
+* **email-templates:** backfill subcategory + customer password reset translations ([2343a16](https://github.com/the-luap/picpeak/commit/2343a162df070cd5bd6abdc331bc5ca4aa283132))
+
 ## [3.46.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.46.2-beta.0...v3.46.3-beta.0) (2026-05-11)
 
 
