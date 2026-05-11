@@ -118,14 +118,18 @@ export const FeaturesTab: React.FC = () => {
         <Section title={t('settings.features.sections.clients', 'Clients')}>
           <FeatureCard
             icon={UserCog}
-            title={t('settings.features.customerPortal.title', 'Accounts')}
+            title={t('settings.features.customerPortal.title', 'Clients')}
             description={t(
               'settings.features.customerPortal.description',
               'Persistent customer logins. Recurring clients see all their assigned galleries from one place — no per-event passwords. Customers log in at /customer/login and you manage them under Clients → Accounts.',
             )}
             status="beta"
             statusLabel={statusLabel('beta')}
-            sidebarLabel={t('clients.subnav.accounts', 'Accounts')}
+            // Sidebar hint mirrors the top-level "Clients" entry the
+            // admin clicks first, not the deeper "Accounts" sub-nav.
+            // Keeps the wording consistent with what's actually visible
+            // in the menu bar.
+            sidebarLabel={t('navigation.clients', 'Clients')}
             enabled={staged.customerPortal}
             onToggle={(next) => setFlag('customerPortal', next)}
           />

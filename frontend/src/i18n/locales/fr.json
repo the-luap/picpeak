@@ -1075,7 +1075,7 @@
         "clients": "Clients"
       },
       "customerPortal": {
-        "title": "Comptes",
+        "title": "Clients",
         "description": "Connexions client persistantes. Les clients récurrents voient toutes leurs galeries assignées au même endroit — pas de mots de passe par événement. Les clients se connectent sur /customer/login et vous les gérez sous Clients → Comptes."
       },
       "clients": {

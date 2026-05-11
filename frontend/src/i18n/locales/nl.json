@@ -1137,7 +1137,7 @@
         "warning": "Bestaande gebruikersaccounts blijven geldig; de admin-interface om ze te beheren wordt verborgen totdat u dit weer inschakelt."
       },
       "customerPortal": {
-        "title": "Accounts",
+        "title": "Klanten",
         "description": "Permanente klantlogins. Terugkerende klanten zien al hun toegewezen galerijen op één plek — geen wachtwoorden per evenement. Klanten loggen in op /customer/login en je beheert ze onder Klanten → Accounts."
       },
       "clients": {

@@ -1154,7 +1154,7 @@
         "warning": "Contas de usuário existentes permanecem válidas; a interface administrativa para gerenciá-las ficará oculta até você reativar isto."
       },
       "customerPortal": {
-        "title": "Contas",
+        "title": "Clientes",
         "description": "Logins persistentes para clientes. Clientes recorrentes veem todas as galerias atribuídas em um só lugar — sem senhas por evento. Os clientes entram em /customer/login e você os gerencia em Clientes → Contas."
       },
       "clients": {
