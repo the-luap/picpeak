@@ -2938,7 +2938,8 @@
         "success": "Passwort-Reset-E-Mail gesendet",
         "error": "Passwort-Reset konnte nicht gesendet werden",
         "inactive": "Aktiviere den Kunden, bevor du einen Reset sendest."
-      }
+      },
+      "manageEvents": "Galerien verwalten"
     },
     "reactivate": {
       "button": "Reaktivieren",
@@ -2953,6 +2954,23 @@
       "confirmInFlight": "Lösche…",
       "success": "Kunde gelöscht",
       "error": "Kunde konnte nicht gelöscht werden"
+    },
+    "assignedEvents": {
+      "title": "Zugewiesene Galerien verwalten",
+      "subtitle": "Wähle jede Galerie aus, auf die dieser Kunde über sein Dashboard zugreifen können soll. Eine hier entfernte Galerie wird beim nächsten Aufruf des Kunden sofort gesperrt.",
+      "currentLabel": "Zugewiesene Galerien",
+      "empty": "Noch keine Galerien zugewiesen. Suche unten, um eine hinzuzufügen.",
+      "searchLabel": "Galerie hinzufügen",
+      "searchPlaceholder": "Nach Eventname suchen",
+      "searchHint": "Beginne zu tippen, um Galerien zu finden.",
+      "noResults": "Keine passenden Galerien.",
+      "removeAria": "{{name}} entfernen",
+      "save": "Zuweisungen speichern",
+      "saved": "Zuweisungen aktualisiert",
+      "savedDiff": "Zuweisungen aktualisiert: {{parts}}",
+      "addedN": "{{count}} hinzugefügt",
+      "removedN": "{{count}} entfernt",
+      "error": "Zuweisungen konnten nicht aktualisiert werden"
     }
   },
   "clients": {

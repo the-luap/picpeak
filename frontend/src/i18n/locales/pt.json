@@ -2971,7 +2971,8 @@
         "success": "E-mail de redefinição enviado",
         "error": "Não foi possível enviar a redefinição",
         "inactive": "Reative o cliente antes de enviar uma redefinição."
-      }
+      },
+      "manageEvents": "Gerenciar galerias"
     },
     "reactivate": {
       "button": "Reativar",
@@ -2986,6 +2987,23 @@
       "confirmInFlight": "Apagando…",
       "success": "Cliente apagado",
       "error": "Não foi possível apagar o cliente"
+    },
+    "assignedEvents": {
+      "title": "Gerenciar galerias atribuídas",
+      "subtitle": "Selecione todas as galerias às quais este cliente deve poder acessar a partir do seu painel. Remover uma galeria aqui revoga o acesso imediatamente na próxima solicitação do cliente.",
+      "currentLabel": "Galerias atribuídas",
+      "empty": "Nenhuma galeria atribuída ainda. Pesquise abaixo para adicionar uma.",
+      "searchLabel": "Adicionar uma galeria",
+      "searchPlaceholder": "Pesquisar por nome do evento",
+      "searchHint": "Comece a digitar para encontrar galerias.",
+      "noResults": "Nenhuma galeria correspondente.",
+      "removeAria": "Remover {{name}}",
+      "save": "Salvar atribuições",
+      "saved": "Atribuições atualizadas",
+      "savedDiff": "Atribuições atualizadas: {{parts}}",
+      "addedN": "{{count}} adicionada(s)",
+      "removedN": "{{count}} removida(s)",
+      "error": "Não foi possível atualizar as atribuições"
     }
   },
   "clients": {

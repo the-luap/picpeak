@@ -2938,7 +2938,8 @@
         "success": "Password reset email sent",
         "error": "Could not send password reset",
         "inactive": "Reactivate the customer before sending a reset."
-      }
+      },
+      "manageEvents": "Manage galleries"
     },
     "reactivate": {
       "button": "Reactivate",
@@ -2953,6 +2954,23 @@
       "confirmInFlight": "Erasing…",
       "success": "Customer erased",
       "error": "Could not erase customer"
+    },
+    "assignedEvents": {
+      "title": "Manage assigned galleries",
+      "subtitle": "Pick every gallery this customer should be able to access from their dashboard. Removing a gallery here revokes access immediately on the customer's next request.",
+      "currentLabel": "Assigned galleries",
+      "empty": "No galleries assigned yet. Search below to add one.",
+      "searchLabel": "Add a gallery",
+      "searchPlaceholder": "Search by event name",
+      "searchHint": "Start typing to find galleries.",
+      "noResults": "No matching galleries.",
+      "removeAria": "Remove {{name}}",
+      "save": "Save assignments",
+      "saved": "Assignments updated",
+      "savedDiff": "Assignments updated: {{parts}}",
+      "addedN": "{{count}} added",
+      "removedN": "{{count}} removed",
+      "error": "Could not update assignments"
     }
   },
   "clients": {

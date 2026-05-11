@@ -15,11 +15,12 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import {
   ArrowLeft, Mail, MapPin, Phone, Building2, Save, Trash2, AlertTriangle,
-  CheckCircle2, X, FileText, Calendar, KeyRound, ToggleLeft,
+  CheckCircle2, X, FileText, Calendar, KeyRound, ToggleLeft, Settings as SettingsIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button, Card, Input, Loading } from '../../components/common';
+import { AssignedEventsDialog } from '../../components/admin/AssignedEventsDialog';
 import {
   customerAdminService,
   type CustomerAccountDetail,
@@ -53,6 +54,11 @@ export const CustomerDetailPage: React.FC = () => {
   const [form, setForm] = useState<Partial<Pick<CustomerAccountDetail, EditableFields>>>({});
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const [confirmErase, setConfirmErase] = useState(false);
+  // Drives the "Manage galleries" modal launched from the Assigned
+  // events card. We hold open-state here (rather than inside the
+  // dialog) so the parent decides when to mount/unmount and the
+  // dialog can hard-reset its internal state per open.
+  const [assignedDialogOpen, setAssignedDialogOpen] = useState(false);
 
   // Hydrate the form from the fetched record once. We deliberately do NOT
   // re-sync on every refetch so an admin's in-progress edits aren't blown
@@ -311,12 +317,28 @@ export const CustomerDetailPage: React.FC = () => {
 
       {/* Assigned events */}
       <Card padding="lg">
-        <h2 className="text-lg font-semibold text-theme mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5" /> {t('customers.detail.eventsSection', 'Assigned events')}
-        </h2>
+        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          <h2 className="text-lg font-semibold text-theme flex items-center gap-2">
+            <Calendar className="w-5 h-5" /> {t('customers.detail.eventsSection', 'Assigned events')}
+          </h2>
+          {/* Manage galleries: opens the multi-select dialog that
+              replaces the customer's full assignment list. Disabled
+              for deactivated customers because their login is off
+              anyway — re-enable first if the admin wants to plan
+              their access. */}
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<SettingsIcon className="w-4 h-4" />}
+            onClick={() => setAssignedDialogOpen(true)}
+            disabled={!customer.isActive}
+          >
+            {t('customers.detail.manageEvents', 'Manage galleries')}
+          </Button>
+        </div>
         {customer.events.length === 0 ? (
           <p className="text-sm text-muted-theme">
-            {t('customers.detail.noEvents', 'Not assigned to any events yet. Add this customer to an event from the event form.')}
+            {t('customers.detail.noEvents', 'Not assigned to any events yet. Use "Manage galleries" to add some.')}
           </p>
         ) : (
           <ul className="divide-y" style={{ borderColor: 'var(--color-surface-border)' }}>
@@ -334,6 +356,20 @@ export const CustomerDetailPage: React.FC = () => {
           </ul>
         )}
       </Card>
+
+      <AssignedEventsDialog
+        customerId={customer.id}
+        isOpen={assignedDialogOpen}
+        initial={customer.events.map((ev) => ({
+          id: ev.id,
+          eventName: ev.eventName,
+          eventDate: ev.eventDate || null,
+        }))}
+        onClose={() => setAssignedDialogOpen(false)}
+        onSaved={() => {
+          // Parent refetch is handled by the dialog's invalidateQueries.
+        }}
+      />
 
       {/* Address + billing */}
       <Card padding="lg">
