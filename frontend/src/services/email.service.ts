@@ -18,11 +18,16 @@ export interface EmailTemplateTranslation {
 }
 
 /**
- * Categorisation tag added by migration 098. Drives the admin
- * Templates tab grouping — see EmailConfigPage. Forward-compatible:
- * unknown values fall back to the 'core' section in the UI.
+ * Top-level grouping in the admin Templates UI. Forward-compatible:
+ * unknown values fall back to the 'core' section.
  */
 export type EmailTemplateCategory = 'core' | 'customers' | 'billing' | 'quotes' | 'calendar' | string;
+
+/**
+ * Second-level grouping inside 'core' (which is busy enough to deserve
+ * its own sub-headers). Other categories ignore this field.
+ */
+export type EmailTemplateSubcategory = 'gallery' | 'admin' | 'backup' | 'system' | string;
 
 export interface EmailTemplate {
   id: number;
@@ -31,6 +36,12 @@ export interface EmailTemplate {
   translations: Record<string, EmailTemplateTranslation>;
   /** Display group (migration 098). Defaults to 'core' if absent. */
   category?: EmailTemplateCategory;
+  /**
+   * Second-level group inside `core`. Migration 098 backfill assigns
+   * one of 'gallery' | 'admin' | 'backup' | 'system'; NULL for
+   * templates outside `core`.
+   */
+  subcategory?: EmailTemplateSubcategory | null;
   /**
    * Name of the feature flag whose `false` state should mark this
    * template as "Feature off" in the admin UI. `null` = always

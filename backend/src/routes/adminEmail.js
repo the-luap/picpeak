@@ -320,6 +320,7 @@ router.get('/templates', adminAuth, requirePermission('email.view'), async (req,
         // 'core' / null fall-backs so the frontend keeps working
         // without a hard dependency on the new columns.
         category: template.category || 'core',
+        subcategory: template.subcategory || null,
         feature_flag: template.feature_flag || null,
         updated_at: template.updated_at,
       });
@@ -352,6 +353,7 @@ router.get('/templates/:key', adminAuth, requirePermission('email.view'), async 
       translations,
       // See list endpoint for the rationale on the || fallbacks.
       category: template.category || 'core',
+      subcategory: template.subcategory || null,
       feature_flag: template.feature_flag || null,
       updated_at: template.updated_at,
     });
