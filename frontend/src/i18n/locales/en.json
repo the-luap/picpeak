@@ -1880,7 +1880,23 @@
     "mutedTextColor": "Footer text",
     "mutedTextColorHelp": "Footer text and copyright line. Maps to Branding → Secondary text.",
     "buttonTextColor": "Button text",
-    "buttonTextColorHelp": "Text colour on filled buttons. Should contrast cleanly against the Primary colour. No Branding equivalent — usually white."
+    "buttonTextColorHelp": "Text colour on filled buttons. Should contrast cleanly against the Primary colour. No Branding equivalent — usually white.",
+    "categories": {
+      "core": "Core",
+      "customers": "Customers",
+      "calendar": "Calendar",
+      "quotes": "Quotes",
+      "billing": "Billing"
+    },
+    "featureOff": "Feature off",
+    "featureOffTooltip": "The feature this template belongs to is currently disabled. You can still edit the template — it will be used once the feature is re-enabled.",
+    "subcategories": {
+      "gallery": "Galleries",
+      "admin": "Admin accounts",
+      "backup": "Backup & restore",
+      "system": "System updates",
+      "other": "Other"
+    }
   },
   "cms": {
     "title": "CMS Pages",

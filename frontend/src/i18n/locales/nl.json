@@ -1880,7 +1880,23 @@
     "mutedTextColor": "Voetteksttekst",
     "mutedTextColorHelp": "Voetteksttekst en copyrightregel. Komt overeen met Huisstijl → Secundaire tekst.",
     "buttonTextColor": "Knoptekst",
-    "buttonTextColorHelp": "Tekstkleur op gevulde knoppen. Moet goed contrasteren met de primaire kleur. Doorgaans wit."
+    "buttonTextColorHelp": "Tekstkleur op gevulde knoppen. Moet goed contrasteren met de primaire kleur. Doorgaans wit.",
+    "categories": {
+      "core": "Kern",
+      "customers": "Klanten",
+      "calendar": "Agenda",
+      "quotes": "Offertes",
+      "billing": "Facturatie"
+    },
+    "featureOff": "Functie uit",
+    "featureOffTooltip": "De functie waar deze sjabloon bij hoort, is momenteel uitgeschakeld. U kunt de sjabloon nog steeds bewerken — deze wordt gebruikt zodra de functie weer is ingeschakeld.",
+    "subcategories": {
+      "gallery": "Galerijen",
+      "admin": "Adminaccounts",
+      "backup": "Back-up & herstel",
+      "system": "Systeemupdates",
+      "other": "Overige"
+    }
   },
   "cms": {
     "title": "CMS-pagina's",
