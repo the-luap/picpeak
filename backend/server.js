@@ -593,11 +593,19 @@ app.use('/api/admin/users', require('./src/routes/adminUsers'));
 // Putting the global flag in the kill-switch role was a mistake — a
 // stray click in Settings → Features would lock every paying
 // customer out at once. PR-revert moved the gate back to per-record.
-app.use('/api/admin/customers', require('./src/routes/adminCustomers'));
+//
+// `noStoreCache` belt-and-braces the cache-control story for both
+// surfaces: any response — 200, 4xx, 5xx — carries `Cache-Control:
+// no-store` so a transient error (the now-reverted #458 410, a
+// permission flip mid-session, a backend restart) can't get pinned
+// in browser or intermediate caches and outlive its cause. See the
+// PR #458 → #470 history in the middleware file for context.
+const { noStoreCache } = require('./src/middleware/noStoreCache');
+app.use('/api/admin/customers', noStoreCache, require('./src/routes/adminCustomers'));
 // Customer-side surface (#354). Strictly separate from /api/admin/* —
 // distinct token type, distinct cookie, distinct middleware.
-app.use('/api/customer/auth', require('./src/routes/customerAuth'));
-app.use('/api/customer', require('./src/routes/customer'));
+app.use('/api/customer/auth', noStoreCache, require('./src/routes/customerAuth'));
+app.use('/api/customer', noStoreCache, require('./src/routes/customer'));
 app.use('/api/admin/event-types', require('./src/routes/adminEventTypes'));
 app.use('/api/admin/api-tokens', require('./src/routes/adminApiTokens'));
 app.use('/api/admin/webhooks', require('./src/routes/adminWebhooks'));
