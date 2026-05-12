@@ -5,6 +5,27 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.48.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.2-beta.0...v3.48.0-beta.0) (2026-05-12)
+
+
+### Features
+
+* **customers:** "Manage galleries" dialog on customer detail page ([6d1af7a](https://github.com/the-luap/picpeak/commit/6d1af7a0113b6e3de44ab9bf2645591f4d6d68b4))
+* **customers:** "Manage galleries" dialog with immediate access revocation + section reorder + portal-flag revert ([9be9296](https://github.com/the-luap/picpeak/commit/9be9296eb58d7733d0b5f8ce6eb48e9832f65e7c))
+* **customers:** email customer when admin adds new gallery access ([c02c947](https://github.com/the-luap/picpeak/commit/c02c947463011de80d9af3e947fc6d1caadc3313))
+* **customers:** replace-assignments endpoint for a single customer ([5377b88](https://github.com/the-luap/picpeak/commit/5377b88e0e0c27ecde18c2a366fb7d06f279f2ec))
+* **gallery:** revoke customer-minted JWTs when assignment is removed ([55a5846](https://github.com/the-luap/picpeak/commit/55a5846f6f802a1bc1910bb046325fe272a1b584))
+
+
+### Bug Fixes
+
+* **customer:** don't log customer out on transient session-refresh errors ([9e418c7](https://github.com/the-luap/picpeak/commit/9e418c759ce508adf6025e0740468d8229938ffe))
+
+
+### Reverts
+
+* **customer-portal:** make the global flag UI-only, drop the kill-switch middleware ([3f44193](https://github.com/the-luap/picpeak/commit/3f4419356a4f30509052a6d00b71485af2c17f85))
+
 ## [3.47.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.1-beta.0...v3.47.2-beta.0) (2026-05-11)
 
 
