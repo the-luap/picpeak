@@ -2892,7 +2892,8 @@
         "success": "E-mail de réinitialisation envoyé",
         "error": "Impossible d'envoyer la réinitialisation",
         "inactive": "Réactivez le client avant d'envoyer une réinitialisation."
-      }
+      },
+      "manageEvents": "Gérer les galeries"
     },
     "reactivate": {
       "button": "Réactiver",
@@ -2907,6 +2908,24 @@
       "confirmInFlight": "Effacement…",
       "success": "Client effacé",
       "error": "Impossible d'effacer le client"
+    },
+    "assignedEvents": {
+      "title": "Gérer les galeries assignées",
+      "subtitle": "Sélectionnez toutes les galeries auxquelles ce client doit pouvoir accéder depuis son tableau de bord. Retirer une galerie ici révoque l'accès immédiatement à la prochaine requête du client.",
+      "currentLabel": "Galeries assignées",
+      "empty": "Aucune galerie assignée pour le moment. Recherchez ci-dessous pour en ajouter une.",
+      "searchLabel": "Ajouter une galerie",
+      "searchPlaceholder": "Rechercher par nom d'événement",
+      "searchHint": "Commencez à taper pour trouver des galeries.",
+      "noResults": "Aucune galerie correspondante.",
+      "removeAria": "Retirer {{name}}",
+      "save": "Enregistrer les assignations",
+      "saved": "Assignations mises à jour",
+      "savedDiff": "Assignations mises à jour : {{parts}}",
+      "addedN": "{{count}} ajoutée(s)",
+      "removedN": "{{count}} retirée(s)",
+      "error": "Impossible de mettre à jour les assignations",
+      "clearSearchAria": "Effacer la recherche"
     }
   },
   "clients": {

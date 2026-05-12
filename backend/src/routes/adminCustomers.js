@@ -310,4 +310,35 @@ router.post('/:id/password-reset', [
   successResponse(res, { email: result.email, expiresAt: result.expiresAt });
 }));
 
+/**
+ * PUT /api/admin/customers/:id/events — replace the customer's full
+ * event assignment list. Backs the "Manage galleries" dialog on the
+ * customer detail page. Body is `{ event_ids: number[] }`. Empty
+ * array clears every assignment.
+ *
+ * Access revocation is implicit: gallery middleware checks for a
+ * live event_customer_assignments row whenever it decodes a
+ * customer-minted gallery JWT, so removing an assignment here
+ * immediately blocks the customer's next gallery request without
+ * needing to enumerate + revoke any active tokens. Permission tier
+ * is customers.create (same as invite + deactivate) — managing
+ * which galleries a customer can see is a write-class operation
+ * on the customer record.
+ */
+router.put('/:id/events', [
+  adminAuth,
+  requirePermission('customers.create'),
+  param('id').isInt({ min: 1 }),
+  body('event_ids').isArray(),
+  body('event_ids.*').isInt({ min: 1 }),
+], handleAsync(async (req, res) => {
+  validateRequest(req);
+  const result = await customerAccountsService.setAssignmentsForCustomer(
+    parseInt(req.params.id, 10),
+    req.body.event_ids,
+    req.admin.id,
+  );
+  successResponse(res, result);
+}));
+
 module.exports = router;

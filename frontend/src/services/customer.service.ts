@@ -126,6 +126,23 @@ export const customerService = {
     }
   },
 
+  /**
+   * Resolve the current customer session.
+   *
+   * Return contract:
+   *   - object  → fresh customer + features + branding from the server.
+   *   - null    → backend says we are NOT authenticated (401). The
+   *               caller should clear local state and bounce to login.
+   *   - throws  → any other error (network blip, 5xx, timeout, 410
+   *               from a feature-flag flip mid-flight). The caller
+   *               should KEEP whatever state it has — punishing the
+   *               user with a logout for a transient failure is the
+   *               wrong default. Previously this catch swallowed
+   *               everything and returned null, which logged the
+   *               customer out on the slightest server hiccup
+   *               (including the brief window while the admin saves
+   *               an unrelated change like gallery assignments).
+   */
   async session(): Promise<{
     customer: CustomerProfile;
     features: { calendar: boolean; quotes: boolean; bills: boolean };
@@ -142,8 +159,14 @@ export const customerService = {
         features: response.data.features || { calendar: false, quotes: false, bills: false },
         branding: response.data.branding || { showLogo: true, showCompanyName: true },
       };
-    } catch {
-      return null;
+    } catch (error: any) {
+      // Only treat an explicit 401 as "session is gone". Anything else
+      // (network failure, server 500, etc.) is a transient problem
+      // and should not log the customer out.
+      if (error?.response?.status === 401) {
+        return null;
+      }
+      throw error;
     }
   },
 

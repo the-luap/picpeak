@@ -160,6 +160,26 @@ export const customerAdminService = {
   },
 
   /**
+   * Replace the full set of events this customer is assigned to.
+   * Empty array clears every assignment. The backend rejects any
+   * archived event ids it sees, so the response { added, removed }
+   * counts may be lower than the input length if the admin selected
+   * something stale — surface the numbers in a toast.
+   *
+   * Access revocation: gallery middleware re-checks the assignment
+   * row on every customer-minted JWT, so removing an event here
+   * immediately blocks the customer's next request to that gallery.
+   * No separate token-blacklist call needed.
+   */
+  async setEvents(id: number, eventIds: number[]): Promise<{ added: number; removed: number }> {
+    const response = await api.put<{ data: { added: number; removed: number } } | { added: number; removed: number }>(
+      `/admin/customers/${id}/events`,
+      { event_ids: eventIds },
+    );
+    return ((response.data as any).data ?? response.data) as { added: number; removed: number };
+  },
+
+  /**
    * Invite a customer. `prefill` is an optional set of profile fields the
    * admin can pre-populate on the invitation row — the customer sees them
    * pre-filled (and editable) on the accept form. Saves the customer typing

@@ -48,15 +48,20 @@ const TOKEN_TTL_SECONDS = 24 * 60 * 60; // mirrors admin tokens
 
 // ---- login -------------------------------------------------------------
 
-// Flag-gate note: this route IS now gated by the customerPortal feature
-// flag via the requireCustomerPortalEnabled middleware mounted in
-// server.js (`app.use('/api/customer/auth', requireCustomerPortalEnabled, …)`).
-// When the admin flips the toggle off in Settings → Features, every
-// customer-side endpoint — including login — returns 410. The previous
-// design left login reachable while the rest of the surface was gated;
-// that was confusing and asymmetric. Single source of truth wins.
-// To lock out a specific customer without disabling the feature for
-// everyone, deactivate the account (customer_accounts.is_active = false).
+// The customerPortal feature flag deliberately does NOT gate this route.
+// Flipping the master toggle off in Settings → Features hides the
+// admin-side Clients section (sidebar entry, /admin/clients pages) but
+// must not revoke access for customers who already accepted an
+// invitation — that would mean a stray click in the Features tab
+// locks every paying customer out at once.
+//
+// To revoke access at the customer level, use the per-record tools:
+//   - "Deactivate" on the customer detail page → sets
+//     customer_accounts.is_active = false AND bumps password_changed_at,
+//     which customerAuth rejects below + on every protected route.
+//   - "Manage galleries" dialog → removes event_customer_assignments
+//     rows, which verifyGalleryAccess re-checks on customer-minted
+//     gallery JWTs (instant per-gallery revocation).
 router.post('/login', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('password').isString().notEmpty(),

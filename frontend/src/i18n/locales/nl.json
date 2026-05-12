@@ -2938,7 +2938,8 @@
         "success": "Wachtwoord-resetmail verzonden",
         "error": "Wachtwoordreset kon niet worden verzonden",
         "inactive": "Reactiveer de klant voordat je een reset verstuurt."
-      }
+      },
+      "manageEvents": "Galerijen beheren"
     },
     "reactivate": {
       "button": "Heractiveren",
@@ -2953,6 +2954,24 @@
       "confirmInFlight": "Bezig met wissen…",
       "success": "Klant gewist",
       "error": "Klant kon niet worden gewist"
+    },
+    "assignedEvents": {
+      "title": "Toegewezen galerijen beheren",
+      "subtitle": "Selecteer elke galerij waartoe deze klant toegang moet hebben vanaf zijn dashboard. Een hier verwijderde galerij wordt bij het volgende verzoek van de klant direct geblokkeerd.",
+      "currentLabel": "Toegewezen galerijen",
+      "empty": "Nog geen galerijen toegewezen. Zoek hieronder om er een toe te voegen.",
+      "searchLabel": "Galerij toevoegen",
+      "searchPlaceholder": "Zoeken op evenementnaam",
+      "searchHint": "Begin met typen om galerijen te vinden.",
+      "noResults": "Geen overeenkomende galerijen.",
+      "removeAria": "{{name}} verwijderen",
+      "save": "Toewijzingen opslaan",
+      "saved": "Toewijzingen bijgewerkt",
+      "savedDiff": "Toewijzingen bijgewerkt: {{parts}}",
+      "addedN": "{{count}} toegevoegd",
+      "removedN": "{{count}} verwijderd",
+      "error": "Toewijzingen konden niet worden bijgewerkt",
+      "clearSearchAria": "Zoekopdracht wissen"
     }
   },
   "clients": {
