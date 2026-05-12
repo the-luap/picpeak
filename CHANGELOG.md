@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.48.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.48.0-beta.0...v3.48.1-beta.0) (2026-05-12)
+
+
+### Bug Fixes
+
+* **customer-routes:** Cache-Control: no-store on customer endpoints ([#470](https://github.com/the-luap/picpeak/issues/470)) ([3122dd0](https://github.com/the-luap/picpeak/commit/3122dd08a8bc08deb937236aaa3f750119a979b9))
+
 ## [3.48.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.47.2-beta.0...v3.48.0-beta.0) (2026-05-12)
 
 
