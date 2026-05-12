@@ -199,3 +199,141 @@ describe('customerHasAccessToEvent', () => {
     expect(result).toBe(false);
   });
 });
+
+// ---- setAssignmentsForCustomer ----------------------------------------
+//
+// The inverse of setAssignmentsForEvent: takes one customer + a list of
+// event ids and reconciles the junction table. Powers the "Manage
+// galleries" dialog on the customer detail page. The
+// `verifyGalleryAccess` middleware re-checks this junction on every
+// customer-minted JWT, so getting the diff math right here is the
+// access-control story for the whole feature (#470).
+//
+// notifyCustomerOfNewAssignments() runs as fire-and-forget after the
+// transactional work and queues a follow-up email. The tests below
+// configure mocks for the calls it makes (load customer row, load
+// event rows) so it can resolve cleanly without crashing the assert
+// path — we don't assert on its body here; the email pipeline is a
+// separate seam.
+
+describe('setAssignmentsForCustomer', () => {
+  // The notifier issues two more db() calls after the writer returns:
+  // SELECT customer_accounts and SELECT events. Provide cheap chains
+  // that resolve to "no customer / no events" so it early-returns
+  // without firing queueEmail. Returns a small helper so each test
+  // can append it after its own writer chains.
+  function appendNotifierMocks() {
+    db.mockImplementationOnce(() => chain({ first: null }));   // customer lookup -> not found
+    db.mockImplementationOnce(() => chain({ rows: [] }));       // events lookup -> empty
+  }
+
+  it('inserts only events that are missing and removes those not in the wanted list', async () => {
+    const svc = require('../services/customerAccountsService');
+    // existing assignments: customer is on events 10 and 20.
+    const existingChain = chain({ rows: [
+      { id: 500, event_id: 10 },
+      { id: 501, event_id: 20 },
+    ] });
+    const deleteChain = chain({ del: 1 });
+    // Validity check returns 30 only — event 99 is filtered out
+    // (archived or missing).
+    const validityChain = chain({ pluck: [30] });
+    const insertChain = chain({ insert: [] });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => deleteChain);
+    db.mockImplementationOnce(() => validityChain);
+    db.mockImplementationOnce(() => insertChain);
+    appendNotifierMocks();
+
+    const summary = await svc.setAssignmentsForCustomer(7, [20, 30, 99], 12);
+
+    // Remove event 10 (not in wanted).
+    expect(deleteChain.whereIn).toHaveBeenCalledWith('id', [500]);
+    // Insert ONLY event 30 — event 99 was dropped by the validity filter.
+    expect(insertChain.insert).toHaveBeenCalledWith([{
+      event_id: 30,
+      customer_account_id: 7,
+      assigned_by_admin_id: 12,
+      assigned_at: expect.any(Date),
+    }]);
+    expect(summary).toEqual({
+      added: 2,           // 30 and 99 were both attempted
+      removed: 1,         // event 10
+      addedEventIds: [30], // only event 30 actually landed in the DB
+    });
+  });
+
+  it('silently filters archived/missing event ids out of the insert', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [] });
+    // Three candidates; validity check pulls back zero -> all three are
+    // archived or missing. Service should log a warning and skip the
+    // insert entirely (rows.length === 0 short-circuits the .insert call).
+    const validityChain = chain({ pluck: [] });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => validityChain);
+    appendNotifierMocks();
+
+    const summary = await svc.setAssignmentsForCustomer(7, [99, 100, 101], 12);
+
+    expect(summary).toEqual({
+      added: 3,            // attempted three
+      removed: 0,
+      addedEventIds: [],   // none landed
+    });
+  });
+
+  it('clears all assignments when wanted list is empty', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [
+      { id: 500, event_id: 10 },
+      { id: 501, event_id: 20 },
+    ] });
+    const deleteChain = chain({ del: 2 });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => deleteChain);
+    appendNotifierMocks();
+
+    const summary = await svc.setAssignmentsForCustomer(7, [], 12);
+    expect(deleteChain.whereIn).toHaveBeenCalledWith('id', [500, 501]);
+    expect(summary).toEqual({ added: 0, removed: 2, addedEventIds: [] });
+  });
+
+  it('is a no-op when wanted equals existing', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [
+      { id: 500, event_id: 10 },
+    ] });
+    db.mockImplementationOnce(() => existingChain);
+    appendNotifierMocks();
+
+    const summary = await svc.setAssignmentsForCustomer(7, [10], 12);
+    expect(summary).toEqual({ added: 0, removed: 0, addedEventIds: [] });
+  });
+
+  it('coerces non-integer / negative event ids out of the wanted set', async () => {
+    const svc = require('../services/customerAccountsService');
+    const existingChain = chain({ rows: [] });
+    const validityChain = chain({ pluck: [10] });
+    const insertChain = chain({ insert: [] });
+
+    db.mockImplementationOnce(() => existingChain);
+    db.mockImplementationOnce(() => validityChain);
+    db.mockImplementationOnce(() => insertChain);
+    appendNotifierMocks();
+
+    // 'abc' isn't a number, -5 is negative, 0 is invalid, 10.5 is fractional.
+    // Only the integer 10 should survive the Number()/Number.isFinite()
+    // filter. 10.5 coerces to a finite 10.5 (Number.isFinite returns true)
+    // but the validity check only returns the integer 10 so we end up
+    // inserting 10. Asserting on the eventual insert payload is the
+    // cleanest contract.
+    await svc.setAssignmentsForCustomer(7, [10, 'abc', -5, 0, '10'], 12);
+    const insertedRows = insertChain.insert.mock.calls[0][0];
+    const insertedEventIds = insertedRows.map((r) => r.event_id);
+    expect(insertedEventIds).toEqual([10]);
+  });
+});
