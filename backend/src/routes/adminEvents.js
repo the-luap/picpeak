@@ -400,6 +400,10 @@ router.post('/', adminAuth, requirePermission('events.create'), [
   //   off     → suppress entirely for this event
   body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
   body('promo_markdown').optional({ nullable: true }).isString(),
+  // Per-event opt-in for using hero photo as the social-share preview
+  // image (#474). When false (default), galleryOgService falls back to
+  // the brand logo for og:image / Twitter Card.
+  body('og_image_share_enabled').optional().isBoolean(),
   // Customer accounts assigned to this event (#354). Optional array of
   // customer_accounts.id — many-to-many via event_customer_assignments.
   body('customer_account_ids').optional().isArray(),
@@ -663,7 +667,11 @@ router.post('/', adminAuth, requirePermission('events.create'), [
       ...(client_access_enabled && client_password ? {
         client_password_hash: await bcrypt.hash(client_password, getBcryptRounds()),
         client_share_token: crypto.randomBytes(32).toString('hex')
-      } : {})
+      } : {}),
+      // Per-event opt-in for hero-photo OG share image (#474). Defaults
+      // false on create — admin opts in from the event detail page once
+      // they've picked a hero they're comfortable surfacing publicly.
+      og_image_share_enabled: formatBoolean(req.body.og_image_share_enabled === true),
     }).returning('id');
     
     // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
@@ -1156,6 +1164,10 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
   //   off     → suppress entirely for this event
   body('promo_mode').optional().isIn(['inherit', 'custom', 'off']),
   body('promo_markdown').optional({ nullable: true }).isString(),
+  // Per-event opt-in for using hero photo as the social-share preview
+  // image (#474). When false (default), galleryOgService falls back to
+  // the brand logo for og:image / Twitter Card.
+  body('og_image_share_enabled').optional().isBoolean(),
   // Customer accounts assigned to this event (#354). Optional array of
   // customer_accounts.id — many-to-many via event_customer_assignments.
   body('customer_account_ids').optional().isArray(),
@@ -1315,6 +1327,12 @@ router.put('/:id', adminAuth, requirePermission('events.edit'), requireEventOwne
     // Format hero logo settings if provided
     if (Object.prototype.hasOwnProperty.call(updates, 'hero_logo_visible')) {
       updates.hero_logo_visible = formatBoolean(updates.hero_logo_visible);
+    }
+
+    // Per-event opt-in for hero-photo OG share image (#474). Coerce so
+    // SQLite stores 0/1 and Postgres stores boolean true/false.
+    if (Object.prototype.hasOwnProperty.call(updates, 'og_image_share_enabled')) {
+      updates.og_image_share_enabled = formatBoolean(updates.og_image_share_enabled === true);
     }
 
     // Per-event promotional override (#440). Normalize promo_markdown to

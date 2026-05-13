@@ -650,6 +650,11 @@
       "mode_off": "Off (hide for this event)",
       "placeholder": "Markdown content (e.g. **Special offer:** [book your next session](https://example.com))",
       "preview": "Preview"
+    },
+    "ogShare": {
+      "title": "Use hero photo as social-share preview",
+      "help": "When this gallery URL is shared on WhatsApp, Facebook, Slack, etc., the link preview will show the hero photo above. The thumbnail is fetched unauthenticated by link-preview crawlers — anyone with the URL effectively makes this image public. Off by default; pick a hero you are comfortable surfacing publicly before enabling.",
+      "heroRequired": "Pick a hero photo above first — this option uses it as the WhatsApp / Facebook / Slack preview image."
     }
   },
   "settings": {

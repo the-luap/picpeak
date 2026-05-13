@@ -650,6 +650,11 @@
       "mode_off": "Uit (verbergen voor dit evenement)",
       "placeholder": "Markdown-inhoud (bijv. **Aanbieding:** [boek je volgende sessie](https://example.com))",
       "preview": "Voorbeeld"
+    },
+    "ogShare": {
+      "title": "Hero-foto gebruiken als social-share-voorbeeld",
+      "help": "Wanneer deze galerij-URL wordt gedeeld op WhatsApp, Facebook, Slack enz., toont de link-preview de bovenstaande hero-foto. De thumbnail wordt niet-geauthenticeerd opgehaald door link-preview-crawlers — wie de URL deelt maakt deze afbeelding daarmee in feite openbaar. Standaard uit; kies eerst een hero die je bewust openbaar wilt tonen voordat je dit inschakelt.",
+      "heroRequired": "Kies eerst hierboven een hero-foto — deze optie gebruikt die als WhatsApp- / Facebook- / Slack-voorbeeldafbeelding."
     }
   },
   "settings": {

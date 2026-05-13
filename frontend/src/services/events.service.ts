@@ -66,6 +66,8 @@ interface UpdateEventData {
   external_path?: string | null;
   photo_cap?: number | null;
   default_photo_sort?: string;
+  // Per-event opt-in for hero photo as social-share preview (#474).
+  og_image_share_enabled?: boolean;
   // Customer accounts (#354). Same semantics as on CreateEventData;
   // omit the field to leave assignments untouched, send [] to clear.
   customer_account_ids?: number[];

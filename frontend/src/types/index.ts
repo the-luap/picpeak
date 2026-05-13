@@ -47,6 +47,12 @@ export interface Event {
   hero_logo_size?: 'small' | 'medium' | 'large' | 'xlarge';
   hero_logo_position?: 'top' | 'center' | 'bottom';
   hero_logo_url?: string | null;
+  // Per-event opt-in for using the hero photo as the social-share
+  // preview image (#474). When false, og:image falls back to the
+  // brand logo. Defaults false on existing rows so no admin's hero
+  // photo gets surfaced via WhatsApp share until they consciously
+  // flip it on.
+  og_image_share_enabled?: boolean;
   // Header style settings (decoupled from layout)
   header_style?: 'hero' | 'standard' | 'minimal' | 'none';
   hero_divider_style?: 'wave' | 'straight' | 'angle' | 'curve' | 'none';
