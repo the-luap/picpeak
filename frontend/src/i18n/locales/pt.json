@@ -666,6 +666,11 @@
       "mode_off": "Desligado (ocultar neste evento)",
       "placeholder": "Conteúdo em Markdown (ex.: **Oferta especial:** [agende sua próxima sessão](https://example.com))",
       "preview": "Pré-visualização"
+    },
+    "ogShare": {
+      "title": "Usar a foto principal como visualização ao compartilhar",
+      "help": "Quando o URL desta galeria é compartilhado no WhatsApp, Facebook, Slack etc., a pré-visualização do link mostrará a foto principal acima. A miniatura é obtida sem autenticação pelos rastreadores de pré-visualização — quem compartilha o URL torna esta imagem efetivamente pública. Desativado por padrão; escolha uma foto principal que você esteja confortável em expor publicamente antes de ativar.",
+      "heroRequired": "Escolha primeiro uma foto principal acima — esta opção a usa como imagem de pré-visualização no WhatsApp / Facebook / Slack."
     }
   },
   "settings": {

@@ -664,6 +664,11 @@
       "mode_off": "Désactivé (masquer pour cet événement)",
       "placeholder": "Contenu Markdown (ex. **Offre :** [réservez votre prochaine séance](https://example.com))",
       "preview": "Aperçu"
+    },
+    "ogShare": {
+      "title": "Utiliser la photo principale comme aperçu de partage social",
+      "help": "Quand l’URL de cette galerie est partagée sur WhatsApp, Facebook, Slack, etc., l’aperçu du lien affichera la photo principale ci-dessus. La vignette est récupérée sans authentification par les robots d’aperçu — toute personne partageant l’URL rend cette image effectivement publique. Désactivé par défaut ; choisissez une photo principale que vous êtes prêt à exposer publiquement avant d’activer.",
+      "heroRequired": "Choisissez d’abord une photo principale ci-dessus — cette option l’utilise comme image d’aperçu sur WhatsApp / Facebook / Slack."
     }
   },
   "settings": {

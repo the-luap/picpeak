@@ -1011,6 +1011,11 @@
       "mode_off": "Aus (für dieses Event ausblenden)",
       "placeholder": "Markdown-Inhalt (z. B. **Aktion:** [jetzt Termin buchen](https://example.com))",
       "preview": "Vorschau"
+    },
+    "ogShare": {
+      "title": "Heldenbild als Vorschau für geteilte Links verwenden",
+      "help": "Beim Teilen der Galerie-URL auf WhatsApp, Facebook, Slack usw. wird das oben gewählte Heldenbild als Link-Vorschau angezeigt. Das Thumbnail wird von Link-Preview-Crawlern ohne Authentifizierung abgerufen — wer die URL teilt, macht damit faktisch dieses Bild öffentlich. Standardmäßig aus; wähle erst ein Heldenbild, das du bewusst öffentlich zeigen möchtest, bevor du diese Option aktivierst.",
+      "heroRequired": "Wähle zuerst oben ein Heldenbild — diese Option verwendet es als WhatsApp- / Facebook- / Slack-Vorschaubild."
     }
   },
   "settings": {

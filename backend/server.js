@@ -503,8 +503,16 @@ if (process.env.NODE_ENV === 'development') {
 // Slack, Facebook, etc.) don't execute JS, so the SPA's client-side meta tags
 // never reach them. nginx routes UA-detected crawlers from /gallery/:slug to
 // here; humans still get the SPA via try_files.
-const { isSocialCrawler, handleGalleryOgRequest } = require('./src/services/galleryOgService');
+const {
+  isSocialCrawler,
+  handleGalleryOgRequest,
+  handleGalleryOgCover,
+} = require('./src/services/galleryOgService');
 app.get('/og/gallery/:slug', handleGalleryOgRequest);
+// Public hero-photo cover served as og:image when the admin has flipped
+// events.og_image_share_enabled (#474). Unauthenticated by design;
+// returns 404 unless the opt-in is on AND a hero_photo_id is set.
+app.get('/og/gallery/:slug/cover', handleGalleryOgCover);
 
 // robots.txt endpoint (dynamic, served from DB settings)
 const { generateRobotsTxt } = require('./src/services/robotsTxtService');

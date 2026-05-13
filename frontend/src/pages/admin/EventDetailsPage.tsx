@@ -295,6 +295,8 @@ export const EventDetailsPage: React.FC = () => {
     // the GET /admin/events/:id response and sent back as a flat id
     // array on save.
     customer_accounts: Array<{ id: number; email: string; displayName: string | null }>;
+    // Per-event opt-in for hero photo as social-share preview (#474).
+    og_image_share_enabled: boolean;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -337,6 +339,10 @@ export const EventDetailsPage: React.FC = () => {
     promo_markdown: '',
     // Customer accounts (#354) — hydrated from event response.
     customer_accounts: [],
+    // Per-event social-share opt-in (#474). Default false everywhere
+    // so a freshly opened editor never displays "on" against the saved
+    // (off) state.
+    og_image_share_enabled: false,
   });
   const [feedbackSettings, setFeedbackSettings] = useState<FeedbackSettingsType>({
     feedback_enabled: false,
@@ -600,6 +606,10 @@ export const EventDetailsPage: React.FC = () => {
       // the picker's shape.
       customer_accounts: ((event as { customer_accounts?: Array<{ id: number; email: string; display_name?: string | null }> }).customer_accounts || [])
         .map((c) => ({ id: c.id, email: c.email, displayName: c.display_name ?? null })),
+      // Per-event social-share opt-in (#474). Coerce explicitly so
+      // SQLite's 0/1 and Postgres's true/false both render the switch
+      // in the right state on first paint.
+      og_image_share_enabled: event.og_image_share_enabled === true,
     });
 
     setShowNewPassword(false);
@@ -764,6 +774,10 @@ export const EventDetailsPage: React.FC = () => {
     if (editForm.hero_photo_id !== undefined) {
       updateData.hero_photo_id = editForm.hero_photo_id;
     }
+    // Per-event hero-photo OG share opt-in (#474). Always send the
+    // current state — the backend writes through formatBoolean either
+    // way, so an explicit save can flip the value back to false.
+    updateData.og_image_share_enabled = editForm.og_image_share_enabled;
     updateData.source_mode = editForm.source_mode;
     updateData.external_path = editForm.source_mode === 'reference'
       ? externalPathToSave
@@ -1172,6 +1186,35 @@ export const EventDetailsPage: React.FC = () => {
                   onSelect={(photoId) => setEditForm(prev => ({ ...prev, hero_photo_id: photoId }))}
                   isEditing={isEditing}
                 />
+
+                {/* Per-event social-share opt-in (#474). Toggle is
+                    disabled when no hero photo is picked — there's
+                    nothing to surface as the cover. The help text
+                    deliberately spells out the public-by-design
+                    consequence so an admin doesn't flip this on for
+                    a sensitive gallery without realising what they're
+                    sharing with link-preview crawlers. */}
+                <div className="ml-6 mt-3">
+                  <label className={`flex items-start gap-2 cursor-pointer ${editForm.hero_photo_id ? '' : 'opacity-60 cursor-not-allowed'}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                      checked={editForm.og_image_share_enabled === true}
+                      disabled={!editForm.hero_photo_id}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, og_image_share_enabled: e.target.checked }))}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                        {t('events.ogShare.title', 'Use hero photo as social-share preview')}
+                      </span>
+                      <span className="block text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">
+                        {editForm.hero_photo_id
+                          ? t('events.ogShare.help', 'When this gallery URL is shared on WhatsApp, Facebook, Slack, etc., the link preview will show the hero photo above. The thumbnail is fetched unauthenticated by link-preview crawlers — anyone with the URL effectively makes this image public. Off by default; pick a hero you are comfortable surfacing publicly before enabling.')
+                          : t('events.ogShare.heroRequired', 'Pick a hero photo above first — this option uses it as the WhatsApp / Facebook / Slack preview image.')}
+                      </span>
+                    </span>
+                  </label>
+                </div>
 
                 {/* Hero Image Focal Point Picker (#162) */}
                 {editForm.hero_photo_id && (() => {
