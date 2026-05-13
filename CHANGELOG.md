@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.1-beta.0...v3.49.2-beta.0) (2026-05-13)
+
+
+### Bug Fixes
+
+* **ci:** pin TRIVY_PLATFORM per matrix arch (post-[#477](https://github.com/the-luap/picpeak/issues/477) follow-up) ([6750f5d](https://github.com/the-luap/picpeak/commit/6750f5d3b06f6312629e81c4c84100c572746b69))
+* **ci:** pin TRIVY_PLATFORM per matrix arch (post-[#477](https://github.com/the-luap/picpeak/issues/477) follow-up) ([c3256dc](https://github.com/the-luap/picpeak/commit/c3256dc6bf49a2352dfe38b804d757683bb3ac22))
+
 ## [3.49.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.0-beta.0...v3.49.1-beta.0) (2026-05-13)
 
 
