@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.48.1-beta.0...v3.49.0-beta.0) (2026-05-13)
+
+
+### Features
+
+* **og:** per-event opt-in to use hero photo as social-share preview ([#474](https://github.com/the-luap/picpeak/issues/474)) ([d856340](https://github.com/the-luap/picpeak/commit/d856340f0d230ad26539ba1088f739f03aaafc13))
+* **og:** per-event opt-in to use hero photo as social-share preview ([#474](https://github.com/the-luap/picpeak/issues/474)) ([0bc7e2a](https://github.com/the-luap/picpeak/commit/0bc7e2af171d1a4c6e91ba541d293b90c17c111b))
+
 ## [3.48.1-beta.0](https://github.com/the-luap/picpeak/compare/v3.48.0-beta.0...v3.48.1-beta.0) (2026-05-12)
 
 
