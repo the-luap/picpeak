@@ -172,7 +172,7 @@ jobs:
     # audit pass first so the next beta build doesn't surprise red.
     - name: Run Trivy vulnerability scanner (per-arch, by digest)
       if: steps.push-decision.outputs.push == 'true'
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}@${{ steps.build.outputs.digest }}
         format: 'sarif'
@@ -378,7 +378,7 @@ jobs:
     # SARIF filename + category change.
     - name: Run Trivy vulnerability scanner (per-arch, by digest)
       if: steps.push-decision.outputs.push == 'true'
-      uses: aquasecurity/trivy-action@0.28.0
+      uses: aquasecurity/trivy-action@v0.36.0
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}@${{ steps.build.outputs.digest }}
         format: 'sarif'
