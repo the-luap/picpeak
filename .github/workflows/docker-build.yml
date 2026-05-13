@@ -173,6 +173,17 @@ jobs:
     - name: Run Trivy vulnerability scanner (per-arch, by digest)
       if: steps.push-decision.outputs.push == 'true'
       uses: aquasecurity/trivy-action@v0.36.0
+      env:
+        # docker/build-push-action wraps every push in an OCI index
+        # (carries the SLSA provenance attestation alongside the
+        # actual image). Trivy's remote backend defaults to
+        # linux/amd64 regardless of host arch when resolving an
+        # index, which makes the arm64 leg crash with "no child
+        # with platform linux/amd64". Telling Trivy which child to
+        # scan keeps the provenance attestation intact and fixes
+        # the resolver crash. Pin to matrix.platform so each leg
+        # scans its own arch.
+        TRIVY_PLATFORM: ${{ matrix.platform }}
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}@${{ steps.build.outputs.digest }}
         format: 'sarif'
@@ -379,6 +390,12 @@ jobs:
     - name: Run Trivy vulnerability scanner (per-arch, by digest)
       if: steps.push-decision.outputs.push == 'true'
       uses: aquasecurity/trivy-action@v0.36.0
+      env:
+        # See build-backend for the rationale — pin Trivy's platform
+        # to the matrix arch so its remote-index resolver picks the
+        # right child instead of defaulting to linux/amd64 and
+        # crashing on the arm64 leg.
+        TRIVY_PLATFORM: ${{ matrix.platform }}
       with:
         image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}@${{ steps.build.outputs.digest }}
         format: 'sarif'
