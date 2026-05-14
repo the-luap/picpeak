@@ -518,6 +518,17 @@ EOF
         setup_ssl_docker "$app_dir"
     fi
 
+    # Clean up the legacy picpeak-workers container from prior installs
+    # (workers are now in-process — see create_docker_compose_file).
+    # Otherwise the leftover container keeps running its own
+    # fileWatcher / expirationChecker against the same DB rows the new
+    # backend container processes.
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^picpeak-workers$'; then
+      log_step "Removing legacy picpeak-workers container (workers now run in-process)..."
+      docker stop picpeak-workers >/dev/null 2>&1 || true
+      docker rm picpeak-workers >/dev/null 2>&1 || true
+    fi
+
     # Start services
     log_step "Starting services..."
     cd "$app_dir"
@@ -583,7 +594,12 @@ services:
       - picpeak-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      # `pg_isready -U <user>` without -d defaults to probing a database
+      # whose name matches the user — postgres logs constant `FATAL:
+      # database "<user>" does not exist` even though the actual DB
+      # is `${DB_NAME}`. Pinning -d to DB_NAME silences the noise
+      # that made #484's reporter think the install was broken.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -621,24 +637,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      # backend image only ships wget (Alpine base) — using curl
+      # makes `docker ps` show the container as `unhealthy`
+      # indefinitely even when /api/health responds. Mirrors the
+      # wget-based HEALTHCHECK in backend/Dockerfile.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  workers:
-    build: ./backend
-    container_name: picpeak-workers
-    command: npm run workers
-    env_file: .env
-    volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
-    networks:
-      - picpeak-network
-    depends_on:
-      - backend
-    restart: unless-stopped
+  # The legacy separate `workers` container has been removed: as of
+  # the in-process worker consolidation noted in the native systemd
+  # installer below ("Backend service includes workers — fileWatcher,
+  # expirationChecker are started by server.js"), running a second
+  # `npm run workers` container caused two file watchers + two
+  # expiration checkers to compete for the same DB rows. Cleaned up
+  # on existing installs by `picpeak-setup.sh upgrade`, which stops
+  # and removes the picpeak-workers container if found.
 
 volumes:
   postgres-data:
@@ -1165,15 +1180,25 @@ update_docker_installation() {
     
     # Pull latest code
     git pull
-    
+
     # Rebuild and restart containers
     docker compose down
     docker compose build --no-cache
+
+    # Clean up the legacy picpeak-workers container if it exists
+    # (workers are now in-process — see comment in
+    # create_docker_compose_file). Best-effort: ignore if absent.
+    if docker ps -a --format '{{.Names}}' | grep -q '^picpeak-workers$'; then
+      log_step "Removing legacy picpeak-workers container (workers now run in-process)..."
+      docker stop picpeak-workers >/dev/null 2>&1 || true
+      docker rm picpeak-workers >/dev/null 2>&1 || true
+    fi
+
     docker compose up -d
-    
+
     # Run migrations
     docker compose exec -T backend npm run migrate
-    
+
     log_success "Docker installation updated successfully!"
 }
 
