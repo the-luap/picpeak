@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.2-beta.0...v3.49.3-beta.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **promo-banner:** center by default + admin alignment selector ([#482](https://github.com/the-luap/picpeak/issues/482)) ([d1034ce](https://github.com/the-luap/picpeak/commit/d1034ce1c65c31b06005cfd0c047dba3251579ab))
+* **promo-banner:** center by default + admin alignment selector ([#482](https://github.com/the-luap/picpeak/issues/482)) ([a803491](https://github.com/the-luap/picpeak/commit/a803491cf477c0d62e23d6a019e0d252e2c537f8))
+
 ## [3.49.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.1-beta.0...v3.49.2-beta.0) (2026-05-13)
 
 
