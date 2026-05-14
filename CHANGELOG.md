@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.51.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.50.0-beta.0...v3.51.0-beta.0) (2026-05-14)
+
+
+### Features
+
+* **downloads:** preserve original camera filenames on download (opt-in) ([#493](https://github.com/the-luap/picpeak/issues/493)) ([826e43e](https://github.com/the-luap/picpeak/commit/826e43ebac940782be234630c50bbd54a3250f98))
+
 ## [3.50.0-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.6-beta.0...v3.50.0-beta.0) (2026-05-14)
 
 
