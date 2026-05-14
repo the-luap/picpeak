@@ -5,6 +5,15 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.3-beta.0...v3.49.4-beta.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **install:** drop racy migration step + add missing frontend container ([#484](https://github.com/the-luap/picpeak/issues/484)) ([d4155c4](https://github.com/the-luap/picpeak/commit/d4155c46117eb1db6255ebac0ea47e6fc3e99801))
+* **install:** silence pg healthcheck noise + drop legacy workers container ([#484](https://github.com/the-luap/picpeak/issues/484)) ([d39406b](https://github.com/the-luap/picpeak/commit/d39406b2414cdfcae84e8175d90821dd3a5287bb))
+* **install:** silence pg healthcheck noise + drop legacy workers container ([#484](https://github.com/the-luap/picpeak/issues/484)) ([0b0b1bb](https://github.com/the-luap/picpeak/commit/0b0b1bb2d529dbaae8e49891d8d5e8019b971838))
+
 ## [3.49.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.2-beta.0...v3.49.3-beta.0) (2026-05-14)
 
 
