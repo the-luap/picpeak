@@ -43,6 +43,7 @@ export const BrandingPage: React.FC = () => {
     youtube_url: '',
     promo_markdown: '',
     promo_position: 'above_footer',
+    promo_alignment: 'center',
   });
 
   const [currentTheme, setCurrentTheme] = useState<ThemeConfig>(theme);
@@ -420,18 +421,36 @@ export const BrandingPage: React.FC = () => {
               {t('branding.promo.help', 'Markdown shown above or below the gallery footer (e.g. seasonal offer, print discount). Per-event overrides take priority.')}
             </p>
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  {t('branding.promo.position', 'Position')}
-                </label>
-                <select
-                  value={brandingSettings.promo_position || 'above_footer'}
-                  onChange={(e) => handleBrandingChange('promo_position', e.target.value as 'above_footer' | 'below_footer')}
-                  className="w-full sm:w-64 px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="above_footer">{t('branding.promo.aboveFooter', 'Above footer')}</option>
-                  <option value="below_footer">{t('branding.promo.belowFooter', 'Below footer')}</option>
-                </select>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    {t('branding.promo.position', 'Position')}
+                  </label>
+                  <select
+                    value={brandingSettings.promo_position || 'above_footer'}
+                    onChange={(e) => handleBrandingChange('promo_position', e.target.value as 'above_footer' | 'below_footer')}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="above_footer">{t('branding.promo.aboveFooter', 'Above footer')}</option>
+                    <option value="below_footer">{t('branding.promo.belowFooter', 'Below footer')}</option>
+                  </select>
+                </div>
+                {/* Horizontal alignment (#482). Defaults to center
+                    so the banner aligns with the gallery footer. */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    {t('branding.promo.alignment', 'Alignment')}
+                  </label>
+                  <select
+                    value={brandingSettings.promo_alignment || 'center'}
+                    onChange={(e) => handleBrandingChange('promo_alignment', e.target.value as 'left' | 'center' | 'right')}
+                    className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="left">{t('branding.promo.alignLeft', 'Left')}</option>
+                    <option value="center">{t('branding.promo.alignCenter', 'Center (default — matches footer)')}</option>
+                    <option value="right">{t('branding.promo.alignRight', 'Right')}</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
@@ -453,9 +472,16 @@ export const BrandingPage: React.FC = () => {
                   <div className="text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
                     {t('branding.promo.preview', 'Preview')}
                   </div>
+                  {/* Preview mirrors the live gallery render — same
+                      alignment class so the admin sees what guests
+                      will see (#482). */}
                   <MarkdownContent
                     source={brandingSettings.promo_markdown}
-                    className="text-sm text-neutral-800 dark:text-neutral-200 prose-sm prose-a:text-primary-600 dark:prose-a:text-primary-400"
+                    className={`text-sm text-neutral-800 dark:text-neutral-200 prose prose-sm prose-a:text-primary-600 dark:prose-a:text-primary-400 ${
+                      brandingSettings.promo_alignment === 'left' ? 'text-left'
+                        : brandingSettings.promo_alignment === 'right' ? 'text-right'
+                        : 'text-center'
+                    }`}
                   />
                 </div>
               )}

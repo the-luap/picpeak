@@ -47,6 +47,9 @@ interface GalleryLayoutProps {
     youtube_url?: string;
     promo_markdown?: string;
     promo_position?: 'above_footer' | 'below_footer';
+    // Horizontal alignment for the promo content (#482). Defaults
+    // to 'center' so the banner aligns with the footer.
+    promo_alignment?: 'left' | 'center' | 'right';
   };
   showLogout?: boolean;
   onLogout?: () => void;
@@ -226,12 +229,36 @@ export const GalleryLayout: React.FC<GalleryLayoutProps> = ({
   })().trim();
   const promoPosition: 'above_footer' | 'below_footer' = brandingSettings?.promo_position === 'below_footer' ? 'below_footer' : 'above_footer';
 
+  // Promo alignment (#482). Defaults to 'center' to match the gallery
+  // footer's `text-center px-4` so the banner reads as part of the
+  // same composition as the footer beneath it. Admin can flip to
+  // 'left' or 'right' from Settings → Branding.
+  const promoAlignment: 'left' | 'center' | 'right' =
+    brandingSettings?.promo_alignment === 'left' ? 'left'
+      : brandingSettings?.promo_alignment === 'right' ? 'right'
+      : 'center';
+  const promoTextAlignClass =
+    promoAlignment === 'left' ? 'text-left'
+      : promoAlignment === 'right' ? 'text-right'
+      : 'text-center';
+
   const promoSlot = promoMarkdown ? (
     <div className="gallery-promo border-t border-surface bg-surface/50">
-      <div className="container py-4 sm:py-6">
-        <div className="max-w-3xl mx-auto text-sm text-theme">
-          <MarkdownContent source={promoMarkdown} className="prose-sm prose-a:text-accent" />
-        </div>
+      {/*
+       * Inner block uses .container (matches the footer's container
+       * width) + the alignment class. We deliberately drop the
+       * previous max-w-3xl wrapper — it created a narrower column
+       * that read as visually offset from the full-width footer
+       * (#482, reported by Rekoo-PS). The `prose` class is needed
+       * for the prose-a:text-accent modifier to actually take effect
+       * (modifiers without an outer .prose are no-ops in Tailwind
+       * Typography).
+       */}
+      <div className={`container py-4 sm:py-6 px-4 ${promoTextAlignClass}`}>
+        <MarkdownContent
+          source={promoMarkdown}
+          className={`prose prose-sm max-w-none mx-auto text-sm text-theme prose-a:text-accent ${promoTextAlignClass}`}
+        />
       </div>
     </div>
   ) : null;

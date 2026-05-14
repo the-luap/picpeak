@@ -253,6 +253,11 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
         youtube_url: settingsData.branding_youtube_url || '',
         promo_markdown: settingsData.branding_promo_markdown || '',
         promo_position: settingsData.branding_promo_position === 'below_footer' ? 'below_footer' : 'above_footer',
+        // Promo alignment (#482). Defaults to 'center' to match the
+        // gallery footer; see GalleryLayout.
+        promo_alignment: ['left', 'center', 'right'].includes(settingsData.branding_promo_alignment)
+          ? settingsData.branding_promo_alignment
+          : 'center',
       });
     }
   }, [settingsData]);

@@ -77,6 +77,12 @@ router.get('/', async (req, res) => {
       branding_promo_position: settingsObject.branding_promo_position === 'below_footer'
         ? 'below_footer'
         : 'above_footer',
+      // Promo content alignment (#482). Defaults to center so the
+      // banner aligns with the gallery footer; admin can flip to
+      // left or right via Settings → Branding.
+      branding_promo_alignment: ['left', 'center', 'right'].includes(settingsObject.branding_promo_alignment)
+        ? settingsObject.branding_promo_alignment
+        : 'center',
       // Force a specific color mode site-wide. When set, the user toggle
       // is hidden and the value overrides per-theme/system preference.
       // Allowed values: 'dark' | 'light' | null (null = no force).

@@ -1462,6 +1462,12 @@
       "sizeMedium": "Middel (standaard)",
       "sizeLarge": "Groot",
       "sizeXLarge": "Extra groot"
+    },
+    "promo": {
+      "alignment": "Uitlijning",
+      "alignLeft": "Links",
+      "alignCenter": "Gecentreerd (standaard — komt overeen met footer)",
+      "alignRight": "Rechts"
     }
   },
   "admin": {

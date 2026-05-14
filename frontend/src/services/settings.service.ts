@@ -42,6 +42,9 @@ export interface BrandingSettings {
   youtube_url?: string;
   promo_markdown?: string;
   promo_position?: 'above_footer' | 'below_footer';
+  // Per-install promo banner alignment (#482). Defaults to center
+  // so the banner aligns with the gallery footer.
+  promo_alignment?: 'left' | 'center' | 'right';
 }
 
 export interface ThemeSettings {
@@ -336,7 +339,10 @@ export const settingsService = {
       twitter_url: rawSettings.branding_twitter_url || '',
       youtube_url: rawSettings.branding_youtube_url || '',
       promo_markdown: rawSettings.branding_promo_markdown || '',
-      promo_position: rawSettings.branding_promo_position === 'below_footer' ? 'below_footer' : 'above_footer'
+      promo_position: rawSettings.branding_promo_position === 'below_footer' ? 'below_footer' : 'above_footer',
+      promo_alignment: ['left', 'center', 'right'].includes(rawSettings.branding_promo_alignment)
+        ? rawSettings.branding_promo_alignment
+        : 'center'
     };
   },
 
