@@ -799,6 +799,19 @@ router.put('/general', adminAuth, requirePermission('settings.edit'), async (req
     if (Object.prototype.hasOwnProperty.call(settings, 'general_short_gallery_urls')) {
       clearShareLinkSettingsCache();
     }
+    // Toggling the original-filenames setting (#493) requires busting the
+    // per-event pre-generated zips so the next download-all rebuilds with the
+    // new entry names. Single-photo downloads pick up the change as soon as
+    // the in-memory cache TTL in downloadFilenameService expires (cleared
+    // here for immediacy).
+    if (Object.prototype.hasOwnProperty.call(settings, 'general_use_original_filenames_for_downloads')) {
+      try {
+        require('../services/downloadFilenameService').clearCache();
+        require('../services/downloadZipService').invalidateAll();
+      } catch (e) {
+        console.warn('Failed to invalidate download caches after filename setting change:', e.message);
+      }
+    }
 
     // Log activity
     await db('activity_logs').insert({

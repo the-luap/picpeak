@@ -1038,6 +1038,8 @@
       "enableRegistration": "Selbstregistrierung für Admins erlauben",
       "enableShortGalleryUrls": "Kurze Galerie-Links verwenden",
       "enableShortGalleryUrlsHelp": "Entfernt den Veranstaltungs-Slug aus neuen Freigabelinks und lässt bestehende Links weiterhin funktionieren.",
+      "useOriginalFilenames": "Originale Dateinamen beim Download verwenden",
+      "useOriginalFilenamesHelp": "Wenn aktiviert, verwenden Einzel- und ZIP-Downloads den Original-Dateinamen der Kamera (z. B. DSC_1234.jpg) statt des umbenannten Namens. Der Speicher bleibt unverändert; Duplikate innerhalb einer Veranstaltung erhalten ein numerisches Suffix.",
       "maintenanceMode": "Wartungsmodus aktivieren",
       "language": "Sprache",
       "defaultLanguageHelp": "Sprache, die Gästen vor der Anmeldung angezeigt wird",

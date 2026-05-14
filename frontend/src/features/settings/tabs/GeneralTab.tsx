@@ -229,6 +229,21 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               {t('settings.general.enableShortGalleryUrlsHelp')}
             </p>
           </div>
+
+          <div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={generalSettings.use_original_filenames_for_downloads}
+                onChange={(e) => setGeneralSettings(prev => ({ ...prev, use_original_filenames_for_downloads: e.target.checked }))}
+                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+              />
+              <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{t('settings.general.useOriginalFilenames')}</span>
+            </label>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 ml-6 mt-1">
+              {t('settings.general.useOriginalFilenamesHelp')}
+            </p>
+          </div>
         </div>
       </Card>
 

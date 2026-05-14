@@ -677,6 +677,8 @@
       "enableRegistration": "Allow self-registration for admins",
       "enableShortGalleryUrls": "Use short gallery URLs",
       "enableShortGalleryUrlsHelp": "Removes the event slug from new share links while keeping existing links working.",
+      "useOriginalFilenames": "Use original filenames on download",
+      "useOriginalFilenamesHelp": "When on, single-photo and ZIP downloads use the original camera filename (e.g. DSC_1234.jpg) instead of the sanitized name. Storage is unchanged; duplicates in the same event get a numeric suffix.",
       "maintenanceMode": "Enable maintenance mode",
       "language": "Language",
       "defaultLanguageHelp": "Language shown to guests before login",
