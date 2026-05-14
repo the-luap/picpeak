@@ -322,7 +322,8 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       twitter_url,
       youtube_url,
       promo_markdown,
-      promo_position
+      promo_position,
+      promo_alignment
     } = req.body;
 
     // Normalize force_color_mode: only 'dark' | 'light' | null are valid.
@@ -339,6 +340,15 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
     const normalizedPromoPosition = promo_position === 'below_footer'
       ? 'below_footer'
       : 'above_footer';
+
+    // Normalize promo_alignment: 'left' | 'center' | 'right'. Defaults
+    // to 'center' to match the gallery footer's full-width centering
+    // (#482 — the previous default left the markdown left-aligned in
+    // a max-w-3xl block, which read as visually offset from the footer).
+    const allowedPromoAlignments = ['left', 'center', 'right'];
+    const normalizedPromoAlignment = allowedPromoAlignments.includes(promo_alignment)
+      ? promo_alignment
+      : 'center';
 
     // Normalize login_logo_size to the same token set as logo_size.
     // Anything else falls back to 'medium' on the next render.
@@ -381,7 +391,8 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       ...(twitter_url !== undefined   && { twitter_url:   String(twitter_url   || '').trim() }),
       ...(youtube_url !== undefined   && { youtube_url:   String(youtube_url   || '').trim() }),
       ...(promo_markdown !== undefined && { promo_markdown: typeof promo_markdown === 'string' ? promo_markdown : '' }),
-      ...(promo_position !== undefined && { promo_position: normalizedPromoPosition })
+      ...(promo_position !== undefined && { promo_position: normalizedPromoPosition }),
+      ...(promo_alignment !== undefined && { promo_alignment: normalizedPromoAlignment })
     };
 
     // Handle favicon deletion if empty string or null is provided

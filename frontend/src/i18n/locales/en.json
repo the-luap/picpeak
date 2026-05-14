@@ -1462,6 +1462,12 @@
       "sizeMedium": "Medium (default)",
       "sizeLarge": "Large",
       "sizeXLarge": "Extra large"
+    },
+    "promo": {
+      "alignment": "Alignment",
+      "alignLeft": "Left",
+      "alignCenter": "Center (default — matches footer)",
+      "alignRight": "Right"
     }
   },
   "admin": {

@@ -39,6 +39,9 @@ export interface PublicSettings {
   branding_youtube_url?: string;
   branding_promo_markdown?: string;
   branding_promo_position?: 'above_footer' | 'below_footer';
+  // Per-install promo banner alignment (#482). Defaults to 'center'
+  // so the banner aligns with the gallery footer's centering.
+  branding_promo_alignment?: 'left' | 'center' | 'right';
   theme_config: any;
   default_language: string;
   enable_analytics: boolean;

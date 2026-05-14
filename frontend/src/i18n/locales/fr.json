@@ -1400,6 +1400,12 @@
       "sizeMedium": "Moyenne (par défaut)",
       "sizeLarge": "Grande",
       "sizeXLarge": "Très grande"
+    },
+    "promo": {
+      "alignment": "Alignement",
+      "alignLeft": "À gauche",
+      "alignCenter": "Centré (par défaut — identique au pied de page)",
+      "alignRight": "À droite"
     }
   },
   "admin": {

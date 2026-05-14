@@ -1792,6 +1792,12 @@
       "sizeMedium": "Mittel (Standard)",
       "sizeLarge": "Groß",
       "sizeXLarge": "Sehr groß"
+    },
+    "promo": {
+      "alignment": "Ausrichtung",
+      "alignLeft": "Links",
+      "alignCenter": "Zentriert (Standard – wie der Footer)",
+      "alignRight": "Rechts"
     }
   },
   "admin": {
