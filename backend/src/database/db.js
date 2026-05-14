@@ -86,7 +86,16 @@ async function initializeDatabase() {
       table.boolean('disable_right_click').defaultTo(false);
       table.boolean('watermark_downloads').defaultTo(false);
       table.text('watermark_text');
-      table.integer('hero_photo_id').references('id').inTable('photos').onDelete('SET NULL');
+      // events.hero_photo_id → photos.id is a forward reference (the
+      // photos table is created later in this same function). Postgres
+      // rejects FK declarations that reference a non-existent table at
+      // CREATE TABLE time, so the constraint is added below as an
+      // ALTER TABLE *after* the photos table exists. SQLite previously
+      // tolerated the inline declaration because its FK enforcement is
+      // lazy — the inline form silently became a column with no FK
+      // metadata. Both backends now go through the same code path.
+      // (#484, MrGabri's reproduction.)
+      table.integer('hero_photo_id');
       table.boolean('require_password').defaultTo(true);
     });
   } else {
@@ -213,6 +222,25 @@ async function initializeDatabase() {
       table.integer('view_count').defaultTo(0);
       table.integer('download_count').defaultTo(0);
     });
+
+    // Deferred FK: events.hero_photo_id → photos.id. See the comment
+    // on the events createTable above for why this can't be inline.
+    // Wrapped in try/catch so a re-run path or an SQLite install that
+    // already accepted the inline (no-op) declaration doesn't fail
+    // boot when the constraint already exists in some shape.
+    try {
+      await db.schema.alterTable('events', (table) => {
+        table.foreign('hero_photo_id')
+          .references('id').inTable('photos')
+          .onDelete('SET NULL');
+      });
+    } catch (err) {
+      const msg = err?.message || '';
+      if (!/already exists|duplicate|exists/i.test(msg)) {
+        throw err;
+      }
+      // Constraint already in place — fine, carry on.
+    }
   }
 
   // Access logs table
