@@ -538,9 +538,21 @@ EOF
     log_step "Waiting for services to initialize..."
     sleep 10
 
-    # Run database migrations
-    log_step "Running database migrations..."
-    docker compose exec -T backend npm run migrate
+    # Migrations are run automatically by backend/wait-for-db.sh on
+    # container startup (`npm run migrate:safe`). Running migrate here
+    # in parallel — as we used to — could race against the in-container
+    # migration and leave the schema half-applied (the actual mechanism
+    # behind the "relation 'photos' does not exist" symptom in #484
+    # when re-installing on top of partial state). Wait briefly for the
+    # backend to finish its migrate:safe pass instead.
+    log_step "Waiting for backend to finish migrations and become healthy..."
+    for _ in $(seq 1 30); do
+      if docker inspect -f '{{.State.Health.Status}}' picpeak-backend 2>/dev/null | grep -q '^healthy$'; then
+        log_success "Backend healthy."
+        break
+      fi
+      sleep 2
+    done
 
     if [[ "$FORCE_ADMIN_PASSWORD_RESET" == "true" ]]; then
         log_step "Resetting admin credentials..."
@@ -646,14 +658,32 @@ services:
       timeout: 10s
       retries: 3
 
-  # The legacy separate `workers` container has been removed: as of
-  # the in-process worker consolidation noted in the native systemd
-  # installer below ("Backend service includes workers — fileWatcher,
-  # expirationChecker are started by server.js"), running a second
-  # `npm run workers` container caused two file watchers + two
-  # expiration checkers to compete for the same DB rows. Cleaned up
-  # on existing installs by `picpeak-setup.sh upgrade`, which stops
-  # and removes the picpeak-workers container if found.
+  # Frontend container (#484). Previously absent from the
+  # script-generated compose, which left the script's docker
+  # architecture (backend on host port 3001, no separate frontend)
+  # different from the documented production install
+  # (docker-compose.production.yml: backend internal-only +
+  # frontend nginx serving /api proxy on host port 3000). Aligning
+  # both shapes on the same 3-service shape — postgres + redis +
+  # backend, plus a frontend nginx — eliminates the doc/script
+  # divergence MrGabri flagged.
+  frontend:
+    build: ./frontend
+    container_name: picpeak-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    networks:
+      - picpeak-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      # frontend Dockerfile installs curl (apk add --no-cache curl)
+      # — safe to use here unlike the backend.
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres-data:
@@ -1196,8 +1226,17 @@ update_docker_installation() {
 
     docker compose up -d
 
-    # Run migrations
-    docker compose exec -T backend npm run migrate
+    # Migrations are run automatically by backend/wait-for-db.sh on
+    # container startup. Wait for the backend to become healthy
+    # rather than racing it with a manual `npm run migrate`.
+    log_step "Waiting for backend to finish migrations and become healthy..."
+    for _ in $(seq 1 30); do
+      if docker inspect -f '{{.State.Health.Status}}' picpeak-backend 2>/dev/null | grep -q '^healthy$'; then
+        log_success "Backend healthy."
+        break
+      fi
+      sleep 2
+    done
 
     log_success "Docker installation updated successfully!"
 }
