@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.4-beta.0...v3.49.5-beta.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **admin-users:** normalise date fields to ISO across DB drivers ([#485](https://github.com/the-luap/picpeak/issues/485)) ([d300426](https://github.com/the-luap/picpeak/commit/d3004263905edeffe59065e201f203a6768b4384))
+* **admin-users:** normalise date fields to ISO across DB drivers ([#485](https://github.com/the-luap/picpeak/issues/485)) ([b6b58d0](https://github.com/the-luap/picpeak/commit/b6b58d0659fc8caee68a65e112780a1122d55907))
+
 ## [3.49.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.3-beta.0...v3.49.4-beta.0) (2026-05-14)
 
 
