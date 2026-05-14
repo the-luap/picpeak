@@ -30,6 +30,15 @@ const DEFAULT_HERO_WIDTH = 1920;
 const DEFAULT_HERO_HEIGHT = 1080;
 const DEFAULT_HERO_QUALITY = 85;
 
+// Preview tier (#492). Aspect-preserved downscale for the lightbox so
+// guests don't pay the full 5–12 MB original on every photo open.
+// Same long edge as the hero (admins are already sizing for it) and
+// quality 85 — JPEG artefacts at this size are imperceptible to clients
+// browsing on phones / Retina laptops, and storage cost stays modest
+// (~200–500 KB per photo vs originals at multi-MB).
+const DEFAULT_PREVIEW_LONG_EDGE = 1920;
+const DEFAULT_PREVIEW_QUALITY = 85;
+
 // Helper to parse setting value (handles both JSON-encoded and plain values)
 function parseSettingValue(value) {
   if (value === null || value === undefined) {
@@ -477,6 +486,132 @@ async function ensureHeroImage(photo) {
 }
 
 /**
+ * Generate a lightbox preview image (#492).
+ *
+ * Aspect-preserving downscale (`fit: 'inside'`) capped at
+ * DEFAULT_PREVIEW_LONG_EDGE. Distinct from generateHeroImage:
+ *   - hero  → 1920x1080 cover-cropped (gallery hero header banner)
+ *   - preview → ≤1920px long edge, aspect preserved (lightbox tile)
+ *
+ * Output to `previews/preview_<filename>` so an admin who flips the
+ * setting back off can wipe the folder cleanly without touching
+ * thumbnails or heroes.
+ */
+async function generatePreviewImage(imagePath, options = {}) {
+  const filename = path.basename(imagePath);
+  const previewFilename = `preview_${filename}`;
+  const previewRelKey = path.posix.join('previews', previewFilename);
+  const storage = getStorage();
+
+  if (options.regenerate) {
+    await storage.delete(previewRelKey).catch(() => {});
+  }
+
+  try {
+    const metadata = await sharp(imagePath).metadata();
+    if (!metadata.width || !metadata.height) {
+      throw new Error('Invalid image metadata - file may be incomplete');
+    }
+
+    const longEdge = options.longEdge || DEFAULT_PREVIEW_LONG_EDGE;
+    const quality = options.quality || DEFAULT_PREVIEW_QUALITY;
+
+    let sharpInstance = sharp(imagePath, {
+      limitInputPixels: 268402689, // ~16k x 16k max
+      sequentialRead: true,
+      failOnError: false,
+    });
+
+    // Strip EXIF — same privacy reasoning as thumbnails/heroes.
+    sharpInstance = sharpInstance.withMetadata(false);
+
+    // fit: 'inside' + withoutEnlargement keeps small originals at
+    // their native size (no upscaling artefacts) and shrinks larger
+    // ones until both dimensions fit inside longEdge×longEdge.
+    sharpInstance = sharpInstance.resize(longEdge, longEdge, {
+      withoutEnlargement: true,
+      fit: 'inside',
+    });
+
+    sharpInstance = sharpInstance.jpeg({
+      quality,
+      progressive: true,
+      mozjpeg: true,
+    });
+
+    const buffer = await sharpInstance.toBuffer();
+    if (!buffer || buffer.length === 0) {
+      throw new Error('Generated preview image is empty');
+    }
+
+    await storage.put(previewRelKey, buffer, { contentType: 'image/jpeg' });
+
+    logger.info(`Generated preview image for ${filename} → ${previewRelKey}`);
+    return previewRelKey;
+  } catch (error) {
+    const msg = (error && error.message) ? error.message : String(error);
+    logger.error(`Failed to generate preview image for ${filename}: ${msg}`);
+    await storage.delete(previewRelKey).catch(() => {});
+    return null;
+  }
+}
+
+/**
+ * Validate an existing preview file is non-empty + readable by Sharp.
+ * Mirrors isHeroValid / isThumbnailValid.
+ */
+async function isPreviewValid(previewPath) {
+  const storage = getStorage();
+  try {
+    const stat = await storage.stat(previewPath);
+    if (!stat || stat.size === 0) return false;
+    if (storage.kind() === 'local') {
+      const localPath = storage.resolveLocalPath(previewPath);
+      await sharp(localPath).metadata();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lazy-generate the preview image for a photo if missing or invalid.
+ * Returns the storage key or null on failure (callers fall back to
+ * the original URL so the lightbox never shows a broken image).
+ */
+async function ensurePreviewImage(photo) {
+  const { resolvePhotoStorageKey } = require('./photoResolver');
+
+  let sourceKey;
+  try {
+    const event = await db('events').where('id', photo.event_id).first();
+    sourceKey = resolvePhotoStorageKey(event, photo);
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : String(e);
+    logger.error(`Failed to resolve original key for preview (photo ${photo.id}): ${msg}`);
+    return null;
+  }
+
+  if (photo.preview_path) {
+    const ok = await isPreviewValid(photo.preview_path);
+    if (ok) return photo.preview_path;
+    logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
+  }
+
+  const newPreviewPath = await withLocalCopy(sourceKey, (localPath) =>
+    generatePreviewImage(localPath, { regenerate: true })
+  );
+
+  if (newPreviewPath) {
+    await db('photos').where({ id: photo.id }).update({ preview_path: newPreviewPath });
+    return newPreviewPath;
+  }
+
+  return null;
+}
+
+/**
  * Extract capture date from EXIF metadata
  */
 async function extractCaptureDate(imagePath) {
@@ -525,6 +660,9 @@ module.exports = {
   generateHeroImage,
   isHeroValid,
   ensureHeroImage,
+  generatePreviewImage,
+  isPreviewValid,
+  ensurePreviewImage,
   extractCaptureDate,
   withLocalCopy,
 };

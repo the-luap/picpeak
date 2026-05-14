@@ -91,6 +91,11 @@ export interface Photo {
   url: string;
   thumbnail_url?: string;
   hero_url?: string; // Hero-optimized image URL (1920x1080) for full-width hero sections
+  // Lightbox preview URL (#492). Set only when the admin has flipped
+  // lightbox_preview_enabled in Settings → Thumbnails. Aspect-preserved
+  // ≤1920px JPEG; the lightbox prefers it over `url` for image photos
+  // and falls back to `url` when null (off, video, or not yet generated).
+  preview_url?: string | null;
   secure_url_template?: string;
   download_url_template?: string;
   requires_token?: boolean;

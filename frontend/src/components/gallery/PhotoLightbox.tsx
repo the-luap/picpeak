@@ -719,7 +719,12 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                   />
                 ) : (
                   <AuthenticatedImage
-                    src={photo.url}
+                    // Prefer the lightbox preview tier when the admin
+                    // opted in (#492). Falls back to `url` (the
+                    // original) when preview_url is null — happens
+                    // when the toggle is off, when the photo is a
+                    // video, or briefly while lazy generation runs.
+                    src={photo.preview_url || photo.url}
                     alt={photo.filename}
                     fallbackSrc={photo.thumbnail_url || undefined}
                     className="max-w-full max-h-full object-contain select-none pointer-events-none"
@@ -742,7 +747,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
               onClick={handleImageClick}
             >
               <AuthenticatedImage
-                src={photo.url}
+                // Same preview-prefer-with-fallback logic as the
+                // off-screen tile above (#492).
+                src={photo.preview_url || photo.url}
                 alt={photo.filename}
                 fallbackSrc={photo.thumbnail_url || undefined}
                 className="max-w-full max-h-full object-contain select-none"
