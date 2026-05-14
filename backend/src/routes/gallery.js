@@ -15,6 +15,12 @@ const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
 const { ensureThumbnail, ensureHeroImage, ensurePreviewImage, withLocalCopy } = require('../services/imageProcessor');
 const downloadZipService = require('../services/downloadZipService');
+const {
+  getUseOriginalFilenames,
+  pickRawDownloadName,
+  getZipEntryNames,
+} = require('../services/downloadFilenameService');
+const { buildContentDisposition } = require('../utils/filenameSanitizer');
 const { getStorage } = require('../services/storage');
 const fs = require('fs');
 
@@ -632,6 +638,13 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
     const eventWatermarkEnabled = req.event.watermark_downloads === true || req.event.watermark_downloads === 1;
     const shouldApplyWatermark = (watermarkSettings && watermarkSettings.enabled) || eventWatermarkEnabled;
 
+    // #493: if the admin enabled "use original filenames", surface the
+    // pre-rename camera filename in Content-Disposition. Storage path is
+    // unchanged — only the user-visible download name is swapped.
+    const useOriginal = await getUseOriginalFilenames();
+    const downloadName = pickRawDownloadName(photo, useOriginal);
+    const contentDisposition = buildContentDisposition(downloadName);
+
     if (shouldApplyWatermark) {
       // Apply watermark and send
       // Use event watermark text if available, otherwise fall back to global settings
@@ -644,14 +657,21 @@ router.get('/:slug/download/:photoId', verifyGalleryAccess, async (req, res) => 
 
       res.set({
         'Content-Type': photo.mime_type || 'image/jpeg',
-        'Content-Disposition': `attachment; filename="${photo.filename}"`,
+        'Content-Disposition': contentDisposition,
         'Content-Length': watermarkedBuffer.length
       });
 
       res.send(watermarkedBuffer);
     } else {
-      // Send original file
-      res.download(filePath, photo.filename, (downloadError) => {
+      // res.download() builds Content-Disposition itself but doesn't emit the
+      // RFC 5987 filename* parameter, so unicode camera filenames would lose
+      // their bytes on download. Set the header explicitly and stream the
+      // file with res.sendFile-equivalent semantics.
+      res.set({
+        'Content-Type': photo.mime_type || 'image/jpeg',
+        'Content-Disposition': contentDisposition,
+      });
+      res.sendFile(filePath, (downloadError) => {
         if (downloadError) {
           logger.error('Error streaming gallery download', {
             slug: req.params.slug,
@@ -773,14 +793,20 @@ router.get('/:slug/download-all', verifyGalleryAccess, async (req, res) => {
     // Add photos to archive — managed photos via storage backend, external via local path.
     const { resolvePhotoStorageKey } = require('../services/photoResolver');
     const storage = getStorage();
-    for (const photo of photos) {
+    // #493: resolve a unique display filename per photo up-front so collisions
+    // get a deterministic `_1` suffix before the entries hit the archive.
+    const useOriginalBulk = await getUseOriginalFilenames();
+    const bulkEntryNames = getZipEntryNames(photos, useOriginalBulk);
+    for (let i = 0; i < photos.length; i += 1) {
+      const photo = photos[i];
       const storageKey = resolvePhotoStorageKey(req.event, photo);
+      const entryName = bulkEntryNames[i];
       let archiveName;
       if (hasMultipleTypes) {
         const folderName = photo.type === 'individual' ? 'Individual Photos' : 'Collages';
-        archiveName = path.join(folderName, photo.filename);
+        archiveName = path.join(folderName, entryName);
       } else {
-        archiveName = photo.filename;
+        archiveName = entryName;
       }
 
       try {
@@ -901,8 +927,12 @@ router.post('/:slug/download-selected', verifyGalleryAccess, async (req, res) =>
     const { resolvePhotoStorageKey: resolveSelectedKey } = require('../services/photoResolver');
     const { withLocalCopy: withSelectedLocalCopy } = require('../services/imageProcessor');
     const selectedStorage = getStorage();
-    for (const photo of photos) {
-      const name = photo.filename || `photo-${photo.id}.jpg`;
+    // #493: same display-name resolution as bulk download, with dedup.
+    const useOriginalSelected = await getUseOriginalFilenames();
+    const selectedEntryNames = getZipEntryNames(photos, useOriginalSelected);
+    for (let i = 0; i < photos.length; i += 1) {
+      const photo = photos[i];
+      const name = selectedEntryNames[i] || `photo-${photo.id}.jpg`;
       const storageKey = resolveSelectedKey(req.event, photo);
       try {
         if (shouldApplyWatermark && effectiveSettings) {

@@ -9,6 +9,12 @@ const { queueEmail, getSupportEmail } = require('./emailProcessor');
 const logger = require('../utils/logger');
 const feedbackService = require('./feedbackService');
 const { getStorage } = require('./storage');
+const { resolvePhotoStorageKey } = require('./photoResolver');
+const { getUseOriginalFilenames } = require('./downloadFilenameService');
+const {
+  sanitizeForZipEntry,
+  uniquifyZipNames,
+} = require('../utils/filenameSanitizer');
 
 async function archiveEvent(event) {
   const storage = getStorage();
@@ -54,6 +60,40 @@ async function archiveEvent(event) {
     // the zip directly from the storage backend.
     const photoEntries = await storage.list(eventPrefix);
 
+    // #493: optionally rename zip entries to use original camera filenames.
+    // Build a Map<storage_key, original_filename> from the photos table so we
+    // can swap the basename of each entry while keeping the folder structure
+    // (e.g. `individual/DSC_1234.jpg` instead of `individual/slug_001.jpg`).
+    const useOriginal = await getUseOriginalFilenames();
+    const originalsByKey = new Map();
+    if (useOriginal) {
+      const photoRows = await db('photos').where('event_id', event.id).select('*');
+      for (const photoRow of photoRows) {
+        if (!photoRow.original_filename) continue;
+        try {
+          const key = resolvePhotoStorageKey(event, photoRow);
+          if (key) originalsByKey.set(key, photoRow.original_filename);
+        } catch {
+          // External-mode rows have no managed key; skip silently.
+        }
+      }
+    }
+
+    // Compute (subfolder, displayName) up front so collisions across the
+    // whole zip can be resolved deterministically with `_N` suffixes.
+    const photoNames = photoEntries.map((entry) => {
+      const rel = entry.key.startsWith(`${eventPrefix}/`)
+        ? entry.key.slice(eventPrefix.length + 1)
+        : entry.key;
+      if (!useOriginal) return rel;
+      const originalBase = originalsByKey.get(entry.key);
+      if (!originalBase) return rel;
+      const sep = rel.lastIndexOf('/');
+      const folder = sep >= 0 ? rel.slice(0, sep + 1) : '';
+      return `${folder}${sanitizeForZipEntry(originalBase)}`;
+    });
+    const dedupedNames = uniquifyZipNames(photoNames);
+
     let totalBytes = 0;
     await new Promise((resolve, reject) => {
       const output = fs.createWriteStream(tmpArchive);
@@ -67,10 +107,9 @@ async function archiveEvent(event) {
       archive.pipe(output);
 
       const append = async () => {
-        for (const entry of photoEntries) {
-          const nameInZip = entry.key.startsWith(`${eventPrefix}/`)
-            ? entry.key.slice(eventPrefix.length + 1)
-            : entry.key;
+        for (let i = 0; i < photoEntries.length; i += 1) {
+          const entry = photoEntries[i];
+          const nameInZip = dedupedNames[i];
           const stream = await storage.get(entry.key);
           archive.append(stream, { name: nameInZip });
         }

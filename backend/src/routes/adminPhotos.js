@@ -7,7 +7,11 @@ const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const { ensureThumbnail } = require('../services/imageProcessor');
 const { isVideoMimeType } = require('../services/videoProcessor');
-const { generatePhotoFilename } = require('../utils/filenameSanitizer');
+const { generatePhotoFilename, buildContentDisposition } = require('../utils/filenameSanitizer');
+const {
+  getUseOriginalFilenames,
+  pickRawDownloadName,
+} = require('../services/downloadFilenameService');
 const { escapeLikePattern } = require('../utils/sqlSecurity');
 const { validateUploadedFiles } = require('../middleware/uploadValidation');
 const { getMaxFilesPerUpload, getAllowedMimeTypes } = require('../services/uploadSettings');
@@ -911,6 +915,11 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
     const storage = getStorage();
     const storageKey = resolvePhotoStorageKey(event, photo);
 
+    // #493: respect the original-filenames toggle for admin downloads too.
+    const useOriginal = await getUseOriginalFilenames();
+    const downloadName = pickRawDownloadName(photo, useOriginal);
+    const contentDisposition = buildContentDisposition(downloadName);
+
     if (storageKey) {
       const stat = await storage.stat(storageKey);
       if (!stat) {
@@ -919,7 +928,7 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
       res.set({
         'Content-Type': photo.mime_type || 'application/octet-stream',
         'Content-Length': stat.size,
-        'Content-Disposition': `attachment; filename="${photo.filename}"`,
+        'Content-Disposition': contentDisposition,
       });
       const stream = await storage.get(storageKey);
       stream.pipe(res);
@@ -933,7 +942,11 @@ router.get('/:eventId/photos/:photoId/download', adminAuth, requirePermission('p
     } catch (error) {
       return res.status(404).json({ error: 'Photo file not found' });
     }
-    res.download(filePath, photo.filename);
+    res.set({
+      'Content-Type': photo.mime_type || 'application/octet-stream',
+      'Content-Disposition': contentDisposition,
+    });
+    res.sendFile(filePath);
   } catch (error) {
     console.error('Error downloading photo:', error);
     res.status(500).json({ error: 'Failed to download photo' });

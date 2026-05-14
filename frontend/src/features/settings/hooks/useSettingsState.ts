@@ -20,6 +20,7 @@ export interface GeneralSettings {
   enable_registration: boolean;
   maintenance_mode: boolean;
   short_gallery_urls: boolean;
+  use_original_filenames_for_downloads: boolean;
   default_language: string;
   date_format: { format: string; locale: string };
 }
@@ -94,6 +95,7 @@ export function useSettingsState() {
     enable_registration: false,
     maintenance_mode: false,
     short_gallery_urls: false,
+    use_original_filenames_for_downloads: false,
     default_language: 'en',
     date_format: { format: 'dd/MM/yyyy', locale: 'en-GB' }
   });
@@ -179,6 +181,10 @@ export function useSettingsState() {
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),
         short_gallery_urls: toBoolean(settings.general_short_gallery_urls, false),
+        use_original_filenames_for_downloads: toBoolean(
+          settings.general_use_original_filenames_for_downloads,
+          false
+        ),
         default_language: settings.general_default_language || 'en',
         date_format: settings.general_date_format
           ? (typeof settings.general_date_format === 'string'
