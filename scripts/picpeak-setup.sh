@@ -518,6 +518,17 @@ EOF
         setup_ssl_docker "$app_dir"
     fi
 
+    # Clean up the legacy picpeak-workers container from prior installs
+    # (workers are now in-process — see create_docker_compose_file).
+    # Otherwise the leftover container keeps running its own
+    # fileWatcher / expirationChecker against the same DB rows the new
+    # backend container processes.
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q '^picpeak-workers$'; then
+      log_step "Removing legacy picpeak-workers container (workers now run in-process)..."
+      docker stop picpeak-workers >/dev/null 2>&1 || true
+      docker rm picpeak-workers >/dev/null 2>&1 || true
+    fi
+
     # Start services
     log_step "Starting services..."
     cd "$app_dir"
@@ -527,9 +538,21 @@ EOF
     log_step "Waiting for services to initialize..."
     sleep 10
 
-    # Run database migrations
-    log_step "Running database migrations..."
-    docker compose exec -T backend npm run migrate
+    # Migrations are run automatically by backend/wait-for-db.sh on
+    # container startup (`npm run migrate:safe`). Running migrate here
+    # in parallel — as we used to — could race against the in-container
+    # migration and leave the schema half-applied (the actual mechanism
+    # behind the "relation 'photos' does not exist" symptom in #484
+    # when re-installing on top of partial state). Wait briefly for the
+    # backend to finish its migrate:safe pass instead.
+    log_step "Waiting for backend to finish migrations and become healthy..."
+    for _ in $(seq 1 30); do
+      if docker inspect -f '{{.State.Health.Status}}' picpeak-backend 2>/dev/null | grep -q '^healthy$'; then
+        log_success "Backend healthy."
+        break
+      fi
+      sleep 2
+    done
 
     if [[ "$FORCE_ADMIN_PASSWORD_RESET" == "true" ]]; then
         log_step "Resetting admin credentials..."
@@ -583,7 +606,12 @@ services:
       - picpeak-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      # `pg_isready -U <user>` without -d defaults to probing a database
+      # whose name matches the user — postgres logs constant `FATAL:
+      # database "<user>" does not exist` even though the actual DB
+      # is `${DB_NAME}`. Pinning -d to DB_NAME silences the noise
+      # that made #484's reporter think the install was broken.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -621,24 +649,41 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      # backend image only ships wget (Alpine base) — using curl
+      # makes `docker ps` show the container as `unhealthy`
+      # indefinitely even when /api/health responds. Mirrors the
+      # wget-based HEALTHCHECK in backend/Dockerfile.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  workers:
-    build: ./backend
-    container_name: picpeak-workers
-    command: npm run workers
-    env_file: .env
-    volumes:
-      - ./storage:/app/storage
-      - ./logs:/app/logs
+  # Frontend container (#484). Previously absent from the
+  # script-generated compose, which left the script's docker
+  # architecture (backend on host port 3001, no separate frontend)
+  # different from the documented production install
+  # (docker-compose.production.yml: backend internal-only +
+  # frontend nginx serving /api proxy on host port 3000). Aligning
+  # both shapes on the same 3-service shape — postgres + redis +
+  # backend, plus a frontend nginx — eliminates the doc/script
+  # divergence MrGabri flagged.
+  frontend:
+    build: ./frontend
+    container_name: picpeak-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
     networks:
       - picpeak-network
     depends_on:
       - backend
     restart: unless-stopped
+    healthcheck:
+      # frontend Dockerfile installs curl (apk add --no-cache curl)
+      # — safe to use here unlike the backend.
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres-data:
@@ -1165,15 +1210,34 @@ update_docker_installation() {
     
     # Pull latest code
     git pull
-    
+
     # Rebuild and restart containers
     docker compose down
     docker compose build --no-cache
+
+    # Clean up the legacy picpeak-workers container if it exists
+    # (workers are now in-process — see comment in
+    # create_docker_compose_file). Best-effort: ignore if absent.
+    if docker ps -a --format '{{.Names}}' | grep -q '^picpeak-workers$'; then
+      log_step "Removing legacy picpeak-workers container (workers now run in-process)..."
+      docker stop picpeak-workers >/dev/null 2>&1 || true
+      docker rm picpeak-workers >/dev/null 2>&1 || true
+    fi
+
     docker compose up -d
-    
-    # Run migrations
-    docker compose exec -T backend npm run migrate
-    
+
+    # Migrations are run automatically by backend/wait-for-db.sh on
+    # container startup. Wait for the backend to become healthy
+    # rather than racing it with a manual `npm run migrate`.
+    log_step "Waiting for backend to finish migrations and become healthy..."
+    for _ in $(seq 1 30); do
+      if docker inspect -f '{{.State.Health.Status}}' picpeak-backend 2>/dev/null | grep -q '^healthy$'; then
+        log_success "Backend healthy."
+        break
+      fi
+      sleep 2
+    done
+
     log_success "Docker installation updated successfully!"
 }
 
