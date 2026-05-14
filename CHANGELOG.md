@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.49.6-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.5-beta.0...v3.49.6-beta.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* **install:** defer events.hero_photo_id FK to break circular reference ([#484](https://github.com/the-luap/picpeak/issues/484)) ([62b3ed6](https://github.com/the-luap/picpeak/commit/62b3ed636414d358c0c73712b732207fc6fa1200))
+* **install:** defer events.hero_photo_id FK to break circular reference ([#484](https://github.com/the-luap/picpeak/issues/484)) ([87834a7](https://github.com/the-luap/picpeak/commit/87834a7fff57a53bb1060ad7061dd6d279922f42))
+
 ## [3.49.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.49.4-beta.0...v3.49.5-beta.0) (2026-05-14)
 
 
