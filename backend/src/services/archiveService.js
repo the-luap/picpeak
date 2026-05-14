@@ -129,7 +129,10 @@ async function archiveEvent(event) {
       );
     }
 
-    // Delete thumbnails for this event's photos.
+    // Delete derived images (thumbnails / heroes / previews / watermarks)
+    // for this event's photos. The originals are inside the zip; the
+    // derived tiers are throwaway and will be regenerated lazily on
+    // restore (or not at all for archived events that nobody opens).
     const photos = await db('photos').where('event_id', event.id);
     for (const photo of photos) {
       if (photo.thumbnail_path) {
@@ -137,6 +140,11 @@ async function archiveEvent(event) {
       }
       if (photo.hero_path) {
         await storage.delete(photo.hero_path).catch(() => {});
+      }
+      // Lightbox preview tier (#492). Same disposable-derived
+      // semantics as thumbnails / heroes — wipe on archive.
+      if (photo.preview_path) {
+        await storage.delete(photo.preview_path).catch(() => {});
       }
       // Best effort: remove watermarked variants too if a refactor added them.
       if (photo.watermark_path) {

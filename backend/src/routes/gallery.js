@@ -13,7 +13,7 @@ const { resolvePhotoFilePath } = require('../services/photoResolver');
 const { getEventShareToken, resolveShareIdentifier, buildShareLinkVariants } = require('../services/shareLinkService');
 const { handleAsync } = require('../utils/routeHelpers');
 const { NotFoundError } = require('../utils/errors');
-const { ensureThumbnail, ensureHeroImage, withLocalCopy } = require('../services/imageProcessor');
+const { ensureThumbnail, ensureHeroImage, ensurePreviewImage, withLocalCopy } = require('../services/imageProcessor');
 const downloadZipService = require('../services/downloadZipService');
 const { getStorage } = require('../services/storage');
 const fs = require('fs');
@@ -399,6 +399,31 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       fragmentation_level: req.event.fragmentation_level || 3,
       overlay_protection: req.event.overlay_protection !== false
     };
+
+    // Lightbox preview tier (#492). When the admin opts in, the
+    // photos response carries a preview_url alongside url/thumbnail_url
+    // — the lightbox uses preview_url when present and falls back to
+    // url when not, so existing galleries continue working before
+    // any preview has actually been generated.
+    let lightboxPreviewEnabled = false;
+    try {
+      const setting = await db('app_settings')
+        .where('setting_key', 'lightbox_preview_enabled')
+        .first();
+      if (setting) {
+        const raw = setting.setting_value;
+        // setting_value is JSON-stringified per migration 104; tolerate
+        // raw boolean/string for forward-compat.
+        const parsed = typeof raw === 'string' ? (() => {
+          try { return JSON.parse(raw); } catch { return raw; }
+        })() : raw;
+        lightboxPreviewEnabled = parsed === true || parsed === 'true' || parsed === 1;
+      }
+    } catch (e) {
+      // Setting missing / DB blip → fall back to off so the lightbox
+      // keeps working with the original. logger.debug to avoid noise.
+      logger.debug('lightbox_preview_enabled lookup failed, treating as off', { error: e?.message });
+    }
     
 
     res.json({
@@ -445,6 +470,17 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
           thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}${wmQuery}` : null,
           // Hero-optimized image URL (1920x1080) for full-width hero sections
           hero_url: `/api/gallery/${req.params.slug}/hero/${photo.id}${wmQuery}`,
+          // Lightbox preview URL (#492). Only emitted when the admin
+          // has flipped lightbox_preview_enabled — the frontend
+          // lightbox reads preview_url with a fallback to url so
+          // installs that haven't opted in keep loading the original
+          // (current behaviour). Skipped for videos since they don't
+          // get a preview tier; lightbox will use the original .url.
+          preview_url: lightboxPreviewEnabled
+            && photo.media_type !== 'video'
+            && (!photo.mime_type || !photo.mime_type.startsWith('video/'))
+            ? `/api/gallery/${req.params.slug}/preview/${photo.id}${wmQuery}`
+            : null,
           secure_url_template: `/api/secure-images/${req.params.slug}/secure/${photo.id}/{{token}}`,
           download_url_template: `/api/secure-images/${req.params.slug}/secure-download/${photo.id}/{{token}}`,
           type: photo.type,
@@ -1332,6 +1368,101 @@ router.get('/:slug/hero/:photoId',
         eventId: req.event?.id
       });
       // Fall back to original photo on any error
+      res.redirect(`/api/gallery/${req.params.slug}/photo/${req.params.photoId}`);
+    }
+  }
+);
+
+// Lightbox preview tier (#492). Aspect-preserved JPEG capped at 1920px
+// long edge — admin-controlled opt-in via app_settings.lightbox_preview_enabled.
+// Mirrors the hero route shape: same auth, ETag from preview mtime,
+// fall back to original on any failure so the lightbox never shows a
+// broken image. The watermark application path is preserved so a
+// preview surfaced in the lightbox carries the same protection a
+// guest would see on the full original.
+router.get('/:slug/preview/:photoId',
+  verifyGalleryAccess,
+  async (req, res) => {
+    try {
+      const { photoId } = req.params;
+
+      const photo = await db('photos')
+        .where({ id: photoId, event_id: req.event.id })
+        .first();
+
+      if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      if (photo.visibility === 'hidden' && req.accessLevel !== 'client') {
+        return res.status(403).json({ error: 'Photo not available' });
+      }
+
+      // Videos don't get a preview tier — fall through to the regular
+      // photo endpoint (which serves the source). The frontend should
+      // already be checking media_type before requesting /preview but
+      // belt-and-braces in case a stale tab does.
+      const isVideo = photo.media_type === 'video' || (photo.mime_type && photo.mime_type.startsWith('video/'));
+      if (isVideo) {
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      // Lazy generation: ensurePreviewImage returns null on any
+      // failure (corrupt source, sharp OOM, storage unavailable, …).
+      // Fall back to the original so the lightbox always renders.
+      const previewPath = await ensurePreviewImage(photo);
+      if (!previewPath) {
+        logger.warn(`Failed to generate preview for photo ${photoId}, falling back to original`);
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      const storage = getStorage();
+      const stat = await storage.stat(previewPath);
+      if (!stat) {
+        logger.error('Preview file does not exist in storage backend', {
+          slug: req.params.slug, photoId, eventId: req.event.id, previewPath,
+        });
+        return res.redirect(`/api/gallery/${req.params.slug}/photo/${photoId}`);
+      }
+
+      const mtimeMs = stat.mtime ? stat.mtime.getTime() : 0;
+      const watermarkSettings = await watermarkService.getWatermarkSettings();
+      const watermarkHash = watermarkSettings?.enabled
+        ? `-wm${watermarkSettings.opacity}${watermarkSettings.position}${watermarkSettings.size}`
+        : '-nowm';
+      const etag = `"preview-${photoId}-${mtimeMs}${watermarkHash}"`;
+      if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+      }
+
+      res.set({
+        'Content-Type': 'image/jpeg',
+        // Cache aggressively — preview only changes on photo
+        // re-upload (which generates a new preview key) or settings
+        // regenerate (which writes a new mtime + ETag).
+        'Cache-Control': 'private, max-age=3600',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Preview-Image': 'true',
+        'ETag': etag,
+      });
+
+      if (watermarkSettings && watermarkSettings.enabled) {
+        const watermarkedBuffer = await withLocalCopy(previewPath, (localPath) =>
+          watermarkService.applyWatermark(localPath, watermarkSettings)
+        );
+        res.send(watermarkedBuffer);
+      } else {
+        res.setHeader('Content-Length', stat.size);
+        const stream = await storage.get(previewPath);
+        stream.pipe(res);
+      }
+    } catch (error) {
+      logger.error('Error serving preview image:', {
+        error: error.message,
+        photoId: req.params.photoId,
+        eventId: req.event?.id,
+      });
       res.redirect(`/api/gallery/${req.params.slug}/photo/${req.params.photoId}`);
     }
   }

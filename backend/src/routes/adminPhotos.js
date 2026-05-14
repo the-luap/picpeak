@@ -649,6 +649,12 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
     if (photo.hero_path) {
       await storage.delete(photo.hero_path).catch(() => {});
     }
+    // Lightbox preview tier (#492). Same disposable-derived semantics
+    // as thumbnail / hero — wipe on photo delete so we don't leak
+    // orphaned files into previews/ that no DB row references.
+    if (photo.preview_path) {
+      await storage.delete(photo.preview_path).catch(() => {});
+    }
 
     // Delete pre-generated watermark if exists
     if (photo.watermark_path) {
@@ -782,6 +788,10 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
       }
       if (photo.hero_path) {
         await storage.delete(photo.hero_path).catch(() => {});
+      }
+      // Lightbox preview tier (#492) — bulk delete cleanup.
+      if (photo.preview_path) {
+        await storage.delete(photo.preview_path).catch(() => {});
       }
       if (photo.watermark_path) {
         await watermarkGeneratorService.deleteForPhoto(photo.id);
