@@ -338,6 +338,13 @@ router.get('/events/:id', apiTokenAuth, requireApiScope('read'), async (req, res
  *             required: [photo]
  *             properties:
  *               photo: { type: string, format: binary }
+ *               category_id:
+ *                 type: integer
+ *                 description: |
+ *                   Optional. If provided, the photo is filed under the
+ *                   given photo_categories.id (must belong to the event
+ *                   or be a global category). If omitted, the photo
+ *                   lands uncategorized.
  *     responses:
  *       201:
  *         description: Photo uploaded
@@ -351,6 +358,7 @@ router.get('/events/:id', apiTokenAuth, requireApiScope('read'), async (req, res
  *                 path: { type: string }
  *                 thumbnail_path: { type: string, nullable: true }
  *                 size_bytes: { type: integer }
+ *                 category_id: { type: integer, nullable: true }
  *       400: { description: No file or invalid type }
  *       404: { description: Event not found }
  */
@@ -367,6 +375,25 @@ router.post(
 
       const event = await db('events').where({ id: req.params.id }).first();
       if (!event) return res.status(404).json({ error: 'Event not found' });
+
+      // Optional category assignment, mirroring the admin upload route
+      // (adminPhotos.js). Multipart form field `category_id`. If the
+      // category looks up to a "collage" slug, the photo's `type` flips
+      // accordingly so existing collage-aware UI paths still work.
+      const rawCategoryId = req.body?.category_id;
+      const parsedCategoryId = rawCategoryId ? parseInt(rawCategoryId, 10) : NaN;
+      let categoryId = null;
+      let photoType = 'individual';
+      if (!Number.isNaN(parsedCategoryId)) {
+        const category = await db('photo_categories').where({ id: parsedCategoryId }).first();
+        if (!category) {
+          return res.status(400).json({ error: `Unknown category_id ${parsedCategoryId}` });
+        }
+        categoryId = category.id;
+        if (category.slug === 'collage' || category.slug === 'collages') {
+          photoType = 'collage';
+        }
+      }
 
       const ext = path.extname(req.file.originalname);
       const finalName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`;
@@ -408,7 +435,8 @@ router.post(
         original_filename: req.file.originalname,
         path: relPath,
         thumbnail_path: thumbRel,
-        type: 'individual',
+        type: photoType,
+        category_id: categoryId,
         size_bytes: stat.size,
         width,
         height,
@@ -432,7 +460,14 @@ router.post(
         });
       } catch (e) { /* non-fatal */ }
 
-      res.status(201).json({ id, filename: finalName, path: relPath, thumbnail_path: thumbRel, size_bytes: stat.size });
+      res.status(201).json({
+        id,
+        filename: finalName,
+        path: relPath,
+        thumbnail_path: thumbRel,
+        size_bytes: stat.size,
+        category_id: categoryId
+      });
     } catch (error) {
       logger.error('v1 POST /events/:id/photos failed', { error: error.message });
       if (tempPath) await fs.unlink(tempPath).catch(() => {});
