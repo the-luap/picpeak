@@ -88,6 +88,10 @@ export interface GalleryInfo {
 export interface Photo {
   id: number;
   filename: string;
+  // Original camera filename (e.g. DSC_1234.jpg) — populated for uploads
+  // post migration 062. Null for legacy rows. Surfaced in the lightbox
+  // when the admin toggles `use_original_filenames` on (#508).
+  original_filename?: string | null;
   url: string;
   thumbnail_url?: string;
   hero_url?: string; // Hero-optimized image URL (1920x1080) for full-width hero sections
@@ -168,6 +172,10 @@ export interface GalleryData {
     hero_image_anchor?: string;
     // Default photo sort order
     default_photo_sort?: string;
+    // Mirror of admin's `general_use_original_filenames_for_downloads`.
+    // When true, the lightbox surfaces each photo's `original_filename`
+    // alongside the position counter (#508).
+    use_original_filenames?: boolean;
   };
   categories?: PhotoCategory[];
   photos: Photo[];

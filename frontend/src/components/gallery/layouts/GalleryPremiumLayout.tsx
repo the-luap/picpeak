@@ -6,8 +6,10 @@ import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import Fullscreen from 'yet-another-react-lightbox/plugins/fullscreen';
 import Download from 'yet-another-react-lightbox/plugins/download';
+import Captions from 'yet-another-react-lightbox/plugins/captions';
 import 'yet-another-react-lightbox/styles.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
+import 'yet-another-react-lightbox/plugins/captions.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download as DownloadIcon, Heart, Check, Star, MessageSquare, Package, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -185,7 +187,8 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
   feedbackEnabled = false,
   feedbackOptions,
   heroPhotoOverride,
-  onLogout
+  onLogout,
+  showOriginalFilename = false,
 }) => {
   // These props are passed by parent but we use our own lightbox, so mark as intentionally unused
   void _onPhotoClick;
@@ -233,16 +236,20 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
     }));
   }, [filteredPhotos]);
 
-  // Lightbox slides
+  // Lightbox slides. `title` powers the Captions plugin — only emitted
+  // when the admin has flipped the original-filenames toggle (#508).
   const slides = useMemo(() => {
     return filteredPhotos.map(photo => ({
       src: photo.url,
       alt: photo.filename,
       width: photo.width || 1200,
       height: photo.height || 800,
-      download: allowDownloads ? photo.url : undefined
+      download: allowDownloads ? photo.url : undefined,
+      title: showOriginalFilename
+        ? (photo.original_filename || photo.filename)
+        : undefined,
     }));
-  }, [filteredPhotos, allowDownloads]);
+  }, [filteredPhotos, allowDownloads, showOriginalFilename]);
 
   const handleLike = useCallback(async (photo: Photo, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -537,7 +544,13 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
         close={() => setLightboxIndex(-1)}
         index={lightboxIndex}
         slides={slides}
-        plugins={allowDownloads ? [Thumbnails, Zoom, Fullscreen, Download] : [Thumbnails, Zoom, Fullscreen]}
+        plugins={[
+          Thumbnails,
+          Zoom,
+          Fullscreen,
+          ...(allowDownloads ? [Download] : []),
+          ...(showOriginalFilename ? [Captions] : []),
+        ]}
         animation={{ fade: 300, swipe: 250 }}
         styles={{
           container: { backgroundColor: 'rgba(0, 0, 0, 0.95)' },

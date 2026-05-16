@@ -24,6 +24,11 @@ interface PhotoLightboxProps {
   onFeedbackChange?: () => void;
   disableRightClick?: boolean;
   enableDevtoolsProtection?: boolean;
+  // When true, surface each photo's original camera filename in the
+  // bottom toolbar — useful for photographers matching guest selections
+  // back to source files (#508). Tied to the admin-side toggle that
+  // also drives original-filename downloads (#493).
+  showOriginalFilename?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -40,6 +45,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   onFeedbackChange,
   disableRightClick = false,
   enableDevtoolsProtection = false,
+  showOriginalFilename = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -593,10 +599,23 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         }}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 flex-wrap">
-          <div className="text-white">
+          <div className="text-white min-w-0">
             <p className="text-sm opacity-75">
               {currentIndex + 1} / {photos.length}
             </p>
+            {/* #508 — original camera filename next to the counter when
+                the admin has flipped the matching toggle. Falls back to
+                the storage filename only if `original_filename` is null
+                (pre-migration-062 uploads). truncate + max-w keep long
+                names from pushing the action row to another line. */}
+            {showOriginalFilename && (currentPhoto.original_filename || currentPhoto.filename) && (
+              <p
+                className="text-xs opacity-60 truncate max-w-[14rem] sm:max-w-md mt-0.5"
+                title={currentPhoto.original_filename || currentPhoto.filename}
+              >
+                {currentPhoto.original_filename || currentPhoto.filename}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
