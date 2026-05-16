@@ -385,9 +385,22 @@ router.post(
       let categoryId = null;
       let photoType = 'individual';
       if (!Number.isNaN(parsedCategoryId)) {
-        const category = await db('photo_categories').where({ id: parsedCategoryId }).first();
+        // Scope to categories owned by this event (event_id = event.id) or
+        // marked global (is_global = true) — see migration
+        // backend/migrations/legacy/004_add_categories_and_cms.js. An API
+        // token inherits its owning admin's powers (no per-event scoping
+        // in apiTokenAuth), so accepting any category_id would silently
+        // mis-file uploads under a category belonging to a different event.
+        const category = await db('photo_categories')
+          .where({ id: parsedCategoryId })
+          .andWhere(function () {
+            this.where({ event_id: event.id }).orWhere('is_global', true);
+          })
+          .first();
         if (!category) {
-          return res.status(400).json({ error: `Unknown category_id ${parsedCategoryId}` });
+          return res.status(400).json({
+            error: `Unknown or out-of-scope category_id ${parsedCategoryId}`,
+          });
         }
         categoryId = category.id;
         if (category.slug === 'collage' || category.slug === 'collages') {
