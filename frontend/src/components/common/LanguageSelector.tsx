@@ -54,6 +54,14 @@ const FRFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => 
   </svg>
 );
 
+const ESFlag: React.FC<{ className?: string }> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 640 480" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#AA151B" d="M0 0h640v120H0z"/>
+    <path fill="#F1BF00" d="M0 120h640v240H0z"/>
+    <path fill="#AA151B" d="M0 360h640v120H0z"/>
+  </svg>
+);
+
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', Flag: GBFlag },
   { code: 'de', name: 'Deutsch', Flag: DEFlag },
@@ -61,6 +69,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'pt', name: 'Português', Flag: PTBRFlag },
   { code: 'nl', name: 'Nederlands', Flag: NLFlag },
   { code: 'fr', name: 'Français', Flag: FRFlag },
+  { code: 'es', name: 'Español', Flag: ESFlag },
 ];
 
 export const LanguageSelector: React.FC = () => {

@@ -140,6 +140,7 @@ async function getRecipientLanguage(email, eventId = null) {
       { domains: ['.nl', '.be'], language: 'nl' },
       { domains: ['.br', '.pt'], language: 'pt' },
       { domains: ['.ru', '.su'], language: 'ru' },
+      { domains: ['.es'], language: 'es' },
     ];
     for (const { domains, language: lang } of domainLanguageMap) {
       if (domains.some(d => domain.endsWith(d))) {
@@ -497,6 +498,7 @@ async function processTemplate(template, variables, language = 'en') {
     nl: '(Om veiligheidsredenen niet weergegeven)',
     pt: '(Não exibido por motivos de segurança)',
     ru: '(Не показано в целях безопасности)',
+    es: '(No se muestra por razones de seguridad)',
   };
   const noPasswordI18n = {
     en: 'No password required',
@@ -504,6 +506,7 @@ async function processTemplate(template, variables, language = 'en') {
     nl: 'Geen wachtwoord vereist',
     pt: 'Nenhuma senha necessária',
     ru: 'Пароль не требуется',
+    es: 'No se requiere contraseña',
   };
   // Sent by the publish-from-draft flow (adminEvents.js): by the time the
   // event is published, only the bcrypt hash is stored, so the plaintext
@@ -515,6 +518,7 @@ async function processTemplate(template, variables, language = 'en') {
     nl: 'Het wachtwoord dat u bij het aanmaken van de galerij hebt ingesteld',
     pt: 'A senha definida ao criar a galeria',
     ru: 'Пароль, заданный при создании галереи',
+    es: 'La contraseña que estableciste al crear la galería',
   };
 
   if (processedVariables.gallery_password === '{{password_security_message}}') {
