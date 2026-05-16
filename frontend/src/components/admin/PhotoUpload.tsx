@@ -79,14 +79,16 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
   );
 
   const remainingSlots = Math.max(maxFilesPerUpload - selectedFiles.length, 0);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const imageFiles = files.filter(file =>
-      allowedMimeTypes.includes(file.type)
-    );
-    
-    // Check total file count with existing files
+  // Shared filter + per-upload-limit pipeline used by both the file-input
+  // change handler and the drop handler. #504 — without the drop handler
+  // the dashed-border zone looked draggable but silently fell through to
+  // the browser's default "open the file in a new tab" behaviour.
+  const addFiles = (incoming: File[]) => {
+    const imageFiles = incoming.filter((file) => allowedMimeTypes.includes(file.type));
+    if (imageFiles.length === 0) return;
+
     const totalFiles = selectedFiles.length + imageFiles.length;
     if (totalFiles > maxFilesPerUpload) {
       const allowedNewFiles = maxFilesPerUpload - selectedFiles.length;
@@ -101,11 +103,44 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         t('upload.someFilesSkipped', { allowed: allowedNewFiles, limit: maxFilesPerUpload }) ||
         `Only ${allowedNewFiles} more files can be added (limit ${maxFilesPerUpload})`
       );
-      setSelectedFiles(prev => [...prev, ...imageFiles.slice(0, allowedNewFiles)]);
+      setSelectedFiles((prev) => [...prev, ...imageFiles.slice(0, allowedNewFiles)]);
       return;
     }
-    
-    setSelectedFiles(prev => [...prev, ...imageFiles]);
+
+    setSelectedFiles((prev) => [...prev, ...imageFiles]);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files || []));
+    // Reset the input so picking the same files again still fires onChange.
+    if (e.target.value) e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // dropEffect must be set on every dragover for the cursor to render
+    // the "copy" affordance in Chrome/Firefox.
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDragOver) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // dragleave fires for every child node the cursor passes — only flip
+    // the highlight off when the cursor leaves the zone itself, otherwise
+    // it strobes on/off as the user moves over the icon and text.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    addFiles(files);
   };
 
   const removeFile = (index: number) => {
@@ -349,14 +384,22 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
         </label>
       </div>
 
-      {/* File Input Area */}
+      {/* File Input Area — accepts both click-to-pick and drag-and-drop (#504). */}
       <div
         className={clsx(
-          "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+          "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
           "hover:border-accent-dark hover:bg-accent-dark/15",
-          selectedFiles.length > 0 ? "border-accent-dark bg-accent-dark/15" : "border-neutral-300 dark:border-neutral-600"
+          isDragOver
+            ? "border-accent-dark bg-accent-dark/25"
+            : selectedFiles.length > 0
+              ? "border-accent-dark bg-accent-dark/15"
+              : "border-neutral-300 dark:border-neutral-600"
         )}
         onClick={() => fileInputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <Upload className="w-12 h-12 mx-auto text-neutral-400 dark:text-neutral-500 mb-4" />
         <p className="text-neutral-700 dark:text-neutral-300 font-medium mb-1">
