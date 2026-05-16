@@ -163,9 +163,14 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     setUploadProgress(0);
     setUploadIds([]);
 
-    // For large uploads, chunk the files by both count AND size to prevent memory/network issues
+    // For large uploads, chunk the files by both count AND size to prevent memory/network issues.
+    // #509: the per-chunk byte cap MUST be tunable so users behind Cloudflare Tunnel and other
+    // reverse proxies with request-size limits can drop it below their proxy's cap. Falls back
+    // to 95MB (Cloudflare-safe headroom under 100MB) when the setting is unset — that matches
+    // the value the migration seeds and is what worked in #208's resolution.
     const MAX_FILES_PER_CHUNK = Math.max(1, Math.min(50, maxFilesPerUpload)); // Max 50 files per chunk
-    const MAX_BYTES_PER_CHUNK = 500 * 1024 * 1024; // Max 500MB per chunk (nginx limit is 1GB)
+    const maxBatchSizeMb = Number(settings?.general_max_upload_batch_size_mb) || 95;
+    const MAX_BYTES_PER_CHUNK = maxBatchSizeMb * 1024 * 1024;
     const chunks: File[][] = [];
 
     let currentChunk: File[] = [];
