@@ -42,6 +42,10 @@ interface PhotoCardProps {
   useEnhancedProtection?: boolean;
   useCanvasRendering?: boolean;
   feedbackEnabled?: boolean;
+  // #506: track the per-event "allow likes" toggle so the per-photo
+  // Like button respects it. `feedbackEnabled` alone isn't enough —
+  // an event can have feedback on but likes specifically disabled.
+  allowLikes?: boolean;
   index: number;
 }
 
@@ -61,6 +65,7 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
   useEnhancedProtection = false,
   useCanvasRendering = false,
   feedbackEnabled = false,
+  allowLikes = false,
   index
 }) => {
   // Note: height is passed but not used as we maintain aspect ratio via width
@@ -113,15 +118,18 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
         {isSelected && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
       </button>
 
-      {/* Like Button */}
-      <button
-        onClick={onLike}
-        className={`gallery-premium-like-btn ${isLiked ? 'liked' : ''}`}
-      >
-        <Heart
-          className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`}
-        />
-      </button>
+      {/* Like Button — #506: only when feedback master is on AND the
+          per-event "allow likes" sub-toggle is on. */}
+      {feedbackEnabled && allowLikes && (
+        <button
+          onClick={onLike}
+          className={`gallery-premium-like-btn ${isLiked ? 'liked' : ''}`}
+        >
+          <Heart
+            className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`}
+          />
+        </button>
+      )}
 
       {/* Selection Border */}
       {isSelected && (
@@ -502,6 +510,7 @@ export const GalleryPremiumLayout: React.FC<GalleryPremiumLayoutProps> = ({
                   useEnhancedProtection={useEnhancedProtection}
                   useCanvasRendering={useCanvasRendering}
                   feedbackEnabled={feedbackEnabled}
+                  allowLikes={!!feedbackOptions?.allowLikes}
                   index={photoIndex}
                 />
               );
