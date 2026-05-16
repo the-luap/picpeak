@@ -161,7 +161,12 @@ const corsOptions = {
       callback(null, false);
     }
   },
-  credentials: true
+  credentials: true,
+  // Expose Content-Disposition so split (cross-origin) frontend
+  // deployments can read the server's chosen download filename. Used
+  // by the gallery/admin download flows to honour the #493 "original
+  // camera filename" toggle on individual photo downloads (#507).
+  exposedHeaders: ['Content-Disposition'],
 };
 
 // Only attach CORS to API endpoints, not static assets
