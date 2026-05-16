@@ -696,20 +696,38 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
       {(() => {
         const isVideoCurrent = currentPhoto.media_type === 'video';
 
-        const renderSlide = (photo: Photo | null, isCurrent: boolean) => {
+        // Stable per-slide keys so React's reconciler can MOVE existing
+        // DOM nodes across slot positions on commit rather than
+        // re-fetching the AuthenticatedImage at the new position (#505 —
+        // that re-fetch is what caused the black blink during swipe).
+        // Edge case: 2-photo galleries assign the same photo to both
+        // `prev` and `next`; fall back to slot-prefixed keys to keep
+        // siblings unique. >2-photo galleries (the common case) get
+        // plain photo.id keys so a "next becomes current" commit
+        // preserves the loaded image instance.
+        const slideKey = (photo: Photo | null, slot: 'prev' | 'current' | 'next') => {
+          if (!photo) return `empty-${slot}`;
+          if (photos.length === 2) return `${slot}-${photo.id}`;
+          return `photo-${photo.id}`;
+        };
+
+        const renderSlide = (photo: Photo | null, isCurrent: boolean, slot: 'prev' | 'current' | 'next') => {
           // Reserve the slot even when there's no neighbour (single-photo
           // gallery) so the flex layout keeps slides aligned.
           if (!photo) {
-            return <div className="h-full" style={{ flex: '0 0 33.3333%' }} aria-hidden="true" />;
+            return <div key={slideKey(photo, slot)} className="h-full" style={{ flex: '0 0 33.3333%' }} aria-hidden="true" />;
           }
 
           // Neighbouring slides are plain thumbnails — they're only on
           // screen during the swipe animation, so we save the work of a
           // protected canvas pipeline for them. The current slide keeps
-          // the full protection chain.
+          // the full protection chain. Wrapper className matches the
+          // current slide so object-contain sizing renders the same
+          // visible height (#505 — earlier `px-2` made wide images
+          // shorter on neighbours than on current).
           if (!isCurrent) {
             return (
-              <div className="h-full flex items-center justify-center px-2" style={{ flex: '0 0 33.3333%' }}>
+              <div key={slideKey(photo, slot)} className="h-full flex items-center justify-center" style={{ flex: '0 0 33.3333%' }}>
                 {photo.media_type === 'video' && photo.thumbnail_url ? (
                   <img
                     src={photo.thumbnail_url}
@@ -742,6 +760,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
           return (
             <div
+              key={slideKey(photo, slot)}
               className="h-full flex items-center justify-center"
               style={{ flex: '0 0 33.3333%' }}
               onClick={handleImageClick}
@@ -838,9 +857,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 }}
                 onTransitionEnd={handleTrackTransitionEnd}
               >
-                {renderSlide(prevPhoto, false)}
-                {renderSlide(currentPhoto, true)}
-                {renderSlide(nextPhoto, false)}
+                {renderSlide(prevPhoto, false, 'prev')}
+                {renderSlide(currentPhoto, true, 'current')}
+                {renderSlide(nextPhoto, false, 'next')}
               </div>
             )}
           </div>
