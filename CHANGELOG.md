@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.51.3-beta.0](https://github.com/the-luap/picpeak/compare/v3.51.2-beta.0...v3.51.3-beta.0) (2026-05-16)
+
+
+### Bug Fixes
+
+* **i18n:** settings page resets UI language to server default ([482e91b](https://github.com/the-luap/picpeak/commit/482e91bbf8b8deee361ffc8b031094fb99cc569d))
+
 ## [3.51.2-beta.0](https://github.com/the-luap/picpeak/compare/v3.51.1-beta.0...v3.51.2-beta.0) (2026-05-16)
 
 
