@@ -24,6 +24,11 @@ interface PhotoLightboxProps {
   onFeedbackChange?: () => void;
   disableRightClick?: boolean;
   enableDevtoolsProtection?: boolean;
+  // When true, surface each photo's original camera filename in the
+  // bottom toolbar — useful for photographers matching guest selections
+  // back to source files (#508). Tied to the admin-side toggle that
+  // also drives original-filename downloads (#493).
+  showOriginalFilename?: boolean;
 }
 
 export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
@@ -40,6 +45,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   onFeedbackChange,
   disableRightClick = false,
   enableDevtoolsProtection = false,
+  showOriginalFilename = false,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(1);
@@ -593,10 +599,23 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         }}
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 flex-wrap">
-          <div className="text-white">
+          <div className="text-white min-w-0">
             <p className="text-sm opacity-75">
               {currentIndex + 1} / {photos.length}
             </p>
+            {/* #508 — original camera filename next to the counter when
+                the admin has flipped the matching toggle. Falls back to
+                the storage filename only if `original_filename` is null
+                (pre-migration-062 uploads). truncate + max-w keep long
+                names from pushing the action row to another line. */}
+            {showOriginalFilename && (currentPhoto.original_filename || currentPhoto.filename) && (
+              <p
+                className="text-xs opacity-60 truncate max-w-[14rem] sm:max-w-md mt-0.5"
+                title={currentPhoto.original_filename || currentPhoto.filename}
+              >
+                {currentPhoto.original_filename || currentPhoto.filename}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
@@ -696,20 +715,38 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
       {(() => {
         const isVideoCurrent = currentPhoto.media_type === 'video';
 
-        const renderSlide = (photo: Photo | null, isCurrent: boolean) => {
+        // Stable per-slide keys so React's reconciler can MOVE existing
+        // DOM nodes across slot positions on commit rather than
+        // re-fetching the AuthenticatedImage at the new position (#505 —
+        // that re-fetch is what caused the black blink during swipe).
+        // Edge case: 2-photo galleries assign the same photo to both
+        // `prev` and `next`; fall back to slot-prefixed keys to keep
+        // siblings unique. >2-photo galleries (the common case) get
+        // plain photo.id keys so a "next becomes current" commit
+        // preserves the loaded image instance.
+        const slideKey = (photo: Photo | null, slot: 'prev' | 'current' | 'next') => {
+          if (!photo) return `empty-${slot}`;
+          if (photos.length === 2) return `${slot}-${photo.id}`;
+          return `photo-${photo.id}`;
+        };
+
+        const renderSlide = (photo: Photo | null, isCurrent: boolean, slot: 'prev' | 'current' | 'next') => {
           // Reserve the slot even when there's no neighbour (single-photo
           // gallery) so the flex layout keeps slides aligned.
           if (!photo) {
-            return <div className="h-full" style={{ flex: '0 0 33.3333%' }} aria-hidden="true" />;
+            return <div key={slideKey(photo, slot)} className="h-full" style={{ flex: '0 0 33.3333%' }} aria-hidden="true" />;
           }
 
           // Neighbouring slides are plain thumbnails — they're only on
           // screen during the swipe animation, so we save the work of a
           // protected canvas pipeline for them. The current slide keeps
-          // the full protection chain.
+          // the full protection chain. Wrapper className matches the
+          // current slide so object-contain sizing renders the same
+          // visible height (#505 — earlier `px-2` made wide images
+          // shorter on neighbours than on current).
           if (!isCurrent) {
             return (
-              <div className="h-full flex items-center justify-center px-2" style={{ flex: '0 0 33.3333%' }}>
+              <div key={slideKey(photo, slot)} className="h-full flex items-center justify-center" style={{ flex: '0 0 33.3333%' }}>
                 {photo.media_type === 'video' && photo.thumbnail_url ? (
                   <img
                     src={photo.thumbnail_url}
@@ -742,6 +779,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
           return (
             <div
+              key={slideKey(photo, slot)}
               className="h-full flex items-center justify-center"
               style={{ flex: '0 0 33.3333%' }}
               onClick={handleImageClick}
@@ -838,9 +876,9 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 }}
                 onTransitionEnd={handleTrackTransitionEnd}
               >
-                {renderSlide(prevPhoto, false)}
-                {renderSlide(currentPhoto, true)}
-                {renderSlide(nextPhoto, false)}
+                {renderSlide(prevPhoto, false, 'prev')}
+                {renderSlide(currentPhoto, true, 'current')}
+                {renderSlide(nextPhoto, false, 'next')}
               </div>
             )}
           </div>

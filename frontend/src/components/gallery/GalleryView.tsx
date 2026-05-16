@@ -143,6 +143,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
   const disableRightClick = data?.event?.disable_right_click === true;
   const enableDevtoolsProtection = data?.event?.enable_devtools_protection === true;
   const useCanvasRendering = data?.event?.use_canvas_rendering === true;
+  // #508 — surface original camera filenames in the lightbox when the
+  // admin has flipped the same toggle that drives original-name downloads.
+  const showOriginalFilename = data?.event?.use_original_filenames === true;
 
   // DevTools protection - enabled by individual setting OR legacy protection level
   const devToolsEnabled = enableDevtoolsProtection || protectionLevel === 'enhanced' || protectionLevel === 'maximum';
@@ -677,6 +680,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
           heroImageAnchor={data?.event?.hero_image_anchor || 'center'}
           welcomeMessage={event.welcome_message}
           onLogout={logout}
+          showOriginalFilename={showOriginalFilename}
         />
 
         {/* Upload Modal for full-page layouts */}
@@ -918,6 +922,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event }) => {
             welcomeMessage={event.welcome_message}
             isClient={isClient}
             onToggleVisibility={isClient ? handleToggleVisibility : undefined}
+            showOriginalFilename={showOriginalFilename}
           />
         </div>
 

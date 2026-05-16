@@ -16,6 +16,8 @@ export interface GeneralSettings {
   max_file_size_mb: number;
   max_files_per_upload: number;
   allowed_file_types: string;
+  // #509 — re-added after the main-into-beta merge dropped it.
+  max_upload_batch_size_mb: number;
   enable_analytics: boolean;
   enable_registration: boolean;
   maintenance_mode: boolean;
@@ -91,6 +93,7 @@ export function useSettingsState() {
     max_file_size_mb: 50,
     max_files_per_upload: 500,
     allowed_file_types: 'jpg,jpeg,png,gif,webp',
+    max_upload_batch_size_mb: 95,
     enable_analytics: true,
     enable_registration: false,
     maintenance_mode: false,
@@ -177,6 +180,7 @@ export function useSettingsState() {
           Math.max(1, toNumber(settings.general_max_files_per_upload, 500))
         ),
         allowed_file_types: settings.general_allowed_file_types || 'jpg,jpeg,png,gif,webp',
+        max_upload_batch_size_mb: toNumber(settings.general_max_upload_batch_size_mb, 95),
         enable_analytics: toBoolean(settings.general_enable_analytics, true),
         enable_registration: toBoolean(settings.general_enable_registration, false),
         maintenance_mode: toBoolean(settings.general_maintenance_mode, false),

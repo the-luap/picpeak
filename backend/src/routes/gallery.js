@@ -430,6 +430,13 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
       // keeps working with the original. logger.debug to avoid noise.
       logger.debug('lightbox_preview_enabled lookup failed, treating as off', { error: e?.message });
     }
+
+    // #508: when the admin has flipped the "use original camera filenames"
+    // toggle (#493), the lightbox surfaces each photo's original_filename
+    // alongside the position counter so the photographer can map a guest's
+    // selection back to source files. Tied to the same toggle as downloads —
+    // one switch controls both surfaces.
+    const useOriginalFilenames = await getUseOriginalFilenames();
     
 
     res.json({
@@ -458,6 +465,9 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         hero_image_anchor: req.event.hero_image_anchor || 'center',
         default_photo_sort: req.event.default_photo_sort || 'upload_date_desc',
         download_zip_ready: !!(req.event.download_zip_path && req.event.download_zip_generated_at),
+        // Mirror of the admin-side toggle so the lightbox can decide
+        // whether to surface original camera filenames (#508).
+        use_original_filenames: useOriginalFilenames,
         ...protectionSettings
       },
       categories: categories,
@@ -472,6 +482,9 @@ router.get('/:slug/photos', verifyGalleryAccess, async (req, res) => {
         return {
           id: photo.id,
           filename: photo.filename,
+          // Raw camera filename (or null for pre-migration-062 uploads).
+          // The lightbox renders it when `use_original_filenames` is on.
+          original_filename: photo.original_filename || null,
           url: photoUrl,
           thumbnail_url: photo.thumbnail_path ? `/api/gallery/${req.params.slug}/thumbnail/${photo.id}${wmQuery}` : null,
           // Hero-optimized image URL (1920x1080) for full-width hero sections

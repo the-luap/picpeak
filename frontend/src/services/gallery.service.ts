@@ -1,6 +1,7 @@
 import { api } from '../config/api';
 import type { GalleryInfo, GalleryData, GalleryStats, ResolvedGalleryIdentifier } from '../types';
 import { normalizeRequirePassword } from '../utils/accessControl';
+import { parseContentDispositionFilename } from '../utils/contentDisposition';
 
 export const galleryService = {
   // Verify share token
@@ -49,35 +50,38 @@ export const galleryService = {
 
   // Download single photo
   async downloadPhoto(slug: string, photoId: number, filename: string): Promise<void> {
-    try {
-      const response = await api.get(`/gallery/${slug}/download/${photoId}`, {
-        responseType: 'blob',
-      });
+    // Honour the server's Content-Disposition filename so the #493
+    // "use original camera filename" toggle reaches disk for single
+    // downloads (it already worked for zips because those skip the
+    // `<a download>` attribute). Falls back to the caller-provided
+    // sanitized filename if the header is unreadable.
+    const downloadFromResponse = (response: { data: Blob; headers: Record<string, string> }) => {
+      const headerName =
+        response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      const serverFilename = parseContentDispositionFilename(headerName);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename);
+      link.setAttribute('download', serverFilename || filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
-      // Fallback: use the view endpoint if direct download fails (e.g., missing original)
-      try {
-        const response = await api.get(`/gallery/${slug}/photo/${photoId}`, {
-          responseType: 'blob',
-        });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      } catch (fallbackErr) {
-        throw fallbackErr;
-      }
+    };
+
+    try {
+      const response = await api.get(`/gallery/${slug}/download/${photoId}`, {
+        responseType: 'blob',
+      });
+      downloadFromResponse(response);
+    } catch {
+      // Fallback: use the view endpoint if direct download fails (e.g., missing original).
+      // The view endpoint doesn't emit a download-oriented Content-Disposition,
+      // so we expect the caller-supplied filename to win here.
+      const response = await api.get(`/gallery/${slug}/photo/${photoId}`, {
+        responseType: 'blob',
+      });
+      downloadFromResponse(response);
     }
   },
 

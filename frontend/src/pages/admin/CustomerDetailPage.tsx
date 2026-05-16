@@ -20,6 +20,7 @@ import {
 import { format } from 'date-fns';
 
 import { Button, Card, Input, Loading } from '../../components/common';
+import { SUPPORTED_LANGUAGES } from '../../components/common/LanguageSelector';
 import { AssignedEventsDialog } from '../../components/admin/AssignedEventsDialog';
 import {
   customerAdminService,
@@ -227,11 +228,12 @@ export const CustomerDetailPage: React.FC = () => {
               onChange={setField('preferredLanguage')}
               className="input"
             >
-              <option value="en">English</option>
-              <option value="de">Deutsch</option>
-              <option value="nl">Nederlands</option>
-              <option value="pt">Português</option>
-              <option value="ru">Русский</option>
+              {/* Drive the option list from SUPPORTED_LANGUAGES so adding a
+                  locale (#510 added es; fr was already missing here) only
+                  needs to touch LanguageSelector. */}
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>{lang.name}</option>
+              ))}
             </select>
           </div>
         </div>
