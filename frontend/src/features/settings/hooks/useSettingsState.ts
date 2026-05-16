@@ -70,7 +70,7 @@ export interface SeoSettings {
 
 export function useSettingsState() {
   const queryClient = useQueryClient();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { updateUserProfile } = useAdminAuth();
 
   // Fetch settings
@@ -164,10 +164,6 @@ export function useSettingsState() {
   // Initialize settings from API
   useEffect(() => {
     if (settings) {
-      if (settings.general_default_language && settings.general_default_language !== i18n.language) {
-        i18n.changeLanguage(settings.general_default_language);
-      }
-
       setGeneralSettings({
         site_url: settings.general_site_url || '',
         default_expiration_days: toNumber(settings.general_default_expiration_days, 30),
@@ -236,7 +232,7 @@ export function useSettingsState() {
         sitemap_url: settings.seo_sitemap_url || ''
       });
     }
-  }, [settings, i18n]);
+  }, [settings]);
 
   useEffect(() => {
     if (adminProfile) {
