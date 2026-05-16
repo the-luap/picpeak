@@ -126,18 +126,26 @@ async function runMigrations() {
     const hasActivityLogsTable = await db.schema.hasTable('activity_logs');
     
     // Get applied migrations
-    const appliedMigrations = await db('migrations').select('filename');
-    const appliedFilenames = appliedMigrations.map(m => m.filename);
-    
+    let appliedMigrations = await db('migrations').select('filename');
+    let appliedFilenames = appliedMigrations.map(m => m.filename);
+
     // Check if this is a new deployment
     // It's new if no essential tables exist OR no migrations have been applied
     const hasEssentialTables = hasEventsTable && hasPhotosTable && hasAdminTable && hasActivityLogsTable;
     const isDatabaseEmpty = !hasEventsTable && !hasPhotosTable && !hasAdminTable && !hasActivityLogsTable;
     const isNewDeployment = isDatabaseEmpty || (appliedFilenames.length === 0 && !hasEssentialTables);
-    
+
     // Only detect existing schema for truly existing deployments
     if (!isNewDeployment) {
       await detectExistingSchema();
+      // detectExistingSchema may have inserted rows into the migrations
+      // table (e.g. for 004_add_categories_and_cms.js when photo_categories
+      // already exists). Re-query so the iteration below sees the up-to-date
+      // applied set — otherwise the loop attempts those migrations again,
+      // their tx-internal `insert into migrations` conflicts, and postgres
+      // logs a "duplicate key" ERROR on every fresh-after-partial install.
+      appliedMigrations = await db('migrations').select('filename');
+      appliedFilenames = appliedMigrations.map(m => m.filename);
     }
     
     // Get migration files from appropriate directories
