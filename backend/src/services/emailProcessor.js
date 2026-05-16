@@ -116,7 +116,9 @@ async function getRecipientLanguage(email, eventId = null) {
       .where('setting_key', 'general_default_language')
       .first();
     if (langSetting && langSetting.setting_value) {
-      return langSetting.setting_value;
+      let lang = langSetting.setting_value;
+      try { lang = JSON.parse(lang); } catch (_) {}
+      if (typeof lang === 'string' && lang.trim()) return lang.trim();
     }
   } catch (error) {
     logger.error('Error fetching app settings language:', error);
