@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.51.5-beta.0](https://github.com/the-luap/picpeak/compare/v3.51.4-beta.0...v3.51.5-beta.0) (2026-05-17)
+
+
+### Bug Fixes
+
+* **email:** parse JSON-encoded language setting before using as locale ([ebc7da2](https://github.com/the-luap/picpeak/commit/ebc7da21bea90ff84f5351bef4fd3c2605d3a68f))
+
 ## [3.51.4-beta.0](https://github.com/the-luap/picpeak/compare/v3.51.3-beta.0...v3.51.4-beta.0) (2026-05-17)
 
 
