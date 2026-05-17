@@ -35,12 +35,15 @@ RUN apk upgrade --no-cache
 RUN npm install -g npm@10
 
 # Install dumb-init for proper signal handling, postgresql-client for database
-# checks, and ffmpeg for video upload support. Alpine's ffmpeg package ships
-# both `ffmpeg` and `ffprobe` built natively against musl libc — the npm
+# checks, ffmpeg for video upload support, and su-exec for the root → nodejs
+# privilege drop in wait-for-db.sh (see #484: container starts as root so it
+# can chown bind-mounted host volumes to UID 1001, then re-execs as nodejs
+# before running the app). Alpine's ffmpeg package ships both `ffmpeg` and
+# `ffprobe` built natively against musl libc — the npm
 # `@ffmpeg-installer/ffmpeg` binary is glibc-built and (a) doesn't reliably
 # run on Alpine and (b) only includes ffmpeg, not ffprobe (which the video
 # pipeline calls via fluent-ffmpeg.ffprobe()).
-RUN apk add --no-cache dumb-init postgresql-client ffmpeg
+RUN apk add --no-cache dumb-init postgresql-client ffmpeg su-exec
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
@@ -56,7 +59,9 @@ RUN chmod -R a+r /app && chmod +x wait-for-db.sh
 RUN mkdir -p storage/events/active storage/events/archived storage/thumbnails data logs && \
     chown -R nodejs:nodejs storage data logs
 
-USER nodejs
+# No USER directive — the container starts as root so wait-for-db.sh can
+# chown bind-mounted host directories to UID 1001 before dropping privs
+# via su-exec. See #484 for the fresh-install restart loop this avoids.
 
 EXPOSE 3000
 
