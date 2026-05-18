@@ -89,13 +89,9 @@ docker compose up -d
 # Access at http://localhost:3000
 ```
 
-Note on Docker file permissions (PUID/PGID)
-- When using bind mounts (e.g., `./storage`, `./data`, `./logs`, `./events`), ensure the container user can write to these host folders. The backend runs as a non‑root user by default.
-- Set `PUID` and `PGID` in your `.env` to match your host user’s UID/GID (run `id -u` and `id -g` on the host). Compose maps the container user to these values.
-- Example in `.env`:
-  - `PUID=1000`
-  - `PGID=1000`
-- Without this, creating events, uploads, thumbnails, or logs can fail with "Permission denied".
+Note on Docker file permissions
+- The backend container starts as root, chowns bind-mounted host directories (`./storage`, `./data`, `./logs`) to UID 1001 (`nodejs`), then drops privileges via `su-exec` before running the app. No host-side setup needed for fresh installs.
+- If you pin `user:` in a compose override (e.g. to map a specific host UID), the self-chown is skipped and you must pre-chown the host directories to that UID — see [docs.picpeak.app/deployment/docker#permissions](https://docs.picpeak.app/deployment/docker#permissions).
 
 **ARM64 (aarch64) systems:** Pre-built images include native `linux/arm64`, no platform flags or emulation needed. If you're on an older image tag that's still amd64-only, see [docker-compose.amd64.override.yml](docker-compose.amd64.override.yml) for a transitional fallback.
 
