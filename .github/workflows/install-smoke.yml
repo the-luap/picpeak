@@ -171,10 +171,11 @@ jobs:
           # dumb-init runs as root (PID 1), node must be running as
           # nodejs (UID 1001) — if su-exec drop didn't happen the app
           # would be running as root which is the security regression
-          # we're guarding against.
-          user=$(docker exec picpeak-smoke-bk sh -c 'ps -o user= -p $(pgrep -f "node server.js" | head -1)')
+          # we're guarding against. Alpine ships BusyBox ps, which
+          # doesn't support `-p PID` or pgrep, so list + awk instead.
+          user=$(docker exec picpeak-smoke-bk ps -o user,comm | awk '$2=="node" {print $1; exit}')
           if [ "$user" != "nodejs" ]; then
-            echo "FAIL: node server.js running as '$user' (expected nodejs)"
+            echo "FAIL: node running as '$user' (expected nodejs)"
             docker exec picpeak-smoke-bk ps -o pid,user,comm
             exit 1
           fi
