@@ -329,6 +329,9 @@ export const EventDetailsPage: React.FC = () => {
         })} ${t('events.emailQueuedHint', 'The queue processor sends it — check System health if it does not arrive.')}`,
       );
       setShowSendEmailDialog(false);
+      // The send may have replaced the password (#627); a refetch bumps the
+      // version the share card keys its revealed copy on (#1271).
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
     },
     onError: () => {
       toast.error(t('errors.somethingWentWrong'));
