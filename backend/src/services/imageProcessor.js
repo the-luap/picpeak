@@ -457,6 +457,14 @@ async function withLocalCopy(sourceKey, fn) {
  * S3, a full read off the NAS for a reference photo) at exactly the moment
  * the system is already cold.
  *
+ * Only a MISS enters the flight. The validity check on the caller's own
+ * snapshot runs outside it, lock-free, so a request that already has a good
+ * rendition never joins anything — and, the other way round, a forced rebuild
+ * (the admin regenerate endpoints pass a row with the path nulled) can never
+ * be satisfied by joining a viewer's hot-path flight and being handed the
+ * very rendition it was asked to replace. Inside the flight, everything is
+ * a regeneration.
+ *
  * One map for every rendition, keyed by photo id and rendition rather than
  * by storage key: a preview's key is only known after the source has been
  * probed, and the canonical thumbnail ensureThumbnailAtWidth falls back to
@@ -501,18 +509,6 @@ function singleFlight(key, fn) {
  * load time for a 100-photo NAS-mounted gallery.
  */
 async function ensureThumbnail(photo) {
-  return singleFlight(`thumbnail:${photo.id}`, () => ensureThumbnailUnguarded(photo));
-}
-
-async function ensureThumbnailUnguarded(photo) {
-  const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
-
-  const event = await db('events').where('id', photo.event_id).first();
-  if (!event) {
-    logger.error(`ensureThumbnail: event ${photo.event_id} not found for photo ${photo.id}`);
-    return null;
-  }
-
   // Check if thumbnail exists and is valid (works for any source).
   if (photo.thumbnail_path) {
     const isValid = await isThumbnailValid(photo.thumbnail_path);
@@ -520,6 +516,18 @@ async function ensureThumbnailUnguarded(photo) {
       return photo.thumbnail_path;
     }
     logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
+  }
+
+  return singleFlight(`thumbnail:${photo.id}`, () => regenerateThumbnail(photo));
+}
+
+async function regenerateThumbnail(photo) {
+  const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
+
+  const event = await db('events').where('id', photo.event_id).first();
+  if (!event) {
+    logger.error(`ensureThumbnail: event ${photo.event_id} not found for photo ${photo.id}`);
+    return null;
   }
 
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
@@ -716,10 +724,18 @@ async function isHeroValid(heroPath) {
  * Ensure a hero image exists for a photo, regenerate if needed
  */
 async function ensureHeroImage(photo) {
-  return singleFlight(`hero:${photo.id}`, () => ensureHeroImageUnguarded(photo));
+  if (photo.hero_path) {
+    const isValid = await isHeroValid(photo.hero_path);
+    if (isValid) {
+      return photo.hero_path;
+    }
+    logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
+  }
+
+  return singleFlight(`hero:${photo.id}`, () => regenerateHeroImage(photo));
 }
 
-async function ensureHeroImageUnguarded(photo) {
+async function regenerateHeroImage(photo) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 
   let event;
@@ -728,14 +744,6 @@ async function ensureHeroImageUnguarded(photo) {
   } catch (e) {
     logger.error(`Failed to load event for hero image (photo ${photo.id}): ${e.message}`);
     return null;
-  }
-
-  if (photo.hero_path) {
-    const isValid = await isHeroValid(photo.hero_path);
-    if (isValid) {
-      return photo.hero_path;
-    }
-    logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
   }
 
   // External sources never reach the managed backend, so resolvePhotoStorageKey
@@ -1215,10 +1223,16 @@ async function ensurePreviewImageAtWidthUnguarded(photo, width) {
 }
 
 async function ensurePreviewImage(photo) {
-  return singleFlight(`preview:${photo.id}`, () => ensurePreviewImageUnguarded(photo));
+  if (photo.preview_path) {
+    const ok = await isPreviewValid(photo.preview_path);
+    if (ok) return photo.preview_path;
+    logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
+  }
+
+  return singleFlight(`preview:${photo.id}`, () => regeneratePreviewImage(photo));
 }
 
-async function ensurePreviewImageUnguarded(photo) {
+async function regeneratePreviewImage(photo) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 
   let event;
@@ -1232,12 +1246,6 @@ async function ensurePreviewImageUnguarded(photo) {
   if (!event) {
     logger.error(`ensurePreviewImage: event ${photo.event_id} not found for photo ${photo.id}`);
     return null;
-  }
-
-  if (photo.preview_path) {
-    const ok = await isPreviewValid(photo.preview_path);
-    if (ok) return photo.preview_path;
-    logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
   }
 
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';

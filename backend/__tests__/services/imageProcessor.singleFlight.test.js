@@ -202,6 +202,32 @@ describe('single-flight rendition generation (#1020)', () => {
       expect(putsUnder('thumbnails/')).toHaveLength(1);
     });
 
+    it.each([
+      ['ensureThumbnail', 'thumbnail_path', 'thumbnails/'],
+      ['ensureHeroImage', 'hero_path', 'heroes/'],
+      ['ensurePreviewImage', 'preview_path', 'previews/'],
+    ])('%s: a forced rebuild is never satisfied by joining a viewer\'s hot-path check', async (fn, column, prefix) => {
+      // adminThumbnails.js forces a rebuild by passing the row with the path
+      // nulled. If the validity check ran inside the flight, that call could
+      // join a viewer's flight for the same photo — one that was merely
+      // stat-ing an already good rendition — and be handed back the very
+      // file it was asked to replace, with the endpoint counting a success.
+      const photo = await managedPhoto();
+      const existing = await imageProcessor[fn](photo);
+      expect(existing).toMatch(new RegExp(`^${prefix}`));
+      expect(putsUnder(prefix)).toHaveLength(1);
+
+      const [viewer, forced] = await Promise.all([
+        imageProcessor[fn]({ ...photo, [column]: existing }),
+        imageProcessor[fn]({ ...photo, [column]: null }),
+      ]);
+
+      expect(viewer).toBe(existing);
+      expect(forced).toBe(existing);
+      // The forced call wrote a fresh rendition; the viewer's did not.
+      expect(putsUnder(prefix)).toHaveLength(2);
+    });
+
     it('different photos and different widths are separate flights', async () => {
       const a = await managedPhoto();
       const b = await externalPhoto();
