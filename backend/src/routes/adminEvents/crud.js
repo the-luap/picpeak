@@ -26,6 +26,7 @@ const { normaliseEventTimeTriple } = require('../../services/eventService');
 const { hasColumnCached } = require('../../utils/schemaCache');
 const { requireEventOwnership } = require('../../middleware/ownership');
 const { getAppSetting } = require('../../utils/appSettings');
+const { galleryPasswordColumns, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { clampIntOrUndefined } = require('../../utils/numericHelpers');
 const { getFrontendBaseUrl, getAbsoluteFrontendUrl } = require('../../utils/frontendUrl');
 const downloadZipService = require('../../services/downloadZipService');
@@ -620,6 +621,12 @@ module.exports = (router) => {
         host_email: customerEmail || null,
         admin_email: admin_email || null,
         password_hash,
+        // Opt-in recoverable copy (#1271), written with the hash so the two
+        // can never disagree. Empty unless the security setting is on.
+        ...(await galleryPasswordColumns({
+          ...(requirePassword && password ? { password } : {}),
+          ...(client_access_enabled && client_password ? { clientPassword: client_password } : {}),
+        })),
         welcome_message,
         color_theme,
         share_link: shareLinkToStore,
@@ -674,6 +681,8 @@ module.exports = (router) => {
     
       // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
       const eventId = insertResult[0]?.id || insertResult[0];
+      // #1271 — the setting was read before the hashes; re-check after the write
+      await dropCopiesIfStorageOff(eventId);
 
       // Apply customer-account assignments (#354). Skip when the customer
       // portal flag is off — the frontend hides the picker in that case,
@@ -1115,7 +1124,9 @@ module.exports = (router) => {
 
         await db('events').where('id', id).update({
           password_hash: await bcrypt.hash(password, getBcryptRounds()),
+          ...(await galleryPasswordColumns({ password })),
         });
+        await dropCopiesIfStorageOff(id);
       }
 
       const queued = hasInlineRecipient
@@ -1213,8 +1224,10 @@ module.exports = (router) => {
         if (policyError) return res.status(400).json(policyError);
 
         publishUpdates.password_hash = await bcrypt.hash(password, getBcryptRounds());
+        Object.assign(publishUpdates, await galleryPasswordColumns({ password }));
       }
       await db('events').where('id', id).update(publishUpdates);
+      if (publishUpdates.password_hash) await dropCopiesIfStorageOff(id);
 
       // Notify the customer — unless the admin asked to publish quietly
       // (#1235). Everything else about publishing still happens: the gallery
@@ -1696,6 +1709,9 @@ module.exports = (router) => {
         'share_link', 'share_token', 'client_share_token', 'show_share_token',
         // Secrets (set via the plaintext password/client_password inputs)
         'password_hash', 'client_password_hash',
+        // #1271 — encrypted copies follow the hashes; a forged ciphertext
+        // from another owner's row would decrypt through /:id/password
+        'password_recoverable', 'client_password_recoverable',
         // Server-consumed file paths — e.g. DELETE /:id/logo fs.unlink()s
         // hero_logo_path, so a forged value is an arbitrary-delete primitive.
         'hero_logo_path', 'hero_logo_url', 'archive_path', 'download_zip_path',
@@ -1803,8 +1819,12 @@ module.exports = (router) => {
         return res.status(400).json({ error: 'external_path is required when source_mode is reference' });
       }
 
+      // Plaintexts to remember after the row is written (#1271); each key is
+      // only set when this request changed that password.
+      const recoverable = {};
       if (Object.prototype.hasOwnProperty.call(updates, 'client_password') && updates.client_password) {
         updates.client_password_hash = await bcrypt.hash(updates.client_password, getBcryptRounds());
+        recoverable.clientPassword = updates.client_password;
         delete updates.client_password;
       } else {
         delete updates.client_password;
@@ -1879,8 +1899,10 @@ module.exports = (router) => {
 
       if (newPasswordPlain) {
         updates.password_hash = await bcrypt.hash(newPasswordPlain, getBcryptRounds());
+        recoverable.password = newPasswordPlain;
       } else if (hasRequirePasswordUpdate && requirePasswordUpdate === false && currentRequirePassword) {
         updates.password_hash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
+        recoverable.password = null;
       }
 
       // Enforce expires_at requirement based on app settings
@@ -2028,11 +2050,13 @@ module.exports = (router) => {
       // left nothing to change — Knex rejects .update({}) with an error,
       // which would surface as a 500 for an otherwise-valid no-op request
       // (e.g. a body of only protected fields). (codex review.)
+      if (Object.keys(recoverable).length > 0) Object.assign(updates, await galleryPasswordColumns(recoverable));
       if (Object.keys(updates).length > 0) {
         await db('events')
           .where('id', id)
           .update(updates);
       }
+      if (Object.keys(recoverable).length > 0) await dropCopiesIfStorageOff(id);
 
       // Customer-account assignments (#354). Same skip semantics as POST:
       // ignore when the customer portal flag is off so stale tabs don't

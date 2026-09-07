@@ -654,6 +654,17 @@
         "DELETE /:id/logo"
       ]
     },
+    "adminEvents/passwordRecovery.js": {
+      "decision": "partial",
+      "signals": [
+        "galleries"
+      ],
+      "reason": "Admin reveal of a stored gallery password (#1271); the password, the event and who looked are never reported, only that galleries exist.",
+      "route_signatures": [
+        "GET /:id/password-status",
+        "GET /:id/password"
+      ]
+    },
     "adminEvents/qr.js": {
       "decision": "partial",
       "signals": [

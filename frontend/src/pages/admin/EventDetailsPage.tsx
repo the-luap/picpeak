@@ -132,7 +132,11 @@ export const EventDetailsPage: React.FC = () => {
   });
 
   // Fetch event details
-  const { data: event, isLoading: eventLoading, isError: eventError, refetch: refetchEvent } = useQuery({
+  // dataUpdatedAt doubles as the "password may have changed" signal for the
+  // share card (#1271): every successful (re)fetch — after an edit, a PIN
+  // change, a publish, a reset — drops a revealed copy, even when the event
+  // comes back structurally equal and therefore reference-equal.
+  const { data: event, isLoading: eventLoading, isError: eventError, refetch: refetchEvent, dataUpdatedAt: eventUpdatedAt } = useQuery({
     queryKey: ['admin-event', id],
     queryFn: () => eventsService.getEvent(parseInt(id!)),
     enabled: !!id,
@@ -325,6 +329,9 @@ export const EventDetailsPage: React.FC = () => {
         })} ${t('events.emailQueuedHint', 'The queue processor sends it — check System health if it does not arrive.')}`,
       );
       setShowSendEmailDialog(false);
+      // The send may have replaced the password (#627); a refetch bumps the
+      // version the share card keys its revealed copy on (#1271).
+      queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
     },
     onError: () => {
       toast.error(t('errors.somethingWentWrong'));
@@ -696,6 +703,7 @@ export const EventDetailsPage: React.FC = () => {
         <OverviewTab
           event={event}
           id={id}
+          passwordVersion={eventUpdatedAt}
           isEditing={isEditing}
           editForm={editForm}
           setEditForm={setEditForm}
@@ -765,6 +773,8 @@ export const EventDetailsPage: React.FC = () => {
           eventType={event.event_type}
           onConfirm={async (sendEmail, password) => {
             const result = await eventsService.resetPassword(event.id, sendEmail, password);
+            // refetch so the share card drops a revealed password (#1271)
+            queryClient.invalidateQueries({ queryKey: ['admin-event', id] });
             return result;
           }}
           onClose={() => setShowPasswordReset(false)}

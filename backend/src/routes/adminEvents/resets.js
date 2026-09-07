@@ -7,11 +7,14 @@ const { adminAuth } = require('../../middleware/auth');
 const { requirePermission } = require('../../middleware/permissions');
 const bcrypt = require('bcrypt');
 const { queueEmail } = require('../../services/emailProcessor');
+const { galleryPasswordColumns, readGalleryPassword, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { validatePasswordInContext, getBcryptRounds } = require('../../utils/passwordValidation');
 const logger = require('../../utils/logger');
 const { errorResponse } = require('../../utils/routeHelpers');
 const { buildShareLinkVariants } = require('../../services/shareLinkService');
 const { requireEventOwnership } = require('../../middleware/ownership');
+const { getAbsoluteFrontendUrl } = require('../../utils/frontendUrl');
+const { parseBooleanInput } = require('../../utils/parsers');
 
 module.exports = (router) => {
 
@@ -64,8 +67,12 @@ module.exports = (router) => {
       await db('events')
         .where('id', id)
         .update({
-          password_hash: passwordHash
+          password_hash: passwordHash,
+          // #1271 — same statement as the hash, so a concurrent reset can
+          // never leave a copy that does not match the hash next to it
+          ...(await galleryPasswordColumns({ password: newPassword })),
         });
+      await dropCopiesIfStorageOff(id);
 
       // Log activity
       await logActivity('password_reset',
@@ -132,12 +139,19 @@ module.exports = (router) => {
       // First, try to get it from the request body if provided
       // Use optional chaining to handle cases where req.body might be undefined
       let galleryPassword = req.body?.password;
-    
-      // If no password provided, we can't decrypt the existing one
-      // So we'll show a security message
+      // Without a password in the request: use the recoverable copy when the
+      // operator opted into keeping one (#1271), else the security sentinel —
+      // the hash cannot be turned back into the password.
+      let usedStoredPassword = false;
+      const stored = await readGalleryPassword(id);
       if (!galleryPassword) {
-      // We'll let the email processor determine the language for the security message
-        galleryPassword = '{{password_security_message}}';
+        if (stored.password) {
+          galleryPassword = stored.password;
+          usedStoredPassword = true;
+        } else {
+          // We'll let the email processor determine the language for the security message
+          galleryPassword = '{{password_security_message}}';
+        }
       }
     
       // Dates will be formatted by the email processor based on recipient language
@@ -149,7 +163,7 @@ module.exports = (router) => {
       // customer's mail client renders a clickable absolute link.
       const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
-      await queueEmail(id, recipientEmail, 'gallery_created', {
+      const emailData = {
         customer_name: recipientName,
         customer_email: recipientEmail,
         host_name: recipientName,
@@ -161,7 +175,16 @@ module.exports = (router) => {
         welcome_message: event.welcome_message || '',
         eventId: id,
         isResend: true // Flag to indicate this is a resend
-      });
+      };
+      // The creation mail carries the client link and PIN (#172). A resend can
+      // only do the same when a stored PIN exists (#1271); otherwise the client
+      // section is left out rather than sent with a placeholder.
+      if (parseBooleanInput(event.client_access_enabled, false) && stored.clientPassword && event.client_share_token) {
+        const frontendUrl = await getAbsoluteFrontendUrl(req, { override: process.env.APP_URL });
+        emailData.client_link = `${frontendUrl}/gallery/${event.slug}/client-access?token=${event.client_share_token}`;
+        emailData.client_password = stored.clientPassword;
+      }
+      await queueEmail(id, recipientEmail, 'gallery_created', emailData);
     
       // Log the activity using the proper schema
       try {
@@ -180,7 +203,8 @@ module.exports = (router) => {
       // Don't fail the request if activity logging fails
       }
     
-      res.json({ 
+      res.json({
+        usedStoredPassword, 
         success: true,
         message: 'Creation email has been queued for sending'
       });

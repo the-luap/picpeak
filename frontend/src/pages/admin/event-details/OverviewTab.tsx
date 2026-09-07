@@ -25,6 +25,7 @@ import { toBoolean } from '../../../utils/parsers';
 interface OverviewTabProps {
   event: Event;
   id: string | undefined;
+  passwordVersion?: number;
   isEditing: boolean;
   editForm: EditFormState;
   setEditForm: React.Dispatch<React.SetStateAction<EditFormState>>;
@@ -59,6 +60,7 @@ interface OverviewTabProps {
 export const OverviewTab: React.FC<OverviewTabProps> = ({
   event,
   id,
+  passwordVersion,
   isEditing,
   editForm,
   setEditForm,
@@ -114,7 +116,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         />
 
         {/* Share Link */}
-        <ShareLinkCard event={event} setShowPasswordReset={setShowPasswordReset} />
+        <ShareLinkCard event={event} setShowPasswordReset={setShowPasswordReset} passwordVersion={passwordVersion} />
 
         {/* Branded short URLs (#699). Sits between the canonical share-link
             card and the Client Access card — same "things you share with

@@ -31,6 +31,7 @@ const { requireEventOwnership, scopeEventsQuery } = require('../../middleware/ow
 // which apiTokenAuth populates.
 const { requirePermission } = require('../../middleware/permissions');
 const { resolveEventFeedbackDefaults } = require('../../services/feedbackDefaults');
+const { galleryPasswordColumns, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { buildShareLinkVariants } = require('../../services/shareLinkService');
 const { generateThumbnail } = require('../../services/imageProcessor');
 const logger = require('../../utils/logger');
@@ -327,6 +328,8 @@ router.post(
         host_email: customer_email,
         admin_email,
         password_hash: passwordHash,
+        // #1271 — recoverable copy rides with the hash; only when there is one
+        ...(require_password && password ? await galleryPasswordColumns({ password }) : {}),
         require_password,
         share_link: shareLinkToStore,
         share_token: shareToken,
@@ -352,6 +355,7 @@ router.post(
         ...(persistPhone ? { customer_phone: persistPhone } : {})
       }).returning('id');
       const id = insertResult[0]?.id || insertResult[0];
+      if (require_password && password) await dropCopiesIfStorageOff(id);
 
       // Issue #550 — mirror adminEvents.js: create event_feedback_settings
       // row when feedback is enabled, so the gallery actually shows feedback
@@ -595,6 +599,9 @@ router.get('/events/:id', apiTokenAuth, requireApiScope('read'), requirePermissi
     if (!event) return res.status(404).json({ error: 'Event not found' });
     delete event.password_hash;
     delete event.client_password_hash;
+    // #1271 — the encrypted copies are server-only as well
+    delete event.password_recoverable;
+    delete event.client_password_recoverable;
     res.json(event);
   } catch (error) {
     logger.error('v1 GET /events/:id failed', { error: error.message });
