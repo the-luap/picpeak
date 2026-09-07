@@ -5,6 +5,30 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.127.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.126.3-beta.0...v3.127.0-beta.0) (2026-09-07)
+
+
+### Features
+
+* **usage:** open the portal signed in, and rewrite the German copy ([a02fa08](https://github.com/PicPeak/picpeak/commit/a02fa08f696f8476c07df0acc329633e489fcd30))
+* **usage:** open the portal signed in, with the credential never in a served URL ([f114f3e](https://github.com/PicPeak/picpeak/commit/f114f3e876f81a06b9ea28598f326bcbbc5901af))
+* **usage:** plain link to the public usage portal, German opt-in copy ([a16ff85](https://github.com/PicPeak/picpeak/commit/a16ff855dd4bdcefcac5b29b31a8c596df46957e))
+* **usage:** plain link to the public usage portal, German opt-in copy ([7e40579](https://github.com/PicPeak/picpeak/commit/7e4057921721919c27c40c6e46c755c5e03d6d86))
+
+
+### Bug Fixes
+
+* **analytics:** send Umami page views through track(), not the removed trackView() ([5b8c13f](https://github.com/PicPeak/picpeak/commit/5b8c13feb635ffaf8cb6c2a20d78f4972d304539))
+* **gallery:** honor canvas settings in the Premium lightbox ([fde0558](https://github.com/PicPeak/picpeak/commit/fde055881145c937092bfa4dd7f4c0e1b19fb538))
+* **gallery:** honor canvas settings in the Premium lightbox ([9edce85](https://github.com/PicPeak/picpeak/commit/9edce856ff59802b727e2ae610d3783efea006eb))
+* **gallery:** keep canvas rendering in the lightbox, render tiles as &lt;img&gt; ([0986f7f](https://github.com/PicPeak/picpeak/commit/0986f7f7ac0e53b759928872cd5ffccb1b28f27d))
+* **i18n:** rewrite the German product-usage copy ([35cbcef](https://github.com/PicPeak/picpeak/commit/35cbcefed20f7d8aaf6724fce261266ef20838a4))
+* **security:** bump sanitize-html to 2.17.7 ([7c968e7](https://github.com/PicPeak/picpeak/commit/7c968e74bb339c2953ae98984e46c3d848be39cf))
+* **security:** bump sanitize-html to 2.17.7 ([6583178](https://github.com/PicPeak/picpeak/commit/65831785a2f1a52b0d3045b4a0b34fbfb37e94ca))
+* **security:** stop a gallery viewer's own image fetches spending the anonymous budget ([ac24319](https://github.com/PicPeak/picpeak/commit/ac243191351b12ab4046cf35a9caa5317f993d3d))
+* **security:** stop a gallery viewer's own image fetches spending the anonymous budget ([7b2dd3f](https://github.com/PicPeak/picpeak/commit/7b2dd3fab1b03966ca3ca1e13d0ce75b17c4bae8))
+* **setup:** require Node 22.12 for sanitize-html ([e06d0b4](https://github.com/PicPeak/picpeak/commit/e06d0b45138688d49037c65e45a1916252da9feb))
+
 ## [3.126.3-beta.0](https://github.com/PicPeak/picpeak/compare/v3.126.2-beta.0...v3.126.3-beta.0) (2026-09-06)
 
 
