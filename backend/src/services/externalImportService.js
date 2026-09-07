@@ -49,15 +49,20 @@ const jobNameFor = (eventId) => `external_import:${eventId}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Remember that an admin deleted these external photos, so an automatic pass
- * does not bring them back (migration 209). Called from the photo delete
- * routes; a no-op for managed rows. Insert failures are swallowed on purpose:
- * a duplicate means the row is already there, and anything else must not
- * turn a successful delete into a 500.
+ * Remember that an admin deleted these photos, so an automatic pass does not
+ * bring them back (migration 209). Called from the photo delete routes.
+ *
+ * Keyed on external_relpath alone, not on source_origin: a replaced external
+ * photo (photoReplacementService) becomes `managed` but deliberately keeps
+ * its relpath, and deleting that replacement must not republish the NAS
+ * original either. Rows without a relpath were never imported from the
+ * folder and are skipped. Insert failures are swallowed on purpose: a
+ * duplicate means the row is already there, and anything else must not turn
+ * a successful delete into a 500.
  */
 async function recordExclusions(eventId, photos) {
   for (const photo of photos) {
-    if (photo.source_origin !== 'external' || !photo.external_relpath) continue;
+    if (!photo.external_relpath) continue;
     try {
       await db('external_import_exclusions').insert({ event_id: eventId, external_relpath: photo.external_relpath });
     } catch (err) {
@@ -158,8 +163,31 @@ async function importExternalFolder({
   // second runner while this one is about to start inserting. `lost` is
   // checked before the event is touched and on every loop iteration.
   let lost = false;
+
+  // Automatic passes follow the row. The watcher decided to run this pass
+  // from a snapshot of the event that may be a minute old by the time the
+  // walk and the settle wait are done — and a long pass over a slow mount
+  // can outlive several admin saves. The pass stops as soon as the event no
+  // longer qualifies: watcher off, archived, deactivated, switched to
+  // managed, or pointed at another folder.
+  const stillEligible = async () => {
+    const now = await db('events')
+      .where('id', eventId)
+      .select('source_mode', 'external_path', 'external_watch', 'is_active', 'is_archived')
+      .first();
+    return Boolean(now)
+      && now.source_mode === 'reference'
+      && (now.external_path || '') === String(external_path)
+      && Boolean(now.external_watch)
+      && Boolean(now.is_active)
+      && !now.is_archived;
+  };
+
   const heartbeatTimer = setInterval(() => {
     jobState.heartbeat(jobName, token).then((ok) => { if (!ok) lost = true; });
+    if (automatic) {
+      stillEligible().then((ok) => { if (!ok) lost = true; }).catch(() => {});
+    }
   }, jobState.HEARTBEAT_INTERVAL_MS);
   heartbeatTimer.unref?.();
 
@@ -260,15 +288,13 @@ async function importExternalFolder({
     if (lost) throw new ImportInProgressError(eventId);
 
     if (automatic) {
-      // Follow the row, never write it. The folder this pass was started for
-      // may have been changed — or the event switched to managed — while the
-      // tree was being walked or the settle wait was running. Writing
-      // source_mode/external_path here would silently undo that save; and
-      // importing the old folder into an event that now points elsewhere is
-      // wrong too. Re-read and stop if the row moved.
-      const now = await db('events').where('id', eventId).select('source_mode', 'external_path').first();
-      if (!now || now.source_mode !== 'reference' || (now.external_path || '') !== String(external_path)) {
-        logger.info(`External import for event ${eventId}: folder changed during the pass, nothing imported`);
+      // Follow the row, never write it. Writing source_mode/external_path
+      // here would silently undo a save made while the tree was being walked
+      // or the settle wait was running; and importing into an event that no
+      // longer qualifies is wrong too. Re-read and stop if the row moved.
+      // The heartbeat tick keeps re-checking during the loop.
+      if (!(await stillEligible())) {
+        logger.info(`External import for event ${eventId}: event no longer eligible, nothing imported`);
         const empty = { imported: 0, skipped, deferred, excluded, thumbnailsGenerated: 0, thumbnailsFailed: 0 };
         await jobState.release(jobName, token, null);
         return empty;
@@ -329,11 +355,12 @@ async function importExternalFolder({
     // Insert photos
     for (const f of dedupeMap.values()) {
       if (lost) {
-        // Another process took the claim over. It is walking this same
-        // folder now, and the unique index makes anything we insert from
-        // here a wasted stat + decode — stop and let it finish.
+        // Either another process took the claim over — it is walking this
+        // same folder now, and the unique index makes anything we insert from
+        // here a wasted stat + decode — or (automatic passes) the event
+        // stopped qualifying. Stop and let whoever owns it now finish.
         superseded = true;
-        logger.warn(`External import for event ${eventId} lost its claim mid-run; stopping after ${imported} imported`);
+        logger.warn(`External import for event ${eventId} stopped mid-run (claim lost or event no longer eligible) after ${imported} imported`);
         break;
       }
 

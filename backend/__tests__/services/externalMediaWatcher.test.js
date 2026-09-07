@@ -285,6 +285,31 @@ describe('externalMediaWatcher (issue 1187)', () => {
     await fs.promises.unlink(path.join(mediaRoot, 'nas', 'individual', 'd.jpg'));
   });
 
+  it('records an exclusion for a replaced external photo too', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder, recordExclusions } = require('../../src/services/externalImportService');
+    await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'admin' } });
+    const [row] = await db('photos').where({ event_id: eventId });
+
+    // photoReplacementService flips the row to managed but keeps the relpath.
+    await db('photos').where({ id: row.id }).update({ source_origin: 'managed' });
+    const replaced = await db('photos').where({ id: row.id }).first();
+    await recordExclusions(eventId, [replaced]);
+    await db('photos').where({ id: row.id }).del();
+
+    expect(await watcher.runImport(eventId, 'sweep')).toMatchObject({ imported: 0, excluded: 1 });
+    expect(await relpaths(eventId)).toEqual([]);
+  });
+
+  it('an automatic pass stops when the event stopped qualifying since it was scheduled', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder } = require('../../src/services/externalImportService');
+    await db('events').where('id', eventId).update({ external_watch: 0 });
+    expect(await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true }))
+      .toMatchObject({ imported: 0 });
+    expect(await relpaths(eventId)).toEqual([]);
+  });
+
   it('an automatic pass never rewrites the event folder, and stops if it moved', async () => {
     const eventId = await seedEvent();
     const { importExternalFolder } = require('../../src/services/externalImportService');
