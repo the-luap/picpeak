@@ -14,6 +14,7 @@ const emailWebhookTransport = require('../services/emailWebhookTransport');
 const businessProfileService = require('../services/businessProfileService');
 const { errorResponse, safeValidationErrors } = require('../utils/routeHelpers');
 const logger = require('../utils/logger');
+const { parseEmailData, secretValues, redactRenderedHtml } = require('../utils/emailSecretRedaction');
 const router = express.Router();
 
 // Get email configuration
@@ -792,8 +793,12 @@ router.get('/queue/:id', adminAuth, messagingGate, requirePermission('email.view
 
     let cc = null;
     let attachments = [];
+    // Rows sent before the processor learned to scrub still carry the
+    // gallery password / client PIN in their variables and body. Redact on
+    // read from the same rule, so the pane never serves a password.
+    const data = parseEmailData(row.email_data);
+    const renderedHtml = redactRenderedHtml(row.rendered_html || null, secretValues(data));
     try {
-      const data = row.email_data ? JSON.parse(row.email_data) : {};
       if (data.cc) cc = Array.isArray(data.cc) ? data.cc.join(', ') : String(data.cc);
       if (Array.isArray(data.attachments)) {
         attachments = data.attachments
@@ -815,7 +820,7 @@ router.get('/queue/:id', adminAuth, messagingGate, requirePermission('email.view
       eventId: row.event_id,
       eventName: row.event_name || null,
       eventSlug: row.event_slug || null,
-      renderedHtml: row.rendered_html || null,
+      renderedHtml,
       cc,
       attachments,
     });
