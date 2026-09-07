@@ -196,8 +196,10 @@ export default function ProductUsageTab() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [preview, setPreview] = useState<unknown>(null);
-  const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [named, setNamed] = useState(false);
+  // Set only when the browser refused the tab (popup blocked): the session
+  // URL is then offered as a plain link the operator can click instead.
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [form, setForm] = useState<ProductFeedback>({
     kind: 'feedback',
     title: '',
@@ -231,6 +233,58 @@ export default function ProductUsageTab() {
   if (isPending) return <p>{t('productUsage.loading')}</p>;
   if (isError || !data) return <p role="alert">{t('productUsage.failed')}</p>;
   const active = data.status === 'active';
+  // Signed-in portal access without the credential ever touching a URL that
+  // a server sees. The backend asks the collector for a short-lived session
+  // (a signed `session` command, so the collector knows which installation
+  // this is), and the portal is opened with that token in the URL *fragment*:
+  // fragments are never sent over the wire, and the portal drops it from the
+  // address bar on load and keeps the session in memory only. The lookup
+  // hash itself never leaves the settings page.
+  //
+  // The tab is opened synchronously in the click handler and navigated once
+  // the session exists — opening it after the await trips popup blockers.
+  // Navigation goes through a document written into the blank tab rather
+  // than `tab.location`: a script-initiated navigation carries the admin
+  // page as referrer, and the collector must not learn this installation's
+  // origin. The written page declares no-referrer and refreshes itself.
+  //
+  // If the browser refused the tab, the URL is kept as a plain link instead
+  // of a second window.open after the await, which would be refused too. If
+  // the collector cannot be reached the session command is queued for retry
+  // and the tab falls back to the public portal, so the click still lands
+  // somewhere.
+  const openPortal = () => {
+    if (!data.collector_url) return;
+    setPortalUrl(null);
+    const tab = window.open('about:blank', '_blank');
+    if (tab) tab.opener = null;
+    const go = (url: string) => {
+      if (!tab) {
+        setPortalUrl(url);
+        return;
+      }
+      const escaped = url.replace(/"/g, '&quot;');
+      tab.document.open();
+      tab.document.write(
+        `<!doctype html><meta name="referrer" content="no-referrer"><meta http-equiv="refresh" content="0;url=${escaped}">`
+      );
+      tab.document.close();
+    };
+    return run(async () => {
+      try {
+        const result = await service.portalSession();
+        if (result.url) {
+          go(result.url);
+        } else {
+          go(data.collector_url as string);
+          if (!result.delivered) setMessage(t('productUsage.queued'));
+        }
+      } catch (error) {
+        tab?.close();
+        throw error;
+      }
+    });
+  };
   return (
     <div className="space-y-6 text-theme">
       <p>{t('productUsage.purpose')}</p>
@@ -326,7 +380,6 @@ export default function ProductUsageTab() {
                   await run(async () => {
                     await service.abandon();
                     setPreview(null);
-                    setPortalUrl(null);
                   });
                 }
               }}
@@ -368,7 +421,6 @@ export default function ProductUsageTab() {
                     await run(async () => {
                       await service.disable();
                       setPreview(null);
-                      setPortalUrl(null);
                     });
                   }
                 }}
@@ -379,19 +431,43 @@ export default function ProductUsageTab() {
           )}
           {data.collector_url && (
             <>
-              {/* The public portal itself, not the session-bound link below:
-                  it needs neither participation nor a voting session, so an
-                  operator can look at the portal before deciding to join.
-                  Styled as a button so it reads as an action, not a footnote. */}
-              <a
-                className="btn btn-outline btn-md"
-                href={data.collector_url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t('productUsage.openUsagePortal')}
-                <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
-              </a>
+              {/* One button, two behaviours. Before participation it is a plain
+                  link: the portal is public and an operator deciding whether
+                  to join should be able to look at it first. While
+                  participating it opens the portal signed in — see openPortal
+                  above — so nobody has to copy the lookup hash around. */}
+              {active ? (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={busy || Boolean(data.pending_action)}
+                    onClick={openPortal}
+                  >
+                    {t('productUsage.openUsagePortal')}
+                    <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  {portalUrl && (
+                    <a
+                      href={portalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary-600 dark:text-primary-400 hover:underline self-center"
+                    >
+                      {t('productUsage.portalReady')}
+                    </a>
+                  )}
+                </>
+              ) : (
+                <a
+                  className="btn btn-outline btn-md"
+                  href={data.collector_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t('productUsage.openUsagePortal')}
+                  <ExternalLink className="ml-2 h-4 w-4" aria-hidden="true" />
+                </a>
+              )}
               <a
                 className="text-sm text-primary-600 dark:text-primary-400 hover:underline self-center"
                 href={`${data.collector_url}/transparency`}
@@ -477,31 +553,7 @@ export default function ProductUsageTab() {
               >
                 {t('productUsage.export')}
               </Button>
-              <Button
-                variant="outline"
-                className={WRAPPING_BUTTON}
-                disabled={busy || Boolean(data.pending_action)}
-                onClick={() =>
-                  run(async () => {
-                    const result = await service.portalSession();
-                    setPortalUrl(result.url);
-                    if (!result.delivered) setMessage(t('productUsage.queued'));
-                  })
-                }
-              >
-                {t('productUsage.connect')}
-              </Button>
             </div>
-            {portalUrl && (
-              <a
-                href={portalUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                {t('productUsage.openPortal')}
-              </a>
-            )}
             {preview !== null && (
               <pre
                 className="max-h-96 overflow-auto rounded border border-theme p-3 text-xs"
