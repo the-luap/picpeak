@@ -163,13 +163,14 @@ PicPeak runs on two long-lived branches:
 | Branch | Role | What targets it |
 |---|---|---|
 | **`main`** | Active development. The next release is being assembled here. | Feature PRs. Most bugfix PRs. |
-| **`stable`** | Curated release channel. Production-recommended. | Urgent bugfix backports only — small, surgical PRs that land cleanly without dragging in unrelated changes. |
+| **`stable`** | Curated release channel. Production-recommended. | Security fixes and regular bugfix backports, kept small and free of unrelated features. |
 
 ### Which branch should my PR target?
 
 - **New feature** → target `main`.
 - **Bugfix that ONLY affects active dev** → target `main`.
-- **Bugfix that current stable users need** → open a small PR against `main`, AND a separate small PR against `stable` with the same change. Keep both surgical so each lands cleanly.
+- **Bugfix that current stable users need** → target `main`; regular bug fixes are generally backported automatically to `stable`. Maintainers handle conflicts or create a separate focused backport PR when needed.
+- **Security vulnerability** → report privately using [SECURITY.md](SECURITY.md). Security fixes are always released on both `stable` and `main`; coordinate any fix with the maintainers before opening a public PR.
 
 **Hard rule on PR scope**: bugfix PRs against `stable` must be small enough to backport without conflict. Omnibus PRs (e.g. five unrelated sub-features) are fine for `main`, but never for `stable` — they make the next `main → stable` merge painful and break the "stable is always shippable" invariant.
 
@@ -187,6 +188,6 @@ See [RELEASING.md](RELEASING.md) for the full operational doc (promotion criteri
 
 - Create an [issue](https://github.com/PicPeak/picpeak/issues) for bugs or features
 - Join [discussions](https://github.com/PicPeak/picpeak/discussions) for questions
-- Security issues: Open a [security issue](https://github.com/PicPeak/picpeak/issues/new?labels=security) on GitHub
+- Security vulnerabilities: Follow the [security policy](SECURITY.md) and use [private vulnerability reporting](https://github.com/PicPeak/picpeak/security/advisories/new)
 
 Thank you for contributing! 🎉
