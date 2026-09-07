@@ -35,6 +35,8 @@ describe('v5 evidence comes from real edits, not the generic successful-route ma
       t.increments('id'); for (const key of ['name', 'slug_prefix', 'emoji', 'theme_preset', 'theme_config']) t.text(key);
       t.integer('display_order'); t.boolean('is_active'); t.boolean('is_system'); t.timestamp('updated_at'); t.timestamp('created_at');
     });
+    await db.schema.createTable('events', t => { t.increments('id'); t.integer('created_by'); });
+    await db.schema.createTable('event_category_order', t => { t.integer('event_id'); t.integer('category_id'); t.integer('position'); });
     await db.schema.createTable('photo_categories', t => {
       t.increments('id'); t.text('name'); t.text('slug'); t.integer('hero_photo_id'); t.integer('event_id');
       t.integer('display_order'); t.boolean('allow_downloads'); t.boolean('is_folder'); t.boolean('is_global');
@@ -48,7 +50,7 @@ describe('v5 evidence comes from real edits, not the generic successful-route ma
   });
   beforeEach(async () => {
     marker.mockClear();
-    for (const table of ['cms_pages', 'email_templates', 'email_template_translations', 'app_settings', 'event_types', 'photo_categories']) await db(table).delete();
+    for (const table of ['cms_pages', 'email_templates', 'email_template_translations', 'app_settings', 'event_types', 'photo_categories', 'events', 'event_category_order']) await db(table).delete();
     await db('cms_pages').insert({ slug: 'privacy', title_en: 'Privacy', content_en: 'Seeded content' });
     await db('email_templates').insert({ id: 1, template_key: 'PRIVATE-template' });
     await db('email_template_translations').insert({ template_id: 1, language: 'en', subject: 'Seeded subject', body_html: 'Seeded body', body_text: '' });
@@ -102,12 +104,20 @@ describe('v5 evidence comes from real edits, not the generic successful-route ma
       { id: 1, name: 'A', slug: 'a', is_global: true, is_folder: false, display_order: 1 },
       { id: 2, name: 'B', slug: 'b', is_global: true, is_folder: false, display_order: 2 },
     ]);
+    await db('events').insert({ id: 1 });
     await request(app).post('/event-types/reorder').send({ orderedIds: [1, 2] }).expect(200);
     await request(app).post('/categories/reorder-global').send({ orderedIds: [1, 2] }).expect(200);
+    await request(app).delete('/categories/reorder/1').expect(200); // no override to reset
     expect(recorded()).toEqual([]);
     await request(app).post('/event-types/reorder').send({ orderedIds: [2, 1] }).expect(200);
     await request(app).post('/categories/reorder-global').send({ orderedIds: [2, 1] }).expect(200);
-    expect(recorded()).toEqual(['event_type_editing', 'category_editing']);
+    await request(app).post('/categories/reorder').send({ event_id: 1, orderedIds: [2, 1] }).expect(200);
+    expect(recorded()).toEqual(['event_type_editing', 'category_editing', 'category_editing']);
+    marker.mockClear();
+    await request(app).post('/categories/reorder').send({ event_id: 1, orderedIds: [2, 1] }).expect(200); // same override again
+    expect(recorded()).toEqual([]);
+    await request(app).delete('/categories/reorder/1').expect(200);
+    expect(recorded()).toEqual(['category_editing']);
   });
   test('settings compare persisted values, not timestamps, JSON order or defaults materialized as rows', async () => {
     await db('app_settings').insert({ setting_key: 'theme_config', setting_value: JSON.stringify({ a: 1, b: 2 }) });

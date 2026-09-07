@@ -57,6 +57,19 @@ describe('template delivery is a coarse transport-acceptance bit', () => {
     expect(marker).toHaveBeenCalledWith(['email_template_delivery']);
     expect(await db('email_queue').where('status', 'sent').count({ n: '*' }).first()).toMatchObject({ n: 2 });
   });
+  test('a workflow test run (engine.testRun, __test) queues a test message; a real run counts', async () => {
+    require('../../src/services/workflows/actions');
+    const sendEmail = require('../../src/services/workflows/registry').getAction('send_email');
+    const ctx = (vars) => ({ node: { config: { to: 'PRIVATE@example.test', emailType: 'PRIVATE-template', recipientClass: 'admin' } }, vars });
+    await sendEmail(ctx({ __test: true, emailData: { __language: 'en' } }));
+    await processEmailQueue();
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    expect(marker).not.toHaveBeenCalled();
+    await sendEmail(ctx({ emailData: { __language: 'en' } }));
+    await processEmailQueue();
+    expect(sendMail).toHaveBeenCalledTimes(2);
+    expect(marker).toHaveBeenCalledWith(['email_template_delivery']);
+  });
   test('webhook success counts; failure does not; marker failure never retries successful mail', async () => {
     webhook.isEnabled.mockReturnValue(true); webhook.send.mockResolvedValue({ messageId: 'private' });
     marker.mockRejectedValueOnce(new Error('usage unavailable'));

@@ -353,12 +353,14 @@ router.post('/reorder', adminAuth, requirePermission('settings.edit'), [
       return res.status(400).json({ error: 'One or more categories are not available for this event' });
     }
 
+    const before = await db('event_category_order').where('event_id', eventId).orderBy('position', 'asc').pluck('category_id');
     await db.transaction(async (trx) => {
       await trx('event_category_order').where('event_id', eventId).del();
       await trx('event_category_order').insert(
         orderedIds.map((id, i) => ({ event_id: eventId, category_id: id, position: i + 1 }))
       );
     });
+    changedEvidence(res, 'category_editing', { order: before }, { order: orderedIds }, ['order']);
 
     // Log activity after commit (avoids a SQLite in-transaction global write).
     await logActivity('event_category_order_set',
@@ -378,7 +380,8 @@ router.post('/reorder', adminAuth, requirePermission('settings.edit'), [
 router.delete('/reorder/:eventId', adminAuth, requirePermission('settings.edit'), requireEventOwnership, async (req, res) => {
   try {
     const eventId = parseInt(req.params.eventId, 10);
-    await db('event_category_order').where('event_id', eventId).del();
+    const removed = await db('event_category_order').where('event_id', eventId).del();
+    if (removed > 0) capabilityEvidence(res, 'category_editing');
 
     await logActivity('event_category_order_reset',
       { eventId },
