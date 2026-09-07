@@ -1273,7 +1273,8 @@ async function processEmailQueue({ ignoreSchedule = false, limit = 10, onlyId = 
           sendResult = await sendTemplateEmail(
             email.recipient_email,
             email.email_type,
-            emailData
+            emailData,
+            { usageEligible: emailData.__usageEligible !== false }
           );
         }
 
@@ -1425,6 +1426,9 @@ async function queueEmail(eventId, recipientEmail, emailType, emailData, options
   try {
     // Add eventId to emailData for language detection
     emailData.eventId = eventId;
+    // An explicit test message (dev tools' send-test-email) must not count as
+    // template delivery when the queue processor sends it later.
+    if (options.usageEligible === false) emailData.__usageEligible = false;
     const row = {
       event_id: eventId,
       recipient_email: recipientEmail,

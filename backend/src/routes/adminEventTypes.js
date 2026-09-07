@@ -247,7 +247,9 @@ router.post('/reorder', adminAuth, requirePermission('event_types.manage'), [
     }
 
     const { orderedIds } = req.body;
+    const before = (await eventTypeService.getAllEventTypes()).map((type) => type.id);
     const eventTypes = await eventTypeService.reorderEventTypes(orderedIds);
+    changedEvidence(res, 'event_type_editing', { order: before }, { order: eventTypes.map((type) => type.id) }, ['order']);
 
     // Log activity
     await logActivity('event_types_reordered',

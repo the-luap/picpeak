@@ -407,7 +407,8 @@ router.post('/reorder-global', adminAuth, requirePermission('settings.edit'), [
 
     const orderedIds = req.body.orderedIds.map((id) => parseInt(id, 10));
 
-    const globals = await db('photo_categories').where('is_global', formatBoolean(true)).pluck('id');
+    const globals = await db('photo_categories').where('is_global', formatBoolean(true))
+      .orderBy('display_order', 'asc').orderBy('name', 'asc').pluck('id');
     const globalsSet = new Set(globals);
     const invalid = orderedIds.filter((id) => !globalsSet.has(id));
     if (invalid.length > 0) {
@@ -430,6 +431,7 @@ router.post('/reorder-global', adminAuth, requirePermission('settings.edit'), [
       .where('is_global', formatBoolean(true))
       .orderBy('display_order', 'asc')
       .orderBy('name', 'asc');
+    changedEvidence(res, 'category_editing', { order: globals }, { order: categories.map((category) => category.id) }, ['order']);
     res.json(categories);
   } catch (error) {
     logger.error('Error reordering global categories:', error);

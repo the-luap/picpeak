@@ -93,6 +93,22 @@ describe('v5 evidence comes from real edits, not the generic successful-route ma
     expect(recorded()).toEqual(['event_type_editing', 'category_editing']);
     expect(JSON.stringify(marker.mock.calls)).not.toContain('PRIVATE');
   });
+  test('reordering event types and global categories counts only when the order changes', async () => {
+    await db('event_types').insert([
+      { id: 1, name: 'A', slug_prefix: 'a', display_order: 1, is_active: true, is_system: true },
+      { id: 2, name: 'B', slug_prefix: 'b', display_order: 2, is_active: true, is_system: true },
+    ]);
+    await db('photo_categories').insert([
+      { id: 1, name: 'A', slug: 'a', is_global: true, is_folder: false, display_order: 1 },
+      { id: 2, name: 'B', slug: 'b', is_global: true, is_folder: false, display_order: 2 },
+    ]);
+    await request(app).post('/event-types/reorder').send({ orderedIds: [1, 2] }).expect(200);
+    await request(app).post('/categories/reorder-global').send({ orderedIds: [1, 2] }).expect(200);
+    expect(recorded()).toEqual([]);
+    await request(app).post('/event-types/reorder').send({ orderedIds: [2, 1] }).expect(200);
+    await request(app).post('/categories/reorder-global').send({ orderedIds: [2, 1] }).expect(200);
+    expect(recorded()).toEqual(['event_type_editing', 'category_editing']);
+  });
   test('settings compare persisted values, not timestamps, JSON order or defaults materialized as rows', async () => {
     await db('app_settings').insert({ setting_key: 'theme_config', setting_value: JSON.stringify({ a: 1, b: 2 }) });
     expect(await settingsChanged(db, { theme_config: { b: 2, a: 1 } }, ['theme_config'])).toBe(false);

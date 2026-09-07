@@ -9,7 +9,9 @@ function normalized(value) {
   if (typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
     try { return normalized(JSON.parse(value)); } catch { return value; }
   }
-  if (Array.isArray(value)) return value.map(normalized);
+  // Array.from, not .map: a row array from the sqlite binding belongs to the
+  // outer realm under Jest and isDeepStrictEqual rejects it on prototype alone.
+  if (Array.isArray(value)) return Array.from(value, normalized);
   if (value && typeof value === 'object') return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [key, normalized(item)])
   );
