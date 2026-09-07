@@ -204,7 +204,9 @@ router.post('/regenerate', adminAuth, requirePermission('photos.edit'), async (r
           // cannot clobber each other, and writes thumbnail_path back itself.
           // Nulling thumbnail_path is what stops it short-circuiting on
           // isThumbnailValid — the same trick /regenerate-previews uses.
-          const newThumbnailPath = await ensureThumbnail({ ...photo, thumbnail_path: null });
+          // `force` is what stops it joining a lazy generation that is still
+          // running under the OLD settings and adopting that result (#1020).
+          const newThumbnailPath = await ensureThumbnail({ ...photo, thumbnail_path: null }, { force: true });
 
           if (newThumbnailPath) {
             // Drop the superseded canonical rendition when the key MOVED.
@@ -293,7 +295,8 @@ router.post('/regenerate-previews', adminAuth, requirePermission('photos.edit'),
           // is precisely the case this endpoint exists for (a replaced
           // reference source, or a corrupted rendition).
           await require('../services/imageProcessor').deletePreviewTiers(photo);
-          const newPreviewPath = await ensurePreviewImage({ ...photo, preview_path: null });
+          // `force`: never adopt a lazy generation already in flight (#1020).
+          const newPreviewPath = await ensurePreviewImage({ ...photo, preview_path: null }, { force: true });
           if (newPreviewPath) {
             successCount++;
           } else {

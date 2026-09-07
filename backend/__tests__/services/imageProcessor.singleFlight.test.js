@@ -122,13 +122,14 @@ describe('single-flight rendition generation (#1020)', () => {
       const origPut = storage.put.bind(storage);
       storage.put = async (key, ...rest) => {
         if (storage.failNextPut) { storage.failNextPut = false; throw new Error('simulated write failure'); }
+        if (storage.holdNextPut) { const gate = storage.holdNextPut; storage.holdNextPut = null; await gate; }
         puts.push(key);
         return origPut(key, ...rest);
       };
       storageModule.setStorageForTesting(storage);
     }, 30000);
 
-    beforeEach(() => { puts = []; storage.failNextPut = false; });
+    beforeEach(() => { puts = []; storage.failNextPut = false; storage.holdNextPut = null; });
 
     afterAll(async () => {
       await fs.rm(storageRoot, { recursive: true, force: true }).catch(() => {});
@@ -225,6 +226,37 @@ describe('single-flight rendition generation (#1020)', () => {
       expect(viewer).toBe(existing);
       expect(forced).toBe(existing);
       // The forced call wrote a fresh rendition; the viewer's did not.
+      expect(putsUnder(prefix)).toHaveLength(2);
+    });
+
+    it.each([
+      ['ensureThumbnail', 'thumbnail_path', 'thumbnails/'],
+      ['ensurePreviewImage', 'preview_path', 'previews/'],
+    ])('%s: a forced rebuild runs after a lazy generation already in flight instead of adopting it', async (fn, column, prefix) => {
+      // The lazy flight read the settings when it started; after a settings
+      // change it is producing exactly what the admin's regenerate exists to
+      // replace. Joining it would count a success and leave the old size
+      // cached — the validity check only asks whether the file parses.
+      const photo = await managedPhoto();
+      let release;
+      storage.holdNextPut = new Promise((r) => { release = r; });
+
+      const lazy = imageProcessor[fn](photo);                                   // blocks inside put
+      const forced = imageProcessor[fn]({ ...photo, [column]: null }, { force: true });
+      const joiner = imageProcessor[fn](photo);                                 // lazy miss after the forced call
+      let forcedSettled = false;
+      forced.then(() => { forcedSettled = true; });
+
+      await new Promise((r) => setTimeout(r, 60));
+      expect(putsUnder(prefix)).toHaveLength(0);
+      expect(forcedSettled).toBe(false);
+
+      release();
+      const results = await Promise.all([lazy, forced, joiner]);
+      expect(results.every((k) => k === results[0])).toBe(true);
+      expect(results[0]).toMatch(new RegExp(`^${prefix}`));
+      // Lazy wrote once, the forced rebuild wrote once more after it; the
+      // later lazy miss joined the forced flight rather than starting a third.
       expect(putsUnder(prefix)).toHaveLength(2);
     });
 

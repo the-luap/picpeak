@@ -465,6 +465,16 @@ async function withLocalCopy(sourceKey, fn) {
  * very rendition it was asked to replace. Inside the flight, everything is
  * a regeneration.
  *
+ * A forced rebuild (`force: true`) goes one step further: if a flight is
+ * already GENERATING for the key it does not join that either, it runs after
+ * it. The older flight read the thumbnail settings when it started, so after
+ * a settings change it is producing exactly the rendition the admin's
+ * regenerate was invoked to replace — adopting its result would count a
+ * success while the old size stays cached, and the validity check never
+ * notices because it only asks whether the file parses. Lazy misses that
+ * arrive while the forced flight is pending join it, so the map always
+ * points at the newest work.
+ *
  * One map for every rendition, keyed by photo id and rendition rather than
  * by storage key: a preview's key is only known after the source has been
  * probed, and the canonical thumbnail ensureThumbnailAtWidth falls back to
@@ -488,11 +498,15 @@ async function withLocalCopy(sourceKey, fn) {
  */
 const inFlightRenditions = new Map();
 
-function singleFlight(key, fn) {
+function singleFlight(key, fn, { force = false } = {}) {
   const pending = inFlightRenditions.get(key);
-  if (pending) return pending;
-  const work = Promise.resolve().then(fn).finally(() => {
-    inFlightRenditions.delete(key);
+  if (pending && !force) return pending;
+  // Forced: start once the older flight has settled, whichever way it went.
+  const start = pending ? pending.then(fn, fn) : Promise.resolve().then(fn);
+  const work = start.finally(() => {
+    // Only drop our own entry: an older flight settling later than the forced
+    // one that superseded it must not evict the newer work from the map.
+    if (inFlightRenditions.get(key) === work) inFlightRenditions.delete(key);
   });
   inFlightRenditions.set(key, work);
   return work;
@@ -508,9 +522,9 @@ function singleFlight(key, fn) {
  * to fall back to streaming the full original on every tile — minutes of
  * load time for a 100-photo NAS-mounted gallery.
  */
-async function ensureThumbnail(photo) {
+async function ensureThumbnail(photo, { force = false } = {}) {
   // Check if thumbnail exists and is valid (works for any source).
-  if (photo.thumbnail_path) {
+  if (!force && photo.thumbnail_path) {
     const isValid = await isThumbnailValid(photo.thumbnail_path);
     if (isValid) {
       return photo.thumbnail_path;
@@ -518,7 +532,7 @@ async function ensureThumbnail(photo) {
     logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
   }
 
-  return singleFlight(`thumbnail:${photo.id}`, () => regenerateThumbnail(photo));
+  return singleFlight(`thumbnail:${photo.id}`, () => regenerateThumbnail(photo), { force });
 }
 
 async function regenerateThumbnail(photo) {
@@ -1222,14 +1236,14 @@ async function ensurePreviewImageAtWidthUnguarded(photo, width) {
   }
 }
 
-async function ensurePreviewImage(photo) {
-  if (photo.preview_path) {
+async function ensurePreviewImage(photo, { force = false } = {}) {
+  if (!force && photo.preview_path) {
     const ok = await isPreviewValid(photo.preview_path);
     if (ok) return photo.preview_path;
     logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
   }
 
-  return singleFlight(`preview:${photo.id}`, () => regeneratePreviewImage(photo));
+  return singleFlight(`preview:${photo.id}`, () => regeneratePreviewImage(photo), { force });
 }
 
 async function regeneratePreviewImage(photo) {
