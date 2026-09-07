@@ -15,7 +15,6 @@ const { adminAuth } = require('../middleware/auth');
 const { requirePermission, userHasAnyPermission } = require('../middleware/permissions');
 const { clearMaintenanceCache } = require('../middleware/maintenance');
 const { clearSettingsCache, initializeRateLimiters, RATE_LIMIT_DEFAULTS } = require('../services/rateLimitService');
-const { clearSettingsCache } = require('../services/rateLimitService');
 const { SETTING_KEY: GALLERY_PASSWORD_SETTING, purgeRecoverablePasswords, purgePlanForSettingWrite } = require('../utils/galleryPasswordVault');
 const {
   DEFAULT_PUBLIC_SITE_HTML,
