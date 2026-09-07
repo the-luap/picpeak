@@ -1,3 +1,5 @@
+const { changedEvidence } = require('../usage/adoptionEvidence');
+const { capabilityEvidence } = require('../usage/capabilityEvidence');
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { safeValidationErrors } = require('../utils/routeHelpers');
@@ -123,6 +125,7 @@ router.post('/', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
+    capabilityEvidence(res, 'category_editing');
     res.json(category);
   } catch (error) {
     logger.error('Error creating category:', error);
@@ -206,6 +209,8 @@ router.put('/:id', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    changedEvidence(res, 'category_editing', category, updated,
+      ['name', 'slug', 'hero_photo_id', 'allow_downloads', 'is_folder']);
     res.json(updated);
   } catch (error) {
     logger.error('Error updating category:', error);
@@ -260,6 +265,7 @@ router.put('/:id/hero', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    changedEvidence(res, 'category_editing', category, updated, ['hero_photo_id']);
     res.json(updated);
   } catch (error) {
     logger.error('Error updating category hero:', error);
@@ -294,6 +300,7 @@ router.delete('/:id', adminAuth, requirePermission('settings.edit'), async (req,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
+    capabilityEvidence(res, 'category_editing');
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
     logger.error('Error deleting category:', error);

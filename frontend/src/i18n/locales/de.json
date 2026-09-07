@@ -1,17 +1,17 @@
 {
   "productUsage": {
-    "fields": "usage.v4-Berichte enthalten einen Installationsfingerabdruck, die PicPeak-Version, UTC-Berichtsdatum und Erstellungszeit, Schema- und Signaturmetadaten, die Galerie-Layouts aus einer festen Liste, 86 Funktionssignale (63 Paare aus Konfiguriert und Genutzt, 23 reine Konfigurationswerte) sowie zwei Gesamtzahlen der Installation: gespeicherte Galerien und Fotoeinträge ohne Videos. Entwürfe, archivierte Galerien und deren erhaltene Fotoeinträge zählen mit. Der Katalog unten erklärt jedes Feld. Keine Aktionszähler, keine Beobachtung von Besuchern.",
-    "catalogTitle": "Vollständiger Katalog: 86 Funktionssignale und 2 Bestandszahlen (usage.v4)",
+    "fields": "usage.v5-Berichte enthalten einen Installationsfingerabdruck, die PicPeak-Version, UTC-Berichtsdatum und Erstellungszeit, Schema- und Signaturmetadaten, die Galerie-Layouts aus einer festen Liste, 87 Funktionssignale (64 Paare aus Konfiguriert und Genutzt, 23 reine Konfigurationswerte) sowie zwei Gesamtzahlen der Installation: gespeicherte Galerien und Fotoeinträge ohne Videos. Entwürfe, archivierte Galerien und deren erhaltene Fotoeinträge zählen mit. Der Katalog unten erklärt jedes Feld. Keine Aktionszähler, keine Beobachtung von Besuchern.",
+    "catalogTitle": "Vollständiger Katalog: 87 Funktionssignale und 2 Bestandszahlen (usage.v5)",
     "catalogExplanation": "„Konfiguriert“ beschreibt, ob eine Funktion technisch verfügbar oder eingerichtet ist. „Integriert“ heißt: immer verfügbar, ohne Nutzungsnachweis. „Genutzt“ ist ein einzelnes Ja/Nein für die ganze Installation seit der Zustimmung zu diesem Schema; ein angenommener Auftrag zählt als gestartet, nicht als abgeschlossen. Reine Konfigurationssignale haben kein Genutzt-Feld. Der Bestand enthält nur die aktuellen Gesamtzahlen der Galerie- und Fotoeinträge, ohne Aufschlüsselung nach Galerien. Nutzungsmarker speichern keine Personen, Objektkennungen, Zeitpunkte oder Häufigkeiten.",
     "catalogSearch": "Funktionsname oder Schlüssel suchen",
     "catalogEmpty": "Keine passenden Funktionen.",
-    "configuredLabel": "Konfiguriert",
+    "configuredLabel": "Verfügbarkeit / Konfiguration",
     "usedLabel": "Genutzt",
     "configurationOnly": "Nur Konfiguration, die tatsächliche Nutzung wird nicht erfasst.",
-    "versionDisclosure": "Diese Zustimmung gilt für usage.v4 / usage-consent.v4. Sie ersetzt die Frage „Erlaubt mindestens eine Galerie Downloads?“ durch „Hat mindestens eine Galerie Downloads abgeschaltet?“. Bestehende v1-, v2- und v3-Teilnahmen behalten ihren bisherigen Umfang, bis du sie ausdrücklich erweiterst. Identität und Rohhistorie bleiben erhalten, wartende Pakete werden vor dem Upgrade unverändert zugestellt. Lokale Nutzungsmarker beginnen erst nach der Bestätigung durch den Collector neu. Der erste v4-Bericht kann am nächsten aktiven UTC-Tag folgen. Das neue Signal wird vor der Bestätigung nicht erfasst.",
+    "versionDisclosure": "Diese Zustimmung gilt für usage.v5 / usage-consent.v5: 87 Funktionen und dieselben zwei Bestandszahlen. Neue Ja/Nein-Werte unterscheiden echte CMS-, Vorlagen-, Branding-, SEO-, Kategorie- und Ereignistyp-Änderungen sowie die Annahme echter Vorlagen-E-Mails durch den Mailtransport (auch im Hintergrund) von Standards, unverändertem Speichern, Vorschauen und Tests. Inhalte, Empfänger, Vorlagenkennungen, Aktionszeitpunkte und Häufigkeiten werden nicht erfasst. Die Beobachtung beginnt erst nach bestätigter Zustimmung; Nein bedeutet nicht, dass noch Standards verwendet werden. Frühere Versionen behalten bis zum Upgrade Bedeutung und Umfang. Wartende Pakete bleiben unverändert; Markierungen starten nach Bestätigung neu.",
     "currentSchema": "Aktuelles Berichtsschema: {{schema}}",
-    "reviewUpgrade": "Erweiterten Umfang von usage.v4 ansehen",
-    "upgrade": "usage.v4 ausdrücklich zustimmen",
+    "reviewUpgrade": "Erweiterten Umfang von usage.v5 ansehen",
+    "upgrade": "usage.v5 ausdrücklich zustimmen",
     "upgradeExplanation": "Deine bestehende Teilnahme behält ihren bisherigen Umfang. Sieh dir den erweiterten Katalog und die beiden Bestandszahlen an, bevor du dich entscheidest. Ablehnen beendet die Teilnahme nicht.",
     "upgradePending": "Die signierte Erweiterung wartet auf die Bestätigung des Collectors. Bis dahin wird nur der bisher bestätigte Umfang erfasst. Versuche es erneut, wenn der Collector erreichbar ist, oder deaktiviere die Teilnahme, um zu stoppen und zu löschen.",
     "catalog": {
@@ -425,6 +425,41 @@
       "gallery_downloads_restricted": {
         "name": "Galerie-Downloads eingeschränkt",
         "configured": "Mindestens eine Galerie hat Downloads abgeschaltet; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+      },
+      "cms_content_editing": {
+        "name": "CMS-Inhalte bearbeiten",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung den Titel oder Inhalt einer internen CMS-Seite tatsächlich geändert. Unverändertes Speichern, externe Links, Logos, Standardseiten und Seitenaufrufe zählen nicht. Ob jemand die Seite gelesen hat, wird nicht gemessen."
+      },
+      "email_template_editing": {
+        "name": "E-Mail-Vorlagen anpassen",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung eine nicht leere Vorlage erstellt oder Betreff/Inhalt tatsächlich geändert. Standardvorlagen, unverändertes Speichern, Vorschauen und Versand zählen nicht. Frühere Anpassungen lassen sich daraus nicht ableiten."
+      },
+      "branding_editing": {
+        "name": "Branding anpassen",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung Branding-Einstellungen, ein Theme oder Logo geändert. Lesen und unverändertes Speichern zählen nicht. Auch das Wiederherstellen eines Standards kann eine Änderung sein; dies beschreibt nicht das aktuelle Design."
+      },
+      "seo_editing": {
+        "name": "SEO anpassen",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung eine festgelegte SEO-Einstellung tatsächlich geändert. Standards, Lesen und unverändertes Speichern zählen nicht; Regeln, Pfade und Suchmaschinenaktivität werden nicht erfasst."
+      },
+      "event_type_editing": {
+        "name": "Ereignistypen anpassen",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung einen Ereignistyp erstellt, geändert oder gelöscht. Standardvorlagen, Lesen und unverändertes Speichern zählen nicht. Namen, Vorlagen und Kennungen werden nicht gespeichert."
+      },
+      "category_editing": {
+        "name": "Kategorien anpassen",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Ein Admin hat seit Zustimmung eine Kategorie erstellt, geändert oder gelöscht. Standardkategorien, Lesen und unverändertes Speichern zählen nicht. Namen, Zuordnungen und Kennungen werden nicht gespeichert."
+      },
+      "email_template_delivery": {
+        "name": "E-Mails mit Vorlagen versendet",
+        "configured": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis.",
+        "used": "Seit Zustimmung wurde mindestens eine echte Vorlagen-E-Mail vom SMTP-Transport oder Mail-Webhook angenommen, auch bei Hintergrundversand. Vorschauen, Testmails und Nachrichten ohne Vorlage zählen nicht. Dies belegt weder Empfang noch Lesen. Vorlagenkennung, Empfänger, Inhalte, Nachrichtenkennung, Versandzeit und Anzahl werden nicht in Nutzungsmarkierungen gespeichert."
       }
     },
     "auditTitle": "Export- und Löschquittungen",
@@ -522,7 +557,9 @@
         "name": "Gespeicherte Fotoeinträge",
         "description": "Aktuelle Anzahl der Fotoeinträge ohne Videos, einschließlich RAW, Gast-Uploads und Einträgen archivierter Galerien. Eine Gesamtzahl der Installation; keine eindeutigen Dateien, Vorschaubilder, Verarbeitungserfolge oder Fotoinhalte. Gelöschte Einträge zählen nicht."
       }
-    }
+    },
+    "builtinLabel": "Fest integriert — Verfügbarkeit bedeutet keine Nutzung",
+    "enabledLabel": "Aktiviert — kann ein Standard sein"
   },
   "userManagement": {
     "title": "Benutzerverwaltung",

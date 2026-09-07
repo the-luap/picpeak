@@ -1,3 +1,4 @@
+const { capabilityEvidence } = require('../../usage/capabilityEvidence');
 // Extracted verbatim from the original routes/adminEvents.js (see ./index.js).
 // Exports a register function; ./index.js calls the sub-routers in the original
 // registration order so Express route matching is unchanged.
@@ -89,6 +90,7 @@ module.exports = (router) => {
         { type: 'admin', id: req.admin.id, name: req.admin.username }
       );
 
+      capabilityEvidence(res, 'branding_editing');
       res.json({
         message: 'Event logo uploaded successfully',
         hero_logo_url: logoUrl
@@ -135,6 +137,7 @@ module.exports = (router) => {
         { type: 'admin', id: req.admin.id, name: req.admin.username }
       );
 
+      if (event.hero_logo_url || event.hero_logo_path) capabilityEvidence(res, 'branding_editing');
       res.json({ message: 'Event logo removed successfully' });
     } catch (error) {
       errorResponse(res, error, 500, 'Failed to delete event logo');

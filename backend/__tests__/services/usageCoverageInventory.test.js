@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const catalog = require('../../src/usage/features.v4.json');
-const inventory = require('../../../docs/usage-coverage.v4.json');
+const catalog = require('../../src/usage/features.v5.json');
+const inventory = require('../../../docs/usage-coverage.v5.json');
 const protocol = require('../../src/usage/schema.cjs');
 const { RULES_V2, capabilityKeys } = require('../../src/usage/capabilityRules');
 const { acceptedUpload, capabilityEvidence } = require('../../src/usage/capabilityEvidence');
@@ -52,22 +52,22 @@ test('all current settings tabs have an explicit scope decision', () => {
   }
 });
 
-test('v1/v2/v3 wire validation is immutable; v4 catalog, UI and translated descriptions agree', () => {
+test('v1/v2/v3 wire validation is immutable; v5 catalog, UI and translated descriptions agree', () => {
   expect(crypto.createHash('sha256').update(JSON.stringify(protocol.envelopeSchemas['usage.v1'].properties)).digest('hex'))
     .toBe('cc8d0a865d21e36d2b24d23ca6aa8dd8d48000cb17aef83996786f70755bc922');
   expect(crypto.createHash('sha256').update(JSON.stringify(protocol.envelopeSchemas['usage.v2'].properties)).digest('hex'))
     .toBe('159821cf45c1951016d33a4ed9ca55a0a7ee1b60dd715b803fcfed33e5c8a846');
-  expect(protocol.FEATURE_KEYS).toHaveLength(86);
+  expect(protocol.FEATURE_KEYS).toHaveLength(87);
   expect(crypto.createHash('sha256').update(JSON.stringify(protocol.envelopeSchemas['usage.v3'].properties)).digest('hex'))
     .toBe('93214702c79f47823f154544ebad6612dd313604f69e60b86de4c0e4c904571a');
   expect(protocol.FEATURE_KEYS).toContain('gallery_downloads_restricted');
   expect(protocol.FEATURE_KEYS).not.toContain('gallery_downloads');
-  expect(protocol.ALL_FEATURE_KEYS).toHaveLength(87);
+  expect(protocol.ALL_FEATURE_KEYS).toHaveLength(94);
   expect(protocol.ALL_FEATURE_KEYS).toContain('gallery_downloads');
   expect(protocol.LEGACY_FEATURE_KEYS).toHaveLength(19);
   expect(inventory.configuration_only).toHaveLength(23);
   const frontend = path.resolve(__dirname, '../../../frontend');
-  expect(JSON.parse(fs.readFileSync(path.join(frontend, 'src/features/settings/usageFeatures.v4.json')))).toEqual(catalog);
+  expect(JSON.parse(fs.readFileSync(path.join(frontend, 'src/features/settings/usageFeatures.v5.json')))).toEqual(catalog);
   // The catalog is source, and source is English only: its strings are the
   // en locale verbatim. Every other language lives in its locale file and
   // must cover every key and field, but says whatever its translator chose.
@@ -85,11 +85,11 @@ test('v1/v2/v3 wire validation is immutable; v4 catalog, UI and translated descr
 });
 
 test('every used field has either a fixed route rule or explicit trusted success evidence', () => {
-  const explicit = ['custom_css', 'oauth', 'smtp', 'email_webhook', 'whatsapp', 'incoming_mail',
+  const explicit = ['cms_content_editing', 'email_template_editing', 'email_template_delivery', 'branding_editing', 'seo_editing', 'event_type_editing', 'category_editing', 'custom_css', 'oauth', 'smtp', 'email_webhook', 'whatsapp', 'incoming_mail',
     'video_uploads', 'camera_raw_uploads', 's3_storage', 's3_photo_storage', 's3_backups', 'api_integration', 'photo_xmp_export', 'photo_replacement', 'photo_admin_marks', 'crm_invoice_import', 'crm_combined_billing', 'crm_monthly_billing_manual', 'crm_document_conversion'];
   const covered = new Set([...explicit, ...RULES_V2.flatMap(([, , keys]) => keys)]);
   expect(protocol.FEATURE_KEYS.filter((key) => protocol.observesUse(key)).filter((key) => !covered.has(key))).toEqual([]);
-  for (const key of covered) expect(protocol.observesUse(key)).toBe(true);
+  for (const key of covered) expect(protocol.ALL_FEATURES[key].used).toBeTruthy();
 });
 
 test.each([

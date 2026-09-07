@@ -1,3 +1,5 @@
+const { changedEvidence } = require('../usage/adoptionEvidence');
+const { capabilityEvidence } = require('../usage/capabilityEvidence');
 /**
  * Admin Event Types Routes
  * CRUD operations for managing customizable event types
@@ -123,6 +125,7 @@ router.post('/', adminAuth, requirePermission('event_types.manage'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    capabilityEvidence(res, 'event_type_editing');
     res.status(201).json(eventType);
   } catch (error) {
     logger.error('Error creating event type:', { error: error.message });
@@ -163,7 +166,10 @@ router.put('/:id', adminAuth, requirePermission('event_types.manage'), [
     const { id } = req.params;
     const updates = req.body;
 
+    const before = await eventTypeService.getEventTypeById(parseInt(id));
     const eventType = await eventTypeService.updateEventType(parseInt(id), updates);
+    changedEvidence(res, 'event_type_editing', before, eventType,
+      ['name', 'slug_prefix', 'emoji', 'theme_preset', 'theme_config', 'display_order', 'is_active']);
 
     // Log activity
     await logActivity('event_type_updated',
@@ -210,6 +216,7 @@ router.delete('/:id', adminAuth, requirePermission('event_types.manage'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    capabilityEvidence(res, 'event_type_editing');
     res.json({ message: 'Event type deleted successfully' });
   } catch (error) {
     logger.error('Error deleting event type:', { error: error.message });

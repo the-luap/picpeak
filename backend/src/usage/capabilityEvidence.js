@@ -1,5 +1,5 @@
 'use strict';
-const { FEATURE_KEYS, observesUse } = require('./schema.cjs');
+const { ALL_FEATURE_KEYS, ALL_FEATURES } = require('./schema.cjs');
 
 // Trusted route handlers call this AFTER their business operation succeeds.
 // Only fixed, allowlisted keys reach finish middleware. It still requires an
@@ -7,7 +7,7 @@ const { FEATURE_KEYS, observesUse } = require('./schema.cjs');
 function capabilityEvidence(res, ...keys) {
   res.locals.productUsageFeatures = [...new Set([
     ...(res.locals.productUsageFeatures || []),
-    ...keys.filter((key) => FEATURE_KEYS.includes(key) && observesUse(key))
+    ...keys.filter((key) => ALL_FEATURE_KEYS.includes(key) && ALL_FEATURES[key]?.used)
   ])];
 }
 function acceptedUpload(res, { video = false, raw = false, s3 = false } = {}) {

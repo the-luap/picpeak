@@ -231,7 +231,7 @@ async function sendTestUpdateNotification() {
           current_version: updateInfo.current,
           channel: channelLabel,
           recipient_email: email
-        });
+        }, { usageEligible: false });
         successCount++;
       } catch (error) {
         errorCount++;

@@ -1,17 +1,17 @@
 {
   "productUsage": {
-    "fields": "usage.v4 reports contain an installation fingerprint, PicPeak version, UTC report date and generation time, schema/signing metadata, controlled gallery layouts, 86 fixed capability signals (63 configured/used pairs and 23 configuration-only booleans), and two installation totals: stored galleries and photo records excluding videos. Drafts and archived galleries and their retained photo records are included. The catalog below defines every field. There are no action counts or visitor observations.",
-    "catalogTitle": "Full catalog: 86 capability signals and 2 inventory totals (usage.v4)",
+    "fields": "usage.v5 reports contain an installation fingerprint, PicPeak version, UTC report date and generation time, schema/signing metadata, controlled gallery layouts, 87 fixed capability signals (64 configured/used pairs and 23 configuration-only booleans), and two installation totals: stored galleries and photo records excluding videos. Drafts and archived galleries and their retained photo records are included. The catalog below defines every field. There are no action counts or visitor observations.",
+    "catalogTitle": "Full catalog: 87 capability signals and 2 inventory totals (usage.v5)",
     "catalogExplanation": "Configured describes current technical availability or configuration. Built-in means available, not used. Used is one installation-wide yes/no bit since consent to the reporting schema; accepted jobs mean initiated, not necessarily completed. Configuration-only capabilities omit used. Inventory contains only current gallery/photo record totals, with no per-gallery breakdown. No actor, entity identifier, action time or frequency is stored in usage markers.",
     "catalogSearch": "Search capability name or key",
     "catalogEmpty": "No matching capabilities.",
-    "configuredLabel": "Configured",
+    "configuredLabel": "Availability / configuration",
     "usedLabel": "Used",
     "configurationOnly": "Configuration only — actual use is not collected.",
-    "versionDisclosure": "This consent covers usage.v4 / usage-consent.v4. It replaces the question “does any gallery allow downloads?” with “does any gallery have downloads switched off?”. Existing v1/v2/v3 participants keep their exact previous scope until they explicitly upgrade. Identity and raw history remain; pending packets are delivered unchanged before an upgrade. Local usage markers restart only after confirmation. The first v4 report may be on the next active UTC day. The new signal is never collected before confirmation.",
+    "versionDisclosure": "This consent covers usage.v5 / usage-consent.v5: 87 capabilities and the same two inventory totals. New booleans distinguish real CMS/template/branding/SEO/category/event-type edits and actual template-email transport acceptance, including background sends, from defaults, unchanged saves, previews and tests. No content, recipient, template key, action timestamp or frequency is collected. Observations begin only after accepted consent; false does not mean an installation still uses defaults. Previous versions keep their meanings and scope until upgrade; queued packets stay unchanged and markers restart after confirmation.",
     "currentSchema": "Current reporting schema: {{schema}}",
-    "reviewUpgrade": "Review expanded usage.v4 scope",
-    "upgrade": "Explicitly agree to usage.v4",
+    "reviewUpgrade": "Review expanded usage.v5 scope",
+    "upgrade": "Explicitly agree to usage.v5",
     "upgradeExplanation": "Your existing participation keeps its current scope. Review the expanded catalog and the two inventory totals before deciding whether to upgrade. Declining does not end participation.",
     "upgradePending": "The signed consent upgrade is pending confirmation. Only the previously accepted scope is collected. Retry when the collector is available, or disable participation to stop and delete.",
     "catalog": {
@@ -425,6 +425,41 @@
       "gallery_downloads_restricted": {
         "name": "Gallery downloads restricted",
         "configured": "At least one gallery has downloads switched off; only existence across the installation, never gallery IDs or counts."
+      },
+      "cms_content_editing": {
+        "name": "CMS content editing",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin saved a real change to an internal CMS page title or body since consent. Unchanged saves, external links, logos, seeded pages and page views do not count. This does not measure whether anyone read the page."
+      },
+      "email_template_editing": {
+        "name": "Email template customization",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin created a nonempty template or saved a real subject/body change since consent. Defaults, unchanged saves, previews and sending are excluded. This does not establish the current customization of templates edited before consent."
+      },
+      "branding_editing": {
+        "name": "Branding customization",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin changed branding settings, a theme or a logo since consent. Reading settings and unchanged saves do not count. A change can also restore a default; this is not a claim about the current design."
+      },
+      "seo_editing": {
+        "name": "SEO customization",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin saved a real change to an allowlisted SEO setting since consent. Defaults, reading and unchanged saves do not count; no rules, paths or search-engine activity are collected."
+      },
+      "event_type_editing": {
+        "name": "Event type customization",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin created, changed or deleted an event type since consent. Seeded presets, reading and unchanged saves do not count. No names, presets or identifiers are retained."
+      },
+      "category_editing": {
+        "name": "Category customization",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "An admin created, changed or deleted a category since consent. Seeded categories, reading and unchanged saves do not count. No names, memberships or identifiers are retained."
+      },
+      "email_template_delivery": {
+        "name": "Emails sent using templates",
+        "configured": "Built-in capability is available; this is not evidence of use.",
+        "used": "At least one real template email was accepted by SMTP or the configured mail webhook since consent, including background sends. Previews, test messages and template-free messages are excluded. Acceptance does not prove receipt or reading. No template key, recipient, contents, message identifier, send time or count is stored in usage markers."
       }
     },
     "auditTitle": "Export and deletion receipts",
@@ -522,7 +557,9 @@
         "name": "Stored photo records",
         "description": "Current number of non-video photo records, including RAW, guest uploads and records of archived galleries. One total for the installation; not unique files, thumbnails, processing success or photo contents. Deleted records are excluded."
       }
-    }
+    },
+    "builtinLabel": "Built in — availability is not use",
+    "enabledLabel": "Enabled — may be a default"
   },
   "userManagement": {
     "title": "User Management",

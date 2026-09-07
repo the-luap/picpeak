@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import catalog from './usageFeatures.v4.json';
+import catalog from './usageFeatures.v5.json';
 
 /** Local, static disclosure: opening it never contacts the collector. */
 export function UsageCatalog() {
@@ -29,7 +29,7 @@ export function UsageCatalog() {
           <section key={key} className="border-t border-theme pt-2">
             <h4 className="font-semibold">{t(`productUsage.catalog.${key}.name`)}</h4>
             <p className="text-xs"><code>{key}</code> · {definition.since}</p>
-            <p className="text-sm">{t('productUsage.configuredLabel')}: {t(`productUsage.catalog.${key}.configured`)}</p>
+            <p className="text-sm">{t(definition.configuration === 'builtin' ? 'productUsage.builtinLabel' : definition.configuration === 'flag' || definition.configuration === 'capability' ? 'productUsage.enabledLabel' : 'productUsage.configuredLabel')}: {t(`productUsage.catalog.${key}.configured`)}</p>
             <p className="text-sm">{definition.used
               ? `${t('productUsage.usedLabel')}: ${t(`productUsage.catalog.${key}.used`)}`
               : t('productUsage.configurationOnly')}</p>
