@@ -88,7 +88,7 @@ const backgroundProcessor = require('./src/services/backgroundProcessor');
 const { maintenanceMiddleware } = require('./src/middleware/maintenance');
 const { sessionTimeoutMiddleware } = require('./src/middleware/sessionTimeout');
 const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler');
-const { createRateLimiter, createAuthRateLimiter } = require('./src/services/rateLimitService');
+const rateLimitService = require('./src/services/rateLimitService');
 const { createApiRateLimitGate } = require('./src/middleware/apiRateLimitGate');
 const { createAuthRateLimitGate } = require('./src/middleware/authRateLimitGate');
 const { getPublicSitePayload } = require('./src/services/publicSiteService');
@@ -293,8 +293,6 @@ app.get(['/health', '/api/health'], async (req, res) => {
 });
 
 // Initialize rate limiters (they will be created dynamically)
-let generalRateLimiter;
-let authRateLimiter;
 
 function composeInlineStyles(payload) {
   const { branding } = payload;
@@ -487,8 +485,10 @@ async function handlePublicSiteRequest(req, res, next) {
 
 // Function to initialize rate limiters
 async function initializeRateLimiters() {
-  generalRateLimiter = await createRateLimiter();
-  authRateLimiter = await createAuthRateLimiter();
+  // The instances live in rateLimitService so the settings route can
+  // rebuild them when the window changes (#1337); the gates below read
+  // them per request through the service's getters.
+  await rateLimitService.initializeRateLimiters();
 
   // Neither limiter is registered here — an app.use() at this point runs after
   // the routers, the /api 404 handler and the error handler are already on the
@@ -511,13 +511,13 @@ async function initializeRateLimiters() {
 // must stay unmounted (no path argument) so req.path keeps its /api prefix.
 // /health and /api/health are mounted above this point and so are never
 // counted, which matters because monitors poll them every couple of seconds.
-app.use(createApiRateLimitGate(() => generalRateLimiter));
+app.use(createApiRateLimitGate(rateLimitService.getGeneralLimiter));
 
 // Per-IP limit for credential-verification endpoints only, on its own bucket.
 // Registered after the general gate so that an IP already over the /api budget
 // is rejected there first; see authRateLimitGate for the exact endpoint table
 // and why it must stay unmounted.
-app.use(createAuthRateLimitGate(() => authRateLimiter));
+app.use(createAuthRateLimitGate(rateLimitService.getAuthLimiter));
 
 // Body limits. 50mb is only needed by the authenticated admin and API-token
 // surfaces (restore manifests, CMS and email templates, bulk operations);
