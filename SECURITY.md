@@ -1,88 +1,81 @@
 # Security Policy
 
+## Scope
+
+This policy covers the PicPeak backend, frontend, all-in-one (AIO) image, optional
+ML component, and the Docker images published by the PicPeak project. Other
+PicPeak repositories define their own supported versions and release channels.
+
 ## Supported Versions
 
-We release patches for security vulnerabilities. Currently supported versions:
+Security support follows the current release channels:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.x.x   | :white_check_mark: |
-| < 2.0   | :x:                |
+| Version or channel | Security support |
+| --- | --- |
+| Latest stable release from `stable` | Supported; security fixes are published through this channel |
+| Latest beta release from `main` | Supported; security fixes are published through this channel |
+| Superseded stable or beta releases | Upgrade to the latest release in the same channel; older releases are not maintained separately |
+| 2.x and earlier | No longer supported |
+
+See the [latest stable release](https://github.com/PicPeak/picpeak/releases/latest)
+and [all releases, including betas](https://github.com/PicPeak/picpeak/releases).
+Version numbers differ between channels; each channel receives its own updates.
+
+### Security fixes and bug backports
+
+**Security fixes are always released on both `stable` and `main`.** A fix that
+lands on one branch must also reach the other branch and be published through
+both release channels. Security updates do not wait for the next full
+`main`-to-`stable` promotion.
+
+Regular bug fixes are also generally backported automatically to `stable`.
+Backports remain focused on the fix, without pulling in unrelated features.
+Maintainers resolve conflicts or handle a backport manually when necessary.
+
+The [release process](RELEASING.md) describes backports, forward-ports and
+publication. Operators must apply the published updates to their installations.
 
 ## Reporting a Vulnerability
 
-We take the security of PicPeak seriously. If you have discovered a security vulnerability, please follow these steps:
+**Do not report vulnerabilities in public issues, discussions or pull requests.**
 
-### 1. **Do NOT create a public GitHub issue**
+Report privately through:
 
-### 2. Report the vulnerability privately by:
-- **Preferred:** Use [GitHub Private Vulnerability Reporting](https://github.com/PicPeak/picpeak/security/advisories/new)
-- **Alternative:** Email us at **info@picpeak.app** with the details
-- Include:
-  - Description of the vulnerability
-  - Steps to reproduce
-  - Potential impact
-  - Suggested fix (if any)
+- [GitHub Private Vulnerability Reporting](https://github.com/PicPeak/picpeak/security/advisories/new) (preferred).
+- Email **info@picpeak.app** if you cannot use GitHub's private reporting form.
 
-### 3. You can expect:
-- Acknowledgment within 48 hours
-- Regular updates on our progress
-- Credit in the fix announcement (unless you prefer to remain anonymous)
+Include the affected component, version or image tag, deployment method,
+reproduction steps, expected impact and any suggested fix. Share only the
+information needed to reproduce the problem; remove credentials and personal
+data from logs or examples.
 
-## Security Measures
+We aim to acknowledge reports within 48 hours. This is a response target, not a
+guaranteed service level or a promised resolution time. We will provide progress
+updates and coordinate disclosure with the reporter. Reporter credit is optional;
+tell us if you prefer to remain anonymous.
 
-PicPeak implements several security measures:
+## Deployment Security
 
-### Authentication & Authorization
-- JWT-based authentication with secure token storage
-- bcrypt password hashing with configurable rounds
-- Role-based access control for admin functions
-- Session timeout management
+Security depends on both the software and its configuration. Operators should:
 
-### Input Validation
-- All user inputs are validated and sanitized
-- SQL injection prevention through parameterized queries
-- XSS protection via Content Security Policy
-- File upload restrictions and validation
+- Use HTTPS and configure the reverse proxy and trusted proxy settings correctly.
+- Use strong credentials and keep deployment secrets private.
+- Apply updates for the chosen release channel and restrict unnecessary network access.
+- Keep backups and verify that they can be restored.
 
-### Rate Limiting
-- API rate limiting to prevent abuse
-- Brute force protection on authentication endpoints
-- Configurable limits per endpoint
-
-### Data Protection
-- HTTPS enforcement in production
-- Secure cookie settings
-- CORS configuration
-- Sensitive data encryption
-
-### Infrastructure
-- Regular dependency updates
-- Security headers (HSTS, X-Frame-Options, etc.)
-- Activity logging for audit trails
-- Automated backups
-
-## Best Practices for Deployment
-
-1. **Always use HTTPS** in production
-2. **Change default passwords** immediately
-3. **Keep dependencies updated** regularly
-4. **Configure firewall rules** appropriately
-5. **Monitor logs** for suspicious activity
-6. **Backup regularly** and test restoration
+See the deployment guides for [HTTPS](https://docs.picpeak.app/deployment/ssl-certificates),
+[reverse proxies](https://docs.picpeak.app/deployment/reverse-proxy),
+[security settings](https://docs.picpeak.app/guides/admin-settings/security)
+and [backup and restore](https://docs.picpeak.app/guides/backup-restore).
 
 ## Vulnerability Disclosure
 
-We believe in responsible disclosure. Once a vulnerability is fixed:
+We coordinate disclosure with the reporter while preparing fixes. Security fixes
+are published through both supported channels. Advisories and release notes
+identify affected versions, the fixed version in each channel, the impact and
+any required mitigation or upgrade steps. Reporter credit is included with
+permission.
 
-1. We'll publish a security advisory
-2. Credit researchers (with permission)
-3. Detail the impact and mitigation steps
-4. Release patches for all supported versions
-
-## Contact
-
-- Security issues: Email **info@picpeak.app** or use [GitHub Private Vulnerability Reporting](https://github.com/PicPeak/picpeak/security/advisories/new)
-- General support: [GitHub Issues](https://github.com/PicPeak/picpeak/issues)
-
-Thank you for helping keep PicPeak and its users safe!
+For ordinary bugs and support requests, use
+[GitHub Issues](https://github.com/PicPeak/picpeak/issues) or
+[GitHub Discussions](https://github.com/PicPeak/picpeak/discussions).
