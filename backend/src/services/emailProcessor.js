@@ -1,3 +1,4 @@
+const { secretValues, redactEmailData, redactRenderedHtml, replaceMaskedSecrets, isSecretKey } = require('../utils/emailSecretRedaction');
 const nodemailer = require('nodemailer');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
@@ -755,8 +756,13 @@ async function processTemplate(template, variables, language = 'en') {
     es: 'La contraseña que estableciste al crear la galería',
   };
 
-  if (processedVariables.gallery_password === '{{password_security_message}}') {
-    processedVariables.gallery_password = passwordSecurityI18n[language] || passwordSecurityI18n.en;
+  // Every secret variable, not only gallery_password: a resent copy of an
+  // archived mail carries the sentinel in client_password or new_password
+  // too (see emailSecretRedaction.replaceMaskedSecrets).
+  for (const [key, value] of Object.entries(processedVariables)) {
+    if (value === '{{password_security_message}}' && isSecretKey(key)) {
+      processedVariables[key] = passwordSecurityI18n[language] || passwordSecurityI18n.en;
+    }
   }
 
   if (processedVariables.gallery_password === 'No password required') {
@@ -1219,10 +1225,17 @@ async function processEmailQueue({ ignoreSchedule = false, limit = 10, onlyId = 
     result.processed = pendingEmails.length;
 
     for (const email of pendingEmails) {
+      // Declared outside the try: the failure branch redacts the variables
+      // once the row is out of retries, so it needs them too.
+      let emailData = {};
       try {
-        const emailData = typeof email.email_data === 'string'
+        emailData = typeof email.email_data === 'string'
           ? JSON.parse(email.email_data || '{}')
           : email.email_data || {};
+        // A re-queued row (Messages resend / retry / send now) may carry the
+        // archive mask where its passwords used to be; the sentinel makes
+        // the template say "not shown" instead of mailing the mask.
+        emailData = replaceMaskedSecrets(emailData);
 
         // Language is resolved from emailData.eventId (event.language is the top
         // priority). queueEmail injects it, but direct email_queue inserts (e.g.
@@ -1270,9 +1283,15 @@ async function processEmailQueue({ ignoreSchedule = false, limit = 10, onlyId = 
         // Overview email preview (guarded — older installs without migration
         // 119 just skip it).
         const sentUpdate = { status: 'sent', sent_at: new Date().toISOString() };
+        // The mail is out: this is the last moment the variables were needed
+        // in the clear. Gallery passwords and client PINs are bcrypt-hashed
+        // everywhere else; without this the archive kept them readable for
+        // the life of the event, and the Messages pane served them back.
+        const secrets = secretValues(emailData);
+        sentUpdate.email_data = JSON.stringify(redactEmailData(emailData));
         try {
           if (sendResult && sendResult.html && await hasColumnCached('email_queue', 'rendered_html')) {
-            sentUpdate.rendered_html = sendResult.html;
+            sentUpdate.rendered_html = redactRenderedHtml(sendResult.html, secrets);
           }
         } catch (_) { /* best-effort — never block the send on the preview */ }
         await db('email_queue')
@@ -1295,7 +1314,10 @@ async function processEmailQueue({ ignoreSchedule = false, limit = 10, onlyId = 
         logger.info(`Email ${email.id} sent successfully`);
       } catch (error) {
         result.failed += 1;
-        // Increment retry count
+        // Increment retry count. The variables stay in the clear on
+        // failure: a row past the cap can still be re-queued (Messages
+        // "retry" resets retry_count, ignoreSchedule skips the cap) and a
+        // masked password would then be mailed out as the real one.
         try {
           await db('email_queue')
             .where('id', email.id)
