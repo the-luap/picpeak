@@ -443,7 +443,7 @@ router.post(
     const frontendUrl = await getAbsoluteFrontendUrl(req);
     const payload = await buildPayloadFor(req.body.templateKey, req.admin.id, frontendUrl);
 
-    await emailProcessor.queueEmail(null, admin.email, req.body.templateKey, payload);
+    await emailProcessor.queueEmail(null, admin.email, req.body.templateKey, payload, { usageEligible: false });
 
     return successResponse(res, {
       sent: true,

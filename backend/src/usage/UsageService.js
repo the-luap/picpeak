@@ -16,7 +16,7 @@ const {
   verifyEnvelope,
   digest,
   canonical,
-  FEATURE_KEYS,
+  ALL_FEATURE_KEYS,
   LEGACY_FEATURE_KEYS,
   CATALOG,
   CURRENT_SCHEMA_VERSION,
@@ -796,7 +796,7 @@ class UsageService {
 
   async markUsed(features, { destinationBackup = false, legacyFeatures } = {}) {
     let allowed = [...new Set([...features, ...(legacyFeatures || [])])].filter((f) =>
-      FEATURE_KEYS.includes(f)
+      ALL_FEATURE_KEYS.includes(f)
     );
     if (!allowed.length) return;
     // Single-transaction status check prevents opt-out racing a late marker.
@@ -960,7 +960,7 @@ class UsageService {
       generated_at: now,
       features: expanded,
       gallery_layouts: [...layouts].sort(),
-      ...(['usage.v3', 'usage.v4'].includes(version) ? { inventory: await require('./inventorySnapshot').inventorySnapshot(this.db) } : {})
+      ...(['usage.v3', 'usage.v4', 'usage.v5'].includes(version) ? { inventory: await require('./inventorySnapshot').inventorySnapshot(this.db) } : {})
     };
   }
 

@@ -67,6 +67,14 @@ test('the collector has no way in: no inbound route and no scheduled pull', () =
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
     if (entry.name === 'productUsageService.js') continue;
+    if (entry.name === 'emailProcessor.js') {
+      // v5 explicitly consents to one local background-mail bit, never a send
+      // to the collector. No mail details may be passed into the usage API.
+      const email = fs.readFileSync(path.join(dir, entry.name), 'utf8');
+      expect(email).toContain(".markUsed(['email_template_delivery'])");
+      expect(email).not.toMatch(/productUsageService'\)\.(?:tick|enable|command|deliver)/);
+      continue;
+    }
     expect(fs.readFileSync(path.join(dir, entry.name), 'utf8'))
       .not.toContain('productUsageService');
   }

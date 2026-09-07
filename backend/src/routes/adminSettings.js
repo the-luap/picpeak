@@ -1,3 +1,7 @@
+const { settingsChanged } = require('../usage/adoptionEvidence');
+const { capabilityEvidence } = require('../usage/capabilityEvidence');
+const SEO_USAGE_KEYS = ['seo_allow_indexing', 'seo_block_ai_crawlers', 'seo_block_social_bots',
+  'seo_blocked_ai_agents', 'seo_custom_rules', 'seo_meta_noindex', 'seo_meta_nofollow', 'seo_meta_noai', 'seo_sitemap_url'];
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -1036,6 +1040,9 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       ...(promo_alignment !== undefined && { promo_alignment: normalizedPromoAlignment })
     };
 
+    const brandingUpdates = Object.fromEntries(Object.entries(brandingSettings).map(([key, value]) => [`branding_${key}`, value]));
+    const brandingChanged = await settingsChanged(db, brandingUpdates, Object.keys(brandingUpdates));
+
     // Handle favicon deletion if empty string or null is provided
     if (favicon_url === '' || favicon_url === null || favicon_url === undefined) {
       // Get current favicon path to delete file
@@ -1125,6 +1132,7 @@ router.put('/branding', adminAuth, requirePermission('settings.edit'), async (re
       metadata: JSON.stringify({ company_name })
     });
 
+    if (brandingChanged) capabilityEvidence(res, 'branding_editing');
     clearPublicSiteCache();
 
     // Check if watermark settings changed and trigger regeneration
@@ -1229,6 +1237,7 @@ router.post('/logo', adminAuth, requirePermission('settings.edit'), upload.singl
         updated_at: new Date()
       });
 
+    capabilityEvidence(res, 'branding_editing');
     res.json({ 
       message: 'Logo uploaded successfully',
       logoUrl: publicPath
@@ -1247,6 +1256,7 @@ router.delete('/logo', adminAuth, requirePermission('settings.edit'), async (req
     const pathKey = isDark ? 'branding_logo_path_dark' : 'branding_logo_path';
     const urlKey = isDark ? 'branding_logo_url_dark' : 'branding_logo_url';
 
+    const logoChanged = await settingsChanged(db, { [pathKey]: '', [urlKey]: '' }, [pathKey, urlKey]);
     const pathSetting = await db('app_settings').where('setting_key', pathKey).first();
     if (pathSetting && pathSetting.setting_value) {
       try {
@@ -1261,6 +1271,7 @@ router.delete('/logo', adminAuth, requirePermission('settings.edit'), async (req
       .whereIn('setting_key', [pathKey, urlKey])
       .update({ setting_value: JSON.stringify(''), updated_at: new Date() });
 
+    if (logoChanged) capabilityEvidence(res, 'branding_editing');
     res.json({ message: 'Logo removed' });
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to remove logo');
@@ -1346,6 +1357,7 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
       watermarkRegenerationStarted = true;
     }
 
+    capabilityEvidence(res, 'branding_editing');
     res.json({
       message: 'Watermark logo uploaded successfully',
       watermarkLogoUrl: publicPath,
@@ -1360,6 +1372,7 @@ router.post('/branding/watermark-logo', adminAuth, requirePermission('settings.e
 router.put('/theme', adminAuth, requirePermission('settings.edit'), async (req, res) => {
   try {
     const themeSettings = req.body;
+    const themeChanged = await settingsChanged(db, { theme_config: themeSettings }, ['theme_config']);
 
     // Save theme settings
     await db('app_settings')
@@ -1386,6 +1399,7 @@ router.put('/theme', adminAuth, requirePermission('settings.edit'), async (req, 
 
     clearPublicSiteCache();
 
+    if (themeChanged) capabilityEvidence(res, 'branding_editing');
     res.json({ message: 'Theme settings updated successfully' });
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to update theme settings');
@@ -1709,6 +1723,7 @@ router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, re
       }
     }
 
+    const seoChanged = await settingsChanged(db, settings, SEO_USAGE_KEYS);
     // Update or insert each setting
     for (const [key, value] of Object.entries(settings)) {
       await db('app_settings')
@@ -1738,6 +1753,7 @@ router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, re
       metadata: JSON.stringify({ settings_count: Object.keys(settings).length })
     });
 
+    if (seoChanged) capabilityEvidence(res, 'seo_editing');
     res.json({ message: 'SEO settings updated successfully' });
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to update SEO settings');
@@ -2035,6 +2051,7 @@ router.post('/favicon', adminAuth, requirePermission('settings.edit'), faviconUp
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    capabilityEvidence(res, 'branding_editing');
     res.json({ faviconUrl });
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to upload favicon');

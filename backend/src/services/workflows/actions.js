@@ -53,7 +53,8 @@ registry.registerAction('send_email', async (ctx) => {
 
   // INTERNAL/admin = immediate; EXTERNAL/customer = business-hours floor.
   const respectBusinessHours = !isInternal;
-  await emailProcessor.queueEmail(eventId, to, emailType, emailData, { respectBusinessHours });
+  // A workflow test run (engine.testRun, __test) is a test message for usage.
+  await emailProcessor.queueEmail(eventId, to, emailType, emailData, { respectBusinessHours, usageEligible: !ctx.vars?.__test });
   return { sent_to: to, recipientClass, respectBusinessHours };
 });
 
@@ -120,7 +121,7 @@ registry.registerAction('escalate_to_collections', async (ctx) => {
     due_date: invoice.due_date ? String(invoice.due_date).slice(0, 10) : '',
     reminder_level: invoice.reminder_level || 0,
     attachments,
-  }, { respectBusinessHours: false }); // internal/admin → immediate
+  }, { respectBusinessHours: false, usageEligible: !ctx.vars?.__test }); // internal/admin → immediate
 
   return { collections_handoff_to: adminEmail, outstanding };
 });

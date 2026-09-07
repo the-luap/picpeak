@@ -1,3 +1,4 @@
+const { changedFields } = require('../usage/adoptionEvidence');
 const express = require('express');
 const { capabilityEvidence } = require('../usage/capabilityEvidence');
 const nodemailer = require('nodemailer');
@@ -1029,6 +1030,7 @@ router.put('/templates/:key', [
       return res.status(400).json({ error: 'translations object is required' });
     }
 
+    let contentChanged = false;
     // Upsert each language translation
     for (const [language, data] of Object.entries(translations)) {
       if (!data || typeof data !== 'object') continue;
@@ -1044,6 +1046,7 @@ router.put('/templates/:key', [
         updated_at: new Date(),
       };
 
+      contentChanged ||= changedFields(existing, row, ['subject', 'body_html', 'body_text']);
       if (existing) {
         await db('email_template_translations')
           .where({ template_id: template.id, language })
@@ -1091,6 +1094,7 @@ router.put('/templates/:key', [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    if (contentChanged) capabilityEvidence(res, 'email_template_editing');
     res.json({ message: 'Email template updated successfully' });
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to update email template');
@@ -1178,6 +1182,8 @@ router.post('/templates', [
       null,
       { type: 'admin', id: req.admin.id, name: req.admin.username });
 
+    if (Object.values(translations).some(content => content && changedFields({}, content,
+      ['subject', 'body_html', 'body_text']))) capabilityEvidence(res, 'email_template_editing');
     return res.status(201).json({ template_key: templateKey, id: templateId });
   } catch (error) {
     return errorResponse(res, error, 500, 'Failed to create email template');

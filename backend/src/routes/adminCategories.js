@@ -1,3 +1,5 @@
+const { changedEvidence } = require('../usage/adoptionEvidence');
+const { capabilityEvidence } = require('../usage/capabilityEvidence');
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { safeValidationErrors } = require('../utils/routeHelpers');
@@ -123,6 +125,7 @@ router.post('/', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
+    capabilityEvidence(res, 'category_editing');
     res.json(category);
   } catch (error) {
     logger.error('Error creating category:', error);
@@ -206,6 +209,8 @@ router.put('/:id', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    changedEvidence(res, 'category_editing', category, updated,
+      ['name', 'slug', 'hero_photo_id', 'allow_downloads', 'is_folder']);
     res.json(updated);
   } catch (error) {
     logger.error('Error updating category:', error);
@@ -260,6 +265,7 @@ router.put('/:id/hero', adminAuth, requirePermission('settings.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    changedEvidence(res, 'category_editing', category, updated, ['hero_photo_id']);
     res.json(updated);
   } catch (error) {
     logger.error('Error updating category hero:', error);
@@ -294,6 +300,7 @@ router.delete('/:id', adminAuth, requirePermission('settings.edit'), async (req,
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
     
+    capabilityEvidence(res, 'category_editing');
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
     logger.error('Error deleting category:', error);
@@ -346,12 +353,14 @@ router.post('/reorder', adminAuth, requirePermission('settings.edit'), [
       return res.status(400).json({ error: 'One or more categories are not available for this event' });
     }
 
+    const before = await db('event_category_order').where('event_id', eventId).orderBy('position', 'asc').pluck('category_id');
     await db.transaction(async (trx) => {
       await trx('event_category_order').where('event_id', eventId).del();
       await trx('event_category_order').insert(
         orderedIds.map((id, i) => ({ event_id: eventId, category_id: id, position: i + 1 }))
       );
     });
+    changedEvidence(res, 'category_editing', { order: before }, { order: orderedIds }, ['order']);
 
     // Log activity after commit (avoids a SQLite in-transaction global write).
     await logActivity('event_category_order_set',
@@ -371,7 +380,8 @@ router.post('/reorder', adminAuth, requirePermission('settings.edit'), [
 router.delete('/reorder/:eventId', adminAuth, requirePermission('settings.edit'), requireEventOwnership, async (req, res) => {
   try {
     const eventId = parseInt(req.params.eventId, 10);
-    await db('event_category_order').where('event_id', eventId).del();
+    const removed = await db('event_category_order').where('event_id', eventId).del();
+    if (removed > 0) capabilityEvidence(res, 'category_editing');
 
     await logActivity('event_category_order_reset',
       { eventId },
@@ -400,7 +410,8 @@ router.post('/reorder-global', adminAuth, requirePermission('settings.edit'), [
 
     const orderedIds = req.body.orderedIds.map((id) => parseInt(id, 10));
 
-    const globals = await db('photo_categories').where('is_global', formatBoolean(true)).pluck('id');
+    const globals = await db('photo_categories').where('is_global', formatBoolean(true))
+      .orderBy('display_order', 'asc').orderBy('name', 'asc').pluck('id');
     const globalsSet = new Set(globals);
     const invalid = orderedIds.filter((id) => !globalsSet.has(id));
     if (invalid.length > 0) {
@@ -423,6 +434,7 @@ router.post('/reorder-global', adminAuth, requirePermission('settings.edit'), [
       .where('is_global', formatBoolean(true))
       .orderBy('display_order', 'asc')
       .orderBy('name', 'asc');
+    changedEvidence(res, 'category_editing', { order: globals }, { order: categories.map((category) => category.id) }, ['order']);
     res.json(categories);
   } catch (error) {
     logger.error('Error reordering global categories:', error);

@@ -1,3 +1,4 @@
+const { changedEvidence } = require('../usage/adoptionEvidence');
 const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
@@ -144,6 +145,8 @@ router.put('/pages/:slug', adminAuth, requirePermission('cms.edit'), [
       { type: 'admin', id: req.admin.id, name: req.admin.username }
     );
 
+    if (!updated.use_external_url) changedEvidence(res, 'cms_content_editing', page, updated,
+      ['title_en', 'title_de', 'content_en', 'content_de']);
     res.json(updated);
   } catch (error) {
     logger.error('Error updating CMS page:', error);

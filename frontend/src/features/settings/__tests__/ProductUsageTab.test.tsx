@@ -69,10 +69,10 @@ beforeEach(() => {
   };
 });
 afterEach(cleanup);
-it('shows every v4 signal locally before participation, without collector calls', async () => {
+it('shows every v5 signal locally before participation, without collector calls', async () => {
   mount();
   await screen.findByText('productUsage.catalogTitle');
-  expect(screen.getAllByRole('heading', { level: 4, hidden: true })).toHaveLength(87);
+  expect(screen.getAllByRole('heading', { level: 4, hidden: true })).toHaveLength(88);
   expect(service.enable).not.toHaveBeenCalled();
   expect(service.preview).not.toHaveBeenCalled();
   expect(service.upgradeConsent).not.toHaveBeenCalled();

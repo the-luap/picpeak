@@ -906,7 +906,7 @@ async function buildSignatureTextFor(language) {
   }
 }
 
-async function sendTemplateEmail(to, templateKey, variables) {
+async function sendTemplateEmail(to, templateKey, variables, { usageEligible = true } = {}) {
   try {
     // Webhook transport (#1225) replaces SMTP entirely when configured, so an
     // instance using it has no SMTP settings to initialise and must not be
@@ -986,6 +986,17 @@ async function sendTemplateEmail(to, templateKey, variables) {
     const info = viaWebhook
       ? await emailWebhookTransport.send(mail)
       : await transporter.sendMail(mail);
+
+    // Transport acceptance is the measured event, not rendering or inbox
+    // delivery. The service accepts only the fixed bit under confirmed v5
+    // consent; marker failure must never retry an already-sent message.
+    if (usageEligible && (viaWebhook || info.accepted?.length > 0)) {
+      try {
+        await require('./productUsageService').markUsed(['email_template_delivery']);
+      } catch {
+        logger.warn('Product usage mail marker could not be recorded');
+      }
+    }
 
     logger.info(`Email sent successfully: ${info.messageId} (${language})`);
     // Return the rendered HTML so the queue processor can persist the ACTUAL
@@ -1275,7 +1286,8 @@ async function processEmailQueue({ ignoreSchedule = false, limit = 10, onlyId = 
           sendResult = await sendTemplateEmail(
             email.recipient_email,
             email.email_type,
-            emailData
+            emailData,
+            { usageEligible: emailData.__usageEligible !== false }
           );
         }
 
@@ -1436,6 +1448,9 @@ async function queueEmail(eventId, recipientEmail, emailType, emailData, options
   try {
     // Add eventId to emailData for language detection
     emailData.eventId = eventId;
+    // An explicit test message (dev tools' send-test-email) must not count as
+    // template delivery when the queue processor sends it later.
+    if (options.usageEligible === false) emailData.__usageEligible = false;
     const row = {
       event_id: eventId,
       recipient_email: recipientEmail,
