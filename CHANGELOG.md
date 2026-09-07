@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.129.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.128.0-beta.0...v3.129.0-beta.0) (2026-09-07)
+
+
+### Features
+
+* **cms:** keep the editor toolbar in reach on long pages ([#1335](https://github.com/PicPeak/picpeak/issues/1335)) ([d6a0c4a](https://github.com/PicPeak/picpeak/commit/d6a0c4aff52bab268799e9f7c2c5b62f2410c958))
+* **security:** opt-in recoverable gallery passwords ([#1341](https://github.com/PicPeak/picpeak/issues/1341)) ([fb9da72](https://github.com/PicPeak/picpeak/commit/fb9da72f1402aa8aee7ce0e575907789ed9faf33))
+
 ## [3.128.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.2-beta.0...v3.128.0-beta.0) (2026-09-07)
 
 
