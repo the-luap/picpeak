@@ -2,11 +2,13 @@ import React from 'react';
 import { Save, Key, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Button, Card, Input } from '../../../components/common';
 import { useTranslation } from 'react-i18next';
-import type { SecuritySettings } from '../hooks/useSettingsState';
+import type { SecuritySettings, RateLimitSettings } from '../hooks/useSettingsState';
 
 interface SecurityTabProps {
   securitySettings: SecuritySettings;
   setSecuritySettings: React.Dispatch<React.SetStateAction<SecuritySettings>>;
+  rateLimitSettings: RateLimitSettings;
+  setRateLimitSettings: React.Dispatch<React.SetStateAction<RateLimitSettings>>;
   saveSecurityMutation: {
     mutate: () => void;
     isPending: boolean;
@@ -16,9 +18,29 @@ interface SecurityTabProps {
 export const SecurityTab: React.FC<SecurityTabProps> = ({
   securitySettings,
   setSecuritySettings,
+  rateLimitSettings,
+  setRateLimitSettings,
   saveSecurityMutation,
 }) => {
   const { t } = useTranslation();
+  const setRateLimit = <K extends keyof RateLimitSettings>(key: K, value: RateLimitSettings[K]) =>
+    setRateLimitSettings((prev) => ({ ...prev, [key]: value }));
+  const numberField = (key: keyof RateLimitSettings, min: number, max: number, labelKey: string, helpKey: string) => (
+    <div>
+      <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+        {t(`settings.security.${labelKey}`)}
+      </label>
+      <Input
+        type="number"
+        min={min}
+        max={max}
+        value={rateLimitSettings[key] as number}
+        onChange={(e) => setRateLimit(key, Number(e.target.value) as RateLimitSettings[typeof key])}
+        aria-label={t(`settings.security.${labelKey}`)}
+      />
+      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t(`settings.security.${helpKey}`)}</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -132,6 +154,62 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                 <p className="mt-1">{t('settings.security.twoFactorNote')}</p>
               </div>
             </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* General API rate limiter (#1337). These keys had a backend route and
+          no screen, so installs ran on a budget nobody could see. */}
+      <Card padding="md">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-1">{t('settings.security.rateLimitTitle')}</h2>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">{t('settings.security.rateLimitIntro')}</p>
+
+        <div className="space-y-4">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={rateLimitSettings.rate_limit_enabled}
+              onChange={(e) => setRateLimit('rate_limit_enabled', e.target.checked)}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">{t('settings.security.rateLimitEnabled')}</span>
+          </label>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {numberField('rate_limit_window_minutes', 1, 60, 'rateLimitWindowMinutes', 'rateLimitWindowMinutesHelp')}
+            {numberField('rate_limit_max_requests', 10, 10000, 'rateLimitMaxRequests', 'rateLimitMaxRequestsHelp')}
+            {numberField('rate_limit_auth_max_requests', 1, 100, 'rateLimitAuthMaxRequests', 'rateLimitAuthMaxRequestsHelp')}
+          </div>
+
+          <label className="flex items-start">
+            <input
+              type="checkbox"
+              checked={rateLimitSettings.rate_limit_skip_authenticated}
+              onChange={(e) => setRateLimit('rate_limit_skip_authenticated', e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">
+              {t('settings.security.rateLimitSkipAuthenticated')}
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400">{t('settings.security.rateLimitSkipAuthenticatedHelp')}</span>
+            </span>
+          </label>
+
+          <label className="flex items-start">
+            <input
+              type="checkbox"
+              checked={rateLimitSettings.rate_limit_public_endpoints_only}
+              onChange={(e) => setRateLimit('rate_limit_public_endpoints_only', e.target.checked)}
+              className="mt-0.5 w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">
+              {t('settings.security.rateLimitPublicOnly')}
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400">{t('settings.security.rateLimitPublicOnlyHelp')}</span>
+            </span>
+          </label>
+
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-5 h-5 flex-none mt-0.5" />
+            <p>{t('settings.security.rateLimitNatNote')}</p>
           </div>
         </div>
       </Card>

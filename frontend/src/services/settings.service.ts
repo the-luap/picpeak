@@ -312,6 +312,18 @@ export const settingsService = {
     await api.put('/admin/settings/theme', settings);
   },
 
+  // General API rate limiter (#1337). Its own route validates ranges and
+  // clears the limiter's settings cache, so changes apply at once.
+  async updateRateLimit(settings: {
+    rate_limit_enabled: boolean;
+    rate_limit_window_minutes: number;
+    rate_limit_max_requests: number;
+    rate_limit_auth_max_requests: number;
+    rate_limit_skip_authenticated: boolean;
+    rate_limit_public_endpoints_only: boolean;
+  }): Promise<void> {
+    await api.put('/admin/settings/security/rate-limit', settings);
+  },
   // Update multiple settings at once
   async updateSettings(settings: Record<string, any>): Promise<void> {
     // Determine the endpoint based on setting keys

@@ -10,7 +10,7 @@ const { formatBoolean } = require('../utils/dbCompat');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission, userHasAnyPermission } = require('../middleware/permissions');
 const { clearMaintenanceCache } = require('../middleware/maintenance');
-const { clearSettingsCache } = require('../services/rateLimitService');
+const { clearSettingsCache, initializeRateLimiters, RATE_LIMIT_DEFAULTS } = require('../services/rateLimitService');
 const {
   DEFAULT_PUBLIC_SITE_HTML,
   DEFAULT_PUBLIC_SITE_CSS,
@@ -282,6 +282,14 @@ router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) 
       settingsObject.analytics_rybbit_api_key = '••••••••';
     }
 
+    // The general API rate limiter falls back to code defaults when a key has
+    // no row, which is every fresh install. Surface those so the Security tab
+    // shows the budget actually in force instead of an empty field (#1337).
+    for (const [key, value] of Object.entries(RATE_LIMIT_DEFAULTS)) {
+      if (settingsObject[key] === undefined && (!keysFilter || keysFilter.includes(key))) {
+        settingsObject[key] = value;
+      }
+    }
     res.json(settingsObject);
   } catch (error) {
     errorResponse(res, error, 500, 'Failed to fetch settings');
@@ -2067,10 +2075,19 @@ router.put('/security/rate-limit', adminAuth, requirePermission('settings.securi
       { key: 'rate_limit_public_endpoints_only', value: rate_limit_public_endpoints_only }
     ];
 
+    // Upsert, not update: a fresh install has no rate_limit_* rows, and a
+    // plain update matched nothing there — the route answered 200 and
+    // changed nothing (#1337).
     for (const { key, value } of settings) {
       await db('app_settings')
-        .where('setting_key', key)
-        .update({
+        .insert({
+          setting_key: key,
+          setting_value: JSON.stringify(value),
+          setting_type: 'security',
+          updated_at: new Date()
+        })
+        .onConflict('setting_key')
+        .merge({
           setting_value: JSON.stringify(value),
           updated_at: new Date()
         });
@@ -2078,6 +2095,10 @@ router.put('/security/rate-limit', adminAuth, requirePermission('settings.securi
 
     // Clear the rate limit settings cache to apply changes immediately
     clearSettingsCache();
+    // max and skip re-read the settings per request, the window is fixed
+    // per limiter instance: rebuild so a changed window applies now rather
+    // than after a restart (#1337). Counters start fresh.
+    await initializeRateLimiters();
 
     // Log activity
     await logActivity('settings_updated', 

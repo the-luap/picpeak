@@ -1,8 +1,22 @@
 const rateLimit = require('express-rate-limit');
+const { MemoryStore } = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
 const { getAdminTokenFromRequest, getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+
+// What applies when app_settings has no row for a key — a fresh install has
+// none. Keyed by setting name so the admin settings read can surface the
+// same values (#1337): the Security tab must show the budget that is in
+// force, not an empty field that hides it.
+const RATE_LIMIT_DEFAULTS = Object.freeze({
+  rate_limit_enabled: true,
+  rate_limit_window_minutes: 15,
+  rate_limit_max_requests: 300,
+  rate_limit_auth_max_requests: 5,
+  rate_limit_skip_authenticated: true,
+  rate_limit_public_endpoints_only: false
+});
 
 // Cache for rate limit settings
 let settingsCache = null;
@@ -41,12 +55,12 @@ async function getRateLimitSettings() {
     // roughly twenty guests per window. An explicit app_settings value still
     // wins over this fallback.
     const config = {
-      enabled: true,
-      windowMinutes: 15,
-      maxRequests: 300,
-      authMaxRequests: 5,
-      skipAuthenticated: true,
-      publicEndpointsOnly: false
+      enabled: RATE_LIMIT_DEFAULTS.rate_limit_enabled,
+      windowMinutes: RATE_LIMIT_DEFAULTS.rate_limit_window_minutes,
+      maxRequests: RATE_LIMIT_DEFAULTS.rate_limit_max_requests,
+      authMaxRequests: RATE_LIMIT_DEFAULTS.rate_limit_auth_max_requests,
+      skipAuthenticated: RATE_LIMIT_DEFAULTS.rate_limit_skip_authenticated,
+      publicEndpointsOnly: RATE_LIMIT_DEFAULTS.rate_limit_public_endpoints_only
     };
 
     settings.forEach(setting => {
@@ -211,10 +225,11 @@ function shouldSkipRateLimit(req, config) {
 /**
  * Create dynamic rate limiter
  */
-async function createRateLimiter() {
+async function createRateLimiter(store = new MemoryStore()) {
   const config = await getRateLimitSettings();
   
   return rateLimit({
+    store,
     windowMs: config.windowMinutes * 60 * 1000,
     max: async (req) => {
       // Refresh config for each request
@@ -278,10 +293,11 @@ async function createRateLimiter() {
  * makes a 5-per-window per-IP budget safe behind NAT — a room full of guests on
  * one venue IP who all type the correct gallery password consume nothing.
  */
-async function createAuthRateLimiter() {
+async function createAuthRateLimiter(store = new MemoryStore()) {
   const config = await getRateLimitSettings();
 
   return rateLimit({
+    store,
     windowMs: config.windowMinutes * 60 * 1000,
     // Read per request, like the general limiter, so a change to
     // rate_limit_auth_max_requests in admin Settings takes effect within the
@@ -330,7 +346,40 @@ async function createAuthRateLimiter() {
   });
 }
 
+// The live limiter instances. express-rate-limit fixes windowMs when an
+// instance is built — max and skip re-read the settings per request, the
+// window does not — so a saved window only takes effect on a rebuild. The
+// gates in server.js resolve the instance per request through the getters
+// below, and the settings route rebuilds after a save (#1337). Rebuilding
+// starts fresh counters; on a settings change that is acceptable.
+//
+// The stores are held explicitly because a MemoryStore runs a cleanup
+// interval for as long as it exists: dropping the limiter reference alone
+// would leave one more live timer and one more retained store per save.
+const current = { general: null, auth: null, stores: [] };
+
+async function initializeRateLimiters() {
+  const stores = [new MemoryStore(), new MemoryStore()];
+  const general = await createRateLimiter(stores[0]);
+  const auth = await createAuthRateLimiter(stores[1]);
+  const superseded = current.stores;
+  current.general = general;
+  current.auth = auth;
+  current.stores = stores;
+  for (const store of superseded) {
+    if (typeof store.shutdown === 'function') store.shutdown();
+  }
+  return current;
+}
+
+const getGeneralLimiter = () => current.general;
+const getAuthLimiter = () => current.auth;
+
 module.exports = {
+  RATE_LIMIT_DEFAULTS,
+  initializeRateLimiters,
+  getGeneralLimiter,
+  getAuthLimiter,
   getRateLimitSettings,
   clearSettingsCache,
   createRateLimiter,

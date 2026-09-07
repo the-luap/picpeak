@@ -57,6 +57,32 @@ export interface SecuritySettings {
   recaptcha_secret_key: string;
 }
 
+/** The general per-IP API rate limiter (#1337). Keys match app_settings. */
+export interface RateLimitSettings {
+  rate_limit_enabled: boolean;
+  rate_limit_window_minutes: number;
+  rate_limit_max_requests: number;
+  rate_limit_auth_max_requests: number;
+  rate_limit_skip_authenticated: boolean;
+  rate_limit_public_endpoints_only: boolean;
+}
+
+/** The ranges the backend route enforces; checked before anything is written. */
+export const RATE_LIMIT_RANGES: Record<'rate_limit_window_minutes' | 'rate_limit_max_requests' | 'rate_limit_auth_max_requests', [number, number]> = {
+  rate_limit_window_minutes: [1, 60],
+  rate_limit_max_requests: [10, 10000],
+  rate_limit_auth_max_requests: [1, 100]
+};
+
+/** Returns the first out-of-range field, or null when everything is valid. */
+export function validateRateLimitSettings(settings: RateLimitSettings): keyof typeof RATE_LIMIT_RANGES | null {
+  for (const [key, [min, max]] of Object.entries(RATE_LIMIT_RANGES) as Array<[keyof typeof RATE_LIMIT_RANGES, [number, number]]>) {
+    const value = settings[key];
+    if (!Number.isInteger(value) || value < min || value > max) return key;
+  }
+  return null;
+}
+
 export type TrackerProvider = 'none' | 'umami' | 'rybbit' | 'custom';
 
 export interface AnalyticsSettings {
@@ -167,6 +193,17 @@ export function useSettingsState() {
     recaptcha_secret_key: ''
   });
 
+  // Rate limiter state. The fallbacks mirror the backend's defaults, but the
+  // settings read fills every key, so they only matter before the first load.
+  const [rateLimitSettings, setRateLimitSettings] = useState<RateLimitSettings>({
+    rate_limit_enabled: true,
+    rate_limit_window_minutes: 15,
+    rate_limit_max_requests: 300,
+    rate_limit_auth_max_requests: 5,
+    rate_limit_skip_authenticated: true,
+    rate_limit_public_endpoints_only: false
+  });
+
   // Analytics settings state
   const [analyticsSettings, setAnalyticsSettings] = useState<AnalyticsSettings>({
     tracker_provider: 'none',
@@ -273,6 +310,15 @@ export function useSettingsState() {
         enable_recaptcha: toBoolean(settings.security_enable_recaptcha, false),
         recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
         recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
+      });
+
+      setRateLimitSettings({
+        rate_limit_enabled: toBoolean(settings.rate_limit_enabled, true),
+        rate_limit_window_minutes: toNumber(settings.rate_limit_window_minutes, 15),
+        rate_limit_max_requests: toNumber(settings.rate_limit_max_requests, 300),
+        rate_limit_auth_max_requests: toNumber(settings.rate_limit_auth_max_requests, 5),
+        rate_limit_skip_authenticated: toBoolean(settings.rate_limit_skip_authenticated, true),
+        rate_limit_public_endpoints_only: toBoolean(settings.rate_limit_public_endpoints_only, false)
       });
 
       // Tracker provider: prefer explicit setting; fall back to legacy
@@ -401,14 +447,22 @@ export function useSettingsState() {
       Object.entries(securitySettings).forEach(([key, value]) => {
         settingsData[`security_${key}`] = value;
       });
-      return settingsService.updateSettings(settingsData);
+      // Nothing is written until the limiter values pass the same ranges the
+      // route enforces, and the limiter goes first: a 400 from its route
+      // would otherwise land after the password/session settings were
+      // already persisted, a half-applied save reported as failed (#1337).
+      if (validateRateLimitSettings(rateLimitSettings)) throw new Error('RATE_LIMIT_INVALID');
+      await settingsService.updateRateLimit(rateLimitSettings);
+      await settingsService.updateSettings(settingsData);
     },
     onSuccess: () => {
       toast.success(t('toast.settingsSaved'));
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
     },
-    onError: () => {
-      toast.error(t('toast.saveError'));
+    onError: (error: unknown) => {
+      toast.error(t(error instanceof Error && error.message === 'RATE_LIMIT_INVALID'
+        ? 'settings.security.rateLimitInvalid'
+        : 'toast.saveError'));
     }
   });
 
@@ -653,6 +707,8 @@ export function useSettingsState() {
     setGeneralSettings,
     securitySettings,
     setSecuritySettings,
+    rateLimitSettings,
+    setRateLimitSettings,
     analyticsSettings,
     setAnalyticsSettings,
     eventSettings,

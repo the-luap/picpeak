@@ -209,6 +209,8 @@ export const SettingsPage: React.FC = () => {
     generalSettings,
     setGeneralSettings,
     securitySettings,
+    rateLimitSettings,
+    setRateLimitSettings,
     setSecuritySettings,
     analyticsSettings,
     setAnalyticsSettings,
@@ -571,6 +573,8 @@ export const SettingsPage: React.FC = () => {
             <SecurityTab
               securitySettings={securitySettings}
               setSecuritySettings={setSecuritySettings}
+              rateLimitSettings={rateLimitSettings}
+              setRateLimitSettings={setRateLimitSettings}
               saveSecurityMutation={saveSecurityMutation}
             />
           )}
