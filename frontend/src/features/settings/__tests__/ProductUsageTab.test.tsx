@@ -329,8 +329,6 @@ describe('the plain usage portal link', () => {
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(service.portalSession).not.toHaveBeenCalled();
-    // The session-bound link is a different thing and stays behind `connect`.
-    expect(screen.queryByText('productUsage.openPortal')).toBeNull();
   });
 
   it('is not offered when the collector URL is unusable', async () => {
@@ -342,5 +340,65 @@ describe('the plain usage portal link', () => {
     mount();
     await screen.findByText('productUsage.invalidCollectorUrl');
     expect(screen.queryByRole('link', { name: 'productUsage.openUsagePortal' })).toBeNull();
+  });
+});
+
+// While participating, the same button signs the operator in. The credential
+// must never sit in a URL a server sees: the backend mints a short-lived
+// collector session and the portal receives it in the fragment only.
+describe('the signed-in usage portal button', () => {
+  const tab = { document: { open: vi.fn(), write: vi.fn(), close: vi.fn() }, opener: {} as unknown, close: vi.fn() };
+  const written = () => tab.document.write.mock.calls.map((c) => String(c[0])).join('');
+  beforeEach(() => {
+    tab.opener = {}; tab.close.mockClear(); tab.document.write.mockClear(); tab.document.open.mockClear(); tab.document.close.mockClear();
+    vi.stubGlobal('open', vi.fn(() => tab));
+    vi.mocked(service.status).mockResolvedValue({ ...status, status: 'active' });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('opens a tab synchronously, mints a session and navigates it without a referrer', async () => {
+    vi.mocked(service.portalSession).mockResolvedValue({
+      delivered: true, url: 'https://usage.picpeak.app/#connect=session-token'
+    });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'productUsage.openUsagePortal' }));
+    expect(window.open).toHaveBeenCalledWith('about:blank', '_blank');
+    await waitFor(() => expect(written()).toContain('url=https://usage.picpeak.app/#connect=session-token'));
+    // The written page, not the admin page, initiates the navigation — and
+    // it says no-referrer, so the collector never sees this origin.
+    expect(written()).toContain('<meta name="referrer" content="no-referrer">');
+    expect(tab.opener).toBeNull();
+    expect(screen.queryByRole('link', { name: 'productUsage.openUsagePortal' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'productUsage.portalReady' })).toBeNull();
+  });
+
+  it('offers the session URL as a link when the browser refused the tab', async () => {
+    vi.mocked(window.open).mockReturnValue(null);
+    vi.mocked(service.portalSession).mockResolvedValue({
+      delivered: true, url: 'https://usage.picpeak.app/#connect=session-token'
+    });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'productUsage.openUsagePortal' }));
+    const link = await screen.findByRole('link', { name: 'productUsage.portalReady' });
+    expect(link).toHaveAttribute('href', 'https://usage.picpeak.app/#connect=session-token');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(window.open).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the public portal and says so when the session is only queued', async () => {
+    vi.mocked(service.portalSession).mockResolvedValue({ delivered: false, url: null });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'productUsage.openUsagePortal' }));
+    await waitFor(() => expect(written()).toContain('url=https://usage.picpeak.app"'));
+    await screen.findByText('productUsage.queued');
+  });
+
+  it('closes the tab again when the request fails', async () => {
+    vi.mocked(service.portalSession).mockRejectedValue(new Error('down'));
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'productUsage.openUsagePortal' }));
+    await screen.findByText('productUsage.failed');
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.document.write).not.toHaveBeenCalled();
   });
 });
