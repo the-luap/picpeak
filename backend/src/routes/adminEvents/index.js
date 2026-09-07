@@ -12,6 +12,7 @@ require('./crud')(router);
 require('./slideshow')(router);
 require('./downloadResolutions')(router);
 require('./resets')(router);
+require('./passwordRecovery')(router);
 require('./archiveBulk')(router);
 require('./logo')(router);
 require('./qr')(router);

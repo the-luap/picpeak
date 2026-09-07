@@ -7,6 +7,7 @@ const { adminAuth } = require('../../middleware/auth');
 const { requirePermission } = require('../../middleware/permissions');
 const bcrypt = require('bcrypt');
 const { queueEmail } = require('../../services/emailProcessor');
+const { galleryPasswordColumns, readGalleryPassword } = require('../../utils/galleryPasswordVault');
 const { validatePasswordInContext, getBcryptRounds } = require('../../utils/passwordValidation');
 const logger = require('../../utils/logger');
 const { errorResponse } = require('../../utils/routeHelpers');
@@ -64,7 +65,10 @@ module.exports = (router) => {
       await db('events')
         .where('id', id)
         .update({
-          password_hash: passwordHash
+          password_hash: passwordHash,
+          // #1271 — same statement as the hash, so a concurrent reset can
+          // never leave a copy that does not match the hash next to it
+          ...(await galleryPasswordColumns({ password: newPassword })),
         });
 
       // Log activity
@@ -132,12 +136,19 @@ module.exports = (router) => {
       // First, try to get it from the request body if provided
       // Use optional chaining to handle cases where req.body might be undefined
       let galleryPassword = req.body?.password;
-    
-      // If no password provided, we can't decrypt the existing one
-      // So we'll show a security message
+      // Without a password in the request: use the recoverable copy when the
+      // operator opted into keeping one (#1271), else the security sentinel —
+      // the hash cannot be turned back into the password.
+      let usedStoredPassword = false;
       if (!galleryPassword) {
-      // We'll let the email processor determine the language for the security message
-        galleryPassword = '{{password_security_message}}';
+        const stored = await readGalleryPassword(id);
+        if (stored.password) {
+          galleryPassword = stored.password;
+          usedStoredPassword = true;
+        } else {
+          // We'll let the email processor determine the language for the security message
+          galleryPassword = '{{password_security_message}}';
+        }
       }
     
       // Dates will be formatted by the email processor based on recipient language
@@ -180,7 +191,8 @@ module.exports = (router) => {
       // Don't fail the request if activity logging fails
       }
     
-      res.json({ 
+      res.json({
+        usedStoredPassword, 
         success: true,
         message: 'Creation email has been queued for sending'
       });

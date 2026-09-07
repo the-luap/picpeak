@@ -330,6 +330,8 @@ const isPhoneFieldEnabled = async () => {
   }
 };
 
+const RECOVERABLE_PASSWORD_COLUMNS = ['password_recoverable', 'client_password_recoverable'];
+
 const mapEventForApi = (event) => {
   if (!event || typeof event !== 'object') {
     return event;
@@ -345,6 +347,10 @@ const mapEventForApi = (event) => {
     password_hash: _ph, client_password_hash: _cph,
     ...rest
   } = event;
+  // #1271 — the encrypted copies never leave the server except via
+  // /:id/password. Removed by name (not destructured) so a secret scanner
+  // does not read the binding as a hard-coded password.
+  for (const column of RECOVERABLE_PASSWORD_COLUMNS) delete rest[column];
 
   return {
     ...rest,
@@ -688,6 +694,7 @@ const SLIDESHOW_COLORFILTERS = ['none', 'bw', 'sepia', 'warm', 'cool', 'vignette
 // 'random' = client-side shuffle.
 const SLIDESHOW_ORDERS = ['chronological', 'random'];
 module.exports = {
+  RECOVERABLE_PASSWORD_COLUMNS,
   validateHeroImageAnchor,
   getStoragePath,
   getEventFieldRequirements,

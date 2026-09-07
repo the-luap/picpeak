@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { db, logActivity } = require('../database/db');
+const { RECOVERABLE_PASSWORD_COLUMNS } = require('./adminEvents/helpers');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const { ensureThumbnail } = require('../services/imageProcessor');
@@ -1599,9 +1600,16 @@ router.get('/:eventId/debug', adminAuth, requirePermission('photos.view'), requi
   try {
     const { eventId } = req.params;
     
-    const event = await db('events').where({ id: eventId }).first();
+    const eventRow = await db('events').where({ id: eventId }).first();
     const photoCount = await db('photos').where({ event_id: eventId }).count('id as count').first();
     const photos = await db('photos').where({ event_id: eventId }).limit(5);
+    // Never hand out the hashes or the recoverable copies (#1271) — this is
+    // a photos.view surface, not an events.edit one.
+    let event = eventRow;
+    if (eventRow) {
+      event = { ...eventRow };
+      for (const column of ['password_hash', 'client_password_hash', ...RECOVERABLE_PASSWORD_COLUMNS]) delete event[column];
+    }
     
     res.json({
       event: event || 'Not found',

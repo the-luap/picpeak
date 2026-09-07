@@ -55,6 +55,8 @@ export interface SecuritySettings {
   enable_recaptcha: boolean;
   recaptcha_site_key: string;
   recaptcha_secret_key: string;
+  // #1271 — opt-in reversible storage of gallery passwords and client PINs
+  gallery_password_recoverable: boolean;
 }
 
 /** The general per-IP API rate limiter (#1337). Keys match app_settings. */
@@ -190,7 +192,8 @@ export function useSettingsState() {
     lockout_duration_minutes: 30,
     enable_recaptcha: false,
     recaptcha_site_key: '',
-    recaptcha_secret_key: ''
+    recaptcha_secret_key: '',
+    gallery_password_recoverable: false
   });
 
   // Rate limiter state. The fallbacks mirror the backend's defaults, but the
@@ -309,7 +312,8 @@ export function useSettingsState() {
         lockout_duration_minutes: toNumber(settings.security_lockout_duration_minutes, 30),
         enable_recaptcha: toBoolean(settings.security_enable_recaptcha, false),
         recaptcha_site_key: settings.security_recaptcha_site_key ?? '',
-        recaptcha_secret_key: settings.security_recaptcha_secret_key ?? ''
+        recaptcha_secret_key: settings.security_recaptcha_secret_key ?? '',
+        gallery_password_recoverable: toBoolean(settings.security_gallery_password_recoverable, false)
       });
 
       setRateLimitSettings({
@@ -458,6 +462,8 @@ export function useSettingsState() {
     onSuccess: () => {
       toast.success(t('toast.settingsSaved'));
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      // the event page's "Show password" availability follows this tab (#1271)
+      queryClient.invalidateQueries({ queryKey: ['admin-event-password-status'] });
     },
     onError: (error: unknown) => {
       toast.error(t(error instanceof Error && error.message === 'RATE_LIMIT_INVALID'

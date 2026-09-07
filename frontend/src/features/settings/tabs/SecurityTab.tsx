@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save, Key, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Save, Key, AlertCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Button, Card, Input } from '../../../components/common';
 import { useTranslation } from 'react-i18next';
 import type { SecuritySettings, RateLimitSettings } from '../hooks/useSettingsState';
@@ -210,6 +210,38 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
             <AlertCircle className="w-5 h-5 flex-none mt-0.5" />
             <p>{t('settings.security.rateLimitNatNote')}</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card padding="md">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">{t('settings.security.galleryPasswordsTitle')}</h2>
+
+        <div className="space-y-4">
+          <label className="flex items-start">
+            <input
+              type="checkbox"
+              checked={securitySettings.gallery_password_recoverable}
+              onChange={(e) => setSecuritySettings(prev => ({ ...prev, gallery_password_recoverable: e.target.checked }))}
+              className="w-4 h-4 mt-0.5 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="ml-2 text-sm text-neutral-700 dark:text-neutral-300">
+              <span className="block font-medium text-neutral-900 dark:text-neutral-100">{t('settings.security.galleryPasswordRecoverable')}</span>
+              <span className="block mt-1">{t('settings.security.galleryPasswordRecoverableHelp')}</span>
+            </span>
+          </label>
+
+          {/* #1271 — reversible storage is a deliberate trade of security for
+              convenience; the warning stays visible whether or not it is on. */}
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <div className="text-sm text-amber-800 dark:text-amber-200 space-y-1">
+                <p className="font-medium">{t('settings.security.galleryPasswordRecoverableWarningTitle')}</p>
+                <p>{t('settings.security.galleryPasswordRecoverableWarning')}</p>
+                <p>{t('settings.security.galleryPasswordRecoverableOffNote')}</p>
+              </div>
+            </div>
           </div>
         </div>
       </Card>
