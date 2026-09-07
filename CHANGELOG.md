@@ -5,6 +5,18 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.130.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.129.0-beta.0...v3.130.0-beta.0) (2026-09-07)
+
+
+### Features
+
+* **external-media:** watch reference folders and import new files automatically ([#1345](https://github.com/PicPeak/picpeak/issues/1345)) ([8cc7d7d](https://github.com/PicPeak/picpeak/commit/8cc7d7d14a93c5d4c397eaf928361c70810b7e0a))
+
+
+### Bug Fixes
+
+* **events:** drop non-canonical keys from the event update before any check runs ([#1346](https://github.com/PicPeak/picpeak/issues/1346)) ([810801a](https://github.com/PicPeak/picpeak/commit/810801a9ab5df49cf47cd7bf9446fe6a54e6808d))
+
 ## [3.129.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.128.0-beta.0...v3.129.0-beta.0) (2026-09-07)
 
 
