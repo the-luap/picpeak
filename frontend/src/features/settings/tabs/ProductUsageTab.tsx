@@ -124,7 +124,7 @@ function ConsentDialog({
         tabIndex={0}
         role="group"
         aria-label={t('productUsage.consentTitle') as string}
-        className="flex-1 overflow-y-auto border-y border-neutral-200 dark:border-neutral-700 px-6 py-4 space-y-4 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary-400"
+        className="min-h-0 flex-auto overflow-y-auto border-y border-neutral-200 dark:border-neutral-700 px-6 py-4 space-y-4 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary-400"
       >
         {DISCLOSURE.map(({ key, heading, Icon }) => (
           <section key={key}>
