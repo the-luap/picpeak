@@ -5,6 +5,19 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.128.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.2-beta.0...v3.128.0-beta.0) (2026-09-07)
+
+
+### Features
+
+* **settings:** expose the API rate limiter in the Security tab ([#1338](https://github.com/PicPeak/picpeak/issues/1338)) ([8017370](https://github.com/PicPeak/picpeak/commit/80173702712ffd2a8150d2f8326e1455fce1036a))
+* **usage:** distinguish real edits and template delivery with v5 consent ([#1339](https://github.com/PicPeak/picpeak/issues/1339)) ([5c1e38d](https://github.com/PicPeak/picpeak/commit/5c1e38d921f7973633d6f9d12fde4c7588214d31))
+
+
+### Bug Fixes
+
+* **email:** scrub gallery passwords from the sent-mail archive ([#1340](https://github.com/PicPeak/picpeak/issues/1340)) ([69754f8](https://github.com/PicPeak/picpeak/commit/69754f8a2cc99eec318a310a60609894d757f515))
+
 ## [3.127.2-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.1-beta.0...v3.127.2-beta.0) (2026-09-07)
 
 
