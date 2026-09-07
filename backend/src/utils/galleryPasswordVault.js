@@ -103,6 +103,24 @@ async function readGalleryPassword(eventId, conn = db) {
   return { enabled: true, password: open(row.password_recoverable), clientPassword: open(row.client_password_recoverable) };
 }
 
+/**
+ * Second half of the opt-out guarantee. Every write site calls this right
+ * after the statement that carried galleryPasswordColumns(). The setting is
+ * read before the bcrypt hashes, so a settings request that switches the
+ * feature off and purges in that gap used to be overtaken by the write. The
+ * settings writer flips the value before it purges, so a write that lands
+ * after the purge reads "off" here and clears its own row, and one that
+ * lands before it is caught by the purge. One settings read per password
+ * write; the UPDATE only runs when the setting is off.
+ */
+async function dropCopiesIfStorageOff(eventId, conn = db) {
+  if (await isRecoverableStorageEnabled(conn)) return false;
+  await conn('events').where('id', eventId)
+    .where((q) => q.whereNotNull('password_recoverable').orWhereNotNull('client_password_recoverable'))
+    .update({ password_recoverable: null, client_password_recoverable: null });
+  return true;
+}
+
 /** Wipe every stored plaintext; called when the setting is switched off. */
 async function purgeRecoverablePasswords(conn = db) {
   return conn('events')
@@ -118,5 +136,6 @@ module.exports = {
   galleryPasswordColumns,
   isEnabledValue,
   readGalleryPassword,
+  dropCopiesIfStorageOff,
   purgeRecoverablePasswords
 };

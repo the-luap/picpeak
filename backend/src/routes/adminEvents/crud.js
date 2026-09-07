@@ -26,7 +26,7 @@ const { normaliseEventTimeTriple } = require('../../services/eventService');
 const { hasColumnCached } = require('../../utils/schemaCache');
 const { requireEventOwnership } = require('../../middleware/ownership');
 const { getAppSetting } = require('../../utils/appSettings');
-const { galleryPasswordColumns } = require('../../utils/galleryPasswordVault');
+const { galleryPasswordColumns, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { clampIntOrUndefined } = require('../../utils/numericHelpers');
 const { getFrontendBaseUrl, getAbsoluteFrontendUrl } = require('../../utils/frontendUrl');
 const downloadZipService = require('../../services/downloadZipService');
@@ -681,6 +681,8 @@ module.exports = (router) => {
     
       // Handle both PostgreSQL (returns array of objects) and SQLite (returns array of IDs)
       const eventId = insertResult[0]?.id || insertResult[0];
+      // #1271 — the setting was read before the hashes; re-check after the write
+      await dropCopiesIfStorageOff(eventId);
 
       // Apply customer-account assignments (#354). Skip when the customer
       // portal flag is off — the frontend hides the picker in that case,
@@ -1124,6 +1126,7 @@ module.exports = (router) => {
           password_hash: await bcrypt.hash(password, getBcryptRounds()),
           ...(await galleryPasswordColumns({ password })),
         });
+        await dropCopiesIfStorageOff(id);
       }
 
       const queued = hasInlineRecipient
@@ -1224,6 +1227,7 @@ module.exports = (router) => {
         Object.assign(publishUpdates, await galleryPasswordColumns({ password }));
       }
       await db('events').where('id', id).update(publishUpdates);
+      if (publishUpdates.password_hash) await dropCopiesIfStorageOff(id);
 
       // Notify the customer — unless the admin asked to publish quietly
       // (#1235). Everything else about publishing still happens: the gallery
@@ -2052,6 +2056,7 @@ module.exports = (router) => {
           .where('id', id)
           .update(updates);
       }
+      if (Object.keys(recoverable).length > 0) await dropCopiesIfStorageOff(id);
 
       // Customer-account assignments (#354). Same skip semantics as POST:
       // ignore when the customer portal flag is off so stale tabs don't

@@ -148,6 +148,30 @@ describe('recoverable gallery passwords', () => {
       expect((await stored(keep.body.id)).password_recoverable).toBeTruthy();
     });
 
+    it('a creation in flight while the setting is switched off leaves no copy behind', async () => {
+      // The setting is read while the insert is assembled, then the client
+      // PIN hash awaits (crud.js). A switch-off that lands in that gap used to
+      // be overtaken by the insert; the write-site re-check clears the row.
+      const realHash = bcrypt.hash;
+      const spy = jest.spyOn(bcrypt, 'hash').mockImplementation(async (...args) => {
+        if (args[0] === PIN) {
+          const off = await auth(request(app).put('/api/admin/settings/security')).send({ [vault.SETTING_KEY]: false });
+          expect(off.status).toBe(200);
+        }
+        return realHash.apply(bcrypt, args);
+      });
+      try {
+        const res = await createEvent({ event_name: 'Racing Wedding' });
+        expect([200, 201]).toContain(res.status);
+        const row = await stored(res.body.id);
+        expect(row.password_recoverable).toBeNull();
+        expect(row.client_password_recoverable).toBeNull();
+      } finally {
+        spy.mockRestore();
+        await setSetting(true);
+      }
+    });
+
     it('switching the setting off purges every stored copy', async () => {
       const other = await createEvent({ event_name: 'Second Wedding' });
       expect((await stored(other.body.id)).password_recoverable).toBeTruthy();

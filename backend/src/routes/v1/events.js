@@ -31,7 +31,7 @@ const { requireEventOwnership, scopeEventsQuery } = require('../../middleware/ow
 // which apiTokenAuth populates.
 const { requirePermission } = require('../../middleware/permissions');
 const { resolveEventFeedbackDefaults } = require('../../services/feedbackDefaults');
-const { galleryPasswordColumns } = require('../../utils/galleryPasswordVault');
+const { galleryPasswordColumns, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { buildShareLinkVariants } = require('../../services/shareLinkService');
 const { generateThumbnail } = require('../../services/imageProcessor');
 const logger = require('../../utils/logger');
@@ -355,6 +355,7 @@ router.post(
         ...(persistPhone ? { customer_phone: persistPhone } : {})
       }).returning('id');
       const id = insertResult[0]?.id || insertResult[0];
+      if (require_password && password) await dropCopiesIfStorageOff(id);
 
       // Issue #550 — mirror adminEvents.js: create event_feedback_settings
       // row when feedback is enabled, so the gallery actually shows feedback

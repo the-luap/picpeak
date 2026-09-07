@@ -7,7 +7,7 @@ const { adminAuth } = require('../../middleware/auth');
 const { requirePermission } = require('../../middleware/permissions');
 const bcrypt = require('bcrypt');
 const { queueEmail } = require('../../services/emailProcessor');
-const { galleryPasswordColumns, readGalleryPassword } = require('../../utils/galleryPasswordVault');
+const { galleryPasswordColumns, readGalleryPassword, dropCopiesIfStorageOff } = require('../../utils/galleryPasswordVault');
 const { validatePasswordInContext, getBcryptRounds } = require('../../utils/passwordValidation');
 const logger = require('../../utils/logger');
 const { errorResponse } = require('../../utils/routeHelpers');
@@ -70,6 +70,7 @@ module.exports = (router) => {
           // never leave a copy that does not match the hash next to it
           ...(await galleryPasswordColumns({ password: newPassword })),
         });
+      await dropCopiesIfStorageOff(id);
 
       // Log activity
       await logActivity('password_reset',
