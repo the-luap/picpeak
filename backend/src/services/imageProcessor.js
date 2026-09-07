@@ -475,10 +475,13 @@ async function withLocalCopy(sourceKey, fn) {
  * arrive while the forced flight is pending join it, so the map always
  * points at the newest work.
  *
- * One map for every rendition, keyed by photo id and rendition rather than
- * by storage key: a preview's key is only known after the source has been
- * probed, and the canonical thumbnail ensureThumbnailAtWidth falls back to
- * must be guarded by the same mechanism as the tier it missed. The entry is
+ * One map for every rendition, keyed by rendition, photo id AND source
+ * rather than by storage key: a preview's key is only known after the
+ * source has been probed, and the canonical thumbnail ensureThumbnailAtWidth
+ * falls back to must be guarded by the same mechanism as the tier it missed.
+ * The source is part of the key because replacePhoto keeps the id and
+ * changes the path — a request carrying the replacement row must not join a
+ * flight still rendering the file it replaced and cache that for 30 minutes. The entry is
  * cleared in a finally, on success and failure alike, so a rejection cannot
  * poison the key for the lifetime of the process — the next request
  * re-attempts rather than adopting a failure.
@@ -497,6 +500,12 @@ async function withLocalCopy(sourceKey, fn) {
  * would need a storage-level lock and is not justified by the impact.
  */
 const inFlightRenditions = new Map();
+
+function flightKey(rendition, photo, width) {
+  const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
+  const source = (isExternal ? (photo.external_relpath || photo.filename) : photo.path) || '';
+  return `${rendition}:${photo.id}:${source}${width ? `:w${width}` : ''}`;
+}
 
 function singleFlight(key, fn, { force = false } = {}) {
   const pending = inFlightRenditions.get(key);
@@ -532,7 +541,7 @@ async function ensureThumbnail(photo, { force = false } = {}) {
     logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
   }
 
-  return singleFlight(`thumbnail:${photo.id}`, () => regenerateThumbnail(photo), { force });
+  return singleFlight(flightKey('thumbnail', photo), () => regenerateThumbnail(photo), { force });
 }
 
 async function regenerateThumbnail(photo) {
@@ -746,7 +755,7 @@ async function ensureHeroImage(photo) {
     logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
   }
 
-  return singleFlight(`hero:${photo.id}`, () => regenerateHeroImage(photo));
+  return singleFlight(flightKey('hero', photo), () => regenerateHeroImage(photo));
 }
 
 async function regenerateHeroImage(photo) {
@@ -1097,7 +1106,7 @@ async function ensureThumbnailAtWidth(photo, width) {
   // previous flight clears finds the freshly written tier instead of missing
   // on a stale probe and starting another pass.
   return singleFlight(
-    `thumbnail:${photo.id}:w${width}`,
+    flightKey('thumbnail', photo, width),
     () => ensureThumbnailTierUnguarded(photo, width, settings, canonicalWidth)
   );
 }
@@ -1169,7 +1178,7 @@ async function ensureThumbnailTierUnguarded(photo, width, settings, canonicalWid
 async function ensurePreviewImageAtWidth(photo, width) {
   if (!width || width === DEFAULT_PREVIEW_LONG_EDGE) return ensurePreviewImage(photo);
   return singleFlight(
-    `preview:${photo.id}:w${width}`,
+    flightKey('preview', photo, width),
     () => ensurePreviewImageAtWidthUnguarded(photo, width)
   );
 }
@@ -1243,7 +1252,7 @@ async function ensurePreviewImage(photo, { force = false } = {}) {
     logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
   }
 
-  return singleFlight(`preview:${photo.id}`, () => regeneratePreviewImage(photo), { force });
+  return singleFlight(flightKey('preview', photo), () => regeneratePreviewImage(photo), { force });
 }
 
 async function regeneratePreviewImage(photo) {

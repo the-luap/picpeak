@@ -260,6 +260,36 @@ describe('single-flight rendition generation (#1020)', () => {
       expect(putsUnder(prefix)).toHaveLength(2);
     });
 
+    it('a replaced photo (same id, new path) does not join a flight still rendering the old source', async () => {
+      // replacePhoto keeps the id and changes path/filename. Keyed by id and
+      // width alone, a request carrying the replacement row would join the
+      // old flight, be handed the old image, and the gallery would cache it.
+      const before = await managedPhoto();
+      const after = await managedPhoto();
+      const replacement = { ...after, id: before.id };
+
+      let release;
+      storage.holdNextPut = new Promise((r) => { release = r; });
+      const stale = imageProcessor.ensureThumbnailAtWidth(before, 600);        // blocks inside put
+      const fresh = imageProcessor.ensureThumbnailAtWidth(replacement, 600);
+      release();
+
+      const [oldKey, newKey] = await Promise.all([stale, fresh]);
+      expect(oldKey).toBe(`thumbnails/thumb_w600_p${before.id}_${before.filename}`);
+      expect(newKey).toBe(`thumbnails/thumb_w600_p${before.id}_${after.filename}`);
+      expect(putsUnder('thumbnails/').sort()).toEqual([oldKey, newKey].sort());
+
+      // Same shape for the canonical preview, which had no guard at all on
+      // base and must not gain a cross-source one now.
+      storage.holdNextPut = new Promise((r) => { release = r; });
+      const staleP = imageProcessor.ensurePreviewImage(before);
+      const freshP = imageProcessor.ensurePreviewImage(replacement);
+      release();
+      const [oldP, newP] = await Promise.all([staleP, freshP]);
+      expect(oldP).not.toBe(newP);
+      expect(putsUnder('previews/')).toHaveLength(2);
+    });
+
     it('different photos and different widths are separate flights', async () => {
       const a = await managedPhoto();
       const b = await externalPhoto();
