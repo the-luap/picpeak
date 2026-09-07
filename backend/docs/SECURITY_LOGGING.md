@@ -87,7 +87,7 @@ When rate limits are exceeded, the following is logged:
 
 ## Configuration Settings
 
-The general limiter reads these keys from `app_settings` (cached for 60 seconds). There is no admin screen for them yet; they are set through `PUT /api/admin/settings/security/rate-limit` (all six fields required) or directly in the table, JSON-encoded. The defaults below are what applies when a key has no row — a fresh install has none.
+The general limiter reads these keys from `app_settings` (cached for 60 seconds). There is no admin screen for them yet; they are set through `PUT /api/admin/settings/security/rate-limit` (all six fields required) or directly in the table, JSON-encoded. The defaults below are what applies when a key has no row — a fresh install has none. Note that the route only updates rows that already exist: on a fresh install it answers 200 without writing anything, so insert the six rows directly first.
 
 | Setting | Default | Range | Description |
 |---------|---------|-------|-------------|
