@@ -137,11 +137,17 @@ describe('authorization / ownership gaps', () => {
         // Case-variant keys — SQLite matches columns case-insensitively.
         Password_Hash: 'case-hijack-hash',
         Created_By: 88888,
+        // A case variant of an ORDINARY column must not reach the UPDATE
+        // either: field-level guards in the handler key on the exact name,
+        // and on SQLite the variant would still land on the real column.
+        Event_Name: 'case-variant-name',
+        Welcome_Message: 'case-variant-welcome',
       });
       expect(res.status).toBe(200);
 
       const row = await db('events').where({ id: eventId }).first();
-      expect(row.event_name).toBe('After');        // legit field applied
+      expect(row.event_name).toBe('After');        // legit field applied; Event_Name variant dropped
+      expect(row.welcome_message).toBeFalsy();      // case variant of an ordinary column dropped
       expect(row.created_by).toBe(superId);         // ownership untouched (+ case-variant)
       expect(row.slug).toBe('authz-mass-assign');   // routing identity untouched
       expect(row.share_token).toBe(seedShareToken); // secret untouched

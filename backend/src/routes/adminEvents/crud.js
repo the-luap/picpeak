@@ -1729,10 +1729,18 @@ module.exports = (router) => {
         // Legacy mirrors — rejected explicitly below in favour of customer_*.
         'host_name', 'host_email',
       ];
-      // Case-insensitive match: SQLite treats quoted identifiers
-      // case-insensitively, so a `{ "Password_Hash": ... }` key would
-      // otherwise survive a case-sensitive delete and still hit the real
-      // column (codex review).
+      // Only canonical keys reach the UPDATE. SQLite resolves quoted
+      // identifiers case-insensitively, so `{ "Event_Name": ... }` lands on
+      // event_name there while every check in this handler — validators,
+      // the permission guards on individual fields, the deny-set below — is
+      // keyed on the exact lowercase name. Every events column and every
+      // input-only key this handler accepts is lowercase snake_case, so a key
+      // with any uppercase in it is not something a legitimate client sends;
+      // it is dropped before anything looks at it. The deny-set keeps its own
+      // case-folding as belt and braces (GHSA-3rqx).
+      for (const key of Object.keys(updates)) {
+        if (key !== key.toLowerCase()) delete updates[key];
+      }
       const denied = new Set(IMMUTABLE_EVENT_COLUMNS.map((c) => c.toLowerCase()));
       for (const key of Object.keys(updates)) {
         if (denied.has(key.toLowerCase())) delete updates[key];
