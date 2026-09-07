@@ -70,6 +70,13 @@ describe('email secret redaction', () => {
     expect(redactRenderedHtml(html, ['Se<cr3t>Pin42!'])).toBe(`<p>PIN: ${MASK} and ${MASK}</p>`);
   });
 
+  it('masks a secret in a quoted attribute value that contains ">"', () => {
+    const html = '<a title="Sunset42 > details" href="/x">Sunset42</a>';
+    expect(redactRenderedHtml(html, ['Sunset42'])).toBe(`<a title="${MASK} > details" href="/x">${MASK}</a>`);
+    // unbalanced quote: the broken tag is treated as text, still scrubbed
+    expect(redactRenderedHtml('<a title="Sunset42>Sunset42</a>', ['Sunset42'])).toBe(`<a title="${MASK}>${MASK}</a>`);
+  });
+
   it('masks overlapping secrets completely and leaves markup alone', () => {
     const html = '<p>Password: Sunset-42! PIN: Sunset-42!7788</p><a href="https://x.example/?p=Sunset-42!" style="color:red" title=7788>href</a>';
     const out = redactRenderedHtml(html, ['Sunset-42!', 'Sunset-42!7788', 'href', 'style', '7788']);

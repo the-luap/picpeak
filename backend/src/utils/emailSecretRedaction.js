@@ -85,7 +85,10 @@ function redactRenderedHtml(html, secrets) {
   if (other.length) out = out.replace(alternation(other), MASK);
   if (!wordLike.length) return out;
   const scrub = (text) => text.replace(alternation(wordLike), MASK);
-  return out.split(/(<[^>]*>)/).map((segment, index) => {
+  // A '>' inside a quoted attribute value (title="{{gallery_password}} > more")
+  // must not end the tag, or the value is cut off and never scrubbed. A tag
+  // with an unbalanced quote does not match and is scrubbed as text instead.
+  return out.split(/(<(?:[^>"']|"[^"]*"|'[^']*')*>)/).map((segment, index) => {
     if (index % 2 === 0) return scrub(segment);
     // attribute values, quoted or not; never the tag or attribute names
     return segment.replace(/(=\s*)("[^"]*"|'[^']*'|[^\s"'>]+)/g, (_, eq, value) => eq + scrub(value));
