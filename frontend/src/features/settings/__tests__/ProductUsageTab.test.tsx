@@ -305,6 +305,23 @@ it('returns focus to the control that opened the consent dialog', async () => {
   );
 });
 
+// WebKit sizing (Safari, desktop and iOS). The consent dialog is a native
+// <dialog> laid out as a flex column with only a max-height, so its height is
+// indefinite. `flex-1` is `flex: 1 1 0%`, and WebKit resolves that 0% basis
+// against the indefinite height as zero — the disclosure's hypothetical size
+// becomes zero and the dialog shrinks to header plus footer, leaving the
+// text in a 32px strip. Chromium treats the same basis as `content`. Measured
+// in iOS Safari: 302px dialog / 32px region before, 641px / 371px after. An
+// `auto` basis with min-height 0 sizes from content and then shrinks to fit.
+// The div-based modals elsewhere are unaffected; only <dialog> collapses.
+it('sizes the consent disclosure from its content, so WebKit does not collapse the dialog', async () => {
+  mount();
+  fireEvent.click(await screen.findByText('productUsage.review'));
+  const region = await screen.findByRole('group', { name: 'productUsage.consentTitle' });
+  expect(region.className.split(' ')).toEqual(expect.arrayContaining(['flex-auto', 'min-h-0', 'overflow-y-auto']));
+  expect(region.className.split(' ')).not.toContain('flex-1');
+});
+
 // A security property, not a nicety: the consent dialog is where an operator
 // decides whether to open a connection at all, so it has to say which way that
 // connection runs. UsageService makes exactly two outbound POSTs and reads
