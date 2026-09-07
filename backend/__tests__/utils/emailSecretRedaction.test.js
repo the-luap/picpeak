@@ -77,6 +77,11 @@ describe('email secret redaction', () => {
     expect(redactRenderedHtml('<a title="Sunset42>Sunset42</a>', ['Sunset42'])).toBe(`<a title="${MASK}>${MASK}</a>`);
   });
 
+  it('masks a secret inside an HTML comment, ">" included', () => {
+    const html = '<!-- PIN: 7788 --><p>x</p><!-- a > 7788 -->';
+    expect(redactRenderedHtml(html, ['7788'])).toBe(`<!-- PIN: ${MASK} --><p>x</p><!-- a > ${MASK} -->`);
+  });
+
   it('masks overlapping secrets completely and leaves markup alone', () => {
     const html = '<p>Password: Sunset-42! PIN: Sunset-42!7788</p><a href="https://x.example/?p=Sunset-42!" style="color:red" title=7788>href</a>';
     const out = redactRenderedHtml(html, ['Sunset-42!', 'Sunset-42!7788', 'href', 'style', '7788']);
