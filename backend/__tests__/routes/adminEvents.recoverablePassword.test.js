@@ -65,6 +65,18 @@ describe('recoverable gallery passwords', () => {
     expect(() => vault.decryptPassword(tampered)).toThrow();
   });
 
+  it('purges before the write when turning on and after it when off, never on a same-state on save', async () => {
+    // off → on: leftovers go first, so a copy stored under the new "on" is
+    // never deleted by the purge; on → off and off → off: after, so a write
+    // that still read "on" is caught (see purgePlanForSettingWrite).
+    expect(await vault.purgePlanForSettingWrite(true)).toEqual({ before: true, after: false });
+    expect(await vault.purgePlanForSettingWrite(false)).toEqual({ before: false, after: true });
+    await setSetting(true);
+    expect(await vault.purgePlanForSettingWrite('1')).toEqual({ before: false, after: false });
+    expect(await vault.purgePlanForSettingWrite(false)).toEqual({ before: false, after: true });
+    await setSetting(false);
+  });
+
   it('with the setting off, creation stores nothing and the view route says the feature is off', async () => {
     const res = await createEvent();
     expect([200, 201]).toContain(res.status);

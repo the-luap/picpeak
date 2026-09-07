@@ -121,6 +121,22 @@ async function dropCopiesIfStorageOff(eventId, conn = db) {
   return true;
 }
 
+/**
+ * Which side of a settings write the vault purge belongs on, for a request
+ * that carries the setting. Off (staying or turning off): after the write,
+ * so a password write that still read "on" is caught by the purge and one
+ * that lands later reads "off" and clears itself (dropCopiesIfStorageOff).
+ * Turning on: before the write, so the purge only ever sees leftovers and
+ * never a copy stored under the new "on"; a write that still reads the old
+ * "off" stores nothing. Either way the vault holds exactly what was written
+ * while the setting was on. Same-state "on" saves do not purge.
+ */
+async function purgePlanForSettingWrite(newValue, conn = db) {
+  const willBeOn = isEnabledValue(newValue);
+  const isOn = await isRecoverableStorageEnabled(conn);
+  return { before: willBeOn && !isOn, after: !willBeOn };
+}
+
 /** Wipe every stored plaintext; called when the setting is switched off. */
 async function purgeRecoverablePasswords(conn = db) {
   return conn('events')
@@ -137,5 +153,6 @@ module.exports = {
   isEnabledValue,
   readGalleryPassword,
   dropCopiesIfStorageOff,
+  purgePlanForSettingWrite,
   purgeRecoverablePasswords
 };

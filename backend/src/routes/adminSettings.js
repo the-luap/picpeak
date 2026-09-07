@@ -16,7 +16,7 @@ const { requirePermission, userHasAnyPermission } = require('../middleware/permi
 const { clearMaintenanceCache } = require('../middleware/maintenance');
 const { clearSettingsCache, initializeRateLimiters, RATE_LIMIT_DEFAULTS } = require('../services/rateLimitService');
 const { clearSettingsCache } = require('../services/rateLimitService');
-const { SETTING_KEY: GALLERY_PASSWORD_SETTING, purgeRecoverablePasswords, isRecoverableStorageEnabled, isEnabledValue: isGalleryPasswordSettingOn } = require('../utils/galleryPasswordVault');
+const { SETTING_KEY: GALLERY_PASSWORD_SETTING, purgeRecoverablePasswords, purgePlanForSettingWrite } = require('../utils/galleryPasswordVault');
 const {
   DEFAULT_PUBLIC_SITE_HTML,
   DEFAULT_PUBLIC_SITE_CSS,
@@ -221,11 +221,11 @@ const faviconUpload = multer({
  * applied after it. Every writer that accepts a security_ key (general,
  * analytics and seo take them from a settings.security holder too) does this.
  */
-async function galleryPasswordSettingNeedsPurge(settings) {
-  if (!settings || !Object.prototype.hasOwnProperty.call(settings, GALLERY_PASSWORD_SETTING)) return false;
-  const willBeOn = isGalleryPasswordSettingOn(settings[GALLERY_PASSWORD_SETTING]);
-  const isOn = await isRecoverableStorageEnabled();
-  return !willBeOn || !isOn;
+// Every writer that accepts a security_ key runs the vault purge on the side
+// of the write the transition calls for (see purgePlanForSettingWrite).
+async function galleryPasswordPurgePlan(settings) {
+  if (!settings || !Object.prototype.hasOwnProperty.call(settings, GALLERY_PASSWORD_SETTING)) return { before: false, after: false };
+  return purgePlanForSettingWrite(settings[GALLERY_PASSWORD_SETTING]);
 }
 
 router.get('/', adminAuth, requirePermission('settings.view'), async (req, res) => {
@@ -1549,7 +1549,8 @@ router.put('/general', adminAuth, requirePermission('settings.edit'), async (req
     }
 
     // Update or insert each setting
-    const purgeGalleryPasswords = await galleryPasswordSettingNeedsPurge(settings);
+    const galleryPasswordPurge = await galleryPasswordPurgePlan(settings);
+    if (galleryPasswordPurge.before) await purgeRecoverablePasswords();
     for (const [key, value] of Object.entries(settings)) {
       await db('app_settings')
         .insert({
@@ -1565,7 +1566,7 @@ router.put('/general', adminAuth, requirePermission('settings.edit'), async (req
         });
     }
     
-    if (purgeGalleryPasswords) await purgeRecoverablePasswords();
+    if (galleryPasswordPurge.after) await purgeRecoverablePasswords();
 
     // Clear maintenance mode cache if it was updated
     if ('general_maintenance_mode' in settings) {
@@ -1626,7 +1627,8 @@ router.put('/security', adminAuth, requirePermission('settings.security'), async
     if (await rejectUnauthorizedProtectedKeys(settings, req, res)) return;
 
     // Update or insert each setting
-    const purgeGalleryPasswords = await galleryPasswordSettingNeedsPurge(settings);
+    const galleryPasswordPurge = await galleryPasswordPurgePlan(settings);
+    if (galleryPasswordPurge.before) await purgeRecoverablePasswords();
     for (const [key, value] of Object.entries(settings)) {
       await db('app_settings')
         .insert({
@@ -1643,7 +1645,7 @@ router.put('/security', adminAuth, requirePermission('settings.security'), async
     }
 
     resetSecurityConfigCache();
-    if (purgeGalleryPasswords) await purgeRecoverablePasswords();
+    if (galleryPasswordPurge.after) await purgeRecoverablePasswords();
 
     // Log activity
     await db('activity_logs').insert({
@@ -1686,7 +1688,8 @@ router.put('/analytics', adminAuth, requirePermission('settings.edit'), async (r
     }
 
     // Update or insert each setting
-    const purgeGalleryPasswords = await galleryPasswordSettingNeedsPurge(settings);
+    const galleryPasswordPurge = await galleryPasswordPurgePlan(settings);
+    if (galleryPasswordPurge.before) await purgeRecoverablePasswords();
     for (const [key, value] of Object.entries(settings)) {
       await db('app_settings')
         .insert({
@@ -1702,7 +1705,7 @@ router.put('/analytics', adminAuth, requirePermission('settings.edit'), async (r
         });
     }
 
-    if (purgeGalleryPasswords) await purgeRecoverablePasswords();
+    if (galleryPasswordPurge.after) await purgeRecoverablePasswords();
 
     // Log activity
     await db('activity_logs').insert({
@@ -1750,7 +1753,8 @@ router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, re
 
     const seoChanged = await settingsChanged(db, settings, SEO_USAGE_KEYS);
     // Update or insert each setting
-    const purgeGalleryPasswords = await galleryPasswordSettingNeedsPurge(settings);
+    const galleryPasswordPurge = await galleryPasswordPurgePlan(settings);
+    if (galleryPasswordPurge.before) await purgeRecoverablePasswords();
     for (const [key, value] of Object.entries(settings)) {
       await db('app_settings')
         .insert({
@@ -1766,7 +1770,7 @@ router.put('/seo', adminAuth, requirePermission('settings.edit'), async (req, re
         });
     }
 
-    if (purgeGalleryPasswords) await purgeRecoverablePasswords();
+    if (galleryPasswordPurge.after) await purgeRecoverablePasswords();
 
     // Clear robots.txt cache
     const { clearRobotsTxtCache } = require('../services/robotsTxtService');
