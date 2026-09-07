@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.127.1-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.0-beta.0...v3.127.1-beta.0) (2026-09-07)
+
+
+### Bug Fixes
+
+* **usage:** stop WebKit collapsing the consent dialog to its header and footer ([79eb6d7](https://github.com/PicPeak/picpeak/commit/79eb6d72eb170ab4e7f4bf33d7cf2d97cd5fbaa8))
+* **usage:** stop WebKit collapsing the consent dialog to its header and footer ([9d18868](https://github.com/PicPeak/picpeak/commit/9d18868a072094ac393651abe767bc190f0b140f))
+
 ## [3.127.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.126.3-beta.0...v3.127.0-beta.0) (2026-09-07)
 
 
