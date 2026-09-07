@@ -59,7 +59,10 @@ describe('recoverable gallery passwords', () => {
     const a = vault.encryptPassword(PASSWORD); const b = vault.encryptPassword(PASSWORD);
     expect(a).not.toBe(b);
     expect(vault.decryptPassword(a)).toBe(PASSWORD);
-    expect(() => vault.decryptPassword(a.slice(0, -2) + 'zz')).toThrow();
+    // flip one ciphertext character so the tamper is never a no-op
+    const [iv, tag, ct] = a.split('.');
+    const tampered = [iv, tag, (ct[0] === 'A' ? 'B' : 'A') + ct.slice(1)].join('.');
+    expect(() => vault.decryptPassword(tampered)).toThrow();
   });
 
   it('with the setting off, creation stores nothing and the view route says the feature is off', async () => {
@@ -107,7 +110,12 @@ describe('recoverable gallery passwords', () => {
       expect(res.status).toBe(200);
       expect(res.body.usedStoredPassword).toBe(true);
       const mail = await db('email_queue').where({ event_id: id, email_type: 'gallery_created' }).orderBy('id', 'desc').first();
-      expect(JSON.parse(mail.email_data).gallery_password).toBe(PASSWORD);
+      const data = JSON.parse(mail.email_data);
+      expect(data.gallery_password).toBe(PASSWORD);
+      // client access is on for this event: the resend carries the stored PIN
+      // and the client link, as the creation mail did
+      expect(data.client_password).toBe(PIN);
+      expect(data.client_link).toMatch(/\/client-access\?token=[0-9a-f]+$/);
     });
 
     it('a reset replaces the stored copy', async () => {

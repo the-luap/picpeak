@@ -13,6 +13,8 @@ const logger = require('../../utils/logger');
 const { errorResponse } = require('../../utils/routeHelpers');
 const { buildShareLinkVariants } = require('../../services/shareLinkService');
 const { requireEventOwnership } = require('../../middleware/ownership');
+const { getAbsoluteFrontendUrl } = require('../../utils/frontendUrl');
+const { parseBooleanInput } = require('../../utils/parsers');
 
 module.exports = (router) => {
 
@@ -141,8 +143,8 @@ module.exports = (router) => {
       // operator opted into keeping one (#1271), else the security sentinel —
       // the hash cannot be turned back into the password.
       let usedStoredPassword = false;
+      const stored = await readGalleryPassword(id);
       if (!galleryPassword) {
-        const stored = await readGalleryPassword(id);
         if (stored.password) {
           galleryPassword = stored.password;
           usedStoredPassword = true;
@@ -161,7 +163,7 @@ module.exports = (router) => {
       // customer's mail client renders a clickable absolute link.
       const { shareUrl } = await buildShareLinkVariants({ slug: event.slug, shareToken: event.share_token });
 
-      await queueEmail(id, recipientEmail, 'gallery_created', {
+      const emailData = {
         customer_name: recipientName,
         customer_email: recipientEmail,
         host_name: recipientName,
@@ -173,7 +175,16 @@ module.exports = (router) => {
         welcome_message: event.welcome_message || '',
         eventId: id,
         isResend: true // Flag to indicate this is a resend
-      });
+      };
+      // The creation mail carries the client link and PIN (#172). A resend can
+      // only do the same when a stored PIN exists (#1271); otherwise the client
+      // section is left out rather than sent with a placeholder.
+      if (parseBooleanInput(event.client_access_enabled, false) && stored.clientPassword && event.client_share_token) {
+        const frontendUrl = await getAbsoluteFrontendUrl(req, { override: process.env.APP_URL });
+        emailData.client_link = `${frontendUrl}/gallery/${event.slug}/client-access?token=${event.client_share_token}`;
+        emailData.client_password = stored.clientPassword;
+      }
+      await queueEmail(id, recipientEmail, 'gallery_created', emailData);
     
       // Log the activity using the proper schema
       try {
