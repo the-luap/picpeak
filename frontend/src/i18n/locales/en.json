@@ -1376,6 +1376,7 @@
     "externalWatch": "Watch folder for new files",
     "externalWatchHint": "New images copied into this folder are imported automatically, the same way the Import button does it. Files removed from the folder are never deleted from the gallery.",
     "externalWatchActive": "Folder is watched — new files are imported automatically.",
+    "externalWatchNoPermission": "Requires the permission to upload photos.",
     "externalFolderRequired": "Please select an external folder before saving.",
     "externalFolderEmpty": "No subfolders",
     "clearSelection": "Clear",

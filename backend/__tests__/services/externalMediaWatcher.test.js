@@ -19,6 +19,16 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+// Fixture files are written "in the past": an automatic pass leaves a file
+// modified inside the settle window for the next pass (that is the point of
+// the check), so anything a test expects to be imported straight away must
+// not look like a copy still in flight.
+const writeOld = async (file, content) => {
+  await fs.promises.writeFile(file, content);
+  const old = new Date(Date.now() - 60000);
+  await fs.promises.utimes(file, old, old);
+};
+
 const waitFor = async (predicate, { timeoutMs = 8000, stepMs = 50 } = {}) => {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -36,7 +46,7 @@ describe('externalMediaWatcher (issue 1187)', () => {
     mediaRoot = path.join(tmpDir, 'media');
     await fs.promises.mkdir(path.join(mediaRoot, 'nas', 'individual'), { recursive: true });
     await fs.promises.mkdir(path.join(mediaRoot, 'other'), { recursive: true });
-    await fs.promises.writeFile(path.join(mediaRoot, 'nas', 'individual', 'a.jpg'), 'not-a-real-jpeg');
+    await writeOld(path.join(mediaRoot, 'nas', 'individual', 'a.jpg'), 'not-a-real-jpeg');
 
     process.env.NODE_ENV = 'test';
     process.env.EXTERNAL_MEDIA_ROOT = mediaRoot;
@@ -77,6 +87,7 @@ describe('externalMediaWatcher (issue 1187)', () => {
     await watcher.stopExternalMediaWatcher();
     await db('activity_logs').del();
     await db('photos').del();
+    await db('external_import_exclusions').del();
     await db('events').del();
   });
 
@@ -149,7 +160,7 @@ describe('externalMediaWatcher (issue 1187)', () => {
     expect(await db('activity_logs').where({ activity_type: 'external_import_completed' }).count('* as n').first())
       .toMatchObject({ n: 1 });
 
-    await fs.promises.writeFile(path.join(mediaRoot, 'nas', 'individual', 'b.jpg'), 'also-not-a-jpeg');
+    await writeOld(path.join(mediaRoot, 'nas', 'individual', 'b.jpg'), 'also-not-a-jpeg');
     await fs.promises.unlink(path.join(mediaRoot, 'nas', 'individual', 'a.jpg'));
     await watcher.sweep();
 
@@ -170,7 +181,7 @@ describe('externalMediaWatcher (issue 1187)', () => {
 
     // Leave the folder as the next test expects it.
     await fs.promises.unlink(path.join(mediaRoot, 'nas', 'individual', 'b.jpg'));
-    await fs.promises.writeFile(path.join(mediaRoot, 'nas', 'individual', 'a.jpg'), 'not-a-real-jpeg');
+    await writeOld(path.join(mediaRoot, 'nas', 'individual', 'a.jpg'), 'not-a-real-jpeg');
   });
 
   it('a file appearing in the folder triggers a debounced import on its own', async () => {
@@ -201,6 +212,68 @@ describe('externalMediaWatcher (issue 1187)', () => {
     await jobState.release(jobNameFor(eventId), token);
     const result = await watcher.runImport(eventId, 'sweep');
     expect(result).toMatchObject({ imported: 1 });
+  });
+
+  it('does not bring back a photo an admin deleted, until the manual Import asks for it', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder, recordExclusions } = require('../../src/services/externalImportService');
+
+    await watcher.reconcile();
+    expect(await relpaths(eventId)).toEqual([path.join('nas', 'individual', 'a.jpg')]);
+
+    // The delete routes record the exclusion before removing the row.
+    const [row] = await db('photos').where({ event_id: eventId });
+    await recordExclusions(eventId, [row]);
+    await db('photos').where({ id: row.id }).del();
+
+    const swept = await watcher.runImport(eventId, 'sweep');
+    expect(swept).toMatchObject({ imported: 0, excluded: 1 });
+    expect(await relpaths(eventId)).toEqual([]);
+
+    // Pressing Import is the explicit intent: the file comes back and the
+    // exclusion is cleared, so later automatic passes keep it.
+    const manual = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'admin' } });
+    expect(manual).toMatchObject({ imported: 1 });
+    expect(await db('external_import_exclusions').where({ event_id: eventId })).toHaveLength(0);
+  });
+
+  it('leaves a file that is still changing for the next pass', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder } = require('../../src/services/externalImportService');
+    const growing = path.join(mediaRoot, 'nas', 'individual', 'growing.jpg');
+    await fs.promises.writeFile(growing, 'part-one');
+
+    // mtime is "now", inside the settle window: deferred, not inserted.
+    const first = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    expect(first).toMatchObject({ imported: 1, deferred: 1 });
+    expect(await relpaths(eventId)).toEqual([path.join('nas', 'individual', 'a.jpg')]);
+
+    // Old mtime but the size moves during the wait: still deferred.
+    const old = new Date(Date.now() - 60000);
+    await fs.promises.utimes(growing, old, old);
+    const grow = setTimeout(() => fs.promises.appendFile(growing, '-part-two').then(() => fs.promises.utimes(growing, old, old)), 100);
+    const second = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    clearTimeout(grow);
+    expect(second).toMatchObject({ imported: 0, deferred: 1 });
+
+    // Quiet now: imported.
+    await fs.promises.utimes(growing, old, old);
+    const third = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    expect(third).toMatchObject({ imported: 1, deferred: 0 });
+
+    await fs.promises.unlink(growing);
+  });
+
+  it('skips an event that was archived or deactivated after it was scheduled', async () => {
+    const archived = await seedEvent();
+    await db('events').where('id', archived).update({ is_archived: 1 });
+    expect(await watcher.runImport(archived, 'change')).toBeNull();
+
+    const inactive = await seedEvent();
+    await db('events').where('id', inactive).update({ is_active: 0 });
+    expect(await watcher.runImport(inactive, 'sweep')).toBeNull();
+
+    expect(await db('photos').count('* as n').first()).toMatchObject({ n: 0 });
   });
 
   it('follows the row at run time: an event that opted out since scheduling is skipped', async () => {

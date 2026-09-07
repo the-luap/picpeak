@@ -1879,6 +1879,7 @@
     "externalWatch": "Ordner auf neue Dateien überwachen",
     "externalWatchHint": "Neue Bilder, die in diesen Ordner kopiert werden, werden automatisch importiert – genau wie über den Import-Button. Aus dem Ordner entfernte Dateien werden nie aus der Galerie gelöscht.",
     "externalWatchActive": "Ordner wird überwacht – neue Dateien werden automatisch importiert.",
+    "externalWatchNoPermission": "Erfordert die Berechtigung, Fotos hochzuladen.",
     "externalFolderRequired": "Bitte wählen Sie vor dem Speichern einen externen Ordner aus.",
     "externalFolderEmpty": "Keine Unterordner",
     "clearSelection": "Löschen",

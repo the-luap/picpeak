@@ -7,7 +7,7 @@ const { db, logActivity } = require('../../database/db');
 const { formatBoolean } = require('../../utils/dbCompat');
 const { slugify } = require('../../utils/slug');
 const { adminAuth } = require('../../middleware/auth');
-const { requirePermission } = require('../../middleware/permissions');
+const { requirePermission, userHasAllPermissions } = require('../../middleware/permissions');
 const { IDENTITY_PRESERVING_NORMALIZE_EMAIL } = require('../../utils/emailNormalization');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -1817,6 +1817,27 @@ module.exports = (router) => {
       // no folder to watch, so the switch is cleared with the path.
       if (Object.prototype.hasOwnProperty.call(updates, 'external_watch')) {
         updates.external_watch = formatBoolean(updates.external_watch === true || updates.external_watch === 'true');
+      }
+
+      // Enabling the watcher, or pointing an enabled one at another folder,
+      // makes the server import on this admin's behalf — which the manual
+      // Import endpoint requires photos.upload for. events.edit alone must
+      // not be a way around that. Only transitions are checked: a save that
+      // leaves an already-watched event as it is stays an events.edit
+      // operation, so a role without photos.upload can still edit the rest.
+      if (Object.prototype.hasOwnProperty.call(updates, 'external_watch') || Object.prototype.hasOwnProperty.call(updates, 'external_path')) {
+        const current = await db('events').where('id', id).select('external_watch', 'external_path').first();
+        const wasWatched = Boolean(current?.external_watch);
+        const willWatch = Object.prototype.hasOwnProperty.call(updates, 'external_watch')
+          ? Boolean(updates.external_watch)
+          : wasWatched;
+        const pathChanges = Object.prototype.hasOwnProperty.call(updates, 'external_path')
+          && (updates.external_path || null) !== (current?.external_path || null);
+        if (willWatch && ((!wasWatched) || pathChanges)) {
+          if (!(await userHasAllPermissions(req.admin.id, ['photos.upload']))) {
+            return res.status(403).json({ error: 'The photos.upload permission is required to enable automatic imports for this folder' });
+          }
+        }
       }
 
       if (updates.source_mode === 'managed') {

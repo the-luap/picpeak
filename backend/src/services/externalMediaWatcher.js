@@ -123,7 +123,13 @@ const isImage = (filePath) => IMAGE_EXTENSIONS.includes(path.extname(filePath).t
  */
 async function runImport(eventId, reason) {
   const event = await db('events').where('id', eventId).first();
-  if (!event || !event.external_watch || event.source_mode !== 'reference' || !event.external_path) {
+  // The same eligibility listWatchedEvents() applies, re-checked at run time:
+  // reconcile only looks once a minute, and an event archived or deactivated
+  // inside that window must not gain photos from a pass scheduled before.
+  if (
+    !event || !event.external_watch || event.source_mode !== 'reference' || !event.external_path
+    || !event.is_active || event.is_archived
+  ) {
     return null;
   }
   try {
@@ -132,9 +138,13 @@ async function runImport(eventId, reason) {
       externalPath: event.external_path,
       recursive: true,
       actor: ACTOR,
+      // Automatic pass: leave files still being copied for the next pass, and
+      // keep out what an admin deleted (see externalImportService).
+      settleMs: STABILITY_MS,
+      honourExclusions: true,
     });
-    if (result.imported > 0) {
-      logger.info(`[externalMediaWatcher] event ${eventId} (${event.slug}): imported ${result.imported}, skipped ${result.skipped} (${reason})`);
+    if (result.imported > 0 || result.deferred > 0) {
+      logger.info(`[externalMediaWatcher] event ${eventId} (${event.slug}): imported ${result.imported}, skipped ${result.skipped}, deferred ${result.deferred}, excluded ${result.excluded} (${reason})`);
     } else {
       logger.debug(`[externalMediaWatcher] event ${eventId}: nothing new (${reason})`);
     }

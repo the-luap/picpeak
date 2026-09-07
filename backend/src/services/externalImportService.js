@@ -46,6 +46,44 @@ class EventNotFoundError extends Error {
 
 const jobNameFor = (eventId) => `external_import:${eventId}`;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Remember that an admin deleted these external photos, so an automatic pass
+ * does not bring them back (migration 209). Called from the photo delete
+ * routes; a no-op for managed rows. Insert failures are swallowed on purpose:
+ * a duplicate means the row is already there, and anything else must not
+ * turn a successful delete into a 500.
+ */
+async function recordExclusions(eventId, photos) {
+  for (const photo of photos) {
+    if (photo.source_origin !== 'external' || !photo.external_relpath) continue;
+    try {
+      await db('external_import_exclusions').insert({ event_id: eventId, external_relpath: photo.external_relpath });
+    } catch (err) {
+      if (!isUniqueViolation(err)) {
+        logger.warn(`Could not record import exclusion for photo ${photo.id}: ${err.message}`);
+      }
+    }
+  }
+}
+
+/**
+ * Root-relative paths of the rows an event already has, for a set of
+ * candidates. Chunked for SQLite's bound-parameter cap.
+ */
+async function existingRelpaths(eventId, relpaths) {
+  const found = new Set();
+  for (let i = 0; i < relpaths.length; i += 500) {
+    const rows = await db('photos')
+      .where({ event_id: eventId })
+      .whereIn('external_relpath', relpaths.slice(i, i + 500))
+      .select('external_relpath');
+    for (const r of rows) found.add(r.external_relpath);
+  }
+  return found;
+}
+
 // Helper to recursively collect files under a directory, filtered by image extensions
 async function walkDir(dir, baseDir) {
   const results = [];
@@ -75,7 +113,13 @@ async function walkDir(dir, baseDir) {
  * @param {boolean} [opts.recursive=true]
  * @param {{individual?: string, collages?: string}} [opts.map]
  * @param {object|null} [opts.actor]  passed through to logActivity
- * @returns {Promise<{imported:number, skipped:number, thumbnailsGenerated:number, thumbnailsFailed:number}>}
+ * @param {number} [opts.settleMs=0]  automatic passes only: a new file that
+ *   changed within the last settleMs, or that changes size during a wait of
+ *   settleMs, is left for the next pass instead of being imported half-copied
+ * @param {boolean} [opts.honourExclusions=false]  automatic passes only: skip
+ *   files an admin deleted from this event (migration 209). The manual Import
+ *   ignores the list and clears it for what it imports.
+ * @returns {Promise<{imported:number, skipped:number, deferred:number, excluded:number, thumbnailsGenerated:number, thumbnailsFailed:number}>}
  * @throws {EventNotFoundError} when the event does not exist
  * @throws {ImportInProgressError} when another run holds the claim for this event
  */
@@ -85,6 +129,8 @@ async function importExternalFolder({
   recursive = true,
   map = { individual: 'individual', collages: 'collages' },
   actor = null,
+  settleMs = 0,
+  honourExclusions = false,
 }) {
   const external_path = externalPath;
 
@@ -101,6 +147,17 @@ async function importExternalFolder({
   await jobState.ensure(jobName);
   const token = await jobState.claim(jobName);
   if (!token) throw new ImportInProgressError(eventId);
+
+  // Renew the lease on a clock for the WHOLE run, walk included. A large tree
+  // on a slow mount can take longer than the stale window just to list, and
+  // a runner declared stale during that phase would hand the folder to a
+  // second runner while this one is about to start inserting. `lost` is
+  // checked before the event is touched and on every loop iteration.
+  let lost = false;
+  const heartbeatTimer = setInterval(() => {
+    jobState.heartbeat(jobName, token).then((ok) => { if (!ok) lost = true; });
+  }, jobState.HEARTBEAT_INTERVAL_MS);
+  heartbeatTimer.unref?.();
 
   try {
     const baseAbs = resolveExternalPath({ external_path }, '');
@@ -146,6 +203,72 @@ async function importExternalFolder({
         skipped++;
       }
     }
+
+    let deferred = 0;
+    let excluded = 0;
+
+    // Automatic passes only (the watcher). Two things the manual Import does
+    // not need, because an admin presses it when the copy is done and means
+    // whatever is in the folder:
+    //
+    //   - files an admin deleted from this event stay out (migration 209);
+    //   - a file still being copied onto the mount is left for the next pass.
+    //     chokidar's awaitWriteFinish settles only the file that fired the
+    //     event, not its siblings, and the sweep sees no events at all — so
+    //     the check is done here, on the candidates that would actually be
+    //     inserted: anything modified within settleMs, or whose size moves
+    //     across a wait of settleMs, is deferred. One wait per pass, not per
+    //     file.
+    if (honourExclusions || settleMs > 0) {
+      const candidates = [...dedupeMap.values()];
+      const known = await existingRelpaths(eventId, candidates.map((f) => toRootRelative(f.rel)));
+      const fresh = candidates.filter((f) => !known.has(toRootRelative(f.rel)));
+
+      if (honourExclusions && fresh.length) {
+        const rows = await db('external_import_exclusions').where({ event_id: eventId }).select('external_relpath');
+        const excludedSet = new Set(rows.map((r) => r.external_relpath));
+        for (const f of fresh) {
+          if (excludedSet.has(toRootRelative(f.rel))) {
+            excluded++;
+            dedupeMap.delete(`${f.type}:${path.basename(f.rel).toLowerCase()}`);
+          }
+        }
+      }
+
+      if (settleMs > 0) {
+        const unsettled = [];
+        const before = new Map();
+        for (const f of fresh) {
+          if (!dedupeMap.has(`${f.type}:${path.basename(f.rel).toLowerCase()}`)) continue;
+          try {
+            const st = await fs.stat(f.full);
+            if (Date.now() - st.mtimeMs < settleMs) unsettled.push(f);
+            else before.set(f.full, st.size);
+          } catch (_) {
+            unsettled.push(f);
+          }
+        }
+        if (before.size) {
+          await sleep(settleMs);
+          for (const f of fresh) {
+            if (!before.has(f.full)) continue;
+            try {
+              const st = await fs.stat(f.full);
+              if (st.size !== before.get(f.full) || Date.now() - st.mtimeMs < settleMs) unsettled.push(f);
+            } catch (_) {
+              unsettled.push(f);
+            }
+          }
+        }
+        for (const f of unsettled) {
+          deferred++;
+          dedupeMap.delete(`${f.type}:${path.basename(f.rel).toLowerCase()}`);
+        }
+        if (deferred) logger.info(`External import for event ${eventId}: ${deferred} file(s) still changing, left for the next pass`);
+      }
+    }
+
+    if (lost) throw new ImportInProgressError(eventId);
 
     // Point the event at the new directory BEFORE inserting anything.
     //
@@ -196,24 +319,17 @@ async function importExternalFolder({
     // walkDir collects only jpg/jpeg/png/webp.
     const importedPhotoIds = [];
 
-    // Renew the claim on a clock, not a counter: a stalled mount can make a
-    // handful of files take minutes, and a run declared stale mid-loop would
-    // hand the folder to a second runner while this one is still inserting.
-    let lastHeartbeat = Date.now();
     let superseded = false;
 
     // Insert photos
     for (const f of dedupeMap.values()) {
-      if (Date.now() - lastHeartbeat > jobState.HEARTBEAT_INTERVAL_MS) {
-        lastHeartbeat = Date.now();
-        if (!(await jobState.heartbeat(jobName, token))) {
-          // Another process took the claim over. It is walking this same
-          // folder now, and the unique index makes anything we insert from
-          // here a wasted stat + decode — stop and let it finish.
-          superseded = true;
-          logger.warn(`External import for event ${eventId} lost its claim mid-run; stopping after ${imported} imported`);
-          break;
-        }
+      if (lost) {
+        // Another process took the claim over. It is walking this same
+        // folder now, and the unique index makes anything we insert from
+        // here a wasted stat + decode — stop and let it finish.
+        superseded = true;
+        logger.warn(`External import for event ${eventId} lost its claim mid-run; stopping after ${imported} imported`);
+        break;
       }
 
       // Infer type by subfolder names
@@ -340,6 +456,12 @@ async function importExternalFolder({
 
         if (photoId != null) importedPhotoIds.push(photoId);
         imported += (inserted?.length ? 1 : 0);
+
+        // The manual Import is the explicit intent the exclusion list exists
+        // to protect: what it brings back is no longer excluded.
+        if (!honourExclusions && photoId != null) {
+          await db('external_import_exclusions').where({ event_id: eventId, external_relpath: relFromRoot }).delete();
+        }
       } catch (e) {
         skipped++;
       }
@@ -381,7 +503,7 @@ async function importExternalFolder({
       logger.info(`Queued ${queued} of ${importedPhotoIds.length} imported external photo(s) for face scanning (event ${eventId})`);
     }
 
-    const result = { imported, skipped, thumbnailsGenerated, thumbnailsFailed };
+    const result = { imported, skipped, deferred, excluded, thumbnailsGenerated, thumbnailsFailed };
 
     // Only a run that changed something goes into the activity log. The
     // watcher re-runs this pass on a timer for every watched event, and a
@@ -405,11 +527,14 @@ async function importExternalFolder({
     // but there is no reason to make the call.
     await jobState.release(jobName, token, null);
     throw error;
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 }
 
 module.exports = {
   importExternalFolder,
+  recordExclusions,
   ImportInProgressError,
   EventNotFoundError,
   jobNameFor,
