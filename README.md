@@ -149,7 +149,7 @@ Full documentation lives at **[docs.picpeak.app](https://docs.picpeak.app)** —
 | 🧾 CRM & Accounting | [docs.picpeak.app/features/crm](https://docs.picpeak.app/features/crm) · [disclaimers](https://docs.picpeak.app/features/crm/disclaimers) |
 | 🗺️ Roadmap | [GitHub Issues](https://github.com/PicPeak/picpeak/issues) |
 
-**Project meta:** [Contributing](CONTRIBUTING.md) · [License](LICENSE) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
+**Project meta:** [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md) · [License](LICENSE) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## 📊 Comparison with Alternatives
 
