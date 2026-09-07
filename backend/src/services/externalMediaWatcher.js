@@ -138,16 +138,21 @@ async function runImport(eventId, reason) {
       externalPath: event.external_path,
       recursive: true,
       actor: ACTOR,
-      // Automatic pass: leave files still being copied for the next pass, and
-      // keep out what an admin deleted (see externalImportService).
+      // Automatic pass: follow the row rather than writing it, keep out what
+      // an admin deleted, leave files still being copied for the next pass
+      // (see externalImportService).
+      automatic: true,
       settleMs: STABILITY_MS,
-      honourExclusions: true,
     });
     if (result.imported > 0 || result.deferred > 0) {
       logger.info(`[externalMediaWatcher] event ${eventId} (${event.slug}): imported ${result.imported}, skipped ${result.skipped}, deferred ${result.deferred}, excluded ${result.excluded} (${reason})`);
     } else {
       logger.debug(`[externalMediaWatcher] event ${eventId}: nothing new (${reason})`);
     }
+    // A deferred file gets no second 'add' event (ignoreInitial, and the copy
+    // that made it unsettled already fired its one), and the sweep may be
+    // disabled — so the pass re-arms itself until the folder is quiet.
+    if (result.deferred > 0) scheduleImport(eventId);
     return result;
   } catch (err) {
     if (err instanceof ImportInProgressError) {

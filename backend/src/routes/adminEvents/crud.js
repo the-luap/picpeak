@@ -1812,6 +1812,16 @@ module.exports = (router) => {
         updates.external_path = trimmedPath || null;
       }
 
+      // The permission guard below inspects `external_watch` / `external_path`
+      // by exact name, but SQLite resolves column names case-insensitively, so
+      // `External_Watch` would sail past it and still land on the column.
+      // Anything that is one of these two keys in any spelling other than the
+      // canonical one is dropped here, before the guard.
+      for (const key of Object.keys(updates)) {
+        const lower = key.toLowerCase();
+        if ((lower === 'external_watch' || lower === 'external_path') && key !== lower) delete updates[key];
+      }
+
       // Folder watcher opt-in (issue 1187). Written through formatBoolean
       // like the other event flags so SQLite gets 0/1; a managed event has
       // no folder to watch, so the switch is cleared with the path.

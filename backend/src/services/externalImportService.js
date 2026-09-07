@@ -113,12 +113,16 @@ async function walkDir(dir, baseDir) {
  * @param {boolean} [opts.recursive=true]
  * @param {{individual?: string, collages?: string}} [opts.map]
  * @param {object|null} [opts.actor]  passed through to logActivity
- * @param {number} [opts.settleMs=0]  automatic passes only: a new file that
- *   changed within the last settleMs, or that changes size during a wait of
- *   settleMs, is left for the next pass instead of being imported half-copied
- * @param {boolean} [opts.honourExclusions=false]  automatic passes only: skip
- *   files an admin deleted from this event (migration 209). The manual Import
- *   ignores the list and clears it for what it imports.
+ * @param {boolean} [opts.automatic=false]  the watcher's pass, as opposed to
+ *   the Import button. An automatic pass never rewrites the event's source
+ *   configuration (it follows the row, and stops if the row moved under it),
+ *   skips files an admin deleted from this event (migration 209), and defers
+ *   files that are still changing. The manual Import writes the folder it was
+ *   given onto the event, ignores the exclusion list and clears it for what it
+ *   imports.
+ * @param {number} [opts.settleMs=0]  automatic passes: a new file modified
+ *   within the last settleMs, or whose size moves during a wait of settleMs,
+ *   is left for the next pass instead of being imported half-copied
  * @returns {Promise<{imported:number, skipped:number, deferred:number, excluded:number, thumbnailsGenerated:number, thumbnailsFailed:number}>}
  * @throws {EventNotFoundError} when the event does not exist
  * @throws {ImportInProgressError} when another run holds the claim for this event
@@ -129,8 +133,8 @@ async function importExternalFolder({
   recursive = true,
   map = { individual: 'individual', collages: 'collages' },
   actor = null,
+  automatic = false,
   settleMs = 0,
-  honourExclusions = false,
 }) {
   const external_path = externalPath;
 
@@ -207,35 +211,20 @@ async function importExternalFolder({
     let deferred = 0;
     let excluded = 0;
 
-    // Automatic passes only (the watcher). Two things the manual Import does
-    // not need, because an admin presses it when the copy is done and means
-    // whatever is in the folder:
-    //
-    //   - files an admin deleted from this event stay out (migration 209);
-    //   - a file still being copied onto the mount is left for the next pass.
-    //     chokidar's awaitWriteFinish settles only the file that fired the
-    //     event, not its siblings, and the sweep sees no events at all — so
-    //     the check is done here, on the candidates that would actually be
-    //     inserted: anything modified within settleMs, or whose size moves
-    //     across a wait of settleMs, is deferred. One wait per pass, not per
-    //     file.
-    if (honourExclusions || settleMs > 0) {
+    // Automatic passes: a file still being copied onto the mount is left for
+    // the next pass. chokidar's awaitWriteFinish settles only the file that
+    // fired the event, not its siblings, and the sweep sees no events at all
+    // — so the check is done here, on the candidates that would actually be
+    // inserted: anything modified within settleMs, or whose size moves across
+    // a wait of settleMs, is deferred. One wait per pass, not per file. The
+    // manual Import does not need it: an admin presses it when the copy is
+    // done.
+    if (automatic && settleMs > 0) {
       const candidates = [...dedupeMap.values()];
       const known = await existingRelpaths(eventId, candidates.map((f) => toRootRelative(f.rel)));
       const fresh = candidates.filter((f) => !known.has(toRootRelative(f.rel)));
 
-      if (honourExclusions && fresh.length) {
-        const rows = await db('external_import_exclusions').where({ event_id: eventId }).select('external_relpath');
-        const excludedSet = new Set(rows.map((r) => r.external_relpath));
-        for (const f of fresh) {
-          if (excludedSet.has(toRootRelative(f.rel))) {
-            excluded++;
-            dedupeMap.delete(`${f.type}:${path.basename(f.rel).toLowerCase()}`);
-          }
-        }
-      }
-
-      if (settleMs > 0) {
+      {
         const unsettled = [];
         const before = new Map();
         for (const f of fresh) {
@@ -270,9 +259,24 @@ async function importExternalFolder({
 
     if (lost) throw new ImportInProgressError(eventId);
 
-    // Point the event at the new directory BEFORE inserting anything.
-    //
-    // Two reasons, both about what a half-finished import leaves behind. The
+    if (automatic) {
+      // Follow the row, never write it. The folder this pass was started for
+      // may have been changed — or the event switched to managed — while the
+      // tree was being walked or the settle wait was running. Writing
+      // source_mode/external_path here would silently undo that save; and
+      // importing the old folder into an event that now points elsewhere is
+      // wrong too. Re-read and stop if the row moved.
+      const now = await db('events').where('id', eventId).select('source_mode', 'external_path').first();
+      if (!now || now.source_mode !== 'reference' || (now.external_path || '') !== String(external_path)) {
+        logger.info(`External import for event ${eventId}: folder changed during the pass, nothing imported`);
+        const empty = { imported: 0, skipped, deferred, excluded, thumbnailsGenerated: 0, thumbnailsFailed: 0 };
+        await jobState.release(jobName, token, null);
+        return empty;
+      }
+    } else {
+      // Point the event at the new directory BEFORE inserting anything.
+      //
+      // Two reasons, both about what a half-finished import leaves behind. The
     // update used to run after the loop, so an import that died at photo 500
     // of 1000 left those 500 rows carrying external_relpath into the NEW tree
     // while the event still resolved against the OLD one — every one of them
@@ -292,7 +296,8 @@ async function importExternalFolder({
     // because their thumbnails were already on local disk and the grid carried
     // on rendering. Rows now carry a root-relative path and this write cannot
     // reach them.
-    await db('events').where('id', eventId).update({ source_mode: 'reference', external_path });
+      await db('events').where('id', eventId).update({ source_mode: 'reference', external_path });
+    }
 
     let imported = 0;
     let thumbnailsGenerated = 0;
@@ -352,6 +357,17 @@ async function importExternalFolder({
           .where({ event_id: eventId, external_relpath: relFromRoot })
           .first();
         if (exists) { skipped++; continue; }
+
+        // Automatic passes: checked HERE, per file, not against a snapshot
+        // taken before the loop — an admin can delete a photo (which records
+        // the exclusion) while this pass is walking or settling, and a
+        // snapshot would let the loop re-insert it moments later.
+        if (automatic) {
+          const excludedRow = await db('external_import_exclusions')
+            .where({ event_id: eventId, external_relpath: relFromRoot })
+            .first();
+          if (excludedRow) { excluded++; continue; }
+        }
         const stats = await fs.stat(f.full);
 
         // Extract dimensions via Sharp
@@ -459,7 +475,7 @@ async function importExternalFolder({
 
         // The manual Import is the explicit intent the exclusion list exists
         // to protect: what it brings back is no longer excluded.
-        if (!honourExclusions && photoId != null) {
+        if (!automatic && photoId != null) {
           await db('external_import_exclusions').where({ event_id: eventId, external_relpath: relFromRoot }).delete();
         }
       } catch (e) {

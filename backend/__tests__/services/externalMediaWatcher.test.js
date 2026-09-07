@@ -244,7 +244,7 @@ describe('externalMediaWatcher (issue 1187)', () => {
     await fs.promises.writeFile(growing, 'part-one');
 
     // mtime is "now", inside the settle window: deferred, not inserted.
-    const first = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    const first = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true, settleMs: 300 });
     expect(first).toMatchObject({ imported: 1, deferred: 1 });
     expect(await relpaths(eventId)).toEqual([path.join('nas', 'individual', 'a.jpg')]);
 
@@ -252,17 +252,67 @@ describe('externalMediaWatcher (issue 1187)', () => {
     const old = new Date(Date.now() - 60000);
     await fs.promises.utimes(growing, old, old);
     const grow = setTimeout(() => fs.promises.appendFile(growing, '-part-two').then(() => fs.promises.utimes(growing, old, old)), 100);
-    const second = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    const second = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true, settleMs: 300 });
     clearTimeout(grow);
     expect(second).toMatchObject({ imported: 0, deferred: 1 });
 
     // Quiet now: imported.
     await fs.promises.utimes(growing, old, old);
-    const third = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, settleMs: 300 });
+    const third = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true, settleMs: 300 });
     expect(third).toMatchObject({ imported: 1, deferred: 0 });
 
     await fs.promises.unlink(growing);
   });
+
+  it('a photo deleted while the pass is settling stays deleted', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder, recordExclusions } = require('../../src/services/externalImportService');
+    await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'admin' } });
+    const [row] = await db('photos').where({ event_id: eventId });
+
+    // A new file makes the pass wait for the settle window; inside that
+    // window the admin deletes a.jpg. The snapshot taken before the wait
+    // saw a.jpg as present, so only a per-file check can keep it out.
+    await writeOld(path.join(mediaRoot, 'nas', 'individual', 'd.jpg'), 'new-file');
+    setTimeout(async () => {
+      await recordExclusions(eventId, [row]);
+      await db('photos').where({ id: row.id }).del();
+    }, 100);
+    const result = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true, settleMs: 400 });
+
+    expect(result).toMatchObject({ imported: 1, excluded: 1 });
+    expect(await relpaths(eventId)).toEqual([path.join('nas', 'individual', 'd.jpg')]);
+    await fs.promises.unlink(path.join(mediaRoot, 'nas', 'individual', 'd.jpg'));
+  });
+
+  it('an automatic pass never rewrites the event folder, and stops if it moved', async () => {
+    const eventId = await seedEvent();
+    const { importExternalFolder } = require('../../src/services/externalImportService');
+
+    // The pass was started for 'nas' but the admin has since pointed the
+    // event at 'other': nothing imported, row untouched.
+    await db('events').where('id', eventId).update({ external_path: 'other' });
+    const result = await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'system' }, automatic: true });
+    expect(result).toMatchObject({ imported: 0 });
+    expect(await relpaths(eventId)).toEqual([]);
+    expect((await db('events').where('id', eventId).first()).external_path).toBe('other');
+
+    // The manual Import is what writes the folder onto the event.
+    await importExternalFolder({ eventId, externalPath: 'nas', actor: { type: 'admin' } });
+    expect((await db('events').where('id', eventId).first()).external_path).toBe('nas');
+  });
+
+  it('re-arms itself for a file that was deferred, so a disabled sweep is not needed', async () => {
+    const eventId = await seedEvent();
+    // Written just now: the pass that starts with the watcher defers it.
+    await fs.promises.writeFile(path.join(mediaRoot, 'nas', 'individual', 'e.jpg'), 'fresh');
+    await watcher.reconcile();
+    expect(await relpaths(eventId)).toEqual([path.join('nas', 'individual', 'a.jpg')]);
+
+    const arrived = await waitFor(async () => (await relpaths(eventId)).includes(path.join('nas', 'individual', 'e.jpg')));
+    expect(arrived).toBe(true);
+    await fs.promises.unlink(path.join(mediaRoot, 'nas', 'individual', 'e.jpg'));
+  }, 20000);
 
   it('skips an event that was archived or deactivated after it was scheduled', async () => {
     const archived = await seedEvent();
