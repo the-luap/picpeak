@@ -27,6 +27,7 @@ import type { AdminPhoto } from '../../../services/photos.service';
 import type { FeedbackSettings as FeedbackSettingsType } from '../../../services/feedback.service';
 import { ExternalFolderPicker } from './ExternalFolderPicker';
 import { safeParseDate } from './utils';
+import { usePermission } from '../../../hooks/usePermission';
 import type { EditFormState } from './types';
 
 interface EventInformationCardProps {
@@ -64,6 +65,11 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
   onRevealNow
 }) => {
   const { t } = useTranslation();
+  // Enabling the watcher makes the server import on the admin's behalf, which
+  // the backend gates on photos.upload like the Import button. Mirror that
+  // here rather than letting the save bounce with a 403.
+  const canEnableWatch = usePermission('photos.upload');
+  
   const { format } = useLocalizedDate();
   const queryClient = useQueryClient();
   const [logoUploading, setLogoUploading] = useState(false);
@@ -356,6 +362,28 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                 {t('events.externalFolderHint', 'These folders come from the /external-media mount inside the container. Ensure it is accessible to the backend process.')}
               </p>
+              <label className={`flex items-start gap-2 mt-3 ${canEnableWatch || editForm.external_watch ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                  checked={editForm.external_watch === true}
+                  disabled={!canEnableWatch && !editForm.external_watch}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, external_watch: e.target.checked }))}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                    {t('events.externalWatch', 'Watch folder for new files')}
+                  </span>
+                  <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    {t('events.externalWatchHint', 'New images copied into this folder are imported automatically, the same way the Import button does it. Files removed from the folder are never deleted from the gallery.')}
+                  </span>
+                  {!canEnableWatch && !editForm.external_watch && (
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                      {t('events.externalWatchNoPermission', 'Requires the permission to upload photos.')}
+                    </span>
+                  )}
+                </span>
+              </label>
             </div>
           )}
 
@@ -849,6 +877,11 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
               {event.source_mode === 'reference' ? t('events.sourceModeReference', 'Reference external folder') : t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}
               {event.source_mode === 'reference' && event.external_path ? (
                 <span className="text-neutral-500 dark:text-neutral-400 ml-2">/external-media/{event.external_path}</span>
+              ) : null}
+              {event.source_mode === 'reference' && event.external_watch ? (
+                <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('events.externalWatchActive', 'Folder is watched — new files are imported automatically.')}
+                </span>
               ) : null}
             </dd>
           </div>

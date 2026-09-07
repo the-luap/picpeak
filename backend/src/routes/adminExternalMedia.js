@@ -1,31 +1,16 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs').promises;
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
 const { requireEventOwnership } = require('../middleware/ownership');
-const { list, resolveExternalPath } = require('../services/externalMediaService');
-const { db, logActivity } = require('../database/db');
-const sharp = require('sharp');
+const { list } = require('../services/externalMediaService');
 const logger = require('../utils/logger');
-const { generateThumbnail, extractCaptureDate, orientedDimensions } = require('../services/imageProcessor');
-const { isUniqueViolation } = require('../utils/dbErrors');
+const {
+  importExternalFolder,
+  ImportInProgressError,
+  EventNotFoundError,
+} = require('../services/externalImportService');
 
 const router = express.Router();
-
-// Events with an import running in THIS process (#1162).
-//
-// The second line of defence, not the first: migration 186 puts a unique index
-// on (event_id, external_relpath), and that is what actually makes a duplicate
-// impossible — it holds across replicas, across restarts, and against anything
-// that inserts external rows without going through this route.
-//
-// This set exists for the reason the duplicates got filed in the first place:
-// a large tree takes long enough that the run LOOKS hung, so admins click
-// again. Letting that second run walk the whole tree only to have every insert
-// bounce off the index wastes minutes of CPU and reports a nonsense
-// `skipped: 6012` back. Failing it immediately with 409 says what happened.
-const importsInFlight = new Set();
 
 // GET /api/admin/external-media/list?path=relative/dir
 router.get('/list', adminAuth, requirePermission('photos.view'), async (req, res) => {
@@ -42,324 +27,42 @@ router.get('/list', adminAuth, requirePermission('photos.view'), async (req, res
   }
 });
 
-// Helper to recursively collect files under a directory, filtered by image extensions
-async function walkDir(dir, baseDir) {
-  const results = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const e of entries) {
-    if (e.name.startsWith('.')) continue;
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) {
-      results.push(...await walkDir(full, baseDir));
-    } else if (e.isFile()) {
-      const ext = path.extname(e.name).toLowerCase();
-      if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-        const rel = path.relative(baseDir, full);
-        results.push({ full, rel, name: e.name });
-      }
-    }
-  }
-  return results;
-}
-
 // POST /api/admin/events/:id/import-external
 // Body: { external_path: string, recursive?: boolean, map?: { individual?: string, collages?: string } }
+//
+// The import itself lives in services/externalImportService.js so the folder
+// watcher (issue 1187) runs the identical pass without an HTTP request. This
+// handler only validates, maps the service's errors to status codes, and
+// records who asked.
 router.post('/events/:id/import-external', adminAuth, requirePermission('photos.upload'), requireEventOwnership, async (req, res) => {
   const eventId = parseInt(req.params.id);
-  if (importsInFlight.has(eventId)) {
-    return res.status(409).json({
-      error: 'An import is already running for this event. Wait for it to finish before starting another.'
-    });
-  }
-  importsInFlight.add(eventId);
+  const { external_path, recursive = true, map = { individual: 'individual', collages: 'collages' } } = req.body || {};
+  if (!external_path) return res.status(400).json({ error: 'external_path is required' });
+
   try {
-    const { external_path, recursive = true, map = { individual: 'individual', collages: 'collages' } } = req.body || {};
-    if (!external_path) return res.status(400).json({ error: 'external_path is required' });
-
-    // Load event
-    const event = await db('events').where('id', eventId).first();
-    if (!event) return res.status(404).json({ error: 'Event not found' });
-
-    const baseAbs = resolveExternalPath({ external_path }, '');
-
-    // What gets STORED on the row (#1163). `f.rel` stays relative to the
-    // imported folder because the type inference below reads its first segment
-    // ('individual' / 'collages'); external_relpath is written relative to
-    // EXTERNAL_MEDIA_ROOT so the row does not depend on a column this very
-    // handler is about to overwrite.
-    const basePrefix = String(external_path).replace(/^\/+|\/+$/g, '');
-    const toRootRelative = (rel) => (basePrefix ? path.join(basePrefix, rel) : rel);
-
-    // Collect files
-    const files = recursive ? await walkDir(baseAbs, baseAbs) : (await fs.readdir(baseAbs, { withFileTypes: true }))
-      .filter(e => e.isFile())
-      .map(e => ({ full: path.join(baseAbs, e.name), rel: e.name, name: e.name }))
-      .filter(f => ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f.name).toLowerCase()));
-
-    // Prepare file metadata and deduplicate by filename within type (keep largest)
-    let skipped = 0;
-    const preparedFiles = [];
-    for (const f of files) {
-      try {
-        const stats = await fs.stat(f.full);
-        const segs = f.rel.split(path.sep);
-        let type = 'individual';
-        if (segs[0] === map.collages) type = 'collage';
-        if (segs[0] === map.individual) type = 'individual';
-        preparedFiles.push({ ...f, type, size: stats.size });
-      } catch (err) {
-        skipped++;
-      }
-    }
-
-    const dedupeMap = new Map();
-    for (const file of preparedFiles) {
-      const dedupeKey = `${file.type}:${path.basename(file.rel).toLowerCase()}`;
-      const existing = dedupeMap.get(dedupeKey);
-      if (!existing || file.size > existing.size) {
-        if (existing) skipped++;
-        dedupeMap.set(dedupeKey, file);
-      } else {
-        skipped++;
-      }
-    }
-
-    // Point the event at the new directory BEFORE inserting anything.
-    //
-    // Two reasons, both about what a half-finished import leaves behind. The
-    // update used to run after the loop, so an import that died at photo 500
-    // of 1000 left those 500 rows carrying external_relpath into the NEW tree
-    // while the event still resolved against the OLD one — every one of them
-    // unreadable. And with face detection on, enqueueEvent accepts
-    // processing_status NULL (faceProcessor.js:243-246), which these inserts
-    // leave unset, so an admin hitting the toggle or Re-scan mid-import could
-    // queue those same rows against the stale path and burn them to 'failed'.
-    //
-    // Safe to do first for existing MANAGED photos: photo.source_origin takes
-    // precedence over event.source_mode in both resolvers (photoResolver.js:23,
-    // :52) and is NOT NULL defaulting to 'managed', so flipping source_mode
-    // does not touch them.
-    //
-    // Safe for existing EXTERNAL rows too, as of #1163. It was not: relpaths
-    // were stored relative to external_path, so overwriting the column here
-    // rebased every row already in the event onto the new folder — quietly,
-    // because their thumbnails were already on local disk and the grid carried
-    // on rendering. Rows now carry a root-relative path and this write cannot
-    // reach them.
-    await db('events').where('id', eventId).update({ source_mode: 'reference', external_path });
-
-    let imported = 0;
-    let thumbnailsGenerated = 0;
-    let thumbnailsFailed = 0;
-
-    // Face detection (#1090). Managed uploads are enqueued by photoProcessor,
-    // which sets face_status 'pending' once a photo is processed
-    // (photoProcessor.js:573) — but external media never goes through it, it
-    // is inserted directly here. Before #1090 that was invisible, because
-    // faceProcessor skipped externals anyway; now that they are scannable, an
-    // import into an already-enabled event would still sit unscanned until
-    // someone pressed Re-scan.
-    //
-    // Ids are collected unconditionally and the setting is read at the END,
-    // not here: this loop can run for many minutes on a large library, and an
-    // admin who enables detection during it would otherwise leave every photo
-    // imported after that moment stuck at NULL forever — the toggle endpoint
-    // only queues rows that already existed when it fired.
-    //
-    // The event path is already committed (above), so the enqueue below is
-    // free of the ordering hazard it used to carry. It stays at the end anyway
-    // so the setting can be read after the loop, and it only touches rows that
-    // are still untouched — see the whereNull there. No video guard needed:
-    // walkDir collects only jpg/jpeg/png/webp.
-    const importedPhotoIds = [];
-
-    // Insert photos
-    for (const f of dedupeMap.values()) {
-      // Infer type by subfolder names
-      const segs = f.rel.split(path.sep);
-      let type = 'individual';
-      if (segs[0] === map.collages) type = 'collage';
-      if (segs[0] === map.individual) type = 'individual';
-
-      const relFromRoot = toRootRelative(f.rel);
-
-      try {
-        // Fast path only. This SELECT settles the common case — a re-import of
-        // a folder already in the event — without paying for a stat and a
-        // Sharp metadata read per file. It is NOT the guard: those two calls
-        // sit between here and the INSERT below, which is exactly the window
-        // two overlapping imports both walked through (#1162). The unique
-        // index from migration 186 is the guard, and the catch below is how
-        // this loop converges when it fires.
-        const exists = await db('photos')
-          .where({ event_id: eventId, external_relpath: relFromRoot })
-          .first();
-        if (exists) { skipped++; continue; }
-        const stats = await fs.stat(f.full);
-
-        // Extract dimensions via Sharp
-        let width = null;
-        let height = null;
-        try {
-          const metadata = await sharp(f.full).metadata();
-          // Oriented, not raw: a portrait shot from a body that tags rather
-          // than rotates reports landscape dimensions, and the grid would size
-          // its tile from those (#1185).
-          ({ width, height } = orientedDimensions(metadata));
-        } catch (dimErr) {
-          logger.warn(`Could not extract dimensions for ${f.rel}: ${dimErr.message}`);
-        }
-
-        // Capture date from EXIF (#1172). Managed uploads get this from
-        // photoProcessor, which external media never goes through — so
-        // captured_at stayed NULL for every externally imported photo, and the
-        // gallery's "Date Taken" sort silently degraded into import order via
-        // its COALESCE fallback. On a library imported in two batches that put
-        // the first days of a trip after the last ones.
-        //
-        // Read here because the file is already open a few lines above for the
-        // dimensions, so this costs one more read of the same source rather
-        // than a second pass over the mount.
-        //
-        // Best-effort, exactly like the dimensions: a source without EXIF, or
-        // one Sharp/exifr cannot parse, imports with captured_at NULL and
-        // falls back to uploaded_at as before.
-        let capturedAt = null;
-        try {
-          capturedAt = await extractCaptureDate(f.full);
-        } catch (dateErr) {
-          logger.warn(`Could not extract capture date for ${f.rel}: ${dateErr.message}`);
-        }
-
-        let inserted;
-        try {
-          inserted = await db('photos')
-            .insert({
-              event_id: eventId,
-              filename: f.name,
-              // The camera-original name (#745). External ingest never sets
-              // original_filename, and NAS-mounted galleries are among the
-              // most likely to be driven from Lightroom — without this the
-              // round-trip has nothing to match a RAW against.
-              source_filename: f.name,
-              // Keep path as a hint for legacy code but not used for resolution in external mode
-              path: path.join(event.slug, f.name),
-              thumbnail_path: null,
-              type,
-              size_bytes: stats.size,
-              width,
-              height,
-              source_origin: 'external',
-              external_relpath: relFromRoot,
-              // .toISOString() rather than the Date: inside jest, Dates handed
-              // to the sqlite3 binding land as the literal string
-              // "[object Object]" (see CLAUDE.md). Strings round-trip on both
-              // engines.
-              captured_at: capturedAt ? capturedAt.toISOString() : null
-            })
-            .returning('id');
-        } catch (insertErr) {
-          // Another writer inserted this exact path while we were reading
-          // metadata. That is the outcome the index exists to produce, and it
-          // is a skip rather than a failure — the row is there, it just isn't
-          // ours. Counting it as `skipped` keeps the reported totals honest;
-          // before the index this landed in the outer catch as a nameless
-          // failure, or (more often) never fired at all and duplicated the row.
-          if (isUniqueViolation(insertErr)) { skipped++; continue; }
-          throw insertErr;
-        }
-
-        const photoId = Array.isArray(inserted) && inserted.length
-          ? (typeof inserted[0] === 'object' ? inserted[0].id : inserted[0])
-          : null;
-
-        // Generate the thumbnail right away so the gallery grid can use the
-        // managed thumbnail endpoint instead of falling back to the full
-        // NAS-streamed original (#423). Best-effort: a single failure logs
-        // a warning and leaves thumbnail_path=null — the gallery's
-        // ensureThumbnail will retry lazily on first view. The cost of
-        // doing this synchronously is ~100-300ms per image; for the
-        // worst-case 1000-photo import that's still under the 5-minute
-        // request timeout typical of the import flow.
-        if (photoId != null) {
-          try {
-            const outputBasename = `ext${photoId}_${path.basename(f.rel)}`;
-            const thumbnailPath = await generateThumbnail(f.full, { outputBasename });
-            if (thumbnailPath) {
-              await db('photos').where({ id: photoId }).update({ thumbnail_path: thumbnailPath });
-              thumbnailsGenerated++;
-            } else {
-              thumbnailsFailed++;
-            }
-          } catch (thumbErr) {
-            thumbnailsFailed++;
-            logger.warn(`Thumbnail generation failed for external photo ${photoId} (${f.rel}): ${thumbErr.message}`);
-          }
-        }
-
-        if (photoId != null) importedPhotoIds.push(photoId);
-        imported += (inserted?.length ? 1 : 0);
-      } catch (e) {
-        skipped++;
-      }
-    }
-
-    // The event already resolves to the new directory (set before the loop),
-    // so the queue is safe to open. Still done here rather than on insert so
-    // the setting below is read after the loop. Guarded the same way
-    // photoProcessor guards it
-    // (both the global flag and the per-event toggle), so installs without the
-    // feature still never write a face_status. Re-read here rather than before
-    // the loop so a toggle flipped mid-import is honoured.
-    let queueFaces = false;
-    try {
-      const { isEnabledForEvent } = require('../services/faceSettings');
-      const freshEvent = await db('events').where('id', eventId).first();
-      queueFaces = await isEnabledForEvent(freshEvent);
-    } catch (err) {
-      // Never let the face feature break an import — the photos are the point.
-      logger.warn(`Could not resolve face settings for event ${eventId}: ${err.message}`);
-    }
-
-    // Chunked because SQLite caps a statement at 999 bound parameters and an
-    // import can be far larger than that.
-    if (queueFaces && importedPhotoIds.length) {
-      let queued = 0;
-      for (let i = 0; i < importedPhotoIds.length; i += 500) {
-        // whereNull, not a blanket set. Committing the event path before the
-        // loop means a toggle or Re-scan firing mid-import can now genuinely
-        // queue and even finish some of these rows — so an unconditional
-        // update would drag 'done' rows back to 'pending' for a duplicate
-        // scan, and knock 'processing' rows out from under the worker
-        // mid-flight. Only rows nothing has touched are ours to queue.
-        queued += await db('photos')
-          .whereIn('id', importedPhotoIds.slice(i, i + 500))
-          .whereNull('face_status')
-          .update({ face_status: 'pending' });
-      }
-      logger.info(`Queued ${queued} of ${importedPhotoIds.length} imported external photo(s) for face scanning (event ${eventId})`);
-    }
-
-    await logActivity(
-      'external_import_completed',
-      { event_id: eventId, imported, skipped, thumbnailsGenerated, thumbnailsFailed, external_path },
+    const result = await importExternalFolder({
       eventId,
-      { type: 'admin' }
-    );
-
-    res.json({ imported, skipped, thumbnailsGenerated, thumbnailsFailed });
+      externalPath: external_path,
+      recursive,
+      map,
+      actor: { type: 'admin', id: req.admin?.id, name: req.admin?.username },
+    });
+    res.json(result);
   } catch (error) {
+    if (error instanceof EventNotFoundError) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (error instanceof ImportInProgressError) {
+      // Another run holds this event — a double-click, or the watcher on any
+      // replica mid-pass. Say so rather than walking the tree a second time.
+      return res.status(409).json({ error: error.message });
+    }
     logger.error('External media import failed', {
       eventId: req.params.id,
       externalPath: req.body?.external_path,
       error: error.message
     });
     res.status(500).json({ error: 'Failed to import external media' });
-  } finally {
-    // In `finally` and not at the end of `try`: an import that throws must
-    // still release the event, or a single failure locks out every retry
-    // until the process restarts.
-    importsInFlight.delete(eventId);
   }
 });
 

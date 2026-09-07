@@ -90,6 +90,13 @@ services:
       - STORAGE_PATH=/app/storage
       # Watch-folder auto-import: max photos processed in parallel (default 2).
       - FILE_WATCHER_CONCURRENCY=${FILE_WATCHER_CONCURRENCY:-2}
+      # External-media folder watcher (issue 1187); all optional, see .env.example.
+      - EXTERNAL_MEDIA_WATCH=${EXTERNAL_MEDIA_WATCH:-true}
+      - EXTERNAL_MEDIA_WATCH_POLLING=${EXTERNAL_MEDIA_WATCH_POLLING:-false}
+      - EXTERNAL_MEDIA_WATCH_POLL_INTERVAL_MS=${EXTERNAL_MEDIA_WATCH_POLL_INTERVAL_MS:-5000}
+      - EXTERNAL_MEDIA_WATCH_SWEEP_INTERVAL_MS=${EXTERNAL_MEDIA_WATCH_SWEEP_INTERVAL_MS:-900000}
+      - EXTERNAL_MEDIA_WATCH_DEBOUNCE_MS=${EXTERNAL_MEDIA_WATCH_DEBOUNCE_MS:-10000}
+      - EXTERNAL_MEDIA_WATCH_STABILITY_MS=${EXTERNAL_MEDIA_WATCH_STABILITY_MS:-5000}
       # Face recognition (#1074). The URL defaults to the sidecar's compose
       # service name, so the common case needs no configuration. None of this
       # is touched until the `faces` feature flag is enabled in admin

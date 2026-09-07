@@ -16,6 +16,7 @@ export type EditFormState = {
   customer_phone: string;
   source_mode: 'managed' | 'reference';
   external_path: string;
+  external_watch: boolean;
   require_password: boolean;
   new_password: string;
   confirm_new_password: string;
@@ -71,6 +72,7 @@ export const INITIAL_EDIT_FORM: EditFormState = {
   customer_phone: '',
   source_mode: 'managed',
   external_path: '',
+  external_watch: false,
   require_password: true,
   new_password: '',
   confirm_new_password: '',

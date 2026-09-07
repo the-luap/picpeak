@@ -102,6 +102,13 @@ services:
       - PICPEAK_RELEASE_CHANNEL=${PICPEAK_CHANNEL:-stable}
       # Watch-folder auto-import: max photos processed in parallel (default 2).
       - FILE_WATCHER_CONCURRENCY=${FILE_WATCHER_CONCURRENCY:-2}
+      # External-media folder watcher (issue 1187); all optional, see .env.example.
+      - EXTERNAL_MEDIA_WATCH=${EXTERNAL_MEDIA_WATCH:-true}
+      - EXTERNAL_MEDIA_WATCH_POLLING=${EXTERNAL_MEDIA_WATCH_POLLING:-false}
+      - EXTERNAL_MEDIA_WATCH_POLL_INTERVAL_MS=${EXTERNAL_MEDIA_WATCH_POLL_INTERVAL_MS:-5000}
+      - EXTERNAL_MEDIA_WATCH_SWEEP_INTERVAL_MS=${EXTERNAL_MEDIA_WATCH_SWEEP_INTERVAL_MS:-900000}
+      - EXTERNAL_MEDIA_WATCH_DEBOUNCE_MS=${EXTERNAL_MEDIA_WATCH_DEBOUNCE_MS:-10000}
+      - EXTERNAL_MEDIA_WATCH_STABILITY_MS=${EXTERNAL_MEDIA_WATCH_STABILITY_MS:-5000}
       # Face recognition (#1074). Defaults to the sidecar's compose service
       # name; nothing touches it until the `faces` feature flag is enabled in
       # admin settings, so installs without the picpeak-ml container are

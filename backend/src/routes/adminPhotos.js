@@ -796,6 +796,9 @@ router.delete('/:eventId/photos/:photoId', adminAuth, requirePermission('photos.
       logger.warn(`deletePhoto: face purge failed for photo ${photoId}`, { error: err.message });
     }
 
+    // An external photo's file stays on the NAS; make sure the folder watcher
+    // (issue 1187) does not re-import it on its next pass.
+    await require('../services/externalImportService').recordExclusions(Number(eventId), [photo]);
     await db('photos').where({ id: photoId }).delete();
 
     // Log activity (event was fetched above for storage key resolution)
@@ -1037,6 +1040,8 @@ router.post('/:eventId/photos/bulk-delete', adminAuth, requirePermission('photos
     }
 
     // Delete from database
+    // Same as the single delete: keep the watcher from bringing these back.
+    await require('../services/externalImportService').recordExclusions(Number(eventId), photos);
     await db('photos')
       .whereIn('id', photoIds)
       .where('event_id', eventId)
