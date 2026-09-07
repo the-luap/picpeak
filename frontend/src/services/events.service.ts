@@ -79,6 +79,7 @@ interface UpdateEventData {
   hero_photo_id?: number | null;
   source_mode?: 'managed' | 'reference';
   external_path?: string | null;
+  external_watch?: boolean;
   photo_cap?: number | null;
   default_photo_sort?: string;
   // Per-event opt-in for hero photo as social-share preview (#474).

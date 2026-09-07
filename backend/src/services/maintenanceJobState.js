@@ -40,6 +40,7 @@ const os = require('os');
 const crypto = require('crypto');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
+const { isUniqueViolation } = require('../utils/dbErrors');
 
 const JOB_DIMENSION_REPAIR = 'photo_dimension_repair';
 const JOB_CAPTURE_DATE_BACKFILL = 'photo_capture_date_backfill';
@@ -62,6 +63,26 @@ const OWNER = `${os.hostname()}:${process.pid}`;
 
 const nowIso = () => new Date().toISOString();
 const cutoffIso = (staleAfterMs) => new Date(Date.now() - staleAfterMs).toISOString();
+
+/**
+ * Make sure a row exists for `jobName`, so claim() has something to UPDATE.
+ *
+ * The maintenance sweeps are seeded by migration 189 and never need this. It
+ * exists for job names that are only known at runtime — an external-media
+ * import is claimed per event (`external_import:<id>`), and events are created
+ * long after any migration ran. Two replicas racing to seed the same name is
+ * settled by the primary key: the loser's insert bounces and the row is there
+ * either way.
+ */
+async function ensure(jobName) {
+  const row = await db('maintenance_jobs').where({ job_name: jobName }).first();
+  if (row) return;
+  try {
+    await db('maintenance_jobs').insert({ job_name: jobName, is_running: false });
+  } catch (err) {
+    if (!isUniqueViolation(err)) throw err;
+  }
+}
 
 /**
  * Try to become the one runner of `jobName`.
@@ -168,6 +189,7 @@ async function read(jobName, { staleAfterMs = DEFAULT_STALE_MS } = {}) {
 }
 
 module.exports = {
+  ensure,
   claim,
   heartbeat,
   release,

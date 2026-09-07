@@ -1601,6 +1601,7 @@ module.exports = (router) => {
     body('allow_presigned_download').optional().isBoolean(),
     body('source_mode').optional().isIn(['managed', 'reference']),
     body('external_path').optional({ nullable: true }).isString().trim(),
+    body('external_watch').optional().isBoolean(),
     body('require_password').optional().isBoolean(),
     // Download protection settings
     body('protection_level').optional().isIn(['basic', 'standard', 'enhanced', 'maximum']),
@@ -1811,8 +1812,16 @@ module.exports = (router) => {
         updates.external_path = trimmedPath || null;
       }
 
+      // Folder watcher opt-in (issue 1187). Written through formatBoolean
+      // like the other event flags so SQLite gets 0/1; a managed event has
+      // no folder to watch, so the switch is cleared with the path.
+      if (Object.prototype.hasOwnProperty.call(updates, 'external_watch')) {
+        updates.external_watch = formatBoolean(updates.external_watch === true || updates.external_watch === 'true');
+      }
+
       if (updates.source_mode === 'managed') {
         updates.external_path = null;
+        updates.external_watch = formatBoolean(false);
       }
 
       if (updates.source_mode === 'reference' && (updates.external_path === null || updates.external_path === undefined)) {

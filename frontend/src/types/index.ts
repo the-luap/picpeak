@@ -39,6 +39,8 @@ export interface Event {
   unique_visitors?: number;
   source_mode?: 'managed' | 'reference' | string;
   external_path?: string | null;
+  // Folder watcher opt-in (issue 1187). SQLite hands back 0/1, Postgres a boolean.
+  external_watch?: boolean | number | null;
   // Download protection fields
   allow_downloads?: boolean;
   protection_level?: 'basic' | 'standard' | 'enhanced' | 'maximum';

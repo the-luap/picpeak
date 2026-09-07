@@ -424,6 +424,7 @@ export const EventDetailsPage: React.FC = () => {
       customer_phone: event.customer_phone || '',
       source_mode: event.source_mode === 'reference' ? 'reference' : 'managed',
       external_path: event.external_path || '',
+      external_watch: Boolean(event.external_watch),
       require_password: normalizeRequirePassword(event.require_password),
       new_password: '',
       confirm_new_password: '',
@@ -626,6 +627,9 @@ export const EventDetailsPage: React.FC = () => {
     updateData.external_path = editForm.source_mode === 'reference'
       ? externalPathToSave
       : null;
+    // Always sent, like og_image_share_enabled: the backend writes through
+    // formatBoolean, so a save can switch the watcher off again.
+    updateData.external_watch = editForm.source_mode === 'reference' && editForm.external_watch;
     if (editForm.customer_name !== undefined && editForm.customer_name !== null) {
       updateData.customer_name = editForm.customer_name;
     }

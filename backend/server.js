@@ -1132,6 +1132,15 @@ async function startServer() {
     
     // Start file watcher
     startFileWatcher();
+    // External-media folder watcher (issue 1187): imports new files into
+    // reference events that opted in. Not gated on STORAGE_BACKEND like the
+    // managed watcher — EXTERNAL_MEDIA_ROOT is always a local path.
+    try {
+      const { startExternalMediaWatcher } = require('./src/services/externalMediaWatcher');
+      startExternalMediaWatcher();
+    } catch (err) {
+      logger.warn('External-media watcher failed to start:', err.message);
+    }
     
     // Start expiration checker
     startExpirationChecker();

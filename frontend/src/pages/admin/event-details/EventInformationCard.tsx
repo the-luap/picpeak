@@ -356,6 +356,22 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                 {t('events.externalFolderHint', 'These folders come from the /external-media mount inside the container. Ensure it is accessible to the backend process.')}
               </p>
+              <label className="flex items-start gap-2 cursor-pointer mt-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-neutral-300 dark:border-neutral-600 text-accent focus:ring-primary-500"
+                  checked={editForm.external_watch === true}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, external_watch: e.target.checked }))}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                    {t('events.externalWatch', 'Watch folder for new files')}
+                  </span>
+                  <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    {t('events.externalWatchHint', 'New images copied into this folder are imported automatically, the same way the Import button does it. Files removed from the folder are never deleted from the gallery.')}
+                  </span>
+                </span>
+              </label>
             </div>
           )}
 
@@ -849,6 +865,11 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
               {event.source_mode === 'reference' ? t('events.sourceModeReference', 'Reference external folder') : t('events.sourceModeManaged', 'Managed (upload to PicPeak)')}
               {event.source_mode === 'reference' && event.external_path ? (
                 <span className="text-neutral-500 dark:text-neutral-400 ml-2">/external-media/{event.external_path}</span>
+              ) : null}
+              {event.source_mode === 'reference' && event.external_watch ? (
+                <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                  {t('events.externalWatchActive', 'Folder is watched — new files are imported automatically.')}
+                </span>
               ) : null}
             </dd>
           </div>
