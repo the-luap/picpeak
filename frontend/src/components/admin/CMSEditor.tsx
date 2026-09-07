@@ -61,6 +61,7 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
   const [showHelp, setShowHelp] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const toolbarRef = React.useRef<HTMLDivElement | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -117,6 +118,34 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
   }, []);
 
   // Update editor content when prop changes
+  // With the toolbar pinned (#1289), ProseMirror's default scroll margin
+  // would treat a caret directly under it as visible, so arrowing upward
+  // through a long document could edit text behind the toolbar. The block's
+  // height is not a constant: the formatting row wraps to two rows at common
+  // desktop widths, and the link-entry row comes and goes. Measure it and
+  // hand ProseMirror the offsets through setOptions, which re-applies
+  // editorProps to the live view. Below md the toolbar is not sticky, so the
+  // offsets go back to zero rather than over-scrolling by a whole toolbar.
+  React.useEffect(() => {
+    const block = toolbarRef.current;
+    if (!editor || !block) return;
+    const apply = () => {
+      const pinned = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 768px)').matches;
+      const height = pinned ? Math.ceil(block.getBoundingClientRect().height) : 0;
+      editor.setOptions({
+        editorProps: {
+          scrollThreshold: { top: height + 8, right: 0, bottom: 0, left: 0 },
+          scrollMargin: { top: height + 16, right: 0, bottom: 0, left: 0 },
+        },
+      });
+    };
+    apply();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(apply);
+    observer.observe(block);
+    return () => observer.disconnect();
+  }, [editor, viewMode, showLinkDialog]);
+
   React.useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
@@ -187,9 +216,19 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
 
   return (
     <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-neutral-900' : ''}`}>
-      <div className="border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-hidden h-full flex flex-col bg-white dark:bg-neutral-900">
-        {/* Top Toolbar */}
-        <div className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+      {/* overflow-clip, not overflow-hidden: both clip the rounded corners, but
+          hidden makes this box a scroll container, and the sticky toolbar
+          below would pin to it instead of to the admin page's scroller. */}
+      <div className="border border-neutral-300 dark:border-neutral-700 rounded-lg overflow-clip h-full flex flex-col bg-white dark:bg-neutral-900">
+        {/* Top Toolbar — sticky from md up (#1289). The editor pane has no
+            bounded height on the CMS page, so a long document scrolls the
+            whole admin content area and the toolbar used to leave with it;
+            editing a 16-section privacy policy meant scrolling back up for
+            every heading. Sticking it to the page's scroller keeps both rows
+            (mode/save and formatting) in reach. Not below md: there the
+            formatting row wraps to several lines and would permanently eat
+            most of a phone's editing area. */}
+        <div ref={toolbarRef} className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 md:sticky md:top-0 md:z-10">
           {/* View Mode Controls */}
           <div className="flex items-center justify-between p-2 border-b border-neutral-200 dark:border-neutral-700">
             <div className="flex items-center gap-2">
@@ -428,29 +467,30 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
               </MenuButton>
             </div>
           )}
+          {/* Link entry row — inside the sticky block on purpose (#1289):
+              rendered below it, the URL field ended up at the toolbar's
+              original document position, under the pinned toolbar. */}
+          {showLinkDialog && (
+            <div className="p-3 bg-accent-dark/15 border-b border-accent-dark/30 flex items-center gap-2">
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addLink()}
+                placeholder={t('cms.editor.linkUrlPlaceholder', 'Enter URL...')}
+                className="flex-1 px-3 py-1 border border-accent-dark/30 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-2 focus:ring-primary-500"
+                autoFocus
+              />
+              <Button size="sm" onClick={addLink}>{t('cms.editor.addLink', 'Add Link')}</Button>
+              <Button size="sm" variant="outline" onClick={() => {
+                setShowLinkDialog(false);
+                setLinkUrl('');
+              }}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+            </div>
+          )}
         </div>
-
-        {/* Link Dialog */}
-        {showLinkDialog && (
-          <div className="p-3 bg-accent-dark/15 border-b border-accent-dark/30 flex items-center gap-2">
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addLink()}
-              placeholder={t('cms.editor.linkUrlPlaceholder', 'Enter URL...')}
-              className="flex-1 px-3 py-1 border border-accent-dark/30 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-md focus:ring-2 focus:ring-primary-500"
-              autoFocus
-            />
-            <Button size="sm" onClick={addLink}>{t('cms.editor.addLink', 'Add Link')}</Button>
-            <Button size="sm" variant="outline" onClick={() => {
-              setShowLinkDialog(false);
-              setLinkUrl('');
-            }}>
-              {t('common.cancel', 'Cancel')}
-            </Button>
-          </div>
-        )}
 
         {/* Editor Content Area */}
         <div className="flex-1 flex overflow-hidden">
