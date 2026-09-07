@@ -1791,22 +1791,18 @@
   "inventory_totals": {
     "galleries": {
       "name": {
-        "en": "Stored galleries",
-        "de": "Gespeicherte Galerien"
+        "en": "Stored galleries"
       },
       "description": {
-        "en": "Current number of gallery records, including drafts, inactive and archived galleries. Deleted galleries are excluded. One total for the installation, no breakdown or identifiers.",
-        "de": "Aktuelle Anzahl gespeicherter Galerien einschließlich Entwürfen, inaktiven und archivierten Galerien. Gelöschte Galerien zählen nicht. Eine Gesamtzahl der Installation, ohne Aufschlüsselung oder Kennungen."
+        "en": "Current number of gallery records, including drafts, inactive and archived galleries. Deleted galleries are excluded. One total for the installation, no breakdown or identifiers."
       }
     },
     "photos": {
       "name": {
-        "en": "Stored photo records",
-        "de": "Gespeicherte Fotoeinträge"
+        "en": "Stored photo records"
       },
       "description": {
-        "en": "Current number of non-video photo records, including RAW, guest uploads and records of archived galleries. One total for the installation; not unique files, thumbnails, processing success or photo contents. Deleted records are excluded.",
-        "de": "Aktuelle Anzahl der Fotoeinträge ohne Videos, einschließlich RAW, Gast-Uploads und Einträgen archivierter Galerien. Eine Gesamtzahl der Installation; keine eindeutigen Dateien, Vorschaubilder, Verarbeitungserfolge oder Fotoinhalte. Gelöschte Einträge zählen nicht."
+        "en": "Current number of non-video photo records, including RAW, guest uploads and records of archived galleries. One total for the installation; not unique files, thumbnails, processing success or photo contents. Deleted records are excluded."
       }
     }
   }

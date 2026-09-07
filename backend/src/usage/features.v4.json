@@ -9,16 +9,13 @@
       "configuration": "flag",
       "flag": "clients",
       "name": {
-        "en": "Client management",
-        "de": "Kundenverwaltung"
+        "en": "Client management"
       },
       "configured": {
-        "en": "The clients capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter clients ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The clients capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_quotes": {
@@ -28,16 +25,13 @@
       "configuration": "flag",
       "flag": "quotes",
       "name": {
-        "en": "Quotes",
-        "de": "Angebote"
+        "en": "Quotes"
       },
       "configured": {
-        "en": "The quotes capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter quotes ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The quotes capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_invoices": {
@@ -47,16 +41,13 @@
       "configuration": "flag",
       "flag": "bills",
       "name": {
-        "en": "Invoices",
-        "de": "Rechnungen"
+        "en": "Invoices"
       },
       "configured": {
-        "en": "The bills capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter bills ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The bills capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_contracts": {
@@ -66,16 +57,13 @@
       "configuration": "flag",
       "flag": "contracts",
       "name": {
-        "en": "Contracts",
-        "de": "Verträge"
+        "en": "Contracts"
       },
       "configured": {
-        "en": "The contracts capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter contracts ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The contracts capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_projects": {
@@ -85,16 +73,13 @@
       "configuration": "flag",
       "flag": "projects",
       "name": {
-        "en": "Projects",
-        "de": "Projekte"
+        "en": "Projects"
       },
       "configured": {
-        "en": "The projects capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter projects ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The projects capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_calendar": {
@@ -104,16 +89,13 @@
       "configuration": "flag",
       "flag": "calendar",
       "name": {
-        "en": "Admin calendar",
-        "de": "Admin-Kalender"
+        "en": "Admin calendar"
       },
       "configured": {
-        "en": "The calendar capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter calendar ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The calendar capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_hours": {
@@ -123,16 +105,13 @@
       "configuration": "flag",
       "flag": "hoursLogging",
       "name": {
-        "en": "Hours logging",
-        "de": "Zeiterfassung"
+        "en": "Hours logging"
       },
       "configured": {
-        "en": "The hoursLogging capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter hoursLogging ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The hoursLogging capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "customer_portal": {
@@ -142,16 +121,13 @@
       "configuration": "flag",
       "flag": "customerPortal",
       "name": {
-        "en": "Customer portal",
-        "de": "Kundenportal"
+        "en": "Customer portal"
       },
       "configured": {
-        "en": "The customerPortal capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter customerPortal ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The customerPortal capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "accounting": {
@@ -161,16 +137,13 @@
       "configuration": "flag",
       "flag": "accounting",
       "name": {
-        "en": "Accounting",
-        "de": "Buchhaltung"
+        "en": "Accounting"
       },
       "configured": {
-        "en": "The accounting capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter accounting ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The accounting capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "workflows": {
@@ -180,16 +153,13 @@
       "configuration": "flag",
       "flag": "workflows",
       "name": {
-        "en": "Workflows",
-        "de": "Workflows"
+        "en": "Workflows"
       },
       "configured": {
-        "en": "The workflows capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter workflows ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The workflows capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "newsletters": {
@@ -199,16 +169,13 @@
       "configuration": "flag",
       "flag": "newsletters",
       "name": {
-        "en": "Newsletters",
-        "de": "Newsletter"
+        "en": "Newsletters"
       },
       "configured": {
-        "en": "The newsletters capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter newsletters ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The newsletters capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "face_recognition": {
@@ -218,16 +185,13 @@
       "configuration": "flag",
       "flag": "faces",
       "name": {
-        "en": "ML face recognition",
-        "de": "ML-Gesichtserkennung"
+        "en": "ML face recognition"
       },
       "configured": {
-        "en": "The faces capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter faces ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The faces capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "custom_css": {
@@ -236,16 +200,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Custom CSS",
-        "de": "Eigenes CSS"
+        "en": "Custom CSS"
       },
       "configured": {
-        "en": "Custom CSS is configured globally or applied through a gallery/theme/template; CSS text is not sent.",
-        "de": "Eigenes CSS ist global oder über Galerie/Theme/Vorlage eingerichtet; CSS-Inhalte werden nicht gesendet."
+        "en": "Custom CSS is configured globally or applied through a gallery/theme/template; CSS text is not sent."
       },
       "used": {
-        "en": "Applied CSS observed after consent, without observing visitors.",
-        "de": "Angewendetes CSS nach Zustimmung festgestellt, ohne Besucher zu beobachten."
+        "en": "Applied CSS observed after consent, without observing visitors."
       }
     },
     "oauth": {
@@ -254,16 +215,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Admin SSO",
-        "de": "Admin-SSO"
+        "en": "Admin SSO"
       },
       "configured": {
-        "en": "Admin OIDC is enabled and issuer/client configuration is present; no provider or credential values.",
-        "de": "Admin-OIDC ist aktiviert und die Anbieter-/Client-Konfiguration vorhanden; keine Anbieter- oder Zugangsdaten."
+        "en": "Admin OIDC is enabled and issuer/client configuration is present; no provider or credential values."
       },
       "used": {
-        "en": "Successful admin SSO login; no account, identity-provider or session details.",
-        "de": "Erfolgreiche Admin-SSO-Anmeldung; keine Konto-, Anbieter- oder Sitzungsdetails."
+        "en": "Successful admin SSO login; no account, identity-provider or session details."
       }
     },
     "smtp": {
@@ -272,16 +230,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "SMTP delivery",
-        "de": "SMTP-Versand"
+        "en": "SMTP delivery"
       },
       "configured": {
-        "en": "An outgoing SMTP host is configured; no host, account, address or credentials.",
-        "de": "Ein ausgehender SMTP-Host ist konfiguriert; keine Hosts, Konten, Adressen oder Zugangsdaten."
+        "en": "An outgoing SMTP host is configured; no host, account, address or credentials."
       },
       "used": {
-        "en": "A successful explicitly initiated admin SMTP test/send; no recipients or messages.",
-        "de": "Erfolgreicher ausdrücklich ausgelöster Admin-SMTP-Test/-Versand; keine Empfänger oder Nachrichten."
+        "en": "A successful explicitly initiated admin SMTP test/send; no recipients or messages."
       }
     },
     "whatsapp": {
@@ -290,16 +245,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "WhatsApp integration",
-        "de": "WhatsApp-Integration"
+        "en": "WhatsApp integration"
       },
       "configured": {
-        "en": "The WhatsApp capability is enabled and a usable configuration is present; no phone number, token or template.",
-        "de": "Die WhatsApp-Funktion ist aktiviert und eine nutzbare Konfiguration vorhanden; keine Telefonnummer, Tokens oder Vorlagen."
+        "en": "The WhatsApp capability is enabled and a usable configuration is present; no phone number, token or template."
       },
       "used": {
-        "en": "Successful admin integration test; no recipient, message or delivery history.",
-        "de": "Erfolgreicher Admin-Integrationstest; keine Empfänger, Nachrichten oder Zustellverläufe."
+        "en": "Successful admin integration test; no recipient, message or delivery history."
       }
     },
     "backup": {
@@ -308,16 +260,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Backups",
-        "de": "Sicherungen"
+        "en": "Backups"
       },
       "configured": {
-        "en": "A full or database backup schedule is enabled; no schedule, path, storage sizes or backup names.",
-        "de": "Ein Voll- oder Datenbanksicherungsplan ist aktiviert; keine Zeitpläne, Pfade, Speichergrößen oder Sicherungsnamen."
+        "en": "A full or database backup schedule is enabled; no schedule, path, storage sizes or backup names."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "s3_storage": {
@@ -326,16 +275,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "S3 storage",
-        "de": "S3-Speicher"
+        "en": "S3 storage"
       },
       "configured": {
-        "en": "S3 is configured for media or backups; no bucket, endpoint, credentials or object keys.",
-        "de": "S3 ist für Medien oder Sicherungen konfiguriert; keine Buckets, Endpunkte, Zugangsdaten oder Objektschlüssel."
+        "en": "S3 is configured for media or backups; no bucket, endpoint, credentials or object keys."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "share_mounts": {
@@ -344,16 +290,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "External folders",
-        "de": "Externe Ordner"
+        "en": "External folders"
       },
       "configured": {
-        "en": "At least one gallery uses an external folder; only existence, no folder paths or gallery identifiers.",
-        "de": "Mindestens eine Galerie verwendet einen externen Ordner; nur Existenz, keine Ordnerpfade oder Galeriekennungen."
+        "en": "At least one gallery uses an external folder; only existence, no folder paths or gallery identifiers."
       },
       "used": {
-        "en": "An admin initiated an accepted external-folder import; no scanned paths, files or counts.",
-        "de": "Ein Admin hat einen angenommenen Import aus einem externen Ordner ausgelöst; keine Pfade, Dateien oder Anzahlen."
+        "en": "An admin initiated an accepted external-folder import; no scanned paths, files or counts."
       }
     },
     "galleries": {
@@ -362,16 +305,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Gallery management",
-        "de": "Galerieverwaltung"
+        "en": "Gallery management"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "photo_management": {
@@ -380,16 +320,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Media management",
-        "de": "Medienverwaltung"
+        "en": "Media management"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "photo_exports": {
@@ -398,16 +335,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Admin media export",
-        "de": "Admin-Medienexport"
+        "en": "Admin media export"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "photo_processing": {
@@ -416,16 +350,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Media maintenance tools",
-        "de": "Medien-Wartungswerkzeuge"
+        "en": "Media maintenance tools"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "archive_management": {
@@ -434,16 +365,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Gallery archives",
-        "de": "Galeriearchive"
+        "en": "Gallery archives"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "gallery_sharing": {
@@ -452,16 +380,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Gallery sharing and QR",
-        "de": "Galeriefreigabe und QR"
+        "en": "Gallery sharing and QR"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "short_links": {
@@ -470,16 +395,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Short links",
-        "de": "Kurzlinks"
+        "en": "Short links"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "gallery_categories": {
@@ -488,16 +410,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Photo categories",
-        "de": "Fotokategorien"
+        "en": "Photo categories"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "event_types": {
@@ -506,16 +425,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Event types and presets",
-        "de": "Ereignistypen und Vorlagen"
+        "en": "Event types and presets"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "slideshow": {
@@ -525,16 +441,13 @@
       "configuration": "flag",
       "flag": "slideshow",
       "name": {
-        "en": "Live slideshow",
-        "de": "Live-Diashow"
+        "en": "Live slideshow"
       },
       "configured": {
-        "en": "The slideshow capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter slideshow ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The slideshow capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "transfers": {
@@ -544,16 +457,13 @@
       "configuration": "flag",
       "flag": "transfers",
       "name": {
-        "en": "PicTransfer",
-        "de": "PicTransfer"
+        "en": "PicTransfer"
       },
       "configured": {
-        "en": "The transfers capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter transfers ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The transfers capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "video_uploads": {
@@ -562,16 +472,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Admin video uploads",
-        "de": "Admin-Video-Uploads"
+        "en": "Admin video uploads"
       },
       "configured": {
-        "en": "Video extensions are allowed in global upload settings; no uploaded-file metadata.",
-        "de": "Videoformate sind in den globalen Upload-Einstellungen erlaubt; keine Metadaten hochgeladener Dateien."
+        "en": "Video extensions are allowed in global upload settings; no uploaded-file metadata."
       },
       "used": {
-        "en": "At least one admin video file was successfully stored/accepted; no names, formats, lengths, sizes or processing/visitor history.",
-        "de": "Mindestens eine Admin-Videodatei wurde erfolgreich gespeichert/angenommen; keine Namen, Formate, Längen, Größen oder Verarbeitungs-/Besucherverläufe."
+        "en": "At least one admin video file was successfully stored/accepted; no names, formats, lengths, sizes or processing/visitor history."
       }
     },
     "camera_raw_uploads": {
@@ -580,16 +487,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Admin camera RAW uploads",
-        "de": "Admin-Kamera-RAW-Uploads"
+        "en": "Admin camera RAW uploads"
       },
       "configured": {
-        "en": "Camera RAW (DNG) is allowed in global upload settings; no camera models or EXIF.",
-        "de": "Kamera-RAW (DNG) ist in den globalen Upload-Einstellungen erlaubt; keine Kameramodelle oder EXIF-Daten."
+        "en": "Camera RAW (DNG) is allowed in global upload settings; no camera models or EXIF."
       },
       "used": {
-        "en": "At least one admin camera RAW upload was stored/accepted; only the capability bit, no filename or metadata.",
-        "de": "Mindestens ein Admin-Kamera-RAW-Upload wurde gespeichert/angenommen; nur das Capability-Bit, keine Dateinamen oder Metadaten."
+        "en": "At least one admin camera RAW upload was stored/accepted; only the capability bit, no filename or metadata."
       }
     },
     "messaging": {
@@ -599,16 +503,13 @@
       "configuration": "flag",
       "flag": "messaging",
       "name": {
-        "en": "Messaging tools",
-        "de": "Nachrichtenwerkzeuge"
+        "en": "Messaging tools"
       },
       "configured": {
-        "en": "The messaging capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter messaging ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The messaging capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "incoming_mail": {
@@ -617,16 +518,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "IMAP intake",
-        "de": "IMAP-Empfang"
+        "en": "IMAP intake"
       },
       "configured": {
-        "en": "Incoming mail is enabled and an IMAP configuration is present; no mailbox, server, folders or credentials.",
-        "de": "Eingehende E-Mails sind aktiviert und eine IMAP-Konfiguration vorhanden; keine Postfächer, Server, Ordner oder Zugangsdaten."
+        "en": "Incoming mail is enabled and an IMAP configuration is present; no mailbox, server, folders or credentials."
       },
       "used": {
-        "en": "A successful explicit admin connection test or non-skipped manual poll; no background intake, messages, attachments or counts.",
-        "de": "Erfolgreicher expliziter Admin-Verbindungstest oder nicht übersprungener manueller Abruf; kein Hintergrundempfang, keine Nachrichten, Anhänge oder Anzahlen."
+        "en": "A successful explicit admin connection test or non-skipped manual poll; no background intake, messages, attachments or counts."
       }
     },
     "reminder_emails": {
@@ -636,12 +534,10 @@
       "configuration": "configuration",
       "flag": "reminderEmails",
       "name": {
-        "en": "Automatic event reminders",
-        "de": "Automatische Ereigniserinnerungen"
+        "en": "Automatic event reminders"
       },
       "configured": {
-        "en": "The reminderEmails capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter reminderEmails ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The reminderEmails capability switch is effectively enabled; only a boolean."
       },
       "used": null
     },
@@ -651,16 +547,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Email templates",
-        "de": "E-Mail-Vorlagen"
+        "en": "Email templates"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "email_webhook": {
@@ -669,16 +562,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Email webhook transport",
-        "de": "E-Mail-Webhook-Transport"
+        "en": "Email webhook transport"
       },
       "configured": {
-        "en": "Both email webhook settings are present; no URL or secret.",
-        "de": "Beide E-Mail-Webhook-Einstellungen sind vorhanden; keine URL oder Geheimnisse."
+        "en": "Both email webhook settings are present; no URL or secret."
       },
       "used": {
-        "en": "Successful explicitly initiated admin send/test through the webhook transport; no recipients, messages or automatic deliveries.",
-        "de": "Erfolgreicher ausdrücklich ausgelöster Admin-Versand/-Test über den Webhook-Transport; keine Empfänger, Nachrichten oder automatischen Zustellungen."
+        "en": "Successful explicitly initiated admin send/test through the webhook transport; no recipients, messages or automatic deliveries."
       }
     },
     "accounting_incoming_invoices": {
@@ -688,16 +578,13 @@
       "configuration": "flag",
       "flag": "incomingInvoices",
       "name": {
-        "en": "Incoming invoices",
-        "de": "Eingangsrechnungen"
+        "en": "Incoming invoices"
       },
       "configured": {
-        "en": "The incomingInvoices capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter incomingInvoices ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The incomingInvoices capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "accounting_expenses": {
@@ -707,16 +594,13 @@
       "configuration": "flag",
       "flag": "expenses",
       "name": {
-        "en": "Expenses",
-        "de": "Ausgaben"
+        "en": "Expenses"
       },
       "configured": {
-        "en": "The expenses capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter expenses ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The expenses capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "accounting_tax_report": {
@@ -726,16 +610,13 @@
       "configuration": "flag",
       "flag": "taxReport",
       "name": {
-        "en": "Tax reports",
-        "de": "Steuerberichte"
+        "en": "Tax reports"
       },
       "configured": {
-        "en": "The taxReport capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter taxReport ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The taxReport capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "accounting_ledger": {
@@ -745,16 +626,13 @@
       "configuration": "flag",
       "flag": "accounting",
       "name": {
-        "en": "Ledger and accounting export",
-        "de": "Kontenplan und Buchhaltungsexport"
+        "en": "Ledger and accounting export"
       },
       "configured": {
-        "en": "The accounting capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter accounting ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The accounting capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "crm_installments": {
@@ -763,16 +641,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Installment-plan tools",
-        "de": "Ratenplan-Werkzeuge"
+        "en": "Installment-plan tools"
       },
       "configured": {
-        "en": "Quotes or invoices are enabled; no actual payment plans, amounts or statuses are inspected.",
-        "de": "Angebote oder Rechnungen sind aktiviert; tatsächliche Ratenpläne, Beträge oder Zahlungsstatus werden nicht geprüft."
+        "en": "Quotes or invoices are enabled; no actual payment plans, amounts or statuses are inspected."
       },
       "used": {
-        "en": "An admin saved an installment plan; no dates, amounts, currencies, payment status or document IDs.",
-        "de": "Ein Admin hat einen Ratenplan gespeichert; keine Termine, Beträge, Währungen, Zahlungsstatus oder Dokumentkennungen."
+        "en": "An admin saved an installment plan; no dates, amounts, currencies, payment status or document IDs."
       }
     },
     "document_templates": {
@@ -781,16 +656,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Document presets and blocks",
-        "de": "Dokumentvorlagen und Bausteine"
+        "en": "Document presets and blocks"
       },
       "configured": {
-        "en": "Quotes or contracts are enabled, making document presets/blocks available; no template content.",
-        "de": "Angebote oder Verträge sind aktiviert und stellen Dokumentvorlagen/-bausteine bereit; keine Vorlageninhalte."
+        "en": "Quotes or contracts are enabled, making document presets/blocks available; no template content."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "cms": {
@@ -799,16 +671,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "CMS pages",
-        "de": "CMS-Seiten"
+        "en": "CMS pages"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "public_site": {
@@ -817,12 +686,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Public landing page",
-        "de": "Öffentliche Startseite"
+        "en": "Public landing page"
       },
       "configured": {
-        "en": "The public landing-page setting is enabled; no page HTML, texts, domains or visitors.",
-        "de": "Die Einstellung für die öffentliche Startseite ist aktiviert; keine HTML-Inhalte, Texte, Domains oder Besucher."
+        "en": "The public landing-page setting is enabled; no page HTML, texts, domains or visitors."
       },
       "used": null
     },
@@ -832,16 +699,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Branding settings",
-        "de": "Branding-Einstellungen"
+        "en": "Branding settings"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "seo_customization": {
@@ -850,16 +714,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "SEO settings",
-        "de": "SEO-Einstellungen"
+        "en": "SEO settings"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "admin_management": {
@@ -869,16 +730,13 @@
       "configuration": "flag",
       "flag": "userManagement",
       "name": {
-        "en": "Admin and role management",
-        "de": "Admin- und Rollenverwaltung"
+        "en": "Admin and role management"
       },
       "configured": {
-        "en": "The userManagement capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter userManagement ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The userManagement capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "api_integration": {
@@ -887,16 +745,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "HTTP API integration",
-        "de": "HTTP-API-Integration"
+        "en": "HTTP API integration"
       },
       "configured": {
-        "en": "An unrevoked, unexpired API credential exists; no tokens, names, scopes or owner data.",
-        "de": "Ein nicht widerrufener und nicht abgelaufener API-Zugang existiert; keine Tokens, Namen, Berechtigungswerte oder Inhaberdaten."
+        "en": "An unrevoked, unexpired API credential exists; no tokens, names, scopes or owner data."
       },
       "used": {
-        "en": "Successful authenticated HTTP API capability call; only this bit, never URLs, request values, token/owner IDs or call counts. Does not trigger a report.",
-        "de": "Erfolgreicher authentifizierter HTTP-API-Funktionsaufruf; nur dieses Bit, niemals URLs, Requestwerte, Token-/Inhaberkennungen oder Aufrufzahlen. Löst keinen Report aus."
+        "en": "Successful authenticated HTTP API capability call; only this bit, never URLs, request values, token/owner IDs or call counts. Does not trigger a report."
       }
     },
     "webhooks": {
@@ -905,16 +760,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Outbound webhooks",
-        "de": "Ausgehende Webhooks"
+        "en": "Outbound webhooks"
       },
       "configured": {
-        "en": "At least one active webhook is configured; no destinations, subscriptions, secrets or delivery logs.",
-        "de": "Mindestens ein aktiver Webhook ist konfiguriert; keine Ziele, Abonnements, Geheimnisse oder Zustellprotokolle."
+        "en": "At least one active webhook is configured; no destinations, subscriptions, secrets or delivery logs."
       },
       "used": {
-        "en": "Successful explicit admin webhook test/replay; no automatic or visitor-triggered deliveries.",
-        "de": "Erfolgreicher expliziter Admin-Webhook-Test/-Replay; keine automatischen oder durch Besucher ausgelösten Zustellungen."
+        "en": "Successful explicit admin webhook test/replay; no automatic or visitor-triggered deliveries."
       }
     },
     "restore": {
@@ -923,16 +775,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Restore",
-        "de": "Wiederherstellung"
+        "en": "Restore"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "portable_backup": {
@@ -941,16 +790,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Portable PicPeak export/import",
-        "de": "Portabler PicPeak-Export/Import"
+        "en": "Portable PicPeak export/import"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "database_backup": {
@@ -959,16 +805,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "Database backups",
-        "de": "Datenbanksicherungen"
+        "en": "Database backups"
       },
       "configured": {
-        "en": "Scheduled database backups are enabled; no schedules, file names or database contents.",
-        "de": "Geplante Datenbanksicherungen sind aktiviert; keine Zeitpläne, Dateinamen oder Datenbankinhalte."
+        "en": "Scheduled database backups are enabled; no schedules, file names or database contents."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "s3_photo_storage": {
@@ -977,16 +820,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "S3 media storage",
-        "de": "S3-Medienspeicher"
+        "en": "S3 media storage"
       },
       "configured": {
-        "en": "S3 is the configured media backend and required credentials are present; no values are sent.",
-        "de": "S3 ist als Medienspeicher konfiguriert und erforderliche Zugangsdaten sind vorhanden; keine Werte werden gesendet."
+        "en": "S3 is the configured media backend and required credentials are present; no values are sent."
       },
       "used": {
-        "en": "Successful admin media storage/accepted upload to S3; no buckets, objects or sizes.",
-        "de": "Erfolgreiche Admin-Medienspeicherung/angenommener Upload nach S3; keine Buckets, Objekte oder Größen."
+        "en": "Successful admin media storage/accepted upload to S3; no buckets, objects or sizes."
       }
     },
     "s3_backups": {
@@ -995,16 +835,13 @@
       "measurement": "configuration_and_use",
       "configuration": "presence",
       "name": {
-        "en": "S3 backup destination",
-        "de": "S3-Sicherungsziel"
+        "en": "S3 backup destination"
       },
       "configured": {
-        "en": "The configured backup destination is S3 with a bucket present; no bucket or credentials.",
-        "de": "Das konfigurierte Sicherungsziel ist S3 und ein Bucket ist angegeben; kein Bucketname oder Zugangsdaten."
+        "en": "The configured backup destination is S3 with a bucket present; no bucket or credentials."
       },
       "used": {
-        "en": "An admin started a backup to the configured S3 destination or a successful S3 test upload; local exports never imply S3 use.",
-        "de": "Ein Admin hat eine Sicherung zum konfigurierten S3-Ziel oder einen erfolgreichen S3-Testupload gestartet; lokale Exporte implizieren keine S3-Nutzung."
+        "en": "An admin started a backup to the configured S3 destination or a successful S3 test upload; local exports never imply S3 use."
       }
     },
     "analytics_dashboard": {
@@ -1014,16 +851,13 @@
       "configuration": "flag",
       "flag": "analytics",
       "name": {
-        "en": "Existing analytics module",
-        "de": "Bestehendes Analytics-Modul"
+        "en": "Existing analytics module"
       },
       "configured": {
-        "en": "The analytics capability switch is effectively enabled; only a boolean.",
-        "de": "Der Funktionsschalter analytics ist effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The analytics capability switch is effectively enabled; only a boolean."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "feedback_moderation": {
@@ -1032,16 +866,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Feedback moderation",
-        "de": "Feedback-Moderation"
+        "en": "Feedback moderation"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "guest_management": {
@@ -1050,16 +881,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Guest administration tools",
-        "de": "Gastverwaltungswerkzeuge"
+        "en": "Guest administration tools"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts.",
-        "de": "Eine dokumentierte erfolgreiche authentifizierte Admin-Funktionsoperation wurde seit Zustimmung zu diesem Schema beobachtet. Keine Person, Operationshistorie, Parameter oder Anzahlen."
+        "en": "A documented successful authenticated admin capability operation was observed since consent to this schema. No actor, operation history, parameters or counts."
       }
     },
     "gallery_feedback_likes": {
@@ -1068,12 +896,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery likes enabled",
-        "de": "Galerie-Likes aktiviert"
+        "en": "Gallery likes enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1083,12 +909,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery star ratings enabled",
-        "de": "Galerie-Sternebewertungen aktiviert"
+        "en": "Gallery star ratings enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1098,12 +922,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery comments enabled",
-        "de": "Galerie-Kommentare aktiviert"
+        "en": "Gallery comments enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1113,12 +935,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery favorites enabled",
-        "de": "Galerie-Favoriten aktiviert"
+        "en": "Gallery favorites enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1128,12 +948,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery reactions enabled",
-        "de": "Galerie-Reaktionen aktiviert"
+        "en": "Gallery reactions enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1143,12 +961,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery color labels enabled",
-        "de": "Galerie-Farblabels aktiviert"
+        "en": "Gallery color labels enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1158,12 +974,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Guest identities enabled",
-        "de": "Gastidentitäten aktiviert"
+        "en": "Guest identities enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1173,12 +987,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Guest uploads enabled",
-        "de": "Gast-Uploads aktiviert"
+        "en": "Guest uploads enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1188,12 +1000,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery downloads restricted",
-        "de": "Galerie-Downloads eingeschränkt"
+        "en": "Gallery downloads restricted"
       },
       "configured": {
-        "en": "At least one gallery has downloads switched off; only existence across the installation, never gallery IDs or counts.",
-        "de": "Mindestens eine Galerie hat Downloads abgeschaltet; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "At least one gallery has downloads switched off; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1203,12 +1013,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Download resolution picker enabled",
-        "de": "Download-Auflösungswahl aktiviert"
+        "en": "Download resolution picker enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1218,12 +1026,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Client access enabled",
-        "de": "Client-Zugang aktiviert"
+        "en": "Client access enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1233,12 +1039,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Watermarks enabled",
-        "de": "Wasserzeichen aktiviert"
+        "en": "Watermarks enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1248,12 +1052,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Image protection enabled",
-        "de": "Bildschutz aktiviert"
+        "en": "Image protection enabled"
       },
       "configured": {
-        "en": "Enabled beyond the shipped defaults — a stronger protection level, canvas rendering, or right-click disabled — globally or on at least one gallery; only existence across the installation, never gallery IDs or counts.",
-        "de": "Über die Auslieferungsvorgaben hinaus aktiviert — höhere Schutzstufe, Canvas-Rendering oder deaktivierter Rechtsklick — global oder in mindestens einer Galerie; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled beyond the shipped defaults — a stronger protection level, canvas rendering, or right-click disabled — globally or on at least one gallery; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1263,12 +1065,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery reveal enabled",
-        "de": "Galerie-Enthüllung aktiviert"
+        "en": "Gallery reveal enabled"
       },
       "configured": {
-        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts.",
-        "de": "In der betreffenden Galerie-/Globalkonfiguration aktiviert; nur installationsweite Existenz, niemals Galeriekennungen oder Anzahlen."
+        "en": "Enabled in applicable gallery/global configuration; only existence across the installation, never gallery IDs or counts."
       },
       "used": null
     },
@@ -1278,12 +1078,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery expiration configured",
-        "de": "Galerieablauf konfiguriert"
+        "en": "Gallery expiration configured"
       },
       "configured": {
-        "en": "At least one gallery has an expiry configured; no dates, gallery IDs or counts.",
-        "de": "Mindestens eine Galerie hat einen Ablauf konfiguriert; keine Daten, Galeriekennungen oder Anzahlen."
+        "en": "At least one gallery has an expiry configured; no dates, gallery IDs or counts."
       },
       "used": null
     },
@@ -1293,16 +1091,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "XMP export",
-        "de": "XMP-Export"
+        "en": "XMP export"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "An admin successfully generated an XMP export; no sidecars, filenames, ratings, selections or counts.",
-        "de": "Ein Admin hat erfolgreich einen XMP-Export erstellt; keine Sidecars, Dateinamen, Bewertungen, Auswahlen oder Anzahlen."
+        "en": "An admin successfully generated an XMP export; no sidecars, filenames, ratings, selections or counts."
       }
     },
     "photo_replacement": {
@@ -1311,16 +1106,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Photo replacement",
-        "de": "Fotoersetzung"
+        "en": "Photo replacement"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "An admin upload actually replaced a photo successfully; no filenames, matching values, IDs or counts.",
-        "de": "Ein Admin-Upload hat tatsächlich erfolgreich ein Foto ersetzt; keine Dateinamen, Abgleichwerte, Kennungen oder Anzahlen."
+        "en": "An admin upload actually replaced a photo successfully; no filenames, matching values, IDs or counts."
       }
     },
     "photo_admin_marks": {
@@ -1329,16 +1121,13 @@
       "measurement": "configuration_and_use",
       "configuration": "builtin",
       "name": {
-        "en": "Photographer marks",
-        "de": "Fotografenmarkierungen"
+        "en": "Photographer marks"
       },
       "configured": {
-        "en": "Built-in capability is available; this is not evidence of use.",
-        "de": "Integrierte Funktion ist verfügbar; dies ist kein Nutzungsnachweis."
+        "en": "Built-in capability is available; this is not evidence of use."
       },
       "used": {
-        "en": "An admin successfully saved their own photo mark; no rating, color, photo or admin identity.",
-        "de": "Ein Admin hat eine eigene Fotomarkierung erfolgreich gespeichert; keine Bewertung, Farbe, Foto- oder Admin-Identität."
+        "en": "An admin successfully saved their own photo mark; no rating, color, photo or admin identity."
       }
     },
     "gallery_folders": {
@@ -1347,12 +1136,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Gallery folders configured",
-        "de": "Galerieordner eingerichtet"
+        "en": "Gallery folders configured"
       },
       "configured": {
-        "en": "An applicable global or gallery category is configured as a folder; no names, contents, counts or visitor activity.",
-        "de": "Eine anwendbare globale oder Galerie-Kategorie ist als Ordner eingerichtet; keine Namen, Inhalte, Anzahlen oder Besucheraktivität."
+        "en": "An applicable global or gallery category is configured as a folder; no names, contents, counts or visitor activity."
       },
       "used": null
     },
@@ -1362,12 +1149,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "PicTransfer upload links enabled",
-        "de": "PicTransfer-Uploadlinks aktiviert"
+        "en": "PicTransfer upload links enabled"
       },
       "configured": {
-        "en": "PicTransfer is enabled and a non-deleted transfer allows unexpired uploads; no links, tokens, dates, recipients or uploads.",
-        "de": "PicTransfer ist aktiviert und ein nicht gelöschter Transfer erlaubt noch gültige Uploads; keine Links, Tokens, Daten, Empfänger oder Uploads."
+        "en": "PicTransfer is enabled and a non-deleted transfer allows unexpired uploads; no links, tokens, dates, recipients or uploads."
       },
       "used": null
     },
@@ -1377,12 +1162,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Workflow automation enabled",
-        "de": "Workflow-Automation aktiviert"
+        "en": "Workflow automation enabled"
       },
       "configured": {
-        "en": "The workflows module and at least one workflow are enabled; no names, graphs, triggers, decisions or runs.",
-        "de": "Das Workflow-Modul und mindestens ein Workflow sind aktiviert; keine Namen, Graphen, Auslöser, Entscheidungen oder Durchläufe."
+        "en": "The workflows module and at least one workflow are enabled; no names, graphs, triggers, decisions or runs."
       },
       "used": null
     },
@@ -1392,12 +1175,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "S3 automatic import enabled",
-        "de": "Automatischer S3-Import aktiviert"
+        "en": "S3 automatic import enabled"
       },
       "configured": {
-        "en": "S3 media storage is configured and STORAGE_AUTO_IMPORT is enabled; no bucket, prefix, credentials, polling or imported objects.",
-        "de": "S3-Medienspeicher ist eingerichtet und STORAGE_AUTO_IMPORT aktiviert; keine Buckets, Präfixe, Zugangsdaten, Abfragen oder importierten Objekte."
+        "en": "S3 media storage is configured and STORAGE_AUTO_IMPORT is enabled; no bucket, prefix, credentials, polling or imported objects."
       },
       "used": null
     },
@@ -1407,16 +1188,13 @@
       "measurement": "configuration_and_use",
       "configuration": "flag",
       "name": {
-        "en": "Invoice import",
-        "de": "Rechnungsimport"
+        "en": "Invoice import"
       },
       "configured": {
-        "en": "The required product capabilities are effectively enabled; only a boolean.",
-        "de": "Die erforderlichen Produktfunktionen sind effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The required product capabilities are effectively enabled; only a boolean."
       },
       "used": {
-        "en": "An admin successfully imported an existing invoice; no PDF, invoice number, amount, currency, customer or payment status.",
-        "de": "Ein Admin hat eine bestehende Rechnung erfolgreich importiert; keine PDF, Rechnungsnummer, Beträge, Währung, Kunden oder Zahlungsstände."
+        "en": "An admin successfully imported an existing invoice; no PDF, invoice number, amount, currency, customer or payment status."
       },
       "flag": "bills"
     },
@@ -1426,16 +1204,13 @@
       "measurement": "configuration_and_use",
       "configuration": "capability",
       "name": {
-        "en": "Combined billing",
-        "de": "Kombinierte Abrechnung"
+        "en": "Combined billing"
       },
       "configured": {
-        "en": "The required product capabilities are effectively enabled; only a boolean.",
-        "de": "Die erforderlichen Produktfunktionen sind effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The required product capabilities are effectively enabled; only a boolean."
       },
       "used": {
-        "en": "An admin successfully created a combined bill; no hours, expenses, customer, documents or financial values.",
-        "de": "Ein Admin hat erfolgreich eine kombinierte Abrechnung erstellt; keine Stunden, Ausgaben, Kunden, Dokumente oder Finanzwerte."
+        "en": "An admin successfully created a combined bill; no hours, expenses, customer, documents or financial values."
       }
     },
     "crm_monthly_billing_manual": {
@@ -1444,16 +1219,13 @@
       "measurement": "configuration_and_use",
       "configuration": "flag",
       "name": {
-        "en": "Manual monthly billing",
-        "de": "Manuelle Monatsabrechnung"
+        "en": "Manual monthly billing"
       },
       "configured": {
-        "en": "The required product capabilities are effectively enabled; only a boolean.",
-        "de": "Die erforderlichen Produktfunktionen sind effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The required product capabilities are effectively enabled; only a boolean."
       },
       "used": {
-        "en": "An admin successfully released a monthly draft for delivery; actual email delivery is not measured. No scheduler activity, customer, cadence or invoice values.",
-        "de": "Ein Admin hat einen Monatsentwurf erfolgreich zum Versand freigegeben; die tatsächliche E-Mail-Zustellung wird nicht gemessen. Keine Scheduler-Aktivität, Kunden, Intervalle oder Rechnungswerte."
+        "en": "An admin successfully released a monthly draft for delivery; actual email delivery is not measured. No scheduler activity, customer, cadence or invoice values."
       },
       "flag": "bills"
     },
@@ -1463,16 +1235,13 @@
       "measurement": "configuration_and_use",
       "configuration": "capability",
       "name": {
-        "en": "Document conversion",
-        "de": "Dokumentumwandlung"
+        "en": "Document conversion"
       },
       "configured": {
-        "en": "The required product capabilities are effectively enabled; only a boolean.",
-        "de": "Die erforderlichen Produktfunktionen sind effektiv aktiviert; nur ein Wahrheitswert."
+        "en": "The required product capabilities are effectively enabled; only a boolean."
       },
       "used": {
-        "en": "An admin successfully converted a quote or contract into a document or gallery; no content, links, acceptance states or automatic workflows.",
-        "de": "Ein Admin hat ein Angebot oder einen Vertrag erfolgreich in ein Dokument oder eine Galerie umgewandelt; keine Inhalte, Verknüpfungen, Annahmestände oder automatischen Workflows."
+        "en": "An admin successfully converted a quote or contract into a document or gallery; no content, links, acceptance states or automatic workflows."
       }
     },
     "gallery_capture_date_sort": {
@@ -1481,12 +1250,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Capture-date sorting configured",
-        "de": "Sortierung nach Aufnahmezeit eingerichtet"
+        "en": "Capture-date sorting configured"
       },
       "configured": {
-        "en": "A gallery defaults to sorting by capture date; no capture dates, EXIF or visitor sorting actions.",
-        "de": "Eine Galerie sortiert standardmäßig nach Aufnahmezeit; keine Aufnahmedaten, EXIF oder Sortieraktionen von Besuchern."
+        "en": "A gallery defaults to sorting by capture date; no capture dates, EXIF or visitor sorting actions."
       },
       "used": null
     },
@@ -1496,12 +1263,10 @@
       "measurement": "configuration",
       "configuration": "configuration",
       "name": {
-        "en": "Original download filenames enabled",
-        "de": "Originaldateinamen für Downloads aktiviert"
+        "en": "Original download filenames enabled"
       },
       "configured": {
-        "en": "The original-download-filenames switch is enabled; no filenames or downloads are read or sent.",
-        "de": "Der Schalter für Originaldateinamen beim Download ist aktiviert; keine Dateinamen oder Downloads werden gelesen oder gesendet."
+        "en": "The original-download-filenames switch is enabled; no filenames or downloads are read or sent."
       },
       "used": null
     }
@@ -1509,22 +1274,18 @@
   "inventory": {
     "galleries": {
       "name": {
-        "en": "Stored galleries",
-        "de": "Gespeicherte Galerien"
+        "en": "Stored galleries"
       },
       "description": {
-        "en": "Current number of gallery records, including drafts, inactive and archived galleries. Deleted galleries are excluded. One total for the installation, no breakdown or identifiers.",
-        "de": "Aktuelle Anzahl gespeicherter Galerien einschließlich Entwürfen, inaktiven und archivierten Galerien. Gelöschte Galerien zählen nicht. Eine Gesamtzahl der Installation, ohne Aufschlüsselung oder Kennungen."
+        "en": "Current number of gallery records, including drafts, inactive and archived galleries. Deleted galleries are excluded. One total for the installation, no breakdown or identifiers."
       }
     },
     "photos": {
       "name": {
-        "en": "Stored photo records",
-        "de": "Gespeicherte Fotoeinträge"
+        "en": "Stored photo records"
       },
       "description": {
-        "en": "Current number of non-video photo records, including RAW, guest uploads and records of archived galleries. One total for the installation; not unique files, thumbnails, processing success or photo contents. Deleted records are excluded.",
-        "de": "Aktuelle Anzahl der Fotoeinträge ohne Videos, einschließlich RAW, Gast-Uploads und Einträgen archivierter Galerien. Eine Gesamtzahl der Installation; keine eindeutigen Dateien, Vorschaubilder, Verarbeitungserfolge oder Fotoinhalte. Gelöschte Einträge zählen nicht."
+        "en": "Current number of non-video photo records, including RAW, guest uploads and records of archived galleries. One total for the installation; not unique files, thumbnails, processing success or photo contents. Deleted records are excluded."
       }
     }
   }

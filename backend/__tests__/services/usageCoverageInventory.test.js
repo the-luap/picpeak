@@ -68,11 +68,19 @@ test('v1/v2/v3 wire validation is immutable; v4 catalog, UI and translated descr
   expect(inventory.configuration_only).toHaveLength(23);
   const frontend = path.resolve(__dirname, '../../../frontend');
   expect(JSON.parse(fs.readFileSync(path.join(frontend, 'src/features/settings/usageFeatures.v4.json')))).toEqual(catalog);
-  for (const lang of ['en', 'de']) {
-    const translated = JSON.parse(fs.readFileSync(path.join(frontend, `src/i18n/locales/${lang}.json`))).productUsage.catalog;
-    for (const [key, value] of Object.entries(catalog.features)) {
-      expect(translated[key]).toEqual({ name: value.name[lang], configured: value.configured[lang], ...(value.used ? { used: value.used[lang] } : {}) });
-    }
+  // The catalog is source, and source is English only: its strings are the
+  // en locale verbatim. Every other language lives in its locale file and
+  // must cover every key and field, but says whatever its translator chose.
+  const english = JSON.parse(fs.readFileSync(path.join(frontend, 'src/i18n/locales/en.json'))).productUsage.catalog;
+  for (const [key, value] of Object.entries(catalog.features)) {
+    expect(Object.keys(value.name)).toEqual(['en']);
+    expect(english[key]).toEqual({ name: value.name.en, configured: value.configured.en, ...(value.used ? { used: value.used.en } : {}) });
+  }
+  const german = JSON.parse(fs.readFileSync(path.join(frontend, 'src/i18n/locales/de.json'))).productUsage.catalog;
+  for (const [key, value] of Object.entries(catalog.features)) {
+    expect(Object.keys(german[key] || {}).sort()).toEqual(Object.keys(english[key]).sort());
+    for (const field of Object.keys(english[key])) expect(typeof german[key][field]).toBe('string');
+    void value;
   }
 });
 
