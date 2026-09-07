@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.127.2-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.1-beta.0...v3.127.2-beta.0) (2026-09-07)
+
+
+### Documentation
+
+* **security:** correct the rate limiter defaults and how they are set ([#1336](https://github.com/PicPeak/picpeak/issues/1336)) ([9bbdca9](https://github.com/PicPeak/picpeak/commit/9bbdca9fc5db1b3610b92f395f30e5545fc42995))
+
 ## [3.127.1-beta.0](https://github.com/PicPeak/picpeak/compare/v3.127.0-beta.0...v3.127.1-beta.0) (2026-09-07)
 
 
