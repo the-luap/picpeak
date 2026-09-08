@@ -24,17 +24,20 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment (please complete the following information):**
- - OS: [e.g. Ubuntu 22.04]
- - Browser: [e.g. Chrome 120, Safari 17]
- - PicPeak Version: [e.g. 1.0.22]
- - Deployment Method: [e.g. Docker Compose, Manual]
- - Database: [e.g. PostgreSQL 15, SQLite]
+ - OS and version:
+ - Browser and version:
+ - PicPeak version and Docker image tag (if applicable):
+ - Deployment method: [Docker Compose, all-in-one container, manual]
+ - Database and version: [PostgreSQL, SQLite]
 
 **Logs**
 Please include relevant logs:
 ```
-# Backend logs
-docker-compose logs backend | tail -50
+# Backend logs (Docker Compose)
+docker compose logs --tail=50 backend
+
+# Or all-in-one container logs (replace picpeak if your container has another name)
+docker logs --tail=50 picpeak
 
 # Frontend console errors
 [paste any browser console errors]

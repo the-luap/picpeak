@@ -9,12 +9,15 @@ assignees: ''
 
 **What documentation needs improvement?**
 Please specify which document or section needs attention:
+- [ ] Documentation website (https://docs.picpeak.app)
 - [ ] README.md
 - [ ] DEPLOYMENT.md
 - [ ] CONTRIBUTING.md
 - [ ] API Documentation
 - [ ] Code Comments
 - [ ] Other: ___________
+
+Link to the affected page or file:
 
 **Describe the issue**
 What's wrong or missing in the documentation?

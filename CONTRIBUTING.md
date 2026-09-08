@@ -59,7 +59,7 @@ Unsure where to begin? You can start by looking through these issues:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22.12.0 or later (matches `backend/package.json`)
 - Docker & Docker Compose
 - Git
 
@@ -196,6 +196,6 @@ See [RELEASING.md](RELEASING.md) for the full operational doc (promotion criteri
 
 - Create an [issue](https://github.com/PicPeak/picpeak/issues) for bugs or features
 - Join [discussions](https://github.com/PicPeak/picpeak/discussions) for questions
-- Security issues: Open a [security issue](https://github.com/PicPeak/picpeak/issues/new?labels=security) on GitHub
+- Security vulnerabilities: Follow the [security policy](SECURITY.md) and use [private vulnerability reporting](https://github.com/PicPeak/picpeak/security/advisories/new)
 
 Thank you for contributing! 🎉
