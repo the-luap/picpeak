@@ -39,12 +39,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(usage.status).mockResolvedValue({ status: 'disabled', collector_url: 'https://custom-collector.example.test' } as never);
   vi.mocked(usage.enable).mockResolvedValue({ status: 'active' } as never);
+  vi.mocked(usage.promptSeen).mockResolvedValue({ status: 'disabled', prompt_shown: true } as never);
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
 });
 afterEach(cleanup);
 
+let client: QueryClient;
 async function reachInvitation() {
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
     <MemoryRouter><SetupPage /></MemoryRouter>
   </QueryClientProvider>);
   fireEvent.change(await screen.findByLabelText('setup.tokenLabel'), { target: { value: 'test-token' } });
@@ -82,6 +85,7 @@ it('uses the full settings disclosure and configured collector before accepting 
   fireEvent.click(dialog.getByRole('button', { name: 'productUsage.enable' }));
   await screen.findByText('setup.community.mission');
   expect(usage.enable).toHaveBeenCalledTimes(1);
+  expect(client.getQueryData(['productUsage'])).toMatchObject({ status: 'active' });
 });
 
 it('skipping the invitation never enables reporting', async () => {
@@ -89,6 +93,8 @@ it('skipping the invitation never enables reporting', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'setup.usageReporting.skip' }));
   await screen.findByText('setup.community.mission');
   expect(usage.enable).not.toHaveBeenCalled();
+  expect(usage.promptSeen).toHaveBeenCalledTimes(1);
+  expect(client.getQueryData(['productUsage'])).toMatchObject({ status: 'disabled', prompt_shown: true });
 });
 
 it.each(['failed', 'invalid'])('keeps setup usable when collector configuration is %s', async (failure) => {
