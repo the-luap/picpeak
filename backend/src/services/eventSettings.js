@@ -372,15 +372,6 @@ const hasCustomerContactColumns = async () => {
   }
 };
 
-// Cascade-delete a single event: photos, audit/access logs, queued emails,
-// the event row itself (in one transaction), then the on-disk folder /
-// archive zip / hero logo (best-effort — file failures don't unwind the DB
-// changes since the source of truth is the database). Used by both the
-// per-event DELETE /:id route and the bulk-delete route to avoid drift.
-//
-// Throws { code: 'EVENT_NOT_FOUND' } if the event id doesn't exist so the
-// bulk-delete loop can report it as a per-id failure without aborting the
-// whole batch. Any other error propagates and is the caller's problem.
 // Allowed slide transition styles (kept in sync with the SlideshowPage).
 // dipwhite/dipblack = fade through highlights / lowlights between images.
 const SLIDESHOW_TRANSITIONS = ['crossfade', 'cut', 'slide', 'kenburns', 'dipwhite', 'dipblack'];

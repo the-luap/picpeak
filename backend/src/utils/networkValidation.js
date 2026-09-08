@@ -190,8 +190,11 @@ function validateExternalUrl(urlString) {
  * literal isPrivateIP check alone can't see that. Fails closed on resolution
  * failure. IP literals are decided by isPrivateIP without a lookup.
  *
- * HTTP clients must use the returned addresses from validateExternalUrlAsync
+ * HTTP clients for admin-configured URLs (webhook delivery, the email webhook
+ * transport) must use the returned addresses from validateExternalUrlAsync
  * with pinnedRequestOptions; a separate preflight alone cannot stop rebinding.
+ * The analytics tracker proxy, the tracker adapters and OIDC discovery still
+ * rely on the preflight only.
  *
  * @param {string} hostname
  * @returns {Promise<boolean>} true when safe to connect

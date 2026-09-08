@@ -71,6 +71,9 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
     extensions: [
       StarterKit.configure({
         link: false,
+        // v2 StarterKit had no TrailingNode; v3 would append an empty <p> to
+        // templates ending in a heading/list and persist it in the email HTML.
+        trailingNode: false,
         hardBreak: false,
       }),
       HardBreak.configure({

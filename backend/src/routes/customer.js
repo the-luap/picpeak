@@ -15,6 +15,7 @@ const { isGalleryAvailable, isGalleryExpired } = require('../utils/galleryLifecy
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body, param, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { getBcryptRounds, MAX_PASSWORD_LENGTH } = require('../utils/passwordValidation');
@@ -192,6 +193,9 @@ router.get('/events/:slug/access-token', [
       eventId: event.id,
       eventSlug: event.slug,
       type: 'gallery',
+      // Unique per token: the revocation key falls back to eventId+iat otherwise,
+      // so one guest's logout would revoke every same-second login (#1357).
+      jti: crypto.randomUUID(),
       ip: ipAddress,
       loginTime: Date.now(),
       // Rechecked on each gallery/media request, including account status.

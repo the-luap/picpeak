@@ -118,6 +118,16 @@ describe('multipart origin gate', () => {
     // Same-origin install without FRONTEND_URL: Origin matches the Host.
     expect(multipartOriginAllowed({ headers: { host: 'gallery.local', origin: 'http://gallery.local' } })).toBe(true);
   });
+  it('trusts Fetch Metadata same-origin before the Origin/scheme comparison', () => {
+    // TLS terminated upstream without X-Forwarded-Proto: req.protocol is http
+    // while the browser's Origin is https. Login must still work.
+    // gallery.local is not in the configured allowlist, so only the Host/scheme
+    // comparison or Fetch Metadata can admit it.
+    const proxied = { protocol: 'http', headers: { host: 'gallery.local', origin: 'https://gallery.local', 'sec-fetch-site': 'same-origin' } };
+    expect(multipartOriginAllowed(proxied)).toBe(true);
+    const legacyBrowser = { protocol: 'http', headers: { host: 'gallery.local', origin: 'https://gallery.local' } };
+    expect(multipartOriginAllowed(legacyBrowser)).toBe(false);
+  });
   it('rejects cross-site form posts', () => {
     expect(multipartOriginAllowed(req({ 'sec-fetch-site': 'cross-site' }))).toBe(false);
     expect(multipartOriginAllowed(req({ origin: 'https://evil.example' }))).toBe(false);

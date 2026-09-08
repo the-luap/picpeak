@@ -7,7 +7,8 @@ module.exports = function csrfProtection(req, res, next) {
   }
   const contentType = (req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
   const hasBody = Number(req.headers['content-length']) > 0 || !!req.headers['transfer-encoding'];
-  if (hasBody && !['application/json', 'multipart/form-data'].includes(contentType)) {
+  const jsonLike = contentType === 'application/json' || contentType.endsWith('+json');
+  if (hasBody && !jsonLike && contentType !== 'multipart/form-data') {
     return res.status(415).json({ error: 'Unsupported Content-Type. Use application/json or multipart/form-data.' });
   }
   next();

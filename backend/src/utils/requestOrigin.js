@@ -25,6 +25,11 @@ function isAllowedOrigin(origin) {
 // configured frontend origins may be cross-site; a sibling origin alone is
 // not trusted. Non-browser clients without Origin/Fetch Metadata still work.
 function mutationOriginAllowed(req) {
+  // Fetch Metadata is set by the browser and cannot be forged cross-site, so a
+  // same-origin request is trusted before the Origin/Host/scheme comparison,
+  // which depends on trust proxy and X-Forwarded-Proto being configured.
+  const site = req.headers['sec-fetch-site'];
+  if (site === 'same-origin') return true;
   const origin = req.headers.origin;
   if (origin) {
     if (isAllowedOrigin(origin)) return true;
@@ -34,8 +39,7 @@ function mutationOriginAllowed(req) {
         && (!req.protocol || parsed.protocol === `${req.protocol}:`);
     } catch { return false; }
   }
-  const site = req.headers['sec-fetch-site'];
-  return !site || site === 'same-origin' || site === 'none';
+  return !site || site === 'none';
 }
 
 // Compatibility export for existing callers.

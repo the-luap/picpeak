@@ -52,6 +52,19 @@ it('queues a publication email only for published galleries', async () => {
   const published = await create('v1', {});
   expect(await db('email_queue').where({ event_id: published.id, email_type: 'gallery_created' })).toHaveLength(1);
 });
+it('rejects a required password that is missing with 400 on both routes', async () => {
+  for (const source of ['admin', 'v1']) {
+    const response = await request(app).post(source === 'admin' ? '/admin' : '/v1/events')
+      .set('Authorization', `Bearer ${source === 'admin' ? adminToken : apiToken}`).send({ ...base, require_password: true });
+    expect(response.status).toBe(400);
+  }
+});
+it('keeps accepting "0"/"1" string booleans on the v1 surface', async () => {
+  const created = await create('v1', { require_password: '0', feedback_enabled: '1' });
+  const row = await db('events').where({ id: created.id }).first();
+  expect([false, 0]).toContain(row.require_password);
+  expect(await db('event_feedback_settings').where({ event_id: row.id }).first()).toBeTruthy();
+});
 it.each([{ feedback_enabled: 'maybe' }, { event_type: 'unknown' }])('rejects invalid creation data before persistence: %j', async extra => {
   for (const source of ['admin', 'v1']) {
     const response = await request(app).post(source === 'admin' ? '/admin' : '/v1/events')

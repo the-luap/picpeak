@@ -157,7 +157,10 @@ async function processEvent(event, storage) {
   previousSnapshot.set(event.id, currentKeys);
 }
 
-const pollingTask = require('./scheduledTask').scheduledTask(runTick, { interval: POLL_INTERVAL_MS });
+const pollingTask = require('./scheduledTask').scheduledTask(runTick, {
+  // Run once on start so admins see import activity without waiting a full poll.
+  interval: POLL_INTERVAL_MS, initialDelay: 0,
+});
 const tick = () => runTick(); // Explicit test/manual tick does not start a timer.
 function startS3AutoImporter() {
   if (!ENABLED) return;

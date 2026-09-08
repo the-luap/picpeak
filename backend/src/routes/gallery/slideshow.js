@@ -1,6 +1,7 @@
 const { isGalleryAvailable } = require('../../utils/galleryLifecycle');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { db } = require('../../database/db');
 const { formatBoolean } = require('../../utils/dbCompat');
 
@@ -229,6 +230,9 @@ router.get('/:slug/show/:token/session', noStoreCache, handleAsync(async (req, r
     eventId: event.id,
     eventSlug: event.slug,
     type: 'gallery',
+    // Unique per token: the revocation key falls back to eventId+iat otherwise,
+    // so one guest's logout would revoke every same-second login (#1357).
+    jti: crypto.randomUUID(),
     accessLevel: 'slideshow',
     loginTime: Date.now()
   }, process.env.JWT_SECRET, {

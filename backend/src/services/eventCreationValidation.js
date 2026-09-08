@@ -28,8 +28,8 @@ const schema = Joi.object({
     'feedback_enabled', 'allow_ratings', 'allow_likes', 'allow_comments', 'allow_favorites',
     'allow_reactions', 'allow_color_labels', 'require_name_email', 'moderate_comments',
     'show_feedback_to_guests', 'client_access_enabled', 'og_image_share_enabled']
-    .map(key => [key, Joi.boolean().truthy(1).falsy(0)])),
-  hero_logo_visible: Joi.boolean().truthy(1).falsy(0).allow(null),
+    .map(key => [key, Joi.boolean().truthy(1, '1').falsy(0, '0')])),
+  hero_logo_visible: Joi.boolean().truthy(1, '1').falsy(0, '0').allow(null),
 }).unknown(true);
 
 async function validateCreationInput(data) {

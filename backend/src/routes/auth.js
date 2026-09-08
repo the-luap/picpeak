@@ -2,6 +2,7 @@ const { isGalleryAvailable } = require('../utils/galleryLifecycle');
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 
 const { db, logActivity } = require('../database/db');
@@ -497,6 +498,9 @@ router.post('/gallery/verify', [
       eventId: event.id, 
       eventSlug: event.slug,
       type: 'gallery',
+      // Unique per token: the revocation key falls back to eventId+iat otherwise,
+      // so one guest's logout would revoke every same-second login (#1357).
+      jti: crypto.randomUUID(),
       ip: ipAddress,
       loginTime: Date.now()
     }, process.env.JWT_SECRET, { 
@@ -571,6 +575,9 @@ router.post('/gallery/:slug/client-login', [
       eventId: event.id,
       eventSlug: event.slug,
       type: 'gallery',
+      // Unique per token: the revocation key falls back to eventId+iat otherwise,
+      // so one guest's logout would revoke every same-second login (#1357).
+      jti: crypto.randomUUID(),
       accessLevel: 'client',
       ip: ipAddress,
       loginTime: Date.now()
@@ -667,6 +674,9 @@ router.post('/gallery/share-login', [
       eventId: event.id,
       eventSlug: event.slug,
       type: 'gallery',
+      // Unique per token: the revocation key falls back to eventId+iat otherwise,
+      // so one guest's logout would revoke every same-second login (#1357).
+      jti: crypto.randomUUID(),
       ip: ipAddress,
       loginTime: Date.now()
     }, process.env.JWT_SECRET, {

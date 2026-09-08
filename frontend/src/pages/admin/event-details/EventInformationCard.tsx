@@ -647,10 +647,6 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
                   onChange={(e) => setEditForm(prev => ({
                     ...prev,
                     watermark_downloads: e.target.checked,
-                    // Watermarking and presigned URLs are mutually
-                    // exclusive — presigned URLs serve raw bytes from
-                    // S3 without going through the watermark pipeline.
-                    allow_presigned_download: e.target.checked ? false : prev.allow_presigned_download,
                   }))}
                   className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                 />

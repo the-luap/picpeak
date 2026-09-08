@@ -238,7 +238,6 @@ module.exports = (router) => {
     body('watermark_text').optional().trim(),
     // #328 follow-up: per-event opt-in for presigned-URL "Download All".
     // Bypasses watermarks; admin must enable knowingly.
-    body('allow_presigned_download').optional().isBoolean(),
     // Feedback sub-toggles (#1044). Optional: omitting them inherits the
     // global Settings > Events defaults.
     body('allow_ratings').optional().isBoolean(),
@@ -865,6 +864,7 @@ module.exports = (router) => {
         share_token: shareToken,
         expires_at: newExpiresAt ? newExpiresAt.toISOString() : null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         created_by: req.admin.id,
         allow_user_uploads: source.allow_user_uploads,
         upload_category_id: source.upload_category_id,
@@ -881,7 +881,6 @@ module.exports = (router) => {
         use_canvas_rendering: source.use_canvas_rendering,
         watermark_downloads: source.watermark_downloads,
         watermark_text: source.watermark_text,
-        allow_presigned_download: source.allow_presigned_download,
         require_password: source.require_password,
         css_template_id: source.css_template_id || null,
         hero_logo_visible: source.hero_logo_visible,
@@ -1038,7 +1037,6 @@ module.exports = (router) => {
     body('disable_right_click').optional().isBoolean(),
     body('watermark_downloads').optional().isBoolean(),
     body('watermark_text').optional().trim(),
-    body('allow_presigned_download').optional().isBoolean(),
     body('source_mode').optional().isIn(['managed', 'reference']),
     body('external_path').optional({ nullable: true }).isString().trim(),
     body('external_watch').optional().isBoolean(),
@@ -1675,7 +1673,7 @@ module.exports = (router) => {
         .where('id', id)
         .update({
           is_active: formatBoolean(newStatus),
-          updated_at: db.fn.now()
+          updated_at: new Date().toISOString()
         });
 
       // Log activity

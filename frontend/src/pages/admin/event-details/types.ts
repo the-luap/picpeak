@@ -25,7 +25,6 @@ export type EditFormState = {
   disable_right_click: boolean;
   allow_downloads: boolean;
   watermark_downloads: boolean;
-  allow_presigned_download: boolean;
   enable_devtools_protection: boolean;
   use_canvas_rendering: boolean;
   // Hero logo settings. null = inherit the global branding toggle (#756).
@@ -81,7 +80,6 @@ export const INITIAL_EDIT_FORM: EditFormState = {
   disable_right_click: true,
   allow_downloads: true,
   watermark_downloads: false,
-  allow_presigned_download: false,
   enable_devtools_protection: true,
   use_canvas_rendering: false,
   // Hero logo settings — null = inherit global branding toggle (#756)

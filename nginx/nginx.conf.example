@@ -3,15 +3,16 @@ events {
 }
 
 http {
-    # Native request error logs contain unredactable bearer URLs.
-    # Keep safe access statuses here and startup diagnostics at the main level.
-    error_log /dev/null;
+    # warn/error entries echo the raw request line (bearer URLs); crit and
+    # above keep worker and file-descriptor failures visible. Upstream 502s
+    # remain visible as statuses in the safe access log.
+    error_log /var/log/nginx/error.log crit;
     # URLs and Referer can contain gallery, image and customer bearer tokens.
     map $uri $request_surface {
         ~*^/api/(?<picpeak_surface>[a-z-]+)(?:/|$) /api/$picpeak_surface;
         default /;
     }
-    log_format picpeak_safe '$remote_addr [$time_local] "$request_method $request_surface" '
+    log_format picpeak_safe '$remote_addr "$http_x_forwarded_for" [$time_local] "$request_method $request_surface" '
                             '$status $body_bytes_sent $request_time';
     access_log /var/log/nginx/access.log picpeak_safe;
 

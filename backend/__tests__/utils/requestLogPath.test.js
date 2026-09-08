@@ -13,6 +13,7 @@ it.each([
   `/api/secure-images/g/secure-download/1/${marker}`,
   `/api/public/contracts/${marker}/sign`,
   `/api/customer/auth/password-reset/${marker}`,
+  `/api/public/newsletter/unsubscribe/${marker}`,
 ])('does not log capabilities on request or response: %s', (originalUrl) => {
   logger.info.mockClear();
   const res = new EventEmitter(); res.statusCode = 200;

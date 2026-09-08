@@ -60,7 +60,6 @@ async function createEvent(data, { actor, source = 'admin', frontendUrl } = {}) 
     enable_devtools_protection: enableDevtoolsProtectionInput,
     watermark_downloads = false,
     watermark_text = null,
-    allow_presigned_download = false,
     require_password: requirePasswordInput,
     // Feedback settings. The allow_* sub-toggles deliberately have NO
     // destructuring defaults: `undefined` means "the caller didn't say",
@@ -175,6 +174,11 @@ async function createEvent(data, { actor, source = 'admin', frontendUrl } = {}) 
   let passwordValidation = null;
 
   if (requirePassword) {
+    // The v1 route validator marks password optional; the admin route's
+    // custom() guard is not shared, so enforce presence here for every path.
+    if (typeof password !== 'string' || password.length === 0) {
+      throw creationError({ error: 'Password is required when require_password is true' });
+    }
     passwordValidation = await validatePasswordInContext(password, 'gallery', {
       eventName: event_name
     });
@@ -369,7 +373,6 @@ async function createEvent(data, { actor, source = 'admin', frontendUrl } = {}) 
     ...imageSecurityColumns,
     watermark_downloads: formatBoolean(watermark_downloads !== undefined ? watermark_downloads : false),
     watermark_text,
-    allow_presigned_download: formatBoolean(allow_presigned_download === true || allow_presigned_download === 'true'),
     require_password: formatBoolean(requirePassword),
     css_template_id: css_template_id || null,
     // Already formatBoolean-coerced above, or null = inherit global (#756).
@@ -520,15 +523,21 @@ async function createEvent(data, { actor, source = 'admin', frontendUrl } = {}) 
       emailData.client_password = client_password;
     }
 
-    await db('email_queue').insert({
-      event_id: eventId,
-      recipient_email: customerEmail,
-      email_type: 'gallery_created',
-      email_data: JSON.stringify(emailData),
-      status: 'pending',
-      created_at: new Date()
-      // scheduled_at will use default value
-    });
+    // Best-effort, as the v1 route always was: the event, folder, activity
+    // log and webhook are committed by now, so a queue failure must not 500.
+    try {
+      await db('email_queue').insert({
+        event_id: eventId,
+        recipient_email: customerEmail,
+        email_type: 'gallery_created',
+        email_data: JSON.stringify(emailData),
+        status: 'pending',
+        created_at: new Date()
+        // scheduled_at will use default value
+      });
+    } catch (queueError) {
+      logger.warn('Failed to queue gallery_created email on create', { eventId, error: queueError.message });
+    }
   }
 
   // WhatsApp gallery_ready notification (#640D). Fires when the event is

@@ -91,6 +91,9 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
     extensions: [
       StarterKit.configure({
         link: false,
+        // v2 StarterKit had no TrailingNode; v3 would append an empty <p> to
+        // documents ending in a heading/list/code block and persist it.
+        trailingNode: false,
         hardBreak: false, // We'll use the separate HardBreak extension
         codeBlock: false, // We'll use CodeBlockLowlight instead
       }),

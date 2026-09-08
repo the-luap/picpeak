@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { galleryService } from '../../../services/gallery.service';
-export function useGalleryUpload(slug: string, refetch: () => Promise<unknown>, onClose: () => void) {
+export function useGalleryUpload(slug: string, refetch: (options?: { cancelRefetch?: boolean }) => Promise<unknown>, onClose: () => void) {
   const { t } = useTranslation();
   const uploadRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [uploadProcessing, setUploadProcessing] = useState<{ complete: number; total: number } | null>(null);
@@ -57,7 +57,9 @@ export function useGalleryUpload(slug: string, refetch: () => Promise<unknown>, 
         // large upload fills the grid progressively.
         if (status.complete > lastComplete) {
           lastComplete = status.complete;
-          void refetch();
+          // Default cancelRefetch aborts the multi-page fetch still in flight
+          // from the previous poll, so a large gallery would never fill in.
+          void refetch({ cancelRefetch: false });
         }
 
         if (status.pending === 0 && status.processing === 0) {

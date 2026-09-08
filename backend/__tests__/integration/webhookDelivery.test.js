@@ -64,7 +64,7 @@ describe('webhook delivery worker (#327)', () => {
   }, 30000);
 
   afterAll(async () => {
-    stopWebhookDeliveryWorker();
+    await stopWebhookDeliveryWorker();
     await cleanup();
   });
 

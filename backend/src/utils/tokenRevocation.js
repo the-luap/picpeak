@@ -149,7 +149,7 @@ const cleanupTask = require('../services/scheduledTask').scheduledTask(cleanupEx
 function initializeRevocationCleanup() { cleanupTask.start(); }
 const stopRevocationCleanup = () => cleanupTask.stop();
 
-module.exports = {
+module.exports = { buildTokenId,
   stopRevocationCleanup,
   revokeToken,
   isTokenRevoked,

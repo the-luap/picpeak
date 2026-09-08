@@ -1068,20 +1068,23 @@ app.use(errorHandler);
 // App construction is side-effect free with respect to listening and workers.
 let httpServer;
 let shutdownPromise;
-const tempCleanupTask = require('./src/services/scheduledTask').scheduledTask(
-  () => require('./src/utils/cleanupTempUploads').cleanupTempUploads(),
-  { interval: 60 * 60 * 1000, initialDelay: 0 },
-);
+// Docker stops a container 10 s after SIGTERM by default (compose sets no
+// stop_grace_period), so the drain must finish inside that window.
+const SHUTDOWN_TIMEOUT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS) || 8000;
 async function stopServer() {
   if (shutdownPromise) return shutdownPromise;
   shutdownPromise = (async () => {
     const close = httpServer ? new Promise((resolve, reject) => httpServer.close(err => err ? reject(err) : resolve())) : Promise.resolve();
-    const timeout = setTimeout(() => httpServer?.closeAllConnections(), 30000);
+    const timeout = setTimeout(() => httpServer?.closeAllConnections(), Math.floor(SHUTDOWN_TIMEOUT_MS / 2));
     timeout.unref();
     try {
-      await Promise.all([close, tempCleanupTask.stop(), require('./src/services/serviceShutdown').stopServices()]);
+      await Promise.all([close, require('./src/services/serviceShutdown').stopServices()]);
+    } finally {
+      clearTimeout(timeout);
+      // Always release the pool: a rejected service stop must not leave
+      // ref'd sockets keeping the process alive until SIGKILL.
       await db.destroy();
-    } finally { clearTimeout(timeout); }
+    }
   })();
   return shutdownPromise;
 }
@@ -1110,7 +1113,7 @@ async function startServer() {
     const { initializeCleanupJob } = require('./src/utils/authSecurity');
     initializeCleanupJob();
     
-    tempCleanupTask.start();
+    require('./src/utils/cleanupTempUploads').startTempUploadCleanup();
 
     // Start file watcher
     startFileWatcher();
@@ -1131,7 +1134,10 @@ async function startServer() {
     startTransferCleanup();
     // Custom-resolution download archives (#858) are disposable renditions —
     // sweep them once their TTL passes so .download-cache doesn't grow forever.
-    await require('./src/services/downloadJobService').recoverOrphanedJobs();
+    // Best-effort, as before the scheduler refactor: a transient DB error on
+    // this one UPDATE must not abort the whole server start.
+    await require('./src/services/downloadJobService').recoverOrphanedJobs()
+      .catch((err) => logger.error('Download job recovery failed', { error: err.message }));
     startDownloadJobCleanup();
     // Reveal-mode scheduler (#838): minutely stamp for scheduled reveals.
     startRevealScheduler();
@@ -1314,8 +1320,20 @@ async function startServer() {
 }
 
 if (require.main === module) {
+  let stopping = false;
   for (const signal of ['SIGTERM', 'SIGINT']) {
-    process.once(signal, () => {
+    process.on(signal, () => {
+      if (stopping) {
+        logger.warn(`Received ${signal} again during shutdown, exiting immediately`);
+        process.exit(1);
+      }
+      stopping = true;
+      // The drain itself has no deadline; a hung worker must not keep the
+      // process alive past the container's stop grace period.
+      setTimeout(() => {
+        logger.error(`Shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
+        process.exit(1);
+      }, SHUTDOWN_TIMEOUT_MS).unref();
       stopServer().catch(error => { logger.error('Shutdown failed', { error: error.message }); process.exitCode = 1; });
     });
   }

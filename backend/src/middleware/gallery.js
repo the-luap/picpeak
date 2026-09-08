@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { db } = require('../database/db');
+const { db, withRetry } = require('../database/db');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 const logger = require('../utils/logger');
 const access = require('../services/galleryAccessService');
@@ -56,6 +56,7 @@ async function verifyAdminPreview(req, event) {
     return true;
   } catch (error) {
     logger.debug('Admin gallery preview denied', { code: error.code });
+    req.adminPreviewDenied = error;
     return false;
   }
 }
@@ -76,6 +77,9 @@ function decodeGalleryToken(token) {
 async function verifyGalleryAccess(req, res, next) {
   try {
     if (await verifyAdminPreview(req)) return next();
+    // The caller asked for a preview explicitly: report why it was refused
+    // instead of falling through to a misleading guest-token error.
+    if (req.adminPreviewDenied?.isOperational) throw req.adminPreviewDenied;
     const slug = req.params.slug || req.requestedSlug;
     const token = getGalleryTokenFromRequest(req, slug);
     const decoded = token ? decodeGalleryToken(token) : null;
@@ -83,7 +87,7 @@ async function verifyGalleryAccess(req, res, next) {
       return res.status(403).json({ error: 'Invalid token type for gallery access' });
     }
     if (!slug && !decoded?.eventId) return res.status(401).json({ error: 'No token provided' });
-    const event = await db('events').where(slug ? { slug } : { id: decoded.eventId }).select('*').first();
+    const event = await withRetry(() => db('events').where(slug ? { slug } : { id: decoded.eventId }).select('*').first());
     if (!event) return res.status(404).json({ error: 'Gallery not found or expired' });
     const grant = access.grant(event, decoded ? 'gallery' : 'public', decoded);
     await access.authorize(event, grant);
