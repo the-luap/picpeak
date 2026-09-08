@@ -42,6 +42,7 @@ async function bootDb() {
     t.string('status', 30).notNullable().defaultTo('disabled');
     t.string('consent_version', 40).notNullable().defaultTo('usage-consent.v1');
     t.boolean('notice_dismissed').notNullable().defaultTo(false);
+    t.boolean('prompt_shown').notNullable().defaultTo(false);
     t.string('installation_id', 64);
     t.string('public_key', 59);
     t.text('private_key_encrypted');

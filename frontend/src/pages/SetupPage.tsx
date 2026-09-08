@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Key, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, ArrowRight, Copy, Check, ExternalLink, Bug, Lightbulb, Star, Coffee, ShieldOff, Users, MessageSquare } from 'lucide-react';
+import { Key, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, ArrowRight, Copy, Check, ExternalLink, Bug, Lightbulb, Star, Coffee } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import { productUsageService } from '../services/productUsage.service';
 import { PicpeakRestoreCard } from '../components/admin/PicpeakBackupCard';
 import { SetupConfigStep } from '../components/admin/SetupConfigStep';
 import { SetupEventTypesStep } from '../components/admin/SetupEventTypesStep';
+import { UsageReportingPoints } from '../components/admin/UsageReportingPitch';
 import { resolveLoginLogoClasses } from '../utils/loginLogoSize';
 import type { AdminUser } from '../types';
 
@@ -35,17 +36,6 @@ const COMMUNITY_LINKS: {
   { key: 'feature', href: 'https://github.com/PicPeak/picpeak/issues/new?template=feature_request.md', icon: Lightbulb },
   { key: 'star', href: 'https://github.com/PicPeak/picpeak', icon: Star },
   { key: 'support', href: 'https://www.buymeacoffee.com/theluap', icon: Coffee },
-];
-
-// Anonymous usage-reporting opt-in, one step before the final thank-you
-// screen. Kept deliberately short — most people reflexively decline "send us
-// data" prompts, so this leads with what makes PicPeak's reporting different
-// from typical analytics rather than repeating the full disclosure the
-// Settings → Product usage tab already shows in detail.
-const USAGE_REPORTING_POINTS: { key: string; icon: LucideIcon }[] = [
-  { key: 'oneWay', icon: ShieldOff },
-  { key: 'mutual', icon: Users },
-  { key: 'feedback', icon: MessageSquare },
 ];
 
 // "How will you use PicPeak?" — the opt-in feature groups shown after the admin
@@ -303,6 +293,16 @@ export const SetupPage: React.FC = () => {
       setIsEnablingUsageReporting(false);
       setStep('community');
     }
+  };
+
+  // Declining here still counts as having been asked (#1360): without this,
+  // the one-time post-update prompt would immediately re-ask the same admin
+  // the same question seconds later on their first dashboard visit.
+  const skipUsageReporting = async () => {
+    try {
+      await productUsageService.promptSeen();
+    } catch (_) { /* best-effort — worst case the dashboard asks once more */ }
+    setStep('community');
   };
 
   const stepNumber = step === 'token' ? 1 : step === 'account' ? 2 : 3;
@@ -575,21 +575,7 @@ export const SetupPage: React.FC = () => {
             <div className="space-y-6">
               <p className="text-sm text-neutral-700">{t('setup.usageReporting.intro')}</p>
 
-              <div className="space-y-2">
-                {USAGE_REPORTING_POINTS.map(({ key, icon: Icon }) => (
-                  <div key={key} className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3">
-                    <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary, #5C8762)' }} />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-neutral-800">
-                        {t(`setup.usageReporting.${key}Title`)}
-                      </span>
-                      <span className="block text-xs text-neutral-500">
-                        {t(`setup.usageReporting.${key}Desc`)}
-                      </span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <UsageReportingPoints />
 
               <label className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3 cursor-pointer hover:bg-neutral-50 transition-colors">
                 <input
@@ -619,7 +605,7 @@ export const SetupPage: React.FC = () => {
                   size="lg"
                   className="w-full"
                   disabled={isEnablingUsageReporting}
-                  onClick={() => setStep('community')}
+                  onClick={skipUsageReporting}
                 >
                   {t('setup.usageReporting.skip')}
                 </Button>

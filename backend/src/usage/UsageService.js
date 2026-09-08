@@ -263,6 +263,7 @@ class UsageService {
     return {
       status: state.status,
       notice_dismissed: Boolean(state.notice_dismissed),
+      prompt_shown: Boolean(state.prompt_shown),
       installation_id: state.installation_id,
       collector_url: collectorUrl,
       collector_error: collectorError,
@@ -343,6 +344,18 @@ class UsageService {
       .update({ notice_dismissed: formatBoolean(true) });
     return this.status();
   }
+  // The one-time opt-in prompt (setup wizard for a new install, a modal shown
+  // once to an existing admin after an update) calls this on either outcome —
+  // enable or decline — so it never asks the same installation twice. Kept
+  // separate from `notice_dismissed`: that one only silences the persistent,
+  // re-visitable dashboard banner and is unrelated to whether this one-time
+  // prompt has already been shown.
+  async markPromptShown() {
+    await this.db('product_usage_state')
+      .where({ id: 1 })
+      .update({ prompt_shown: formatBoolean(true) });
+    return this.status();
+  }
   async enable(consent) {
     if (!Object.values(CONSENT_VERSIONS).includes(consent))
       throw new ValidationError('Explicit usage consent is required');
@@ -382,6 +395,7 @@ class UsageService {
           status: 'activation_pending',
           consent_version: consent,
           notice_dismissed: formatBoolean(true),
+          prompt_shown: formatBoolean(true),
           installation_id: identity.installation_id,
           public_key: identity.public_key,
           private_key_encrypted: this.encrypt(identity.private_key),

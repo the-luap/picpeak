@@ -73,6 +73,13 @@ router.post(
   '/dismiss',
   wrap(async (_req, res) => res.json(await service.dismiss()))
 );
+// Acknowledges the one-time opt-in prompt (setup wizard or the post-update
+// modal) regardless of whether the admin enabled or declined — either way it
+// must not ask this installation again.
+router.post(
+  '/prompt-seen',
+  wrap(async (_req, res) => res.json(await service.markPromptShown()))
+);
 router.post(
   '/enable',
   wrap(async (req, res) =>

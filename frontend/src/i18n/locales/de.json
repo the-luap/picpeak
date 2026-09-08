@@ -1,4 +1,8 @@
 {
+  "productUsagePrompt": {
+    "title": "PicPeak mitgestalten?",
+    "intro": "Diese Installation wurde noch nie nach der anonymen Nutzungsstatistik gefragt. Sie ist freiwillig — und funktioniert anders als das Tracking, das Sie sonst gewohnt sind abzulehnen."
+  },
   "productUsage": {
     "fields": "usage.v5-Berichte enthalten einen Installationsfingerabdruck, die PicPeak-Version, UTC-Berichtsdatum und Erstellungszeit, Schema- und Signaturmetadaten, die Galerie-Layouts aus einer festen Liste, 87 Funktionssignale (64 Paare aus Konfiguriert und Genutzt, 23 reine Konfigurationswerte) sowie zwei Gesamtzahlen der Installation: gespeicherte Galerien und Fotoeinträge ohne Videos. Entwürfe, archivierte Galerien und deren erhaltene Fotoeinträge zählen mit. Der Katalog unten erklärt jedes Feld. Keine Aktionszähler, keine Beobachtung von Besuchern.",
     "catalogTitle": "Vollständiger Katalog: 87 Funktionssignale und 2 Bestandszahlen (usage.v5)",

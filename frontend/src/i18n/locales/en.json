@@ -1,4 +1,8 @@
 {
+  "productUsagePrompt": {
+    "title": "Help shape PicPeak?",
+    "intro": "This installation has never been asked about anonymous usage reporting. It's optional, and works differently from the analytics you're used to declining."
+  },
   "productUsage": {
     "fields": "usage.v5 reports contain an installation fingerprint, PicPeak version, UTC report date and generation time, schema/signing metadata, controlled gallery layouts, 87 fixed capability signals (64 configured/used pairs and 23 configuration-only booleans), and two installation totals: stored galleries and photo records excluding videos. Drafts and archived galleries and their retained photo records are included. The catalog below defines every field. There are no action counts or visitor observations.",
     "catalogTitle": "Full catalog: 87 capability signals and 2 inventory totals (usage.v5)",

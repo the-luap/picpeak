@@ -8,6 +8,8 @@ export interface UsageStatus {
     | 'deletion_pending'
     | 'identity_conflict';
   notice_dismissed: boolean;
+  /** Whether the one-time opt-in prompt (setup wizard or post-update modal) has ever been shown. */
+  prompt_shown: boolean;
   installation_id: string | null;
   collector_url: string | null;
   collector_error?: 'INVALID_COLLECTOR_URL' | null;
@@ -45,6 +47,9 @@ export const productUsageService = {
   },
   async dismiss(): Promise<UsageStatus> {
     return (await api.post('/admin/usage/dismiss')).data;
+  },
+  async promptSeen(): Promise<UsageStatus> {
+    return (await api.post('/admin/usage/prompt-seen')).data;
   },
   async enable(): Promise<UsageStatus> {
     return (

@@ -54,6 +54,7 @@ maybe('product usage on Postgres', () => {
     await require('../../migrations/core/204_product_usage_privacy_receipts').up(db);
     await require('../../migrations/core/205_product_usage_consent_version').up(db);
     await require('../../migrations/core/206_product_usage_delivery_backoff').up(db);
+    await require('../../migrations/core/211_product_usage_prompt_shown').up(db);
 
     await db.schema.createTable('app_settings', (t) => {
       t.string('setting_key').primary(); t.text('setting_value'); t.string('setting_type');
