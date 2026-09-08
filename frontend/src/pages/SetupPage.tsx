@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Key, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, ArrowRight, Copy, Check, ExternalLink, Bug, Lightbulb, Star, Coffee, ShieldOff, Users, MessageSquare } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -73,6 +73,7 @@ export const SetupPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAdminAuth();
+  const queryClient = useQueryClient();
 
   const { data: status, isLoading: statusLoading, isError: statusError } = useQuery({
     queryKey: ['setup-status'],
@@ -300,7 +301,7 @@ export const SetupPage: React.FC = () => {
   const enableUsageReporting = async () => {
     setIsEnablingUsageReporting(true);
     try {
-      await productUsageService.enable();
+      queryClient.setQueryData(['productUsage'], await productUsageService.enable());
       toast.success(t('setup.usageReporting.enabled'));
     } catch {
       toast.warn(t('setup.usageReporting.enableFailed'));

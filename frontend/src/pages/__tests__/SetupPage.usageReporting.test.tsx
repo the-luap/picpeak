@@ -43,8 +43,10 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+let client: QueryClient;
 async function reachInvitation() {
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}>
     <MemoryRouter><SetupPage /></MemoryRouter>
   </QueryClientProvider>);
   fireEvent.change(await screen.findByLabelText('setup.tokenLabel'), { target: { value: 'test-token' } });
@@ -82,6 +84,7 @@ it('uses the full settings disclosure and configured collector before accepting 
   fireEvent.click(dialog.getByRole('button', { name: 'productUsage.enable' }));
   await screen.findByText('setup.community.mission');
   expect(usage.enable).toHaveBeenCalledTimes(1);
+  expect(client.getQueryData(['productUsage'])).toMatchObject({ status: 'active' });
 });
 
 it('skipping the invitation never enables reporting', async () => {
