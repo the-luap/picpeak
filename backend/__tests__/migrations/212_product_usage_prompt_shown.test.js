@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 const { UsageService } = require('../../src/usage/UsageService');
 const { generateIdentity, digest, canonical } = require('../../src/usage/protocol.cjs');
-const migration = require('../../migrations/core/211_product_usage_prompt_shown');
+const migration = require('../../migrations/core/212_product_usage_prompt_shown');
 
 let db;
 let directory;

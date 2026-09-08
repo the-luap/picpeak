@@ -54,7 +54,7 @@ maybe('product usage on Postgres', () => {
     await require('../../migrations/core/204_product_usage_privacy_receipts').up(db);
     await require('../../migrations/core/205_product_usage_consent_version').up(db);
     await require('../../migrations/core/206_product_usage_delivery_backoff').up(db);
-    await require('../../migrations/core/211_product_usage_prompt_shown').up(db);
+    await require('../../migrations/core/212_product_usage_prompt_shown').up(db);
 
     await db.schema.createTable('app_settings', (t) => {
       t.string('setting_key').primary(); t.text('setting_value'); t.string('setting_type');
@@ -125,7 +125,7 @@ maybe('product usage on Postgres', () => {
   });
 
   it('backfills the prompt for existing participation using PostgreSQL booleans', async () => {
-    const migration = require('../../migrations/core/211_product_usage_prompt_shown');
+    const migration = require('../../migrations/core/212_product_usage_prompt_shown');
     await migration.down(db);
     await db('product_usage_state').where({ id: 1 }).update({ status: 'active', consent_version: 'usage-consent.v2' });
     await migration.up(db);
