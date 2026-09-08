@@ -5,6 +5,29 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.130.2-beta.0...v3.131.0-beta.0) (2026-09-08)
+
+
+### Features
+
+* **setup:** add anonymous usage-reporting opt-in to the first-run wizard ([8d0c329](https://github.com/PicPeak/picpeak/commit/8d0c32902dd78324286a7585188d0c292692c8ec))
+* **setup:** add product usage consent to the first-run wizard ([539f5db](https://github.com/PicPeak/picpeak/commit/539f5db2b5e28dc42742fbbbe082fc3c23a7263e))
+* **usage:** prompt existing admins once for usage reporting after an update ([59ef2ee](https://github.com/PicPeak/picpeak/commit/59ef2ee9af74e97e042934e6ea5fab3b0b687617))
+* **usage:** prompt existing admins once for usage reporting after an update ([d20f801](https://github.com/PicPeak/picpeak/commit/d20f80112f95c7d718f936ea14aadf7eb0accdea))
+
+
+### Bug Fixes
+
+* complete graceful shutdown and revoke tokens without expiry ([411d459](https://github.com/PicPeak/picpeak/commit/411d459338289cae7dce8cddbe7c78dae3d4f449))
+* interrupt idle worker waits during shutdown ([a31a2e2](https://github.com/PicPeak/picpeak/commit/a31a2e25e2666989ee226c0d7884e23f50fe58da))
+* retain revocations for tokens without expiry ([662516a](https://github.com/PicPeak/picpeak/commit/662516a5ad2a0aadd87dfff3fba4f2456e88a69d))
+* **setup:** refresh usage state after accepting consent ([a5f7b38](https://github.com/PicPeak/picpeak/commit/a5f7b38e02f20e66047431c5cb04e6f34c60c689))
+* **setup:** require the full usage reporting disclosure ([9168bdd](https://github.com/PicPeak/picpeak/commit/9168bdd5048b4419db7b0f4444375f54c06f5bbb))
+* **usage:** cap the update-prompt modal height so it scrolls on short viewports ([c61a6b0](https://github.com/PicPeak/picpeak/commit/c61a6b089e56beec1de5c106440764518f507012))
+* **usage:** classify prompt acknowledgement in privacy coverage ([fb2f833](https://github.com/PicPeak/picpeak/commit/fb2f8333dca79b9cada9f349671920e34db38d5d))
+* **usage:** preserve consent choices and make the prompt accessible ([9a437ee](https://github.com/PicPeak/picpeak/commit/9a437ee9e19f6ecb8bff8747de71d3a9527d9512))
+* **usage:** synchronize setup consent and dismissal state ([77b4aab](https://github.com/PicPeak/picpeak/commit/77b4aab61a54d92b46fdc93fce5a075e3dc1d794))
+
 ## [3.130.2-beta.0](https://github.com/PicPeak/picpeak/compare/v3.130.1-beta.0...v3.130.2-beta.0) (2026-09-08)
 
 
