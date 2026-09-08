@@ -23,7 +23,7 @@ const express = require('express');
 const request = require('supertest');
 
 describe('admin thumbnail regeneration (#1129)', () => {
-  let tmpDir; let db; let cleanup; let app; let imageProcessor; let storage;
+  let tmpDir; let db; let cleanup; let app; let imageProcessor; let storage; let logInfo;
 
   beforeAll(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'picpeak-regen-'));
@@ -53,6 +53,10 @@ describe('admin thumbnail regeneration (#1129)', () => {
       deleteThumbnailTiers: jest.fn().mockResolvedValue(undefined),
       deletePreviewTiers: jest.fn().mockResolvedValue(undefined),
     }));
+
+    // Same module registry as the route, so the spy sees its calls. The
+    // completion line is what drain() below waits for.
+    logInfo = jest.spyOn(require('../../src/utils/logger'), 'info');
 
     // bootCrmDb, not run-migrations: the latter calls process.exit(0) on
     // success, which ends the jest worker mid-suite.
@@ -94,8 +98,20 @@ describe('admin thumbnail regeneration (#1129)', () => {
     return typeof row === 'object' ? row.id : row;
   }
 
-  /** The work runs in setImmediate; give it room to finish. */
-  const drain = () => new Promise((resolve) => setTimeout(resolve, 150));
+  /**
+   * The work runs in setImmediate, after the response. Wait for the loop's
+   * "regeneration complete" log line rather than a fixed 150 ms: under a
+   * loaded machine (fifteen suites in parallel, each booting a migrated
+   * SQLite) the loop occasionally took longer than that, and the assertions
+   * then ran against a half-finished mock call list.
+   */
+  const drain = async () => {
+    const deadline = Date.now() + 10000;
+    const done = () => logInfo.mock.calls.some((c) => /regeneration complete/.test(String(c[0])));
+    while (!done() && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
 
   it('rebuilds the canonical thumbnail for an external photo instead of erroring', async () => {
     const eventId = await seedEvent();

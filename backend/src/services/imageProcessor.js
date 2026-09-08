@@ -444,6 +444,84 @@ async function withLocalCopy(sourceKey, fn) {
 }
 
 /**
+ * Process-local single-flight for lazy rendition generation (#1020).
+ *
+ * Every ensure* function below is check-then-generate: look for the
+ * rendition, run Sharp if it is missing or invalid. The check reads the path
+ * off the photo row the caller already fetched, so N simultaneous requests
+ * for a cold photo — several viewers opening the same lightbox slide, two
+ * kiosks starting the same slideshow (#1018), a grid mounting one tile per
+ * photo — all hold a snapshot where the path is still null, all miss, and
+ * all run the same resize. The output key is deterministic, so they leave no
+ * orphans; they multiply CPU, memory and source reads (a full download on
+ * S3, a full read off the NAS for a reference photo) at exactly the moment
+ * the system is already cold.
+ *
+ * Only a MISS enters the flight. The validity check on the caller's own
+ * snapshot runs outside it, lock-free, so a request that already has a good
+ * rendition never joins anything — and, the other way round, a forced rebuild
+ * (the admin regenerate endpoints pass a row with the path nulled) can never
+ * be satisfied by joining a viewer's hot-path flight and being handed the
+ * very rendition it was asked to replace. Inside the flight, everything is
+ * a regeneration.
+ *
+ * A forced rebuild (`force: true`) goes one step further: if a flight is
+ * already GENERATING for the key it does not join that either, it runs after
+ * it. The older flight read the thumbnail settings when it started, so after
+ * a settings change it is producing exactly the rendition the admin's
+ * regenerate was invoked to replace — adopting its result would count a
+ * success while the old size stays cached, and the validity check never
+ * notices because it only asks whether the file parses. Lazy misses that
+ * arrive while the forced flight is pending join it, so the map always
+ * points at the newest work.
+ *
+ * One map for every rendition, keyed by rendition, photo id AND source
+ * rather than by storage key: a preview's key is only known after the
+ * source has been probed, and the canonical thumbnail ensureThumbnailAtWidth
+ * falls back to must be guarded by the same mechanism as the tier it missed.
+ * The source is part of the key because replacePhoto keeps the id and
+ * changes the path — a request carrying the replacement row must not join a
+ * flight still rendering the file it replaced and cache that for 30 minutes. The entry is
+ * cleared in a finally, on success and failure alike, so a rejection cannot
+ * poison the key for the lifetime of the process — the next request
+ * re-attempts rather than adopting a failure.
+ *
+ * Deliberately no re-read of the photo row inside the flight. A request
+ * whose snapshot was taken while a previous flight was generating, and that
+ * reaches the map only after that flight has cleared, generates once more:
+ * one extra pass, not N. A re-read would close even that, but the admin
+ * regenerate endpoints force a rebuild precisely by passing a row with the
+ * path nulled (adminThumbnails.js), and a re-read would find the persisted
+ * rendition valid and hand it back untouched.
+ *
+ * Per-process only. Two replicas still generate independently, which is
+ * harmless: LocalFsStorage.put renames atomically and an S3 put overwrites
+ * by key, so they converge on the same output. Cross-replica coordination
+ * would need a storage-level lock and is not justified by the impact.
+ */
+const inFlightRenditions = new Map();
+
+function flightKey(rendition, photo, width) {
+  const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
+  const source = (isExternal ? (photo.external_relpath || photo.filename) : photo.path) || '';
+  return `${rendition}:${photo.id}:${source}${width ? `:w${width}` : ''}`;
+}
+
+function singleFlight(key, fn, { force = false } = {}) {
+  const pending = inFlightRenditions.get(key);
+  if (pending && !force) return pending;
+  // Forced: start once the older flight has settled, whichever way it went.
+  const start = pending ? pending.then(fn, fn) : Promise.resolve().then(fn);
+  const work = start.finally(() => {
+    // Only drop our own entry: an older flight settling later than the forced
+    // one that superseded it must not evict the newer work from the map.
+    if (inFlightRenditions.get(key) === work) inFlightRenditions.delete(key);
+  });
+  inFlightRenditions.set(key, work);
+  return work;
+}
+
+/**
  * Regenerate thumbnail if it's broken or missing.
  *
  * Works for both managed photos (stored via the storage backend, possibly
@@ -453,22 +531,26 @@ async function withLocalCopy(sourceKey, fn) {
  * to fall back to streaming the full original on every tile — minutes of
  * load time for a 100-photo NAS-mounted gallery.
  */
-async function ensureThumbnail(photo) {
+async function ensureThumbnail(photo, { force = false } = {}) {
+  // Check if thumbnail exists and is valid (works for any source).
+  if (!force && photo.thumbnail_path) {
+    const isValid = await isThumbnailValid(photo.thumbnail_path);
+    if (isValid) {
+      return photo.thumbnail_path;
+    }
+    logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
+  }
+
+  return singleFlight(flightKey('thumbnail', photo), () => regenerateThumbnail(photo), { force });
+}
+
+async function regenerateThumbnail(photo) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 
   const event = await db('events').where('id', photo.event_id).first();
   if (!event) {
     logger.error(`ensureThumbnail: event ${photo.event_id} not found for photo ${photo.id}`);
     return null;
-  }
-
-  // Check if thumbnail exists and is valid (works for any source).
-  if (photo.thumbnail_path) {
-    const isValid = await isThumbnailValid(photo.thumbnail_path);
-    if (isValid) {
-      return photo.thumbnail_path;
-    }
-    logger.warn(`Invalid thumbnail detected for photo ${photo.id}, regenerating...`);
   }
 
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
@@ -578,9 +660,15 @@ async function generateHeroImage(imagePath, options = {}) {
   const heroRelKey = path.posix.join('heroes', heroFilename);
   const storage = getStorage();
 
-  if (options.regenerate) {
-    await storage.delete(heroRelKey).catch(() => {});
-  }
+  // `options.regenerate` does not delete the existing object first, and the
+  // catch below does not clean up either — same reasoning as generateThumbnail
+  // (#1129, #1020). `storage.put` is the last statement in the try, so nothing
+  // partial can exist for the catch to remove; LocalFsStorage.put stages and
+  // renames atomically and an S3 put overwrites by key, so the write replaces
+  // the old rendition on its own. All the delete added was a window with no
+  // hero at all — in which a concurrent reader was redirected to the full
+  // original — and a source that could not be read left the old hero gone
+  // with the row still pointing at it.
 
   try {
     const metadata = await sharp(imagePath).metadata();
@@ -631,7 +719,6 @@ async function generateHeroImage(imagePath, options = {}) {
   } catch (error) {
     const msg = (error && error.message) ? error.message : String(error);
     logger.error(`Failed to generate hero image for ${filename}: ${msg}`);
-    await storage.delete(heroRelKey).catch(() => {});
     return null;
   }
 }
@@ -660,6 +747,18 @@ async function isHeroValid(heroPath) {
  * Ensure a hero image exists for a photo, regenerate if needed
  */
 async function ensureHeroImage(photo) {
+  if (photo.hero_path) {
+    const isValid = await isHeroValid(photo.hero_path);
+    if (isValid) {
+      return photo.hero_path;
+    }
+    logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
+  }
+
+  return singleFlight(flightKey('hero', photo), () => regenerateHeroImage(photo));
+}
+
+async function regenerateHeroImage(photo) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 
   let event;
@@ -668,14 +767,6 @@ async function ensureHeroImage(photo) {
   } catch (e) {
     logger.error(`Failed to load event for hero image (photo ${photo.id}): ${e.message}`);
     return null;
-  }
-
-  if (photo.hero_path) {
-    const isValid = await isHeroValid(photo.hero_path);
-    if (isValid) {
-      return photo.hero_path;
-    }
-    logger.warn(`Invalid hero image detected for photo ${photo.id}, regenerating...`);
   }
 
   // External sources never reach the managed backend, so resolvePhotoStorageKey
@@ -800,9 +891,8 @@ async function generatePreviewImage(imagePath, options = {}) {
   const previewFilename = `preview_${widthTag}${base}.${needsWebp ? 'webp' : 'jpg'}`;
   const previewRelKey = path.posix.join('previews', previewFilename);
 
-  if (options.regenerate) {
-    await storage.delete(previewRelKey).catch(() => {});
-  }
+  // No delete on `options.regenerate` and none in the catch below — see
+  // generateHeroImage; the reasoning (#1129, #1020) is identical.
 
   try {
     const metadata = probe;
@@ -869,7 +959,6 @@ async function generatePreviewImage(imagePath, options = {}) {
   } catch (error) {
     const msg = (error && error.message) ? error.message : String(error);
     logger.error(`Failed to generate preview image for ${filename}: ${msg}`);
-    await storage.delete(previewRelKey).catch(() => {});
     return null;
   }
 }
@@ -985,12 +1074,6 @@ async function deleteThumbnailTiers(photo) {
  * served from a cache hit without re-reading the source, so an unscoped key
  * would hand one gallery's photo to another.
  */
-/**
- * Tier storage key -> the in-flight generation for it (#1128). Module scope so
- * every concurrent request for one tile shares a single Sharp pass.
- */
-const inFlightThumbnailTiers = new Map();
-
 async function ensureThumbnailAtWidth(photo, width) {
   if (!width) return ensureThumbnail(photo);
 
@@ -1011,6 +1094,24 @@ async function ensureThumbnailAtWidth(photo, width) {
     return ensureThumbnail(photo);
   }
 
+  // One generation per tier, however many tiles ask for it (#1128, #1020).
+  //
+  // A grid issues one request per tile simultaneously, and on a cold gallery
+  // every one of them misses the stat inside. Without this each would run its
+  // own Sharp pass over the same source — and for an external photo, re-read
+  // the whole original off the NFS mount to do it. 79 tiles meant 79 decodes
+  // of the same file, which is also what made the delete race easy to hit.
+  //
+  // The stat lives INSIDE the flight so a request that arrives just as the
+  // previous flight clears finds the freshly written tier instead of missing
+  // on a stale probe and starting another pass.
+  return singleFlight(
+    flightKey('thumbnail', photo, width),
+    () => ensureThumbnailTierUnguarded(photo, width, settings, canonicalWidth)
+  );
+}
+
+async function ensureThumbnailTierUnguarded(photo, width, settings, canonicalWidth) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
   const storage = getStorage();
 
@@ -1042,66 +1143,47 @@ async function ensureThumbnailAtWidth(photo, width) {
   // would visibly reframe as the tile size changes.
   const height = Math.round(width * (settings.height / canonicalWidth));
 
-  // One generation per tier key, however many tiles ask for it (#1128).
-  //
-  // A grid issues one request per tile simultaneously, and on a cold gallery
-  // every one of them misses the stat above. Without this each would run its
-  // own Sharp pass over the same source — and for an external photo, re-read
-  // the whole original off the NFS mount to do it. 79 tiles meant 79 decodes
-  // of the same file, which is also what made the delete race easy to hit.
-  //
-  // Per-process only. Two pods still generate independently, which is
-  // harmless: the write ends in an atomic rename, so they converge on
-  // byte-identical output.
-  const pending = inFlightThumbnailTiers.get(key);
-  if (pending) return pending;
-
-  const work = (async () => {
-    try {
-      // NOT `regenerate: true` (#1128). This path is only reached on a cache
-      // MISS, so there is nothing to regenerate — but that flag makes
-      // generateThumbnail open by DELETING the target. Request A publishes the
-      // tier, B stats it and heads for storage.get(), and C — still inside
-      // generation from its own earlier miss — unlinks the file B is about to
-      // open. B's lazy ReadStream then raised an ENOENT nothing was listening
-      // for and Node exited.
-      //
-      // Without the flag the write is a plain put: LocalFsStorage stages to a
-      // temp file and renames, which is atomic, so a concurrent reader sees
-      // either the old file or the new one and never a hole.
-      if (isExternal) {
-        const localPath = resolvePhotoFilePath(event, photo);
-        return await generateThumbnail(localPath, { outputBasename, width, height });
-      }
-      const sourceKey = resolvePhotoStorageKey(event, photo);
-      if (!sourceKey) return null;
-      return await withLocalCopy(sourceKey, async (localPath) => {
-        const proc = await withProcessableImage(localPath, sourceKey);
-        try {
-          return await generateThumbnail(proc.path, { outputBasename, width, height });
-        } finally {
-          proc.cleanup();
-        }
-      });
-    } catch (e) {
-      logger.warn(`Thumbnail tier w${width} failed for photo ${photo.id}: ${e.message}`);
-      return null;
-    }
-  })();
-
-  inFlightThumbnailTiers.set(key, work);
   try {
-    return await work;
-  } finally {
-    // In a finally so a rejection cannot poison the key for the process
-    // lifetime — the next request re-attempts rather than adopting a failure.
-    inFlightThumbnailTiers.delete(key);
+    // NOT `regenerate: true` (#1128). This path is only reached on a cache
+    // MISS, so there is nothing to regenerate — but that flag used to make
+    // generateThumbnail open by DELETING the target. Request A publishes the
+    // tier, B stats it and heads for storage.get(), and C — still inside
+    // generation from its own earlier miss — unlinks the file B is about to
+    // open. B's lazy ReadStream then raised an ENOENT nothing was listening
+    // for and Node exited.
+    //
+    // Without the flag the write is a plain put: LocalFsStorage stages to a
+    // temp file and renames, which is atomic, so a concurrent reader sees
+    // either the old file or the new one and never a hole.
+    if (isExternal) {
+      const localPath = resolvePhotoFilePath(event, photo);
+      return await generateThumbnail(localPath, { outputBasename, width, height });
+    }
+    const sourceKey = resolvePhotoStorageKey(event, photo);
+    if (!sourceKey) return null;
+    return await withLocalCopy(sourceKey, async (localPath) => {
+      const proc = await withProcessableImage(localPath, sourceKey);
+      try {
+        return await generateThumbnail(proc.path, { outputBasename, width, height });
+      } finally {
+        proc.cleanup();
+      }
+    });
+  } catch (e) {
+    logger.warn(`Thumbnail tier w${width} failed for photo ${photo.id}: ${e.message}`);
+    return null;
   }
 }
 
 async function ensurePreviewImageAtWidth(photo, width) {
   if (!width || width === DEFAULT_PREVIEW_LONG_EDGE) return ensurePreviewImage(photo);
+  return singleFlight(
+    flightKey('preview', photo, width),
+    () => ensurePreviewImageAtWidthUnguarded(photo, width)
+  );
+}
 
+async function ensurePreviewImageAtWidthUnguarded(photo, width) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
   const storage = getStorage();
 
@@ -1163,7 +1245,17 @@ async function ensurePreviewImageAtWidth(photo, width) {
   }
 }
 
-async function ensurePreviewImage(photo) {
+async function ensurePreviewImage(photo, { force = false } = {}) {
+  if (!force && photo.preview_path) {
+    const ok = await isPreviewValid(photo.preview_path);
+    if (ok) return photo.preview_path;
+    logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
+  }
+
+  return singleFlight(flightKey('preview', photo), () => regeneratePreviewImage(photo), { force });
+}
+
+async function regeneratePreviewImage(photo) {
   const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 
   let event;
@@ -1177,12 +1269,6 @@ async function ensurePreviewImage(photo) {
   if (!event) {
     logger.error(`ensurePreviewImage: event ${photo.event_id} not found for photo ${photo.id}`);
     return null;
-  }
-
-  if (photo.preview_path) {
-    const ok = await isPreviewValid(photo.preview_path);
-    if (ok) return photo.preview_path;
-    logger.warn(`Invalid preview detected for photo ${photo.id}, regenerating…`);
   }
 
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
