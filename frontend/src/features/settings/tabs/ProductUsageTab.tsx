@@ -223,6 +223,16 @@ export default function ProductUsageTab() {
             </Button>
           </div>
         )}
+        {data.pending_action && data.pending_action !== 'consent' && (
+          // The v5-upgrade and portal buttons below are disabled by the same
+          // pending-packet guard the backend enforces (command() refuses a
+          // second packet while one is still unacknowledged) — without this
+          // note the buttons just look broken, and "Retry" above them isn't
+          // obviously the fix.
+          <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+            {t('productUsage.pendingBlocksActions')}
+          </p>
+        )}
         <div className="flex flex-wrap gap-3">
           {data.status === 'disabled' ? (
             <Button disabled={busy} onClick={() => setConsent(true)}>
@@ -274,7 +284,6 @@ export default function ProductUsageTab() {
               {active ? (
                 <>
                   <Button
-                    variant="outline"
                     disabled={busy || Boolean(data.pending_action)}
                     onClick={openPortal}
                   >
@@ -294,7 +303,7 @@ export default function ProductUsageTab() {
                 </>
               ) : (
                 <a
-                  className="btn btn-outline btn-md"
+                  className="btn btn-primary btn-md"
                   href={data.collector_url}
                   target="_blank"
                   rel="noopener noreferrer"

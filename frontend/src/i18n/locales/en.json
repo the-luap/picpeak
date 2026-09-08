@@ -14,10 +14,11 @@
     "configurationOnly": "Configuration only — actual use is not collected.",
     "versionDisclosure": "This consent covers usage.v5 / usage-consent.v5: 87 capabilities and the same two inventory totals. New booleans distinguish real CMS/template/branding/SEO/category/event-type edits and actual template-email transport acceptance, including background sends, from defaults, unchanged saves, previews and tests. No content, recipient, template key, action timestamp or frequency is collected. Observations begin only after accepted consent; false does not mean an installation still uses defaults. Previous versions keep their meanings and scope until upgrade; queued packets stay unchanged and markers restart after confirmation.",
     "currentSchema": "Current reporting schema: {{schema}}",
-    "reviewUpgrade": "Review expanded usage.v5 scope",
+    "reviewUpgrade": "Upgrade to usage.v5",
     "upgrade": "Explicitly agree to usage.v5",
     "upgradeExplanation": "Your existing participation keeps its current scope. Review the expanded catalog and the two inventory totals before deciding whether to upgrade. Declining does not end participation.",
     "upgradePending": "The signed consent upgrade is pending confirmation. Only the previously accepted scope is collected. Retry when the collector is available, or disable participation to stop and delete.",
+    "pendingBlocksActions": "The v5 upgrade and the usage portal are unavailable until the pending report is retried or delivered — use \"Retry / send if due\" above.",
     "catalog": {
       "crm": {
         "name": "Client management",
