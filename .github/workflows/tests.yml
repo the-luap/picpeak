@@ -113,6 +113,22 @@ jobs:
         working-directory: ./frontend
         run: npm test -- --run
 
+  nginx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        # Match the two shipped frontend Dockerfiles.
+        image: ['nginx:1.28-alpine', 'nginx:1.30-alpine']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify token-safe nginx logging
+        env:
+          NGINX_TEST_IMAGE: ${{ matrix.image }}
+        run: python3 tests/nginx/test_request_logging.py
+
   # Optional face-detection sidecar (#1074). Runs on every PR regardless of
   # whether the feature is enabled anywhere — these tests need no model
   # weights (they stub the pipeline out) and cover the auth boundary, the
