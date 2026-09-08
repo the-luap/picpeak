@@ -223,14 +223,20 @@ export default function ProductUsageTab() {
             </Button>
           </div>
         )}
-        {data.pending_action && data.pending_action !== 'consent' && (
-          // The v5-upgrade and portal buttons below are disabled by the same
-          // pending-packet guard the backend enforces (command() refuses a
-          // second packet while one is still unacknowledged) — without this
-          // note the buttons just look broken, and "Retry" above them isn't
-          // obviously the fix.
+        {active && data.pending_action && data.pending_action !== 'consent' && (
+          // The portal button below (and the v5-upgrade button above, when
+          // present) are disabled by the same pending-packet guard the
+          // backend enforces (command() refuses a second packet while one is
+          // still unacknowledged) — without this note they just look broken,
+          // and "Retry" above isn't obviously the fix. Gated on `active`:
+          // outside that status the portal renders as a plain, un-gated link
+          // and no v5-upgrade section exists, so pending_action blocks
+          // nothing this note could correctly describe (e.g.
+          // activation_pending/deletion_pending with their own packet still
+          // in flight). Which controls it names depends on whether the
+          // v5-upgrade section is actually on screen.
           <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
-            {t('productUsage.pendingBlocksActions')}
+            {t(data.consent_update_available ? 'productUsage.pendingBlocksActions' : 'productUsage.pendingBlocksPortal')}
           </p>
         )}
         <div className="flex flex-wrap gap-3">

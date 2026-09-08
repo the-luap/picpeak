@@ -103,6 +103,32 @@ it('pending v2 confirmation clearly keeps v1 and cannot queue another upgrade', 
   expect(screen.getByRole('button', { name: 'productUsage.reviewUpgrade' })).toBeDisabled();
   expect(service.upgradeConsent).not.toHaveBeenCalled();
 });
+it.each(['activation_pending', 'deletion_pending'] as const)('a stuck packet in %s names nothing, since neither control is actually gated by it', async (pendingStatus) => {
+  // Outside `active`, the portal renders as a plain always-enabled link and
+  // no v5-upgrade section exists — pending_action blocks neither, so the
+  // note must not claim it does.
+  vi.mocked(service.status).mockResolvedValue({ ...status, status: pendingStatus, collector_url: 'https://usage.picpeak.app', pending_action: pendingStatus === 'activation_pending' ? 'register' : 'delete' });
+  mount();
+  await screen.findByText(`productUsage.states.${pendingStatus}`);
+  expect(screen.queryByText('productUsage.pendingBlocksActions')).toBeNull();
+  expect(screen.queryByText('productUsage.pendingBlocksPortal')).toBeNull();
+});
+it('a stuck report on an already-current schema names only the portal, not a non-existent upgrade button', async () => {
+  vi.mocked(service.status).mockResolvedValue({ ...status, status: 'active', consent_update_available: false, pending_action: 'report' });
+  mount();
+  expect(await screen.findByText('productUsage.pendingBlocksPortal')).toBeInTheDocument();
+  expect(screen.queryByText('productUsage.pendingBlocksActions')).toBeNull();
+  expect(screen.queryByText('productUsage.reviewUpgrade')).toBeNull();
+  expect(screen.getByRole('button', { name: 'productUsage.openUsagePortal' })).toBeDisabled();
+});
+it('a stuck report with a v5 upgrade available names both actually-gated controls', async () => {
+  vi.mocked(service.status).mockResolvedValue({ ...status, status: 'active', consent_update_available: true, collector_url: 'https://usage.picpeak.app', pending_action: 'report' });
+  mount();
+  expect(await screen.findByText('productUsage.pendingBlocksActions')).toBeInTheDocument();
+  expect(screen.queryByText('productUsage.pendingBlocksPortal')).toBeNull();
+  expect(screen.getByRole('button', { name: 'productUsage.reviewUpgrade' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'productUsage.openUsagePortal' })).toBeDisabled();
+});
 describe('product usage controls', () => {
   it('offers identity-free audit receipts after opt-out without restoring participation controls', async () => {
     vi.mocked(service.status).mockResolvedValue({

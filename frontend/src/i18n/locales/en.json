@@ -19,6 +19,7 @@
     "upgradeExplanation": "Your existing participation keeps its current scope. Review the expanded catalog and the two inventory totals before deciding whether to upgrade. Declining does not end participation.",
     "upgradePending": "The signed consent upgrade is pending confirmation. Only the previously accepted scope is collected. Retry when the collector is available, or disable participation to stop and delete.",
     "pendingBlocksActions": "The v5 upgrade and the usage portal are unavailable until the pending report is retried or delivered — use \"Retry / send if due\" above.",
+    "pendingBlocksPortal": "The usage portal is unavailable until the pending report is retried or delivered — use \"Retry / send if due\" above.",
     "catalog": {
       "crm": {
         "name": "Client management",
