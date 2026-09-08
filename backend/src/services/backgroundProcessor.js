@@ -29,6 +29,7 @@
 const os = require('os');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
+const { createInterruptibleSleep } = require('../utils/interruptibleSleep');
 const { processPhoto } = require('./photoProcessor');
 
 const POLL_INTERVAL_MS = parseInt(process.env.UPLOAD_PROCESSOR_POLL_MS || '1000', 10);
@@ -69,7 +70,9 @@ let running = false;
 let workerHandles = [];
 let janitorHandle = null;
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+let waits = null;
+let stopping = null;
+const sleep = ms => waits.sleep(ms);
 
 function isPostgres() {
   const c = db.client.config.client;
@@ -175,12 +178,13 @@ async function janitorLoop() {
 }
 
 function start() {
-  if (running) return;
+  if (running || stopping) return;
   if (process.env.UPLOAD_PROCESSOR_DISABLED === 'true') {
     logger.info('backgroundProcessor: disabled via UPLOAD_PROCESSOR_DISABLED');
     return;
   }
 
+  waits = createInterruptibleSleep();
   running = true;
   workerHandles = [];
   for (let i = 0; i < CONCURRENCY; i++) {
@@ -199,12 +203,20 @@ function start() {
   );
 }
 
-async function stop() {
-  if (!running) return;
+function stop() {
+  if (stopping) return stopping;
+  if (!running) return Promise.resolve();
   running = false;
-  await Promise.all([...workerHandles, janitorHandle].filter(Boolean));
-  workerHandles = [];
-  janitorHandle = null;
+  // Interrupt idle/backoff waits only. Claims, processing and janitor work
+  // already in flight still drain before the database can be closed.
+  waits.cancel();
+  stopping = Promise.all([...workerHandles, janitorHandle].filter(Boolean)).finally(() => {
+    workerHandles = [];
+    janitorHandle = null;
+    waits = null;
+    stopping = null;
+  });
+  return stopping;
 }
 
 module.exports = { start, stop, claimNextPhoto };
