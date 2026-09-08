@@ -421,7 +421,7 @@ async function initializeDatabase() {
       table.integer('user_id').nullable(); // User who owned the token
       table.string('token_type', 20); // admin, gallery, etc.
       table.timestamp('revoked_at').defaultTo(db.fn.now());
-      table.timestamp('expires_at').notNullable(); // When token would have expired
+      table.timestamp('expires_at').nullable(); // NULL retains tokens without a known expiry
       table.string('reason', 100); // password_change, logout, compromised, etc.
       table.text('metadata'); // Additional JSON data
       

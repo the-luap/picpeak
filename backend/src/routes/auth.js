@@ -356,7 +356,9 @@ router.post('/logout', async (req, res) => {
 
     if (token) {
       // Revoke the token so it can't be reused, then end the session
-      await revokeToken(token, 'user_logout');
+      if (!await revokeToken(token, 'user_logout')) {
+        throw new Error('Token revocation failed');
+      }
       endSession(token);
 
       try {
@@ -400,6 +402,8 @@ router.post('/logout', async (req, res) => {
 
     res.json({ message: 'Logged out successfully', ...(ssoLogoutUrl ? { ssoLogoutUrl } : {}) });
   } catch (error) {
+    clearAdminAuthCookie(res);
+    clearGalleryAuthCookies(res);
     errorResponse(res, error, 500, 'Logout failed');
   }
 });
@@ -714,11 +718,14 @@ router.post('/gallery/logout', async (req, res) => {
     const { slug } = req.body || {};
     const token = getGalleryTokenFromRequest(req, slug);
     if (token) {
-      await revokeToken(token, 'gallery_logout');
+      if (!await revokeToken(token, 'gallery_logout')) {
+        throw new Error('Token revocation failed');
+      }
     }
     clearGalleryAuthCookies(res, slug);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
+    clearGalleryAuthCookies(res, req.body?.slug);
     errorResponse(res, error, 500, 'Logout failed');
   }
 });

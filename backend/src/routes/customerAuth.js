@@ -181,7 +181,9 @@ router.post('/logout', async (req, res) => {
   try {
     const token = getCustomerTokenFromRequest(req);
     if (token) {
-      await revokeToken(token, 'user_logout');
+      if (!await revokeToken(token, 'user_logout')) {
+        throw new Error('Token revocation failed');
+      }
     }
     clearCustomerAuthCookie(res);
     res.json({ message: 'Logged out successfully' });
