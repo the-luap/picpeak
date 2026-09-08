@@ -342,15 +342,12 @@ async function cleanupOldAttempts() {
 /**
  * Initialize cleanup job
  */
-function initializeCleanupJob() {
-  // Run cleanup every 24 hours
-  setInterval(cleanupOldAttempts, 24 * 60 * 60 * 1000);
-  
-  // Run initial cleanup
-  cleanupOldAttempts();
-}
+const cleanupTask = require('../services/scheduledTask').scheduledTask(cleanupOldAttempts, { interval: 24 * 60 * 60 * 1000, initialDelay: 0 });
+function initializeCleanupJob() { cleanupTask.start(); }
+const stopCleanupJob = () => cleanupTask.stop();
 
 module.exports = {
+  stopCleanupJob,
   trackFailedAttempt,
   trackSuccessfulLogin,
   checkAccountLockout,

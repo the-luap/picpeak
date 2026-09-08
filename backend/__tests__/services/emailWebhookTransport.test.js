@@ -15,7 +15,7 @@
 
 jest.mock('axios', () => ({ post: jest.fn() }));
 jest.mock('../../src/utils/networkValidation', () => ({
-  validateExternalUrlAsync: jest.fn(async () => ({ valid: true, reason: 'ok' })),
+  validateExternalUrlAsync: jest.fn(async () => ({ valid: true, reason: 'ok', hostname: 'relay.example', addresses: [{ address: '93.184.216.34', family: 4 }] })),
 }));
 jest.mock('../../src/utils/logger', () => ({
   info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(),
@@ -48,7 +48,7 @@ beforeEach(() => {
   process.env.EMAIL_WEBHOOK_SECRET = SECRET;
   transport.__testing.setAllowPrivateUrls(false);
   transport.__testing.resetSecretWarning();
-  validateExternalUrlAsync.mockResolvedValue({ valid: true, reason: 'ok' });
+  validateExternalUrlAsync.mockResolvedValue({ valid: true, reason: 'ok', hostname: 'relay.example', addresses: [{ address: '93.184.216.34', family: 4 }] });
   axios.post.mockResolvedValue({ status: 200, data: streamOf('') });
 });
 

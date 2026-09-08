@@ -75,17 +75,29 @@ export const galleryService = {
   async getGalleryPhotos(
     slug: string,
     filter?: 'liked' | 'favorited' | 'commented' | 'rated' | 'all',
-    guestId?: string
+    guestId?: string,
+    signal?: AbortSignal
   ): Promise<GalleryData> {
-    const params: any = {};
+    const params: Record<string, string | number> = { limit: 250, page: 1 };
     if (filter && filter !== 'all') {
       params.filter = filter;
       if (guestId) {
         params.guest_id = guestId;
       }
     }
-    const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params });
+    const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params: { ...params }, signal });
     const data = response.data;
+    // Existing filter/folder/lightbox consumers require the complete set.
+    // Fetch bounded pages so the API only hydrates feedback and faces for 250
+    // photos at once. A cancelled gallery query also cancels later pages.
+    const photos = new Map(data.photos.map(photo => [photo.id, photo]));
+    let pagination = data.pagination;
+    while (pagination?.has_more) {
+      params.page = pagination.page + 1;
+      const next = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params: { ...params }, signal });
+      next.data.photos.forEach(photo => photos.set(photo.id, photo));
+      pagination = next.data.pagination;
+    }
     const normalizedEvent = data?.event
       ? {
           ...data.event,
@@ -94,6 +106,7 @@ export const galleryService = {
       : data.event;
     return {
       ...data,
+      photos: [...photos.values()],
       event: normalizedEvent,
     };
   },

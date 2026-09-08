@@ -1,0 +1,57 @@
+const { db } = require('../database/db');
+const { userHasAllPermissions } = require('../middleware/permissions');
+const { canAccessEvent } = require('../middleware/ownership');
+const { assertGalleryAvailable, requiresGalleryPassword } = require('../utils/galleryLifecycle');
+const { isTokenBeforeCutoff } = require('../utils/sessionCutoff');
+const { AppError } = require('../utils/errors');
+const sessions = require('./sessionAccessService');
+
+// These claims identify a session for revocation; no raw JWT, IP or password
+// enters a media URL. Only use grants from this service or a verified signature.
+const CLAIMS = ['type', 'id', 'customerId', 'eventId', 'eventSlug', 'iat', 'exp', 'jti', 'via', 'accessLevel'];
+
+class GalleryAccessService {
+  grant(event, kind, decoded) {
+    const session = decoded && Object.fromEntries(CLAIMS
+      .filter((key) => decoded[key] !== undefined).map((key) => [key, decoded[key]]));
+    return { kind, eventId: event.id, issuedAt: Math.floor(Date.now() / 1000), ...(session && { session }) };
+  }
+
+  async authorize(event, grant) {
+    if (!grant || !['public', 'gallery', 'admin'].includes(grant.kind)
+      || !event || Number(grant.eventId) !== Number(event.id)) {
+      throw new AppError('Invalid gallery grant', 403, 'INVALID_GALLERY_GRANT');
+    }
+    assertGalleryAvailable(event, { adminPreview: grant.kind === 'admin' });
+    if (!Number.isFinite(grant.issuedAt) || await isTokenBeforeCutoff({ iat: grant.issuedAt })) {
+      throw new AppError('Session invalidated', 401, 'SESSION_INVALIDATED');
+    }
+    const session = grant.session;
+    if (grant.kind === 'admin') {
+      const account = await sessions.admin(session);
+      const principal = { id: account.id, roleName: account.role_name };
+      if (!canAccessEvent(principal, event)
+        || !await userHasAllPermissions(account.id, ['events.view', 'photos.view'])) {
+        throw new AppError('Access denied', 403, 'FORBIDDEN');
+      }
+    } else if (grant.kind === 'gallery') {
+      await sessions.assertActive(session, 'gallery');
+      if (Number(session.eventId) !== Number(event.id)) {
+        throw new AppError('Token does not match requested gallery', 403, 'INVALID_GALLERY_GRANT');
+      }
+      if (session.via === 'customer') {
+        await sessions.customer(session, { derived: true });
+        const assignment = await db('event_customer_assignments')
+          .where({ event_id: event.id, customer_account_id: session.customerId }).first();
+        if (!assignment) {
+          throw new AppError('Access to this gallery has been revoked', 403, 'CUSTOMER_ASSIGNMENT_REVOKED');
+        }
+      }
+    } else if (requiresGalleryPassword(event)) {
+      throw new AppError('No token provided', 401, 'NO_TOKEN');
+    }
+    return grant;
+  }
+}
+
+module.exports = new GalleryAccessService();

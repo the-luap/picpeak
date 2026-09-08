@@ -24,13 +24,13 @@
  * `crmSchedulerService` is a future cleanup.
  */
 
-const cron = require('node-cron');
+const { scheduledTask } = require('./scheduledTask');
 const invoiceService = require('./invoiceService');
 const eventReminderService = require('./eventReminderService');
 const quoteService = require('./quoteService');
 const logger = require('../utils/logger');
 
-let task = null;
+
 
 async function runTick() {
   try {
@@ -71,31 +71,8 @@ async function runTick() {
   }
 }
 
-function startInvoiceScheduler() {
-  if (task) {
-    logger.info('Invoice scheduler already running');
-    return task;
-  }
-  // Hourly at minute 11 to spread load away from other hourly jobs.
-  task = cron.schedule('11 * * * *', async () => {
-    logger.info('Invoice scheduler: tick');
-    await runTick();
-  });
-  logger.info('Invoice scheduler started (hourly @ :11) — invoice + event-reminder jobs');
-  // Run once on boot so a missed window (server restart) gets caught
-  // up immediately.
-  runTick().catch((err) => {
-    logger.warn('Invoice scheduler initial tick failed', { err: err.message });
-  });
-  return task;
-}
-
-function stopInvoiceScheduler() {
-  if (task) {
-    task.stop();
-    task = null;
-    logger.info('Invoice scheduler stopped');
-  }
-}
+const task = scheduledTask(runTick, { schedule: '11 * * * *', initialDelay: 0 });
+function startInvoiceScheduler() { task.start(); return task; }
+const stopInvoiceScheduler = () => task.stop();
 
 module.exports = { startInvoiceScheduler, stopInvoiceScheduler };

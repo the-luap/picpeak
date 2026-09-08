@@ -190,30 +190,27 @@ function validateExternalUrl(urlString) {
  * literal isPrivateIP check alone can't see that. Fails closed on resolution
  * failure. IP literals are decided by isPrivateIP without a lookup.
  *
- * Residual: a determined attacker who controls DNS can still rebind between
- * this check and the client's own resolution (TOCTOU). Fully closing that
- * needs pinning the connection to the vetted IP, which the underlying
- * clients (nodemailer/imap/ssh/aws-sdk) don't cleanly support; these actions
- * are admin-only, so resolve-and-vet is the proportionate mitigation.
+ * HTTP clients must use the returned addresses from validateExternalUrlAsync
+ * with pinnedRequestOptions; a separate preflight alone cannot stop rebinding.
  *
  * @param {string} hostname
  * @returns {Promise<boolean>} true when safe to connect
  */
-async function classifyHost(hostname) {
-  if (!hostname || typeof hostname !== 'string') return 'invalid';
-  // Literal check first: IP literals, blocked names, .internal/.local/.localhost.
-  if (isPrivateIP(hostname)) return 'private';
-  // An IP literal is fully decided above — no name to resolve.
+async function resolveHost(hostname) {
+  if (!hostname || typeof hostname !== 'string') return { reason: 'invalid' };
+  if (isPrivateIP(hostname)) return { reason: 'private' };
   const bare = hostname.replace(/^\[|\]$/g, '');
-  if (net.isIP(bare)) return 'ok';
+  if (net.isIP(bare)) return { reason: 'ok', addresses: [{ address: bare, family: net.isIP(bare) }] };
   let addresses;
-  try {
-    addresses = await dns.lookup(hostname, { all: true });
-  } catch {
-    return 'unresolved'; // transient/NXDOMAIN — caller decides retry vs reject
-  }
-  if (!addresses.length) return 'unresolved';
-  return addresses.every((a) => !isPrivateIP(a.address)) ? 'ok' : 'private';
+  try { addresses = await dns.lookup(hostname, { all: true }); }
+  catch { return { reason: 'unresolved' }; }
+  if (!addresses.length) return { reason: 'unresolved' };
+  if (addresses.some(a => !net.isIP(a.address) || isPrivateIP(a.address))) return { reason: 'private' };
+  return { reason: 'ok', addresses };
+}
+
+async function classifyHost(hostname) {
+  return (await resolveHost(hostname)).reason;
 }
 
 async function isHostAllowed(hostname) {
@@ -237,11 +234,14 @@ async function validateExternalUrlAsync(urlString) {
   } catch {
     return { valid: false, error: 'Invalid URL format', reason: 'invalid' };
   }
-  const reason = await classifyHost(parsed.hostname);
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    return { valid: false, error: 'HTTP(S) URL without credentials required', reason: 'invalid' };
+  }
+  const { reason, addresses } = await resolveHost(parsed.hostname);
   if (reason !== 'ok') {
     return { valid: false, error: 'URL points to a private or internal network address', reason };
   }
-  return { valid: true, reason: 'ok' };
+  return { valid: true, reason: 'ok', hostname: parsed.hostname.replace(/^\[|\]$/g, ''), addresses };
 }
 
 module.exports = { isPrivateIP, validateExternalUrl, isHostAllowed, validateExternalUrlAsync, classifyHost };

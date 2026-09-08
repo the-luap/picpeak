@@ -145,15 +145,12 @@ async function cleanupExpiredRevocations() {
 /**
  * Initialize cleanup job for expired revocations
  */
-function initializeRevocationCleanup() {
-  // Run cleanup every 6 hours
-  setInterval(cleanupExpiredRevocations, 6 * 60 * 60 * 1000);
-  
-  // Run initial cleanup
-  cleanupExpiredRevocations();
-}
+const cleanupTask = require('../services/scheduledTask').scheduledTask(cleanupExpiredRevocations, { interval: 6 * 60 * 60 * 1000, initialDelay: 0 });
+function initializeRevocationCleanup() { cleanupTask.start(); }
+const stopRevocationCleanup = () => cleanupTask.stop();
 
 module.exports = {
+  stopRevocationCleanup,
   revokeToken,
   isTokenRevoked,
   revokeAllUserTokens,

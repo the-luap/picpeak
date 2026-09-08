@@ -1,3 +1,4 @@
+import { usePhotoSelection } from '../../../hooks/usePhotoSelection';
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Download, Maximize2, Play, Pause, Heart, MessageSquare } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -19,7 +20,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
   feedbackOptions
 }) => {
   const { theme } = useTheme();
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const { currentPhoto, currentIndex, setCurrentIndex } = usePhotoSelection(photos);
   const [isPlaying, setIsPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
@@ -41,7 +42,7 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, photos.length, interval]);
+  }, [isPlaying, photos.length, interval, setCurrentIndex]);
 
   // Start autoplay if enabled
   useEffect(() => {
@@ -62,9 +63,6 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     setIsPlaying(!isPlaying);
   };
 
-  if (photos.length === 0) return null;
-
-  const currentPhoto = photos[currentIndex];
   const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<null | { type: 'like'; photoId: number }>(null);
   const [savedIdentity, setSavedIdentity] = useState<{ name: string; email: string } | null>(null);
@@ -79,6 +77,8 @@ export const CarouselGalleryLayout: React.FC<BaseGalleryLayoutProps> = ({
     likedSeededRef.current = true;
   }, [photos]);
   const canQuickComment = Boolean(feedbackEnabled && feedbackOptions?.allowComments && onOpenPhotoWithFeedback);
+
+  if (!currentPhoto) return null;
 
   return (
     <div className="photo-grid relative">

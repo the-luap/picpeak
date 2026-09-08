@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 /**
  * Permission Checking Middleware for RBAC
  * Provides role-based access control with caching for performance
@@ -143,7 +144,7 @@ function requirePermission(permissions, options = { requireAll: false }) {
           userId: req.admin.id,
           username: req.admin.username,
           requiredPermissions: permArray,
-          path: req.path,
+          path: requestLogPath(req.originalUrl || req.path),
           method: req.method
         });
         throw new ForbiddenError('Insufficient permissions');
@@ -180,7 +181,7 @@ function requireSuperAdmin() {
         logger.warn('Super admin access denied', {
           userId: req.admin.id,
           username: req.admin.username,
-          path: req.path,
+          path: requestLogPath(req.originalUrl || req.path),
           method: req.method
         });
         throw new ForbiddenError('Super Admin access required');

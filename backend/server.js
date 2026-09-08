@@ -218,7 +218,7 @@ app.use((req, res, next) => {
 });
 
 // CORS configuration (apply only to API routes)
-const { isAllowedOrigin, multipartOriginAllowed } = require('./src/utils/requestOrigin');
+const { isAllowedOrigin } = require('./src/utils/requestOrigin');
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -528,43 +528,10 @@ app.use(['/api/admin', '/api/v1'], express.json({ limit: '50mb' }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// CSRF protection: require JSON Content-Type on mutating API requests
-// This blocks cross-origin form submissions which cannot set Content-Type: application/json
-app.use('/api', (req, res, next) => {
-  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-    const contentType = req.headers['content-type'] || '';
-    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    // Allow empty-body requests (e.g. logout), multipart for uploads, and JSON for API calls
-    if (contentLength > 0 && !contentType.includes('application/json') && !contentType.includes('multipart/form-data')) {
-      return res.status(415).json({ error: 'Unsupported Content-Type. Use application/json or multipart/form-data.' });
-    }
-    // multipart is exactly what a cross-site <form> can send without a
-    // preflight, and in a split-origin deployment (SameSite=None) the admin
-    // cookie rides along to the upload routes. Browsers label such a
-    // submission Sec-Fetch-Site: cross-site (and always send Origin on a
-    // cross-origin POST); non-browser clients send neither header and pass.
-    if (contentType.includes('multipart/form-data') && !multipartOriginAllowed(req)) {
-      return res.status(403).json({ error: 'Cross-site multipart request rejected' });
-    }
-  }
-  next();
-});
+// Validate the origin independently of body length/content type.
+app.use('/api', require('./src/middleware/csrf'));
 
-// Request logging for API routes (with timestamps)
-const apiRequestLogger = (req, res, next) => {
-  try {
-    const started = Date.now();
-    const ts = new Date().toISOString();
-    logger.info(`[${ts}] ${req.method} ${req.originalUrl}`);
-    res.on('finish', () => {
-      const ms = Date.now() - started;
-      const tsDone = new Date().toISOString();
-      logger.info(`[${tsDone}] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
-    });
-  } catch (_) {}
-  next();
-};
-app.use('/api', apiRequestLogger);
+app.use('/api', require('./src/middleware/apiRequestLogger'));
 
 // Maintenance mode middleware - add after body parsing but before routes
 app.use(maintenanceMiddleware);
@@ -1098,6 +1065,27 @@ if (spaCatchAll) {
 // Global error handler (must be last)
 app.use(errorHandler);
 
+// App construction is side-effect free with respect to listening and workers.
+let httpServer;
+let shutdownPromise;
+const tempCleanupTask = require('./src/services/scheduledTask').scheduledTask(
+  () => require('./src/utils/cleanupTempUploads').cleanupTempUploads(),
+  { interval: 60 * 60 * 1000, initialDelay: 0 },
+);
+async function stopServer() {
+  if (shutdownPromise) return shutdownPromise;
+  shutdownPromise = (async () => {
+    const close = httpServer ? new Promise((resolve, reject) => httpServer.close(err => err ? reject(err) : resolve())) : Promise.resolve();
+    const timeout = setTimeout(() => httpServer?.closeAllConnections(), 30000);
+    timeout.unref();
+    try {
+      await Promise.all([close, tempCleanupTask.stop(), require('./src/services/serviceShutdown').stopServices()]);
+      await db.destroy();
+    } finally { clearTimeout(timeout); }
+  })();
+  return shutdownPromise;
+}
+
 // Initialize services
 async function startServer() {
   try {
@@ -1122,14 +1110,8 @@ async function startServer() {
     const { initializeCleanupJob } = require('./src/utils/authSecurity');
     initializeCleanupJob();
     
-    // Initialize temp upload cleanup job
-    const { cleanupTempUploads } = require('./src/utils/cleanupTempUploads');
-    // Run cleanup on startup
-    cleanupTempUploads();
-    // Schedule periodic cleanup every hour
-    setInterval(cleanupTempUploads, 60 * 60 * 1000);
-    logger.info('Temp upload cleanup scheduled');
-    
+    tempCleanupTask.start();
+
     // Start file watcher
     startFileWatcher();
     // External-media folder watcher (issue 1187): imports new files into
@@ -1149,6 +1131,7 @@ async function startServer() {
     startTransferCleanup();
     // Custom-resolution download archives (#858) are disposable renditions —
     // sweep them once their TTL passes so .download-cache doesn't grow forever.
+    await require('./src/services/downloadJobService').recoverOrphanedJobs();
     startDownloadJobCleanup();
     // Reveal-mode scheduler (#838): minutely stamp for scheduled reveals.
     startRevealScheduler();
@@ -1306,7 +1289,7 @@ async function startServer() {
     // lazy means they don't pay for a module graph they never use.
     require('./src/services/faceQueue').start();
 
-    app.listen(PORT, () => {
+    httpServer = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(`Admin interface: ${process.env.ADMIN_URL || 'http://localhost:3000'}`);
       logger.info(`Frontend: ${process.env.FRONTEND_URL || 'http://localhost:3001'}`);
@@ -1325,10 +1308,20 @@ async function startServer() {
     });
   } catch (error) {
     logger.error('Failed to start server:', error);
-    process.exit(1);
+    await stopServer();
+    process.exitCode = 1;
   }
 }
 
-startServer();
+if (require.main === module) {
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      stopServer().catch(error => { logger.error('Shutdown failed', { error: error.message }); process.exitCode = 1; });
+    });
+  }
+  startServer();
+}
+app.startServer = startServer;
+app.stopServer = stopServer;
 
 module.exports = app; // For testing

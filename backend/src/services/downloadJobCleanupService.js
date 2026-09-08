@@ -12,21 +12,13 @@
  * schedulers don't all wake at once.
  */
 
-const cron = require('node-cron');
+const { scheduledTask } = require('./scheduledTask');
 const logger = require('../utils/logger');
 const downloadJobService = require('./downloadJobService');
 
-function startDownloadJobCleanup() {
-  // A restart leaves any in-flight build with no worker. Fail those rows once
-  // at startup so their owners get a clear error instead of polling forever.
-  downloadJobService.recoverOrphanedJobs().catch((err) =>
-    logger.error('Download job recovery failed', { error: err.message }));
-
-  cron.schedule('7,27,47 * * * *', async () => {
-    await runDownloadJobCleanup();
-  });
-  logger.info('Download job cleanup scheduler started');
-}
+const task = scheduledTask(runDownloadJobCleanup, { schedule: '7,27,47 * * * *' });
+function startDownloadJobCleanup() { task.start(); }
+const stopDownloadJobCleanup = () => task.stop();
 
 async function runDownloadJobCleanup() {
   try {
@@ -37,6 +29,7 @@ async function runDownloadJobCleanup() {
 }
 
 module.exports = {
+  stopDownloadJobCleanup,
   startDownloadJobCleanup,
   // exported for tests / manual invocation
   runDownloadJobCleanup,

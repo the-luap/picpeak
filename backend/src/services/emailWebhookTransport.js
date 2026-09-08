@@ -25,6 +25,7 @@ const fs = require('fs').promises;
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { signPayload } = require('./webhookService');
+const { pinnedRequestOptions } = require('../utils/pinnedRequest');
 const { validateExternalUrlAsync } = require('../utils/networkValidation');
 
 const SIGNATURE_HEADER = 'X-PicPeak-Signature';
@@ -167,6 +168,7 @@ async function send(mail) {
   // Vetted before every send, not once at startup: DNS answers change, and the
   // check is what stops an operator-supplied URL becoming a request to link
   // local metadata or a service on the host network.
+  let connectionOptions = {};
   if (!allowPrivateUrls) {
     // https for anything leaving the machine. The HMAC proves who sent the
     // body, not who can read it — and these bodies carry password-reset links
@@ -190,6 +192,7 @@ async function send(mail) {
         + 'private network (a container or LAN address).'
       );
     }
+    connectionOptions = pinnedRequestOptions(check);
   }
 
   const payload = {
@@ -218,6 +221,7 @@ async function send(mail) {
   let response;
   try {
     response = await axios.post(url, rawBody, {
+      ...connectionOptions,
       headers: {
         'Content-Type': 'application/json',
         [SIGNATURE_HEADER]: signature,

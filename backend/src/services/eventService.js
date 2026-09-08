@@ -10,11 +10,11 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs').promises;
 const { db } = require('../database/db');
-const logger = require('../utils/logger');
+
 const { formatBoolean } = require('../utils/dbCompat');
 const { hasColumnCached } = require('../utils/schemaCache');
-const { validatePasswordInContext, getBcryptRounds } = require('../utils/passwordValidation');
-const { buildShareLinkVariants } = require('./shareLinkService');
+const { getBcryptRounds } = require('../utils/passwordValidation');
+
 const { parseBooleanInput, parseStringInput } = require('../utils/parsers');
 const eventTypeService = require('./eventTypeService');
 const { AppError } = require('../utils/errors');
@@ -154,167 +154,11 @@ const createEventFolders = async (slug) => {
  * @param {Object} eventData - Event data
  * @returns {Promise<Object>} - Created event
  */
-const createEvent = async (eventData) => {
-  const {
-    event_type,
-    event_name,
-    event_date,
-    customer_name,
-    customer_email,
-    admin_email,
-    password,
-    require_password = true,
-    welcome_message,
-    color_theme,
-    expiration_days = 30,
-    // Feedback settings
-    feedback_enabled,
-    allow_ratings,
-    allow_likes,
-    allow_comments,
-    allow_favorites,
-    require_name_email,
-    moderate_comments,
-    show_feedback_to_guests,
-    // Upload settings
-    allow_user_uploads,
-    upload_category_id,
-    // Photo cap
-    photo_cap,
-    // Migration 137 — calendar time fields. Defaults to full-day when
-    // the caller (legacy create-event form) doesn't know about them.
-    event_time_start,
-    event_time_end,
-    is_full_day
-  } = eventData;
-
-  const requirePassword = parseBooleanInput(require_password, true);
-  const customerColumnsAvailable = await hasCustomerContactColumns();
-  // Validate + normalise the calendar time triple up front so we throw
-  // before bcrypt + folder creation if the payload is bad.
-  const timeTriple = normaliseEventTimeTriple({
-    event_time_start, event_time_end, is_full_day,
+const createEvent = async (eventData, options = {}) => {
+  return require('./eventCreationService').createEvent(eventData, {
+    ...options,
+    actor: options.actor || (eventData.created_by ? { id: eventData.created_by } : undefined),
   });
-
-  // Validate password if required
-  if (requirePassword) {
-    const passwordValidation = await validatePasswordInContext(password, 'gallery', {
-      eventName: event_name
-    });
-
-    if (!passwordValidation.valid) {
-      const error = new Error('Password does not meet security requirements');
-      error.code = 'PASSWORD_INVALID';
-      error.details = passwordValidation.errors;
-      error.score = passwordValidation.score;
-      error.feedback = passwordValidation.feedback;
-      throw error;
-    }
-  }
-
-  // Generate unique slug
-  const slug = await generateUniqueSlug(event_type, event_name, event_date);
-
-  // Generate share link
-  const shareToken = crypto.randomBytes(16).toString('hex');
-  const { shareUrl, shareLinkToStore } = await buildShareLinkVariants({ slug, shareToken });
-
-  // Hash password
-  const password_hash = requirePassword
-    ? await bcrypt.hash(password, getBcryptRounds())
-    : await bcrypt.hash(crypto.randomBytes(32).toString('hex'), getBcryptRounds());
-
-  // Calculate expiration date
-  const expires_at = new Date(event_date);
-  expires_at.setDate(expires_at.getDate() + parseInt(expiration_days, 10));
-
-  // Create folder structure
-  await createEventFolders(slug);
-
-  // Build insert data
-  const insertData = {
-    slug,
-    event_type,
-    event_name,
-    event_date,
-    ...(customerColumnsAvailable ? { customer_name, customer_email } : {}),
-    host_name: customer_name,
-    host_email: customer_email,
-    admin_email,
-    password_hash,
-    welcome_message,
-    color_theme,
-    share_link: shareLinkToStore,
-    share_token: shareToken,
-    expires_at,
-    require_password: formatBoolean(requirePassword),
-    // Feedback settings
-    feedback_enabled: feedback_enabled !== undefined ? formatBoolean(feedback_enabled) : undefined,
-    allow_ratings: allow_ratings !== undefined ? formatBoolean(allow_ratings) : undefined,
-    allow_likes: allow_likes !== undefined ? formatBoolean(allow_likes) : undefined,
-    allow_comments: allow_comments !== undefined ? formatBoolean(allow_comments) : undefined,
-    allow_favorites: allow_favorites !== undefined ? formatBoolean(allow_favorites) : undefined,
-    require_name_email: require_name_email !== undefined ? formatBoolean(require_name_email) : undefined,
-    moderate_comments: moderate_comments !== undefined ? formatBoolean(moderate_comments) : undefined,
-    show_feedback_to_guests: show_feedback_to_guests !== undefined ? formatBoolean(show_feedback_to_guests) : undefined,
-    // Upload settings
-    allow_user_uploads: allow_user_uploads !== undefined ? formatBoolean(allow_user_uploads) : undefined,
-    upload_category_id: upload_category_id || null,
-    // Photo cap
-    photo_cap: photo_cap || null
-  };
-
-  // Migration 137 — calendar time fields. Guarded by hasColumnCached so
-  // installs that haven't applied 137 yet skip the columns silently
-  // (per feedback_schema_drift_guards.md / feedback_cache_hasColumn_lookups.md).
-  if (await hasColumnCached('events', 'is_full_day')) {
-    insertData.event_time_start = timeTriple.event_time_start;
-    insertData.event_time_end = timeTriple.event_time_end;
-    insertData.is_full_day = formatBoolean(timeTriple.is_full_day);
-  }
-
-  // Remove undefined values
-  Object.keys(insertData).forEach(key => {
-    if (insertData[key] === undefined) {
-      delete insertData[key];
-    }
-  });
-
-  // Insert into database
-  const insertResult = await db('events').insert(insertData).returning('id');
-  const eventId = insertResult[0]?.id || insertResult[0];
-
-  // Fire gallery.published — a gallery goes live the moment it's created (active
-  // + share link). Best-effort; emit is fail-closed when the workflows flag is
-  // off and never throws into the create path.
-  try {
-    await require('./workflows').emitWorkflowEvent('gallery.published', {
-      entityType: 'event',
-      entityId: eventId,
-      payload: {
-        eventId,
-        slug,
-        eventName: event_name,
-        eventDate: event_date,
-        customerEmail: customer_email || null,
-        adminEmail: admin_email || null,
-        galleryLink: shareUrl,
-        expiresAt: expires_at,
-      },
-    });
-  } catch (err) {
-    logger.warn('Failed to emit gallery.published workflow event', { eventId, error: err.message });
-  }
-
-  return {
-    id: eventId,
-    slug,
-    share_link: shareUrl,
-    expires_at,
-    require_password: requirePassword,
-    customer_name,
-    customer_email
-  };
 };
 
 /**

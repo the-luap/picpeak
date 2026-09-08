@@ -1,6 +1,11 @@
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
 
+function canAccessEvent(admin, event) {
+  return Boolean(admin && event && (admin.roleName === 'super_admin'
+    || event.created_by == null || Number(event.created_by) === Number(admin.id)));
+}
+
 /**
  * Middleware to enforce event ownership for non-super_admin users.
  * Super admins bypass the check. Other admins can only access events they created.
@@ -23,7 +28,7 @@ function requireEventOwnership(req, res, next) {
         return res.status(404).json({ error: 'Event not found' });
       }
       // Allow access if: event has no owner (legacy/system), or admin owns it
-      if (event.created_by && event.created_by !== req.admin.id) {
+      if (!canAccessEvent(req.admin, event)) {
         return res.status(403).json({ error: 'Access denied' });
       }
       next();
@@ -165,6 +170,7 @@ function requireProjectOwnership(req, res, next) {
 }
 
 module.exports = {
+  canAccessEvent,
   requireEventOwnership,
   filterOwnedEventIds,
   scopeEventsQuery,

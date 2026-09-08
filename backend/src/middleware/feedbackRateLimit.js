@@ -1,3 +1,4 @@
+const cleanupTimers = new Set();
 const crypto = require('crypto');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
@@ -211,7 +212,7 @@ function strictRateLimit(options = {}) {
   const store = new Map();
   
   // Clean up old entries periodically
-  setInterval(() => {
+  const cleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [key, data] of store.entries()) {
       if (data.resetTime < now) {
@@ -219,6 +220,8 @@ function strictRateLimit(options = {}) {
       }
     }
   }, windowMs);
+  cleanupTimer.unref();
+  cleanupTimers.add(cleanupTimer);
   
   return (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
@@ -255,6 +258,7 @@ function strictRateLimit(options = {}) {
 }
 
 module.exports = {
+  dispose() { cleanupTimers.forEach(clearInterval); cleanupTimers.clear(); },
   feedbackRateLimit,
   strictRateLimit,
   generateGuestIdentifier,

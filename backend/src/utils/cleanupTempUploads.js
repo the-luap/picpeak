@@ -60,19 +60,10 @@ async function cleanupTempUploads() {
  * Start periodic cleanup of temp uploads
  * Runs every hour
  */
-function startTempUploadCleanup() {
-  // Run immediately on startup
-  cleanupTempUploads();
-  
-  // Then run every hour
-  setInterval(() => {
-    cleanupTempUploads();
-  }, 60 * 60 * 1000); // 1 hour
-  
-  logger.info('Temp upload cleanup service started');
-}
+const cleanupTask = require('../services/scheduledTask').scheduledTask(cleanupTempUploads, {
+  interval: 60 * 60 * 1000, initialDelay: 0
+});
+function startTempUploadCleanup() { cleanupTask.start(); }
+function stopTempUploadCleanup() { return cleanupTask.stop(); }
 
-module.exports = {
-  cleanupTempUploads,
-  startTempUploadCleanup
-};
+module.exports = { cleanupTempUploads, startTempUploadCleanup, stopTempUploadCleanup };

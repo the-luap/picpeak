@@ -338,14 +338,13 @@ async function cleanupExpiredUploads() {
   return expiredIds.length;
 }
 
-// Run cleanup every hour. unref so this module-level housekeeping timer
-// never holds the process open on its own — in production the HTTP
-// listener keeps the loop alive, and in Jest this exact handle kept the
-// runner from exiting for every suite that requires adminPhotos (#908;
-// it is why adminPhotos.reference sits on the CI ignore list).
-setInterval(cleanupExpiredUploads, 60 * 60 * 1000).unref();
+const cleanupTask = require('./scheduledTask').scheduledTask(cleanupExpiredUploads, {
+  interval: 60 * 60 * 1000
+});
+cleanupTask.start();
 
 module.exports = {
+  stop: () => cleanupTask.stop(),
   initializeUpload,
   uploadChunk,
   completeUpload,

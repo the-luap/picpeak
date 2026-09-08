@@ -20,6 +20,7 @@ const fake = { maintenance: 'true', revoked: false, beforeCutoff: false, admin: 
 jest.mock('../../src/database/db', () => {
   const db = jest.fn((table) => {
     const q = {
+      leftJoin: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       first: jest.fn(async () => {
@@ -27,6 +28,7 @@ jest.mock('../../src/database/db', () => {
           return { setting_key: 'general_maintenance_mode', setting_value: fake.maintenance };
         }
         if (table === 'admin_users') return fake.admin;
+        if (table === 'events') return { id: 1, slug: 'preview', created_by: 1, is_active: 1 };
         return null;
       }),
     };
@@ -34,6 +36,7 @@ jest.mock('../../src/database/db', () => {
   });
   return { db, withRetry: (fn) => fn() };
 });
+jest.mock('../../src/middleware/permissions', () => ({ userHasAllPermissions: jest.fn().mockResolvedValue(true) }));
 jest.mock('../../src/utils/logger', () => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() }));
 jest.mock('../../src/utils/tokenRevocation', () => ({ isTokenRevoked: jest.fn(async () => fake.revoked) }));
 jest.mock('../../src/utils/sessionCutoff', () => ({ isTokenBeforeCutoff: jest.fn(async () => fake.beforeCutoff) }));
@@ -75,7 +78,7 @@ describe('general rate limiter skip', () => {
 });
 
 describe('admin preview requires a live admin session', () => {
-  const req = (token) => ({ query: { admin_preview: '1' }, cookies: { admin_token: token }, headers: {} });
+  const req = (token) => ({ params: { slug: 'preview' }, query: { admin_preview: '1' }, cookies: { admin_token: token }, headers: {} });
   beforeEach(() => { fake.revoked = false; fake.beforeCutoff = false; fake.admin = { id: 1, password_changed_at: null }; });
 
   it('passes for a live session and sets req.isAdminPreview', async () => {
@@ -108,7 +111,7 @@ describe('multipart origin gate', () => {
   const req = (headers) => ({ headers: { host: 'photos.example.com', ...headers } });
   it('accepts same-origin, same-site and non-browser requests', () => {
     expect(multipartOriginAllowed(req({ 'sec-fetch-site': 'same-origin' }))).toBe(true);
-    expect(multipartOriginAllowed(req({ 'sec-fetch-site': 'same-site' }))).toBe(true);
+    expect(multipartOriginAllowed(req({ 'sec-fetch-site': 'same-site' }))).toBe(false);
     expect(multipartOriginAllowed(req({ 'sec-fetch-site': 'none' }))).toBe(true);
     expect(multipartOriginAllowed(req({}))).toBe(true);
     expect(multipartOriginAllowed(req({ origin: 'https://photos.example.com' }))).toBe(true);

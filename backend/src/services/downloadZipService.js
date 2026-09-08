@@ -37,6 +37,13 @@ class DownloadZipService {
     this.versions = new Map();        // eventId -> generation counter
   }
 
+  async stop() {
+    for (const timer of this.debounceTimers.values()) clearTimeout(timer);
+    this.debounceTimers.clear();
+    await Promise.allSettled([...this.activeBuilds.values()].map(build => build.promise));
+    this.versions.clear();
+  }
+
   /**
    * Relative storage key for the cached zip.
    */

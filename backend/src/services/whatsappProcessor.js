@@ -67,7 +67,7 @@ const POLL_INTERVAL_MS = parseInt(process.env.WHATSAPP_QUEUE_POLL_MS || '30000',
 const CYCLE_BATCH_SIZE = parseInt(process.env.WHATSAPP_QUEUE_BATCH || '10', 10);
 const MAX_RETRIES = 3;
 
-let pollHandle = null;
+
 
 /**
  * Resolve a Meta template language code from whatever's in the message_data
@@ -301,29 +301,9 @@ async function processWhatsAppQueue() {
   }
 }
 
-function startWhatsAppQueueProcessor() {
-  if (pollHandle) {
-    logger.info('WhatsApp queue processor already running — skipping start');
-    return;
-  }
-  // Fire once shortly after boot so the first message in a fresh install
-  // doesn't wait the full poll interval.
-  setTimeout(() => {
-    processWhatsAppQueue().catch((e) => logger.error('WhatsApp queue initial run failed', e));
-  }, 5000);
-  pollHandle = setInterval(() => {
-    processWhatsAppQueue().catch((e) => logger.error('WhatsApp queue cycle failed', e));
-  }, POLL_INTERVAL_MS);
-  logger.info(`WhatsApp queue processor started (poll every ${POLL_INTERVAL_MS}ms)`);
-}
-
-function stopWhatsAppQueueProcessor() {
-  if (pollHandle) {
-    clearInterval(pollHandle);
-    pollHandle = null;
-    logger.info('WhatsApp queue processor stopped');
-  }
-}
+const whatsappTask = require('./scheduledTask').scheduledTask(processWhatsAppQueue, { interval: POLL_INTERVAL_MS, initialDelay: 5000 });
+function startWhatsAppQueueProcessor() { whatsappTask.start(); }
+const stopWhatsAppQueueProcessor = () => whatsappTask.stop();
 
 module.exports = {
   queueWhatsapp,

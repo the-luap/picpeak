@@ -1514,39 +1514,13 @@ async function testEmailConnection() {
   }
 }
 
-// Start email queue processor
-let emailQueueInterval = null;
-
+const emailTask = require('./scheduledTask').scheduledTask(processEmailQueue, { interval: 60000, initialDelay: 0 });
 function startEmailQueueProcessor() {
-  logger.info('Email queue processor: Attempting to start...');
-  
-  if (!emailQueueInterval) {
-    // Process immediately on start
-    processEmailQueue().catch(err => {
-      logger.error('Email queue processor: Initial processing failed:', err);
-    });
-    
-    // Then process every minute
-    emailQueueInterval = setInterval(() => {
-      processEmailQueue().catch(err => {
-        logger.error('Email queue processor: Periodic processing failed:', err);
-      });
-    }, 60000);
-    
-    processorStatus.started = true;
-    logger.info('Email queue processor started successfully');
-  } else {
-    logger.info('Email queue processor: Already running');
-  }
+  emailTask.start(); processorStatus.started = true;
 }
-
-function stopEmailQueueProcessor() {
-  if (emailQueueInterval) {
-    clearInterval(emailQueueInterval);
-    emailQueueInterval = null;
-    processorStatus.started = false;
-    logger.info('Email queue processor stopped');
-  }
+async function stopEmailQueueProcessor() {
+  await emailTask.stop(); processorStatus.started = false;
+  transporter?.close?.(); transporter = null;
 }
 
 // Initialize on module load - DISABLED for production startup

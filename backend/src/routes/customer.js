@@ -1,3 +1,4 @@
+const { isGalleryAvailable, isGalleryExpired } = require('../utils/galleryLifecycle');
 /**
  * Customer dashboard routes
  *
@@ -165,9 +166,11 @@ router.get('/events/:slug/access-token', [
     if (event.is_archived) {
       return res.status(410).json({ error: 'This gallery has been archived' });
     }
-    if (event.expires_at && new Date(event.expires_at) < new Date()) {
+    if (isGalleryExpired(event)) {
       return res.status(410).json({ error: 'This gallery has expired' });
     }
+
+    if (!isGalleryAvailable(event)) return res.status(404).json({ error: 'Event not found' });
 
     const hasAccess = await customerAccountsService.customerHasAccessToEvent(
       req.customer.id,
@@ -191,8 +194,7 @@ router.get('/events/:slug/access-token', [
       type: 'gallery',
       ip: ipAddress,
       loginTime: Date.now(),
-      // Optional bookkeeping claim — surfaces the originating customer in
-      // logs when the token is later used. Doesn't affect authorization.
+      // Rechecked on each gallery/media request, including account status.
       via: 'customer',
       customerId: req.customer.id,
     }, process.env.JWT_SECRET, {

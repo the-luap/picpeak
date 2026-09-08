@@ -28,7 +28,21 @@ const watcherConcurrency = Number.isFinite(configuredConcurrency)
   : 2;
 const processLimit = pLimit(watcherConcurrency);
 
+let watcher = null;
+const pending = new Set();
+const enqueue = (run) => {
+  const task = processLimit(run); pending.add(task);
+  task.finally(() => pending.delete(task)).catch(() => {});
+  return task;
+};
+async function stopFileWatcher() {
+  const closing = watcher; watcher = null;
+  if (closing) await closing.close();
+  await Promise.allSettled([...pending]);
+}
+
 function startFileWatcher() {
+  if (watcher) return watcher;
   // Auto-import via filesystem watching only works with the local storage
   // backend. In S3 mode there is no local directory to watch — every photo
   // must enter through the admin upload API. Skip cleanly with a clear log
@@ -39,7 +53,7 @@ function startFileWatcher() {
     return null;
   }
 
-  const watcher = chokidar.watch(WATCH_PATH(), {
+  watcher = chokidar.watch(WATCH_PATH(), {
     ignored: /(^|[/\\])\../, // ignore dotfiles
     persistent: true,
     awaitWriteFinish: {
@@ -50,17 +64,18 @@ function startFileWatcher() {
 
   watcher
     .on('add', (filePath) => {
-      processLimit(() => processNewPhoto(filePath)).catch((error) => {
+      enqueue(() => processNewPhoto(filePath)).catch((error) => {
         logger.error('Error processing new photo:', error);
       });
     })
     .on('unlink', (filePath) => {
-      processLimit(() => removePhoto(filePath)).catch((error) => {
+      enqueue(() => removePhoto(filePath)).catch((error) => {
         logger.error('Error removing photo:', error);
       });
     });
 
   logger.info('File watcher started');
+  return watcher;
 }
 
 /**
@@ -222,4 +237,4 @@ async function removePhoto(filePath) {
   logger.info(`Removed photo: ${relativePath}`);
 }
 
-module.exports = { startFileWatcher, findExistingPhoto };
+module.exports = { stopFileWatcher, startFileWatcher, findExistingPhoto };
