@@ -182,16 +182,17 @@ router.post('/logout', adminAuth, handleAsync(async (req, res) => {
   // old header-only read skipped revocation entirely for cookie-based logout,
   // leaving the JWT valid until expiry while reporting a successful logout.
   const token = req.token;
+  clearAdminAuthCookie(res);
   if (token) {
     // End the in-memory session AND revoke the JWT (GHSA-cjqh) — the token
     // is otherwise valid until expiry, so photoAuth/adminAuth would keep
     // honouring it after logout. isTokenRevoked() checks this store.
     endSession(token);
     const { revokeToken } = require('../utils/tokenRevocation');
-    await revokeToken(token, 'logout');
+    if (!await revokeToken(token, 'logout')) {
+      throw new Error('Token revocation failed');
+    }
   }
-  // Clear the auth cookie so the browser stops sending the (now revoked) JWT.
-  clearAdminAuthCookie(res);
 
   // Log activity
   await logActivity('admin_logout',

@@ -20,7 +20,7 @@ jest.mock('../../src/database/db', () => {
   const dbFn = () => ({
     insert(row) {
       inserted.push(row);
-      return { onConflict: () => ({ ignore: async () => undefined }) };
+      return { onConflict: () => ({ ignore: async () => undefined, merge: async () => undefined }) };
     },
   });
   return { db: dbFn };

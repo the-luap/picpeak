@@ -6,6 +6,7 @@
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const logger = require('./logger');
+const MAX_SQL_EXPIRY_SECONDS = Date.parse('9999-12-31T23:59:59Z') / 1000;
 
 /**
  * Add a token to the revocation list
@@ -52,20 +53,28 @@ async function revokeToken(token, reason, metadata = {}) {
     // undefined/string slip through and cause an INSERT type error.
     const userIdNumeric = Number.isInteger(payload.id) ? payload.id : null;
 
-    // onConflict.ignore: revoking an already-revoked token is a no-op,
-    // not an error. Hits the unique (token_id) index when the same JWT
-    // is logged out twice (e.g. duplicate /logout from two tabs, or a
-    // session-expiry path that races with an explicit logout). The
-    // previous insert was authoritative; nothing to do.
-    await db('revoked_tokens').insert({
+    // JWT permits a missing exp. Keep that revocation permanently: an
+    // arbitrary fallback TTL would make the token usable again after cleanup.
+    // Retain unrepresentable expiries too, using the common SQL/ISO date range.
+    const expiresAt = Number.isFinite(payload.exp)
+      && payload.exp >= 0 && payload.exp <= MAX_SQL_EXPIRY_SECONDS
+      ? new Date(Math.ceil(payload.exp * 1000)).toISOString()
+      : null;
+
+    // Duplicate logouts are idempotent. A permanent revocation must also
+    // upgrade an existing expiring entry with the same legacy key or jti;
+    // logging out an expiring token must never shorten that retention again.
+    const insert = db('revoked_tokens').insert({
       token_id: buildTokenId(payload),
       user_id: userIdNumeric,
       token_type: payload.type,
       revoked_at: new Date().toISOString(),
-      expires_at: new Date(payload.exp * 1000).toISOString(),
+      expires_at: expiresAt,
       reason,
       metadata: JSON.stringify(metadata)
-    }).onConflict('token_id').ignore();
+    }).onConflict('token_id');
+    if (expiresAt === null) await insert.merge({ expires_at: null });
+    else await insert.ignore();
 
     logger.info('Token revoked', {
       userId: payload.id ?? payload.customerId ?? null,
@@ -131,6 +140,7 @@ async function revokeAllUserTokens(userId, reason) {
 async function cleanupExpiredRevocations() {
   try {
     const deleted = await db('revoked_tokens')
+      .whereNotNull('expires_at')
       .where('expires_at', '<', new Date().toISOString())
       .delete();
     
