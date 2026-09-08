@@ -1,40 +1,48 @@
-import React, { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { productUsageService } from '../../services/productUsage.service';
-import { Button, Card } from '../common';
+import { ProductUsageConsentDialog } from '../../features/settings/components/ProductUsageConsentDialog';
+import { Button } from '../common/Button';
 import { UsageReportingPoints } from './UsageReportingPitch';
 
-/**
- * One-time opt-in prompt for an admin who already had PicPeak installed
- * before this feature existed (#1360). A brand-new install gets the same
- * choice inside the setup wizard instead — both paths call
- * POST /admin/usage/prompt-seen on either outcome, so whichever one an
- * installation went through, this never shows a second time and never shows
- * once participation is already active.
- */
+/** The invitation is acknowledged once per installation; consent is a separate, explicit choice. */
 export default function UsageReportingPrompt() {
   const { t } = useTranslation();
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const [hidden, setHidden] = useState(false);
-  const [consent, setConsent] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   const { data } = useQuery({
     queryKey: ['productUsage'],
     queryFn: productUsageService.status,
     enabled: hasPermission('settings.edit'),
   });
+  const visible = hasPermission('settings.edit') && !hidden && data?.status === 'disabled' && !data.prompt_shown;
+  useEffect(() => {
+    if (!visible) return;
+    const dialog = ref.current;
+    const opener = document.activeElement as HTMLElement | null;
+    dialog?.showModal();
+    dialog?.focus();
+    return () => {
+      dialog?.close();
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [visible]);
 
   const dismiss = async () => {
     setHidden(true);
     try {
       queryClient.setQueryData(['productUsage'], await productUsageService.promptSeen());
     } catch {
-      /* Worst case the query refetches stale data and this shows once more. */
+      /* A failed acknowledgement may be offered again on a later visit. */
     }
   };
 
@@ -51,57 +59,54 @@ export default function UsageReportingPrompt() {
     }
   };
 
-  if (!hasPermission('settings.edit') || !data || hidden) return null;
-  if (data.status !== 'disabled' || data.prompt_shown) return null;
+  if (!visible || !data) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-6 space-y-6">
-          <div>
-            <h2 className="text-lg font-semibold text-neutral-900 mb-1">
-              {t('productUsagePrompt.title')}
-            </h2>
-            <p className="text-sm text-neutral-600">{t('productUsagePrompt.intro')}</p>
-          </div>
+    <>
+      <dialog
+        ref={ref}
+        tabIndex={-1}
+        aria-labelledby={titleId}
+        onCancel={(event) => {
+          event.preventDefault();
+          if (!isEnabling) void dismiss();
+        }}
+        className="w-[calc(100%-2rem)] max-w-md max-h-[90vh] flex flex-col overflow-hidden rounded-xl p-0 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xl backdrop:bg-black/50 focus:outline-none"
+      >
+        <header className="px-6 pt-6 pb-4">
+          <h2 id={titleId} className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-1">
+            {t('productUsagePrompt.title')}
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t('productUsagePrompt.intro')}</p>
+        </header>
 
+        <div tabIndex={0} role="group" aria-label={t('productUsagePrompt.title')}
+          className="min-h-0 overflow-y-auto px-6 py-2 focus-visible:outline-primary-600">
           <UsageReportingPoints />
-
-          <label className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3 cursor-pointer hover:bg-neutral-50 transition-colors">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 rounded border-neutral-300"
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-            />
-            <span className="text-xs text-neutral-600">{t('setup.usageReporting.consentCheck')}</span>
-          </label>
-
-          <div className="space-y-3">
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              isLoading={isEnabling}
-              disabled={!consent}
-              onClick={enable}
-            >
-              {t('setup.usageReporting.enable')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="w-full"
-              disabled={isEnabling}
-              onClick={dismiss}
-            >
-              {t('setup.usageReporting.skip')}
-            </Button>
-          </div>
         </div>
-      </Card>
-    </div>
+
+        <footer className="px-6 pt-4 pb-6 space-y-3">
+          {data.collector_error && (
+            <p role="alert" className="text-sm text-neutral-700 dark:text-neutral-300">{t('setup.usageReporting.enableFailed')}</p>
+          )}
+          <Button type="button" size="lg" className="w-full h-auto min-h-12 whitespace-normal"
+            isLoading={isEnabling} disabled={!data.collector_url} onClick={() => setShowConsent(true)}>
+            {t('productUsage.review')}
+          </Button>
+          <Button type="button" variant="outline" size="lg" className="w-full h-auto min-h-12 whitespace-normal"
+            disabled={isEnabling} onClick={dismiss}>
+            {t('setup.usageReporting.skip')}
+          </Button>
+        </footer>
+      </dialog>
+      {showConsent && data.collector_url && (
+        <ProductUsageConsentDialog
+          collector={data.collector_url}
+          busy={isEnabling}
+          close={() => setShowConsent(false)}
+          enable={enable}
+        />
+      )}
+    </>
   );
 }

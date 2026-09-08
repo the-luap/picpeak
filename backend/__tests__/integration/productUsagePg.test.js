@@ -121,6 +121,24 @@ maybe('product usage on Postgres', () => {
     // back as a STRING — the tick() gate compares it against a number.
     expect(cols.attempts).toBeDefined();
     expect(cols.next_attempt_at).toBeDefined();
+    expect(cols.prompt_shown).toBeDefined();
+  });
+
+  it('backfills the prompt for existing participation using PostgreSQL booleans', async () => {
+    const migration = require('../../migrations/core/211_product_usage_prompt_shown');
+    await migration.down(db);
+    await db('product_usage_state').where({ id: 1 }).update({ status: 'active', consent_version: 'usage-consent.v2' });
+    await migration.up(db);
+    await migration.up(db);
+    expect(await service().status()).toMatchObject({ status: 'active', prompt_shown: true, consent_version: 'usage-consent.v2' });
+    await db('product_usage_state').where({ id: 1 }).update({ status: 'disabled' });
+    expect(await service().status()).toMatchObject({ status: 'disabled', prompt_shown: true });
+  });
+
+  it('persists a fresh installation declining without opting in on PostgreSQL', async () => {
+    expect(await service().status()).toMatchObject({ status: 'disabled', prompt_shown: false });
+    await service().markPromptShown();
+    expect(await service().status()).toMatchObject({ status: 'disabled', prompt_shown: true, notice_dismissed: false });
   });
 
   it('reruns the backoff migration safely', async () => {

@@ -308,7 +308,7 @@ export const SetupPage: React.FC = () => {
   const skipUsageReporting = async () => {
     try {
       await productUsageService.promptSeen();
-    } catch (_) { /* best-effort — worst case the dashboard asks once more */ }
+    } catch { /* best-effort — worst case the dashboard asks once more */ }
     setStep('community');
   };
 
