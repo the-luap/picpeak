@@ -12,6 +12,7 @@ import { setupService } from '../services/setup.service';
 import { settingsService } from '../services/settings.service';
 import { featureFlagsService, type FeatureFlags, type FeatureKey } from '../services/featureFlags.service';
 import { productUsageService } from '../services/productUsage.service';
+import { ProductUsageConsentDialog } from '../features/settings/components/ProductUsageConsentDialog';
 import { PicpeakRestoreCard } from '../components/admin/PicpeakBackupCard';
 import { SetupConfigStep } from '../components/admin/SetupConfigStep';
 import { SetupEventTypesStep } from '../components/admin/SetupEventTypesStep';
@@ -38,10 +39,8 @@ const COMMUNITY_LINKS: {
 ];
 
 // Anonymous usage-reporting opt-in, one step before the final thank-you
-// screen. Kept deliberately short — most people reflexively decline "send us
-// data" prompts, so this leads with what makes PicPeak's reporting different
-// from typical analytics rather than repeating the full disclosure the
-// Settings → Product usage tab already shows in detail.
+// screen. The invitation opens the same complete consent disclosure as
+// Settings → Product usage before any reporting can be enabled.
 const USAGE_REPORTING_POINTS: { key: string; icon: LucideIcon }[] = [
   { key: 'oneWay', icon: ShieldOff },
   { key: 'mutual', icon: Users },
@@ -91,8 +90,14 @@ export const SetupPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedFeatures, setSelectedFeatures] = useState<Set<FeatureKey>>(new Set());
   const [isSavingFeatures, setIsSavingFeatures] = useState(false);
-  const [usageReportingConsent, setUsageReportingConsent] = useState(false);
+  const [showUsageConsent, setShowUsageConsent] = useState(false);
   const [isEnablingUsageReporting, setIsEnablingUsageReporting] = useState(false);
+  const { data: usageStatus, isError: usageStatusError } = useQuery({
+    queryKey: ['productUsage'],
+    queryFn: productUsageService.status,
+    enabled: step === 'usageReporting',
+    retry: false,
+  });
 
   if (statusLoading) {
     return <Loading fullScreen />;
@@ -205,7 +210,7 @@ export const SetupPage: React.FC = () => {
             general_site_url: window.location.origin.replace(/\/+$/, ''),
           });
         }
-      } catch (_) { /* the config step offers the field again */ }
+      } catch { /* the config step offers the field again */ }
       toast.success(t('setup.success'));
       // Admin now exists and we're logged in (cookie set) — advance to the
       // opt-in "How will you use PicPeak?" step rather than jumping straight to
@@ -268,7 +273,7 @@ export const SetupPage: React.FC = () => {
       const flags: Partial<FeatureFlags> = {};
       for (const key of ALL_USAGE_FEATURES) flags[key] = selectedFeatures.has(key);
       await featureFlagsService.update(flags);
-    } catch (_) {
+    } catch {
       toast.warn(t('setup.featuresSaveFailed'));
     } finally {
       setIsSavingFeatures(false);
@@ -297,7 +302,7 @@ export const SetupPage: React.FC = () => {
     try {
       await productUsageService.enable();
       toast.success(t('setup.usageReporting.enabled'));
-    } catch (_) {
+    } catch {
       toast.warn(t('setup.usageReporting.enableFailed'));
     } finally {
       setIsEnablingUsageReporting(false);
@@ -591,15 +596,9 @@ export const SetupPage: React.FC = () => {
                 ))}
               </div>
 
-              <label className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3 cursor-pointer hover:bg-neutral-50 transition-colors">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-neutral-300"
-                  checked={usageReportingConsent}
-                  onChange={(e) => setUsageReportingConsent(e.target.checked)}
-                />
-                <span className="text-xs text-neutral-600">{t('setup.usageReporting.consentCheck')}</span>
-              </label>
+              {(usageStatusError || usageStatus?.collector_error) && (
+                <p role="alert" className="text-sm text-neutral-700">{t('setup.usageReporting.enableFailed')}</p>
+              )}
 
               <div className="space-y-3">
                 <Button
@@ -608,10 +607,10 @@ export const SetupPage: React.FC = () => {
                   size="lg"
                   className="w-full"
                   isLoading={isEnablingUsageReporting}
-                  disabled={!usageReportingConsent}
-                  onClick={enableUsageReporting}
+                  disabled={!usageStatus?.collector_url}
+                  onClick={() => setShowUsageConsent(true)}
                 >
-                  {t('setup.usageReporting.enable')}
+                  {t('productUsage.review')}
                 </Button>
                 <Button
                   type="button"
@@ -624,6 +623,14 @@ export const SetupPage: React.FC = () => {
                   {t('setup.usageReporting.skip')}
                 </Button>
               </div>
+              {showUsageConsent && usageStatus?.collector_url && (
+                <ProductUsageConsentDialog
+                  collector={usageStatus.collector_url}
+                  busy={isEnablingUsageReporting}
+                  close={() => setShowUsageConsent(false)}
+                  enable={enableUsageReporting}
+                />
+              )}
             </div>
           ) : (
             <div className="space-y-6">
