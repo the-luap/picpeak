@@ -33,4 +33,15 @@ function toIso(value) {
   return value;
 }
 
-module.exports = { toIso };
+// Shared comparison boundary for SQLite epoch values and PostgreSQL Dates.
+// Invalid input stays NaN so access-control callers can fail closed.
+function toTimestamp(value) {
+  if (value === null || value === undefined || value === '') return NaN;
+  try {
+    return new Date(toIso(value)).getTime();
+  } catch (_) {
+    return NaN;
+  }
+}
+
+module.exports = { toIso, toTimestamp };

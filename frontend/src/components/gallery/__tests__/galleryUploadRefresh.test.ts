@@ -1,95 +1,92 @@
-/**
- * A guest upload must show up in the grid on its own — and say so while it is
- * still being worked on.
- *
- * Guest uploads are queued: `POST /gallery/:id/upload` answers 202 and the row
- * lands as `processing_status: 'pending'`, while `GET /gallery/:slug/photos`
- * only returns completed rows. The old handler refetched exactly once (via a
- * full `window.location.reload()`), which always raced the background worker —
- * the payload was still byte-identical, the browser was answered 304, and the
- * guest's photo silently vanished until they hard-reloaded (QA P4-E.01).
- *
- * The follow-up (B7) replaced the blind count-baseline poll with one driven by
- * the real processing status of the guest's own upload group, so the UI can
- * show "processing…" and report a failure instead of timing out in silence.
- *
- * GalleryView needs its providers, the router and a dozen child components to
- * render, so this pins the contract at source level (same approach as
- * facePreviewRendition.test.ts).
- */
-import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { galleryService } from '../../../services/gallery.service';
+import { toast } from 'react-toastify';
+import { useGalleryUpload } from '../hooks/useGalleryUpload';
 
-const read = (...parts: string[]) =>
-  fs.readFileSync(path.join(__dirname, '..', ...parts), 'utf8');
+vi.mock('../../../services/gallery.service', () => ({ galleryService: { getUploadStatus: vi.fn() } }));
+vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), info: vi.fn() } }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+const pending = { total: 2, pending: 1, processing: 1, complete: 0, failed: 0 };
+const status = vi.mocked(galleryService.getUploadStatus);
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); status.mockReset().mockResolvedValue(pending); });
+afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
+function setup(slug = 'wedding') {
+  const refetch = vi.fn().mockResolvedValue(undefined);
+  const close = vi.fn();
+  return { ...renderHook(({ slug }) => useGalleryUpload(slug, refetch, close), { initialProps: { slug } }), refetch, close };
+}
+async function tick(ms = 2000) { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); }
 
-const source = read('GalleryView.tsx');
-const uploadSource = read('UserPhotoUpload.tsx');
-const serviceSource = fs.readFileSync(
-  path.join(__dirname, '..', '..', '..', 'services', 'gallery.service.ts'),
-  'utf8'
-);
-
-const handler = source.slice(
-  source.indexOf('const handleUploadComplete'),
-  source.indexOf('const uploadProcessingNotice')
-);
-
-describe('post-upload photo refresh', () => {
-  it('never reloads the page to pick up an upload', () => {
-    expect(source).not.toContain('window.location.reload');
+describe('post-upload refresh', () => {
+  it('tracks uploads, refreshes progressively and stops after completion', async () => {
+    const { result, refetch, close, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete(['one', 'two']); });
+    expect(close).toHaveBeenCalledOnce();
+    expect(status).toHaveBeenLastCalledWith('wedding', ['one', 'two']);
+    expect(result.current.uploadProcessing).toEqual({ complete: 0, total: 2 });
+    status.mockResolvedValue({ ...pending, pending: 0, complete: 1 });
+    await tick();
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(result.current.uploadProcessing).toEqual({ complete: 1, total: 2 });
+    status.mockResolvedValue({ ...pending, pending: 0, processing: 0, complete: 2 });
+    await tick();
+    expect(result.current.uploadProcessing).toBeNull();
+    const calls = status.mock.calls.length;
+    await tick(10_000);
+    expect(status).toHaveBeenCalledTimes(calls);
+    expect(toast.error).not.toHaveBeenCalled();
+    unmount();
   });
-
-  it('drives the refresh off the upload group\'s processing status', () => {
-    expect(handler).toContain('galleryService.getUploadStatus(slug, uploadIds)');
-    // Refetch as photos land, not only once the whole batch settles.
-    expect(handler).toContain('status.complete > lastComplete');
-    expect(handler).toMatch(/setInterval\(poll/);
+  it('reports failed processing after the batch settles', async () => {
+    status.mockResolvedValue({ ...pending, pending: 0, processing: 0, failed: 2 });
+    const { result, refetch, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete(['one', 'two']); });
+    expect(toast.error).toHaveBeenCalledWith('upload.processingFailed');
+    expect(result.current.uploadProcessing).toBeNull();
+    expect(refetch).toHaveBeenCalledOnce();
+    unmount();
   });
-
-  it('stops on the real terminal condition rather than a count baseline', () => {
-    expect(handler).toContain('status.pending === 0 && status.processing === 0');
-    // Still bounded, so a wedged worker can never leave a poll running forever.
-    expect(handler).toContain('Date.now() > deadline');
+  it('bounds a pending batch and announces ongoing processing', async () => {
+    const { result, refetch, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete(['one', 'two']); });
+    await tick(122_000);
+    expect(result.current.uploadProcessing).toBeNull();
+    expect(toast.info).toHaveBeenCalledWith('upload.processingStillRunning');
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    unmount();
   });
-
-  it('tells the guest when a photo failed processing or is still queued', () => {
-    expect(handler).toContain("toast.error(t('upload.processingFailed'");
-    expect(handler).toContain("toast.info(t('upload.processingStillRunning')");
-    // ...and renders a "processing…" notice while the poll runs.
-    expect(source).toContain("t('upload.processing')");
-    expect(source).toContain("t('upload.processingProgress'");
+  it('falls back to one refresh if status cannot be read', async () => {
+    status.mockRejectedValue(new Error('offline'));
+    const { result, refetch, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete(['one']); });
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(result.current.uploadProcessing).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    unmount();
   });
-
-  it('degrades to a plain refetch when the status call itself fails', () => {
-    expect(handler).toContain('} catch {');
-    expect(handler).toContain('await finish();');
+  it('refreshes once without polling when there are no accepted uploads', async () => {
+    const { result, refetch, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete([]); });
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(status).not.toHaveBeenCalled();
+    unmount();
   });
-
-  it('wires the polling handler into the upload modals that render the grid', () => {
-    const wired = source.match(/onUploadComplete=\{handleUploadComplete\}/g) || [];
-    expect(wired.length).toBeGreaterThanOrEqual(2);
-    // The notice is rendered next to each of them; the two layout branches
-    // have no shared wrapper to hang it on.
-    const shown = source.match(/\{uploadProcessingNotice\}/g) || [];
-    expect(shown.length).toBe(wired.length);
-  });
-
-  it('clears the poll when the gallery unmounts', () => {
-    expect(source).toContain('useEffect(() => stopUploadRefresh, [])');
-  });
-});
-
-describe('upload id plumbing', () => {
-  it('hands the 202 upload ids to the gallery', () => {
-    expect(uploadSource).toContain('onUploadComplete: (uploadIds: string[]) => void');
-    expect(uploadSource).toContain('uploadIds.push(response.data.upload_id)');
-    expect(uploadSource).toContain('onUploadComplete(uploadIds)');
-  });
-
-  it('asks the gallery-scoped status route, batching the ids into one request', () => {
-    expect(serviceSource).toContain('`/gallery/${slug}/uploads/status`');
-    expect(serviceSource).toContain("params: { ids: uploadIds.join(',') }");
+  it.each(['unmount', 'navigate', 'new batch'] as const)('ignores an old request after %s', async (action) => {
+    let resolve!: (value: typeof pending) => void;
+    status.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const { result, refetch, rerender, unmount } = setup();
+    await act(async () => { result.current.handleUploadComplete(['old']); });
+    await tick(6000);
+    expect(status).toHaveBeenCalledOnce();
+    if (action === 'unmount') unmount();
+    else if (action === 'navigate') rerender({ slug: 'another' });
+    else await act(async () => { result.current.handleUploadComplete(['new']); });
+    await act(async () => { resolve({ ...pending, pending: 0, processing: 0, complete: 1, failed: 1 }); });
+    expect(refetch).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    if (action !== 'unmount') unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

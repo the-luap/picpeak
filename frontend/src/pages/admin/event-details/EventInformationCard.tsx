@@ -647,10 +647,6 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
                   onChange={(e) => setEditForm(prev => ({
                     ...prev,
                     watermark_downloads: e.target.checked,
-                    // Watermarking and presigned URLs are mutually
-                    // exclusive — presigned URLs serve raw bytes from
-                    // S3 without going through the watermark pipeline.
-                    allow_presigned_download: e.target.checked ? false : prev.allow_presigned_download,
                   }))}
                   className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
                 />
@@ -658,25 +654,7 @@ export const EventInformationCard: React.FC<EventInformationCardProps> = ({
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">{t('events.watermarkDownloads', 'Add watermark to downloads')}</span>
               </label>
 
-              <label
-                className={`flex items-center ${editForm.watermark_downloads ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={editForm.watermark_downloads
-                  ? 'Disabled while watermarks are on — presigned URLs bypass the watermark pipeline.'
-                  : 'When the backend uses STORAGE_BACKEND=s3, "Download All" returns a 5-minute presigned S3 URL instead of streaming through the backend. Saves bandwidth on huge galleries; bypasses watermarking.'
-                }
-              >
-                <input
-                  type="checkbox"
-                  checked={!!editForm.allow_presigned_download}
-                  disabled={editForm.watermark_downloads}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, allow_presigned_download: e.target.checked }))}
-                  className="w-4 h-4 text-accent border-neutral-300 dark:border-neutral-600 rounded focus:ring-primary-500"
-                />
-                <Download className="w-4 h-4 ml-2 mr-1 text-neutral-500 dark:text-neutral-400" />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">
-                  {t('events.allowPresignedDownload', 'Allow direct S3 download (no watermark, S3 mode only)')}
-                </span>
-              </label>
+
 
               <label className="flex items-center">
                 <input

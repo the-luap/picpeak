@@ -4,6 +4,7 @@ const { db } = require('../database/db');
 const { verifyGalleryAccess, denySlideshowToken } = require('../middleware/gallery');
 const { blockHiddenGallery, bypassesReveal, isGalleryHidden } = require('../utils/revealMode');
 const secureImageService = require('../services/secureImageService');
+const galleryAccessService = require('../services/galleryAccessService');
 const secureImageMiddleware = require('../middleware/secureImageMiddleware');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
@@ -58,6 +59,7 @@ router.post('/:slug/generate-token', async (req, res, next) => {
     
     // Generate secure token with appropriate settings
     const tokenOptions = {
+      galleryAccess: req.galleryAccess,
       expiresIn: protectionLevel === 'maximum' ? 180 : 300, // 3-5 minutes
       maxUses: accessType === 'download' ? 1 : 3,
       clientFingerprint,
@@ -96,6 +98,7 @@ router.post('/:slug/generate-token', async (req, res, next) => {
     });
 
   } catch (error) {
+    if (error.isOperational) return res.status(error.statusCode).json({ error: error.message, code: error.code });
     logger.error('Error generating secure token', {
       error: error.message,
       photoId: req.body.photoId,
@@ -150,6 +153,10 @@ router.get('/:slug/secure/:photoId/:token',
       if (!event) {
         return res.status(404).json({ error: 'Gallery not found' });
       }
+
+      // Revalidate the issuing session, ownership and gallery lifecycle at
+      // every use, including capabilities minted before logout or restore.
+      await galleryAccessService.authorize(event, tokenValidation.data?.galleryAccess);
 
       // Bind the token to the gallery + photo it was minted for
       // (GHSA-g94x-8vv8-3c9f). This route serves via <img src> with the
@@ -248,6 +255,7 @@ router.get('/:slug/secure/:photoId/:token',
       res.send(processedImage);
 
     } catch (error) {
+      if (error.isOperational) return res.status(error.statusCode).json({ error: error.message, code: error.code });
       logger.error('Error serving secure image', {
         error: error.message,
         photoId,
@@ -291,6 +299,8 @@ router.get('/:slug/secure-download/:photoId/:token',
       if (!tokenValidation.valid) {
         return res.status(403).json({ error: 'Invalid or expired token' });
       }
+
+      await galleryAccessService.authorize(req.event, tokenValidation.data?.galleryAccess);
 
       // Bind the token to the photo it was minted for (GHSA-crxv) — the
       // /secure serve route does this, but secure-download did not, so a
@@ -386,6 +396,7 @@ router.get('/:slug/secure-download/:photoId/:token',
       res.send(fileBuffer);
 
     } catch (error) {
+      if (error.isOperational) return res.status(error.statusCode).json({ error: error.message, code: error.code });
       logger.error('Error serving secure download', {
         error: error.message,
         photoId: req.params.photoId
@@ -414,6 +425,7 @@ router.get('/security/stats', adminAuth, requirePermission('settings.view'), asy
     res.json(stats);
 
   } catch (error) {
+    if (error.isOperational) return res.status(error.statusCode).json({ error: error.message, code: error.code });
     logger.error('Error getting security stats', { error: error.message });
     res.status(500).json({ error: 'Failed to get security stats' });
   }

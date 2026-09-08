@@ -1,3 +1,4 @@
+const { requestLogPath } = require('./requestLogPath');
 /**
  * Rate Limiting Security Utilities
  * Provides secure rate limiting that prevents bypass attempts
@@ -42,7 +43,7 @@ function hasValidAdminToken(req) {
     // Must be admin type to skip rate limiting
     if (decoded.type !== 'admin') {
       logger.warn('Non-admin token attempted to bypass rate limit', {
-        path: req.path,
+        path: requestLogPath(req.originalUrl || req.path),
         tokenType: decoded.type,
         ip: req.ip
       });
@@ -55,7 +56,7 @@ function hasValidAdminToken(req) {
     
     if (tokenAge > maxAge) {
       logger.warn('Old admin token attempted to bypass rate limit', {
-        path: req.path,
+        path: requestLogPath(req.originalUrl || req.path),
         tokenAge: Math.floor(tokenAge / 1000 / 60) + ' minutes',
         ip: req.ip
       });
@@ -70,7 +71,7 @@ function hasValidAdminToken(req) {
     // Log attempts with invalid tokens (potential attacks)
     if (error.name === 'JsonWebTokenError') {
       logger.warn('Invalid token attempted to bypass rate limit', {
-        path: req.path,
+        path: requestLogPath(req.originalUrl || req.path),
         error: error.message,
         ip: req.ip
       });
@@ -105,7 +106,7 @@ function createSecureSkipFunction() {
 function logRateLimitHit(req, res) {
   logger.warn('Rate limit exceeded', {
     ip: req.ip,
-    path: req.path,
+    path: requestLogPath(req.originalUrl || req.path),
     userAgent: req.headers['user-agent'],
     remaining: res.getHeader('X-RateLimit-Remaining'),
     limit: res.getHeader('X-RateLimit-Limit')

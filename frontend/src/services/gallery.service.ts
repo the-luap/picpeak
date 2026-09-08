@@ -7,6 +7,9 @@ import type {
 import { normalizeRequirePassword } from '../utils/accessControl';
 import { parseContentDispositionFilename } from '../utils/contentDisposition';
 
+// Gallery pages beyond the first are fetched this many at a time (#1357).
+const PAGE_FETCH_CONCURRENCY = 4;
+
 // Admin preview (#868): the preview tab carries `?admin_preview=1`. Browser-native
 // download navigations (a real `<a href>` / `api.getUri`) bypass the axios request
 // interceptor that forwards the flag on API calls, so append it to those URLs
@@ -75,17 +78,51 @@ export const galleryService = {
   async getGalleryPhotos(
     slug: string,
     filter?: 'liked' | 'favorited' | 'commented' | 'rated' | 'all',
-    guestId?: string
+    guestId?: string,
+    signal?: AbortSignal
   ): Promise<GalleryData> {
-    const params: any = {};
+    const params: Record<string, string | number> = { limit: 250, page: 1 };
     if (filter && filter !== 'all') {
       params.filter = filter;
       if (guestId) {
         params.guest_id = guestId;
       }
     }
-    const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params });
+    const response = await api.get<GalleryData>(`/gallery/${slug}/photos`, { params: { ...params }, signal });
     const data = response.data;
+    // Existing filter/folder/lightbox consumers require the complete set.
+    // Fetch bounded pages so the API only hydrates feedback and faces for 250
+    // photos at once. A cancelled gallery query also cancels later pages.
+    const photos = new Map(data.photos.map(photo => [photo.id, photo]));
+    let pagination = data.pagination;
+    if (pagination?.has_more) {
+      const fetchPage = async (page: number) =>
+        (await api.get<GalleryData>(`/gallery/${slug}/photos`, { params: { ...params, page }, signal })).data;
+      // Page 1 reports the total, so the remaining pages are known up front
+      // and fetched a few at a time instead of one round-trip after another.
+      const pageSize = pagination.limit || Number(params.limit);
+      const lastKnownPage = pagination.total ? Math.ceil(pagination.total / pageSize) : pagination.page + 1;
+      const firstPage = pagination.page;
+      const pending = Array.from({ length: Math.max(0, lastKnownPage - firstPage) }, (_, i) => firstPage + 1 + i);
+      const fetched = new Map<number, GalleryData>();
+      await Promise.all(Array.from({ length: Math.min(PAGE_FETCH_CONCURRENCY, pending.length) }, async () => {
+        for (let page = pending.shift(); page !== undefined; page = pending.shift()) {
+          fetched.set(page, await fetchPage(page));
+        }
+      }));
+      // Insert in page order: the Map keeps the server's sort.
+      for (const page of [...fetched.keys()].sort((a, b) => a - b)) {
+        const result = fetched.get(page) as GalleryData;
+        result.photos.forEach(photo => photos.set(photo.id, photo));
+        pagination = result.pagination;
+      }
+      // Photos added while paging push the total past what page 1 reported.
+      while (pagination?.has_more) {
+        const next = await fetchPage(pagination.page + 1);
+        next.photos.forEach(photo => photos.set(photo.id, photo));
+        pagination = next.pagination;
+      }
+    }
     const normalizedEvent = data?.event
       ? {
           ...data.event,
@@ -94,6 +131,7 @@ export const galleryService = {
       : data.event;
     return {
       ...data,
+      photos: [...photos.values()],
       event: normalizedEvent,
     };
   },

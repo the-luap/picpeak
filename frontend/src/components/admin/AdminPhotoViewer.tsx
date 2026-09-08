@@ -1,3 +1,4 @@
+import { usePhotoSelection } from '../../hooks/usePhotoSelection';
 import React, { useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Download, Trash2, Tag, Calendar, HardDrive, Eye, MousePointer, MessageSquare, Star, Heart, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -29,15 +30,21 @@ interface AdminPhotoViewerProps {
   categories: Array<{ id: number; name: string; slug: string }>;
 }
 
-export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
-  photos,
-  initialIndex,
-  eventId,
-  onClose,
-  onPhotoDeleted,
-  categories
+export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = (props) => {
+  const selection = usePhotoSelection(props.photos, props.initialIndex);
+  if (!selection.currentPhoto) return null;
+  return <AdminPhotoViewerContent {...props} {...selection} currentPhoto={selection.currentPhoto} />;
+};
+
+type ViewerContentProps = AdminPhotoViewerProps & {
+  currentPhoto: AdminPhoto;
+  currentIndex: number;
+  setCurrentIndex: React.Dispatch<React.SetStateAction<number>>;
+};
+
+const AdminPhotoViewerContent: React.FC<ViewerContentProps> = ({
+  photos, eventId, onClose, onPhotoDeleted, categories, currentPhoto, currentIndex, setCurrentIndex
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDeleting, setIsDeleting] = useState(false);
   const { t } = useTranslation();
   // The photographer's own triage mark (#1044 follow-up). Held locally and
@@ -49,7 +56,6 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
   const queryClient = useQueryClient();
   const { formatDateTime: fmtDateTime } = useLocalizedDate();
   
-  const currentPhoto = photos[currentIndex];
   const isVideo = currentPhoto
     ? (currentPhoto.media_type === 'video' ||
       (currentPhoto.mime_type && String(currentPhoto.mime_type).startsWith('video/')) ||
@@ -58,10 +64,6 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
   const averageRating = currentPhoto?.average_rating ?? 0;
   const likeCount = currentPhoto?.like_count ?? 0;
   const favoriteCount = currentPhoto?.favorite_count ?? 0;
-
-  if (!currentPhoto) {
-    return null;
-  }
 
   // Fetch feedback for current photo
   const { data: feedbackData } = useQuery<AdminFeedbackResponse>({
@@ -231,7 +233,7 @@ export const AdminPhotoViewer: React.FC<AdminPhotoViewerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex]);
+  }, [currentIndex, setCurrentIndex, photos.length, onClose]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">

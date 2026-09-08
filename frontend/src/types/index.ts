@@ -263,6 +263,7 @@ export interface PhotoCategory {
 }
 
 export interface GalleryData {
+  pagination?: { page: number; limit: number; total: number; has_more: boolean };
   event: {
     id: number;
     event_name: string;

@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 const { db } = require('../database/db');
 const secureImageService = require('../services/secureImageService');
 const logger = require('../utils/logger');
@@ -10,12 +11,24 @@ class SecureImageMiddleware {
     this.suspiciousIPs = new Set();
     this.blockedFingerprints = new Set();
     this.rateLimitViolations = new Map();
+    this.cleanupTimer = null;
+  }
+
+  start() {
+    if (this.cleanupTimer) return;
+    this.cleanupTimer = setInterval(() => this.cleanup(), 300000);
+    this.cleanupTimer.unref();
+  }
+  dispose() {
+    clearInterval(this.cleanupTimer); this.cleanupTimer = null;
+    this.suspiciousIPs.clear(); this.blockedFingerprints.clear(); this.rateLimitViolations.clear();
   }
 
   /**
    * Main security middleware for image access
    */
   secureImageAccess = async (req, res, next) => {
+    this.start();
     try {
       const startTime = Date.now();
       const clientIP = this.getClientIP(req);
@@ -56,7 +69,7 @@ class SecureImageMiddleware {
         error: error.message,
         stack: error.stack,
         ip: req.ip,
-        path: req.path
+        path: requestLogPath(req.originalUrl || req.path)
       });
       
       res.status(500).json({ 
@@ -328,7 +341,7 @@ class SecureImageMiddleware {
         client_ip: req.clientInfo?.ip || req.ip,
         client_fingerprint: req.clientInfo?.fingerprint,
         user_agent: req.get('User-Agent')?.substring(0, 255),
-        request_path: req.path,
+        request_path: requestLogPath(req.originalUrl || req.path),
         request_method: req.method,
         details: JSON.stringify(details),
         timestamp: new Date().toISOString()
@@ -408,10 +421,5 @@ class SecureImageMiddleware {
 
 // Create singleton instance
 const secureImageMiddleware = new SecureImageMiddleware();
-
-// Setup cleanup interval
-setInterval(() => {
-  secureImageMiddleware.cleanup();
-}, 300000); // Every 5 minutes
 
 module.exports = secureImageMiddleware;

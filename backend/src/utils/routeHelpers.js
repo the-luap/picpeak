@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 /**
  * Route helper utilities for standardized request handling.
  * Provides async error wrapping, validation, and response formatting.
@@ -93,7 +94,7 @@ const successResponse = (res, data, statusCode = 200, message = null) => {
  */
 const errorResponse = (res, error, statusCode = 500, publicMessage) => {
   const message = publicMessage || (error instanceof Error ? error.message : String(error));
-  const route = res.req ? `${res.req.method} ${res.req.originalUrl}` : null;
+  const route = res.req ? `${res.req.method} ${requestLogPath(res.req.originalUrl)}` : null;
   logger.error(route ? `${route} - ${message}` : message, {
     error: error instanceof Error ? error.message : error,
     stack: error instanceof Error ? error.stack : undefined

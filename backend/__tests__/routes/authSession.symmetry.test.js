@@ -1,460 +1,82 @@
-/**
- * Regression test for the /admin/login → /admin/dashboard → /admin/login
- * redirect loop reported on v3.32.4-beta.0.
- *
- * Cause: GET /auth/session was less strict than the adminAuth middleware.
- * The session endpoint accepted tokens that the protected endpoints
- * subsequently rejected with 401, which the frontend's interceptor
- * translated into a hard redirect to /admin/login. /auth/session then
- * said "valid: true" again on the next page load and the cycle closed.
- *
- * /auth/session must reject the same admin tokens adminAuth would
- * reject, specifically: deactivated admin user, deleted admin user,
- * password changed since iat. Same for gallery: archived event.
- */
-
-const express = require('express');
+/** Session restoration uses the same live policy as protected routes. */
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
-
-process.env.JWT_SECRET = 'session-symmetry-test-secret';
-
-const fakeDb = {
-  adminUsers: [],
-  events: [],
-  revokedTokens: [],
-};
-
-jest.mock('../../src/database/db', () => {
-  const formatBoolean = (v) => (v ? 1 : 0);
-  void formatBoolean;
-  function dbFn(table) {
-    if (table === 'admin_users') {
-      let rowFilter = () => true;
-      return {
-        // The session route joins roles for the adminUser payload (#798);
-        // fake rows carry no role fields, so the join is a pass-through.
-        leftJoin() {
-          return this;
-        },
-        where(criteria) {
-          rowFilter = (row) => {
-            return Object.entries(criteria).every(([rawKey, v]) => {
-              // Joined queries prefix columns ('admin_users.id') — the fake
-              // rows use bare names.
-              const k = rawKey.replace(/^admin_users\./, '');
-              if (k === 'is_active') return Boolean(row.is_active) === Boolean(v);
-              return row[k] === v;
-            });
-          };
-          return this;
-        },
-        select(...cols) {
-          this._cols = cols;
-          return this;
-        },
-        async first() {
-          const row = fakeDb.adminUsers.find(rowFilter);
-          if (!row) return undefined;
-          if (!this._cols) return row;
-          const out = {};
-          for (const c of this._cols) {
-            // Support 'table.col' and 'table.col as alias' shapes.
-            const [source, alias] = c.split(/\s+as\s+/i);
-            const bare = source.includes('.') ? source.split('.').pop() : source;
-            out[alias || bare] = row[bare];
-          }
-          return out;
-        },
-      };
-    }
-    if (table === 'events') {
-      let rowFilter = () => true;
-      return {
-        where(criteria) {
-          rowFilter = (row) =>
-            Object.entries(criteria).every(([k, v]) => {
-              if (k === 'is_active') return Boolean(row.is_active) === Boolean(v);
-              if (k === 'is_archived') return Boolean(row.is_archived) === Boolean(v);
-              return row[k] === v;
-            });
-          return this;
-        },
-        async first() {
-          return fakeDb.events.find(rowFilter);
-        },
-      };
-    }
-    throw new Error(`Unexpected table: ${table}`);
-  }
-  return { db: dbFn, formatBoolean: () => 1 };
+const crypto = require('crypto');
+const { bootCrmDb, seedMinimal, assignAdminRole, buildRouteApp } = require('../integration/helpers/crmDb');
+process.env.JWT_SECRET = 'session-symmetry-test-secret-with-at-least-32-characters';
+let db, cleanup, app, adminId, customerId, eventId, cutoff;
+const slug = 'session-symmetry';
+const sign = (claims = {}) => jwt.sign({ type: 'admin', id: adminId, username: 'tester',
+  iat: Math.floor(Date.now() / 1000) - 60, jti: crypto.randomUUID(), ...claims },
+process.env.JWT_SECRET, { issuer: 'picpeak-auth', expiresIn: '4h' });
+const gallery = (claims = {}) => sign({ type: 'gallery', eventId, eventSlug: slug, ...claims });
+const session = bearer => request(app).get(`/api/auth/session?slug=${slug}`).set('Authorization', `Bearer ${bearer}`);
+beforeAll(async () => {
+  ({ db, cleanup } = await bootCrmDb());
+  ({ adminId, customerId } = await seedMinimal(db));
+  await assignAdminRole(db, adminId);
+  const row = await require('../../src/services/eventCreationService').createEvent({
+    event_type: 'wedding', event_name: 'Session symmetry', event_date: '2026-10-01',
+    slug, password: 'Session-Strong-Password-924!', expiration_days: 30,
+    customer_email: 'customer@example.test', admin_email: 'admin@example.test',
+  }, { actor: { id: adminId }, source: 'v1' });
+  eventId = row.id;
+  await db('events').where({ id: eventId }).update({ slug });
+  await db('event_customer_assignments').insert({ event_id: eventId, customer_account_id: customerId });
+  cutoff = require('../../src/utils/sessionCutoff');
+  app = buildRouteApp('/api/auth', require('../../src/routes/auth'));
+}, 120000);
+beforeEach(async () => {
+  await db('admin_users').where({ id: adminId }).update({ is_active: 1, password_changed_at: null });
+  await db('customer_accounts').where({ id: customerId }).update({ is_active: 1, password_changed_at: null });
+  await db('events').where({ id: eventId }).update({ is_active: 1, is_archived: 0, is_draft: 0,
+    expires_at: new Date(Date.now() + 86400000).toISOString() });
+  await cutoff.setSessionsValidAfter(0);
 });
-
-jest.mock('../../src/utils/dbCompat', () => ({
-  formatBoolean: (v) => (v ? 1 : 0),
-}));
-
-jest.mock('../../src/utils/tokenRevocation', () => ({
-  isTokenRevoked: jest.fn(async (decoded) => fakeDb.revokedTokens.includes(decoded.id)),
-  revokeToken: jest.fn(),
-}));
-
-jest.mock('../../src/utils/tokenUtils', () => ({
-  getAdminTokenFromRequest: (req) => {
-    const auth = req.headers.authorization;
-    if (auth && auth.startsWith('Bearer ')) return auth.slice(7);
-    return null;
-  },
-  getGalleryTokenFromRequest: () => null,
-  setAdminAuthCookie: jest.fn(),
-  setGalleryAuthCookies: jest.fn(),
-  clearAdminAuthCookie: jest.fn(),
-  clearGalleryAuthCookies: jest.fn(),
-  buildCookieOptionsWithExpiry: () => ({}),
-}));
-
-jest.mock('../../src/services/recaptcha', () => ({ verifyRecaptcha: () => Promise.resolve(true) }));
-// Mock sessionTimeout's isSessionExpired so each test controls the return.
-// Default: not expired (so existing tests keep passing without setup).
-jest.mock('../../src/middleware/sessionTimeout', () => ({
-  endSession: jest.fn(),
-  isSessionExpired: jest.fn(() => Promise.resolve(false)),
-}));
-jest.mock('../../src/utils/logger', () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-}));
-
-const authRouter = require('../../src/routes/auth');
-
-function makeApp() {
-  const app = express();
-  app.use(express.json());
-  app.use('/auth', authRouter);
-  return app;
-}
-
-function signAdminToken({ id = 1, username = 'admin', iat, exp }) {
-  const issuedAt = iat ?? Math.floor(Date.now() / 1000);
-  // Note: do NOT pass noTimestamp:true here — that strips iat from the
-  // payload entirely, defeating the password-change comparison. Provide
-  // iat (and exp) via the payload directly instead.
-  return jwt.sign(
-    { id, username, type: 'admin', iat: issuedAt, exp: exp ?? issuedAt + 3600 },
-    process.env.JWT_SECRET,
-    { issuer: 'picpeak-auth' }
-  );
-}
-
-function signGalleryToken({ eventId = 100, eventSlug = 'wedding', ...extra } = {}) {
-  return jwt.sign(
-    { eventId, eventSlug, type: 'gallery', ...extra },
-    process.env.JWT_SECRET,
-    { expiresIn: '1h', issuer: 'picpeak-auth' }
-  );
-}
-
-describe('GET /auth/session — symmetry with protected middleware', () => {
-  beforeEach(() => {
-    fakeDb.adminUsers = [];
-    fakeDb.events = [];
-    fakeDb.revokedTokens = [];
+afterAll(async () => {
+  await require('../../src/services/serviceShutdown').stopServices();
+  if (cleanup) await cleanup();
+});
+it('hydrates an active admin and its role', async () => {
+  const res = await session(sign());
+  expect(res.body).toMatchObject({ valid: true, type: 'admin', adminUser: { id: adminId, role: { name: 'super_admin' } } });
+});
+it.each(['disabled', 'password', 'deleted', 'idle'])('rejects an admin after %s', async reason => {
+  let bearer = sign();
+  if (reason === 'disabled') await db('admin_users').where({ id: adminId }).update({ is_active: 0 });
+  if (reason === 'password') await db('admin_users').where({ id: adminId }).update({ password_changed_at: new Date().toISOString() });
+  if (reason === 'deleted') bearer = sign({ id: 999999 });
+  if (reason === 'idle') bearer = sign({ iat: Math.floor(Date.now() / 1000) - 7200 });
+  expect((await session(bearer)).body.valid).toBe(false);
+});
+it('accepts a session issued after a previous password change', async () => {
+  await db('admin_users').where({ id: adminId }).update({ password_changed_at: new Date(Date.now() - 120000).toISOString() });
+  expect((await session(sign())).body.valid).toBe(true);
+});
+it.each(['archived', 'expired', 'draft', 'inactive'])('rejects a gallery that is %s', async reason => {
+  await db('events').where({ id: eventId }).update({
+    ...(reason === 'archived' && { is_archived: 1 }), ...(reason === 'draft' && { is_draft: 1 }),
+    ...(reason === 'inactive' && { is_active: 0 }), ...(reason === 'expired' && { expires_at: new Date(Date.now() - 1000).toISOString() }),
   });
-
-  it('returns valid:true for an active admin token', async () => {
-    fakeDb.adminUsers.push({
-      id: 1,
-      username: 'admin',
-      email: 'a@b.com',
-      is_active: true,
-      password_changed_at: null,
-    });
-    const token = signAdminToken({ id: 1 });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(true);
-    expect(res.body.type).toBe('admin');
-  });
-
-  it('returns valid:false when the admin user has been deactivated', async () => {
-    fakeDb.adminUsers.push({
-      id: 1,
-      username: 'admin',
-      email: 'a@b.com',
-      is_active: false,
-      password_changed_at: null,
-    });
-    const token = signAdminToken({ id: 1 });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(false);
-  });
-
-  it('returns valid:false when the admin user no longer exists', async () => {
-    // adminUsers is empty
-    const token = signAdminToken({ id: 999 });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(false);
-  });
-
-  it('returns valid:false when password was changed after the token was issued', async () => {
-    // iat must be in the past, exp must be in the future so jwt.verify
-    // doesn't reject the token before /auth/session even gets to look
-    // at password_changed_at.
-    const tokenIssuedAt = Math.floor(Date.now() / 1000) - 60; // 1 min ago
-    const tokenExp = tokenIssuedAt + 86400;
-    fakeDb.adminUsers.push({
-      id: 1,
-      username: 'admin',
-      email: 'a@b.com',
-      is_active: true,
-      password_changed_at: new Date((tokenIssuedAt + 30) * 1000), // 30s after iat
-    });
-    const token = signAdminToken({ id: 1, iat: tokenIssuedAt, exp: tokenExp });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(false);
-  });
-
-  it('returns valid:true when password was changed BEFORE the token was issued', async () => {
-    const tokenIssuedAt = Math.floor(Date.now() / 1000) - 60;
-    const tokenExp = tokenIssuedAt + 86400;
-    fakeDb.adminUsers.push({
-      id: 1,
-      username: 'admin',
-      email: 'a@b.com',
-      is_active: true,
-      password_changed_at: new Date((tokenIssuedAt - 3600) * 1000), // 1h before iat
-    });
-    const token = signAdminToken({ id: 1, iat: tokenIssuedAt, exp: tokenExp });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(true);
-  });
-
-  it('returns valid:false for a gallery token whose event is archived', async () => {
-    fakeDb.events.push({
-      id: 100,
-      slug: 'wedding',
-      is_active: true,
-      is_archived: true,
-      expires_at: null,
-    });
-    const token = signGalleryToken();
-
-    const res = await request(makeApp())
-      .get('/auth/session?slug=wedding')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(false);
-  });
-
-  it('returns valid:false for a gallery token whose event is expired', async () => {
-    fakeDb.events.push({
-      id: 100,
-      slug: 'wedding',
-      is_active: true,
-      is_archived: false,
-      expires_at: new Date(Date.now() - 86400_000),
-    });
-    const token = signGalleryToken();
-
-    const res = await request(makeApp())
-      .get('/auth/session?slug=wedding')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(false);
-  });
-
-  it('returns valid:true for an active gallery token', async () => {
-    fakeDb.events.push({
-      id: 100,
-      slug: 'wedding',
-      is_active: true,
-      is_archived: false,
-      expires_at: new Date(Date.now() + 86400_000),
-    });
-    const token = signGalleryToken();
-
-    const res = await request(makeApp())
-      .get('/auth/session?slug=wedding')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.valid).toBe(true);
-  });
-
-  /**
-   * What KIND of gallery session this is (#1149).
-   *
-   * The frontend used to keep this in sessionStorage, which is per-TAB while
-   * the cookie is per-browser: a gallery reopened in a second tab lost
-   * 'client' even though the backend still served it as one, and the UI hid
-   * the only control that clears the privileged cookie. Reported from the
-   * token so a restored session knows what it actually is.
-   */
-  describe('gallery session kind', () => {
-    beforeEach(() => {
-      fakeDb.events.push({
-        id: 100,
-        slug: 'wedding',
-        is_active: true,
-        is_archived: false,
-        expires_at: new Date(Date.now() + 86400_000),
-      });
-    });
-
-    it('reports a PIN-client session as client', async () => {
-      const res = await request(makeApp())
-        .get('/auth/session?slug=wedding')
-        .set('Authorization', `Bearer ${signGalleryToken({ accessLevel: 'client' })}`);
-      expect(res.body.valid).toBe(true);
-      expect(res.body.accessLevel).toBe('client');
-      expect(res.body.viaCustomer).toBe(false);
-    });
-
-    it('reports a customer-portal session, which looks like a guest', async () => {
-      // via:'customer' runs at accessLevel 'guest' but bypasses reveal mode,
-      // so it is a credential that does not look like one.
-      const res = await request(makeApp())
-        .get('/auth/session?slug=wedding')
-        .set('Authorization', `Bearer ${signGalleryToken({ via: 'customer', customerId: 7 })}`);
-      expect(res.body.valid).toBe(true);
-      expect(res.body.accessLevel).toBe('guest');
-      expect(res.body.viaCustomer).toBe(true);
-    });
-
-    it('reports a plain guest as neither', async () => {
-      // The flags have to discriminate, or they would just hand every visitor
-      // a Logout button back.
-      const res = await request(makeApp())
-        .get('/auth/session?slug=wedding')
-        .set('Authorization', `Bearer ${signGalleryToken()}`);
-      expect(res.body.valid).toBe(true);
-      expect(res.body.accessLevel).toBe('guest');
-      expect(res.body.viaCustomer).toBe(false);
-    });
-  });
-
-  it('returns valid:false when the token is revoked', async () => {
-    fakeDb.adminUsers.push({
-      id: 1,
-      username: 'admin',
-      is_active: true,
-      password_changed_at: null,
-    });
-    fakeDb.revokedTokens.push(1);
-    const token = signAdminToken({ id: 1 });
-
-    const res = await request(makeApp())
-      .get('/auth/session')
-      .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(401);
-    expect(res.body.valid).toBe(false);
-  });
-
-  // Session-timeout symmetry — issue #350 recurrence on v3.39.1-beta.0.
-  // sessionTimeoutMiddleware (mounted on /api/admin) rejects idle/old-iat
-  // tokens with 401 SESSION_TIMEOUT, but /auth/session previously didn't.
-  // The new isSessionExpired helper closes that asymmetry.
-  describe('session-timeout symmetry', () => {
-    const { isSessionExpired } = require('../../src/middleware/sessionTimeout');
-
-    beforeEach(() => {
-      isSessionExpired.mockReset();
-      // Default to "active session" so the other admin checks above also
-      // pass when this branch runs.
-      isSessionExpired.mockResolvedValue(false);
-    });
-
-    it('returns valid:false when isSessionExpired reports the token has timed out', async () => {
-      fakeDb.adminUsers.push({
-        id: 1,
-        username: 'admin',
-        is_active: true,
-        password_changed_at: null,
-      });
-      isSessionExpired.mockResolvedValue(true);
-      const token = signAdminToken({ id: 1 });
-
-      const res = await request(makeApp())
-        .get('/auth/session')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body.valid).toBe(false);
-      expect(res.body.error).toBe('Session expired');
-    });
-
-    it('returns valid:true for an active admin token (helper says not expired)', async () => {
-      fakeDb.adminUsers.push({
-        id: 1,
-        username: 'admin',
-        is_active: true,
-        password_changed_at: null,
-      });
-      isSessionExpired.mockResolvedValue(false);
-      const token = signAdminToken({ id: 1 });
-
-      const res = await request(makeApp())
-        .get('/auth/session')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body.valid).toBe(true);
-      expect(isSessionExpired).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not call isSessionExpired for gallery tokens', async () => {
-      fakeDb.events.push({
-        id: 100,
-        slug: 'wedding',
-        is_active: true,
-        is_archived: false,
-        expires_at: new Date(Date.now() + 86400_000),
-      });
-      const token = signGalleryToken();
-
-      const res = await request(makeApp())
-        .get('/auth/session?slug=wedding')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body.valid).toBe(true);
-      expect(isSessionExpired).not.toHaveBeenCalled();
-    });
-
-    it('falls through (treats as valid) if the helper itself throws', async () => {
-      // Defensive: the require() in auth.js is wrapped in try/catch so a
-      // missing/broken helper doesn't fail-closed during early bootstrap.
-      fakeDb.adminUsers.push({
-        id: 1,
-        username: 'admin',
-        is_active: true,
-        password_changed_at: null,
-      });
-      isSessionExpired.mockRejectedValue(new Error('boom'));
-      const token = signAdminToken({ id: 1 });
-
-      const res = await request(makeApp())
-        .get('/auth/session')
-        .set('Authorization', `Bearer ${token}`);
-      expect(res.status).toBe(200);
-      expect(res.body.valid).toBe(true);
-    });
-  });
+  expect((await session(gallery())).body.valid).toBe(false);
+});
+it.each(['guest', 'client', 'customer'])('restores the %s gallery session kind', async kind => {
+  const res = await session(gallery(kind === 'customer' ? { via: 'customer', customerId } : { accessLevel: kind }));
+  expect(res.body).toMatchObject({ valid: true, accessLevel: kind === 'client' ? 'client' : 'guest', viaCustomer: kind === 'customer' });
+});
+it.each(['revoked', 'restore'])('invalidates both admin and gallery sessions after %s', async reason => {
+  const tokens = [sign(), gallery()];
+  if (reason === 'restore') await cutoff.setSessionsValidAfter(Math.floor(Date.now() / 1000));
+  else for (const bearer of tokens) await require('../../src/utils/tokenRevocation').revokeToken(bearer, 'test');
+  for (const bearer of tokens) expect((await session(bearer)).body.valid).toBe(false);
+});
+it('refuses a deactivated customer gallery session', async () => {
+  const bearer = gallery({ via: 'customer', customerId });
+  expect((await session(bearer)).body.valid).toBe(true);
+  await db('customer_accounts').where({ id: customerId }).update({ is_active: 0 });
+  expect((await session(bearer)).body.valid).toBe(false);
+});
+it('refuses an unrelated JWT type', async () => {
+  const res = await session(sign({ type: 'password-reset' }));
+  expect(res.status).toBe(403); expect(res.body.valid).toBe(false);
 });

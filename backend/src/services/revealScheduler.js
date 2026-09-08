@@ -10,7 +10,7 @@
  * workflow trigger so hosts can hook a notification email onto it.
  */
 
-const cron = require('node-cron');
+const { scheduledTask } = require('./scheduledTask');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const logger = require('../utils/logger');
@@ -68,9 +68,9 @@ async function checkScheduledReveals() {
   }
 }
 
-function startRevealScheduler() {
-  cron.schedule('* * * * *', checkScheduledReveals);
-  logger.info('Reveal scheduler started');
-}
+const task = scheduledTask(checkScheduledReveals, { schedule: '* * * * *' });
+function startRevealScheduler() { task.start(); }
+const stopRevealScheduler = () => task.stop();
 
-module.exports = { startRevealScheduler, checkScheduledReveals };
+module.exports = {
+  stopRevealScheduler, startRevealScheduler, checkScheduledReveals };

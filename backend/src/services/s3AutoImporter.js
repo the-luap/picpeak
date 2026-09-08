@@ -31,10 +31,10 @@ const ENABLED = process.env.STORAGE_AUTO_IMPORT === 'true';
 // On the next poll, any key in BOTH the previous and current snapshots is
 // eligible for import. This is the eventual-consistency gate.
 const previousSnapshot = new Map();
-let intervalHandle = null;
+
 let stopped = false;
 
-async function tick() {
+async function runTick() {
   if (stopped) return;
   const storage = getStorage();
   if (storage.kind() !== 's3') return; // no-op for local fs
@@ -157,24 +157,19 @@ async function processEvent(event, storage) {
   previousSnapshot.set(event.id, currentKeys);
 }
 
+const pollingTask = require('./scheduledTask').scheduledTask(runTick, {
+  // Run once on start so admins see import activity without waiting a full poll.
+  interval: POLL_INTERVAL_MS, initialDelay: 0,
+});
+const tick = () => runTick(); // Explicit test/manual tick does not start a timer.
 function startS3AutoImporter() {
-  if (!ENABLED) return null;
-  if (intervalHandle) return intervalHandle;
+  if (!ENABLED) return;
   stopped = false;
-  // Run once on startup so admins see import activity in logs without
-  // waiting for the first poll interval.
-  tick().catch((err) => logger.error(`[s3AutoImporter] initial tick error: ${err.message}`));
-  intervalHandle = setInterval(tick, POLL_INTERVAL_MS);
-  logger.info(`[s3AutoImporter] started — interval=${POLL_INTERVAL_MS}ms`);
-  return intervalHandle;
+  pollingTask.start();
 }
-
-function stopS3AutoImporter() {
+async function stopS3AutoImporter() {
   stopped = true;
-  if (intervalHandle) {
-    clearInterval(intervalHandle);
-    intervalHandle = null;
-  }
+  await pollingTask.stop();
   previousSnapshot.clear();
 }
 

@@ -9,6 +9,25 @@ class SecureImageService {
     this.tokenCache = new Map();
     this.sessionTokens = new Map();
     this.rateLimitCache = new Map();
+    this.cleanupTimer = null;
+  }
+
+  start() {
+    if (this.cleanupTimer) return;
+    this.cleanupTimer = setInterval(() => this.cleanup(), 60_000);
+    this.cleanupTimer.unref();
+  }
+
+  stop() {
+    clearInterval(this.cleanupTimer);
+    this.cleanupTimer = null;
+  }
+
+  dispose() {
+    this.stop();
+    this.tokenCache.clear();
+    this.sessionTokens.clear();
+    this.rateLimitCache.clear();
   }
 
   /**
@@ -27,8 +46,13 @@ class SecureImageService {
       // Whether the minter was a PIN-client — lets the serve route keep
       // delivering a photo hidden AFTER minting (TOCTOU). A guest's token
       // carries false, so it stops the moment the photo is hidden.
-      clientBypass = false
+      clientBypass = false,
+      galleryAccess = null
     } = options;
+
+    if (!Number.isFinite(Number(expiresIn)) || Number(expiresIn) <= 0 || Number(expiresIn) > 3600) {
+      throw new (require('../utils/errors').ValidationError)('Invalid image token lifetime');
+    }
 
     const tokenData = {
       photoId: parseInt(photoId),
@@ -40,6 +64,7 @@ class SecureImageService {
       protectionLevel,
       revealBypass,
       clientBypass,
+      galleryAccess,
       createdAt: Date.now()
     };
 
@@ -56,10 +81,8 @@ class SecureImageService {
     // Cache token with metadata
     this.tokenCache.set(token, tokenData);
     
-    // Set cleanup timer
-    setTimeout(() => {
-      this.tokenCache.delete(token);
-    }, expiresIn * 1000 + 60000); // Add 1 minute buffer
+    // One owned timer per service, not one live handle per issued token.
+    this.start();
 
     return token;
   }
@@ -217,9 +240,7 @@ class SecureImageService {
         }
 
         image = image.withMetadata({
-          exif: {
-            [sharp.EXIF.IFD0.ImageDescription]: `Protected:${fingerprint}`
-          }
+          exif: { IFD0: { ImageDescription: `Protected:${fingerprint}` } }
         });
 
         return await image.toBuffer();
@@ -261,9 +282,7 @@ class SecureImageService {
 
         // Embed fingerprint in metadata
         image = image.withMetadata({
-          exif: {
-            [sharp.EXIF.IFD0.ImageDescription]: `Protected:${fingerprint}`
-          }
+          exif: { IFD0: { ImageDescription: `Protected:${fingerprint}` } }
         });
       }
 
@@ -430,6 +449,9 @@ class SecureImageService {
   cleanup() {
     // Clear expired rate limit entries
     const now = Date.now();
+    for (const [token, data] of this.tokenCache) {
+      if (data.expiresAt <= now) this.tokenCache.delete(token);
+    }
     for (const [clientId, requests] of this.rateLimitCache.entries()) {
       const recent = requests.filter(timestamp => timestamp > now - 60000);
       if (recent.length === 0) {

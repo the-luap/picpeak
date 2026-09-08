@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 /**
  * Global error handler middleware.
  * Catches all errors and returns standardized responses.
@@ -119,7 +120,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Log the error
   const logContext = {
-    url: req.originalUrl,
+    url: requestLogPath(req.originalUrl),
     method: req.method,
     ip: req.ip,
     statusCode,
@@ -161,7 +162,7 @@ const errorHandler = (err, req, res, next) => {
  */
 const notFoundHandler = (req, res, next) => {
   const { NotFoundError } = require('../utils/errors');
-  next(new NotFoundError('Route', req.originalUrl));
+  next(new NotFoundError('Route', requestLogPath(req.originalUrl)));
 };
 
 /**

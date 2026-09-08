@@ -1,3 +1,4 @@
+const { isGalleryAvailable, isGalleryExpired } = require('../utils/galleryLifecycle');
 /**
  * Customer dashboard routes
  *
@@ -14,6 +15,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body, param, validationResult } = require('express-validator');
 const { db, logActivity } = require('../database/db');
 const { getBcryptRounds, MAX_PASSWORD_LENGTH } = require('../utils/passwordValidation');
@@ -165,9 +167,11 @@ router.get('/events/:slug/access-token', [
     if (event.is_archived) {
       return res.status(410).json({ error: 'This gallery has been archived' });
     }
-    if (event.expires_at && new Date(event.expires_at) < new Date()) {
+    if (isGalleryExpired(event)) {
       return res.status(410).json({ error: 'This gallery has expired' });
     }
+
+    if (!isGalleryAvailable(event)) return res.status(404).json({ error: 'Event not found' });
 
     const hasAccess = await customerAccountsService.customerHasAccessToEvent(
       req.customer.id,
@@ -189,10 +193,12 @@ router.get('/events/:slug/access-token', [
       eventId: event.id,
       eventSlug: event.slug,
       type: 'gallery',
+      // Unique per token: the revocation key falls back to eventId+iat otherwise,
+      // so one guest's logout would revoke every same-second login (#1357).
+      jti: crypto.randomUUID(),
       ip: ipAddress,
       loginTime: Date.now(),
-      // Optional bookkeeping claim — surfaces the originating customer in
-      // logs when the token is later used. Doesn't affect authorization.
+      // Rechecked on each gallery/media request, including account status.
       via: 'customer',
       customerId: req.customer.id,
     }, process.env.JWT_SECRET, {

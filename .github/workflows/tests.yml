@@ -6,11 +6,6 @@ name: Tests
 # calendar) plus the photo / settings / OG / auth surface — wiring them
 # into CI makes regressions visible at PR time instead of post-merge.
 #
-# Six backend suites are excluded via --testPathIgnorePatterns. They
-# fail on `upstream/beta` too (pre-existing mock/infra issues, NOT CRM
-# regressions). Excluding them here keeps CI green from day 1; revisit
-# each individually as its own fix.
-#
 # Triggers on any change that could affect either suite. The backend
 # job intentionally omits frontend paths and vice versa so unrelated
 # PRs don't pay both build costs.
@@ -89,18 +84,7 @@ jobs:
           # Un-gates the real-Postgres cases in the .picpeak restore suites
           # (see the `services:` note above). Absent it they silently skip.
           PICPEAK_PG_TEST_URL: 'postgres://picpeak:testpass@127.0.0.1:5432/picpeak_test'
-        run: |
-          # Excluded suites — fail on upstream/beta too, tracked
-          # separately as test-infra debt:
-          #   adminSettings.logo                  — supertest fixture
-          #   integration/adminPhotos.reference   — supertest fixture
-          #   integration/webhookDelivery         — supertest fixture
-          #   services/backupService.enhanced     — knex mock chain
-          #   routes/__tests__/adminAuth          — supertest fixture
-          # (adminNotifications was excluded; #597 fix re-enables it.)
-          npx jest \
-            --testPathIgnorePatterns='/node_modules/|adminSettings\.logo\.test|integration/adminPhotos\.reference|integration/webhookDelivery|backupService\.enhanced|routes/__tests__/adminAuth' \
-            --ci
+        run: npx jest --ci
 
   frontend:
     runs-on: ubuntu-latest
@@ -121,9 +105,29 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      - name: Lint frontend (including Rules of Hooks)
+        working-directory: ./frontend
+        run: npm run lint
+
       - name: Run Vitest suite
         working-directory: ./frontend
         run: npm test -- --run
+
+  nginx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        # Match the two shipped frontend Dockerfiles.
+        image: ['nginx:1.28-alpine', 'nginx:1.30-alpine']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify token-safe nginx logging
+        env:
+          NGINX_TEST_IMAGE: ${{ matrix.image }}
+        run: python3 tests/nginx/test_request_logging.py
 
   # Optional face-detection sidecar (#1074). Runs on every PR regardless of
   # whether the feature is enabled anywhere — these tests need no model

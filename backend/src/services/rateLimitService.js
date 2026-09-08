@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 const rateLimit = require('express-rate-limit');
 const { MemoryStore } = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
@@ -250,19 +251,18 @@ async function createRateLimiter(store = new MemoryStore()) {
       // Enhanced logging for production analysis
       logger.warn('Rate limit exceeded', {
         ip: clientIp,
-        path: req.path,
+        path: requestLogPath(req.originalUrl || req.path),
         method: req.method,
         authenticated: isAuthenticated(req),
         tokenType: req.tokenType,
         userAgent: req.headers['user-agent'],
-        referer: req.headers['referer'],
         origin: req.headers['origin'],
         timestamp: new Date().toISOString(),
         headers: {
           'x-forwarded-for': req.headers['x-forwarded-for'],
           'x-real-ip': req.headers['x-real-ip']
         },
-        requestUrl: req.originalUrl,
+        requestUrl: requestLogPath(req.originalUrl || req.path),
         rateLimitInfo: {
           limit: req.rateLimit?.limit,
           current: req.rateLimit?.current,
@@ -318,7 +318,7 @@ async function createAuthRateLimiter(store = new MemoryStore()) {
       // Enhanced logging for auth failures
       logger.warn('Auth rate limit exceeded', {
         ip: clientIp,
-        path: req.path,
+        path: requestLogPath(req.originalUrl || req.path),
         method: req.method,
         userAgent: req.headers['user-agent'],
         timestamp: new Date().toISOString(),
@@ -326,7 +326,7 @@ async function createAuthRateLimiter(store = new MemoryStore()) {
           'x-forwarded-for': req.headers['x-forwarded-for'],
           'x-real-ip': req.headers['x-real-ip']
         },
-        requestUrl: req.originalUrl,
+        requestUrl: requestLogPath(req.originalUrl || req.path),
         authType: req.path.includes('admin') ? 'admin' : 'gallery',
         rateLimitInfo: {
           limit: req.rateLimit?.limit,

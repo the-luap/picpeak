@@ -52,6 +52,29 @@ interface CMSEditorProps {
 
 type ViewMode = 'edit' | 'preview' | 'split';
 
+const MenuButton: React.FC<{
+  onClick: () => void;
+  active?: boolean;
+  children: React.ReactNode;
+  title: string;
+  disabled?: boolean;
+}> = ({ onClick, active, children, title, disabled }) => (
+  <button
+    onMouseDown={event => event.preventDefault()}
+    onClick={onClick}
+    disabled={disabled}
+    className={`p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors ${
+      active
+        ? 'bg-accent-dark/15 text-accent-dark'
+        : 'text-neutral-700 dark:text-neutral-200'
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    title={title}
+    type="button"
+  >
+    {children}
+  </button>
+);
+
 export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave, isSaving }) => {
   const { t } = useTranslation();
   const [linkUrl, setLinkUrl] = useState('');
@@ -64,8 +87,13 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
   const toolbarRef = React.useRef<HTMLDivElement | null>(null);
 
   const editor = useEditor({
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
+        link: false,
+        // v2 StarterKit had no TrailingNode; v3 would append an empty <p> to
+        // documents ending in a heading/list/code block and persist it.
+        trailingNode: false,
         hardBreak: false, // We'll use the separate HardBreak extension
         codeBlock: false, // We'll use CodeBlockLowlight instead
       }),
@@ -148,7 +176,7 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
 
   React.useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [content, editor]);
 
@@ -164,27 +192,7 @@ export const CMSEditor: React.FC<CMSEditorProps> = ({ content, onChange, onSave,
     }
   };
 
-  const MenuButton: React.FC<{
-    onClick: () => void;
-    active?: boolean;
-    children: React.ReactNode;
-    title: string;
-    disabled?: boolean;
-  }> = ({ onClick, active, children, title, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors ${
-        active
-          ? 'bg-accent-dark/15 text-accent-dark'
-          : 'text-neutral-700 dark:text-neutral-200'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-      title={title}
-      type="button"
-    >
-      {children}
-    </button>
-  );
+
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);

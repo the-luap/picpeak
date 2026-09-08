@@ -34,24 +34,23 @@ async function startWorkers() {
     logger.info('All background workers started successfully');
   } catch (error) {
     logger.error('Failed to start background workers:', error);
-    process.exit(1);
+    process.exitCode = 1;
+    await handleShutdown('startup failure');
   }
 }
 
-function handleShutdown(signal) {
-  if (isShuttingDown) {
-    logger.info('Shutdown already in progress...');
-    return;
-  }
-
+async function handleShutdown(signal) {
+  if (isShuttingDown) return;
   isShuttingDown = true;
   logger.info(`Received ${signal}. Shutting down gracefully...`);
-
-  // Give time for cleanup
-  setTimeout(() => {
+  try {
+    await require('./serviceShutdown').stopServices();
+    await require('../database/db').db.destroy();
     logger.info('Worker manager shutdown complete');
-    process.exit(0);
-  }, 1000);
+  } catch (error) {
+    logger.error('Worker shutdown failed', { error: error.message });
+    process.exitCode = 1;
+  }
 }
 
 // Handle shutdown signals

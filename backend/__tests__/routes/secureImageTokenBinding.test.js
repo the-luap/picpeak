@@ -89,7 +89,8 @@ describe('secure-image view route token binding (GHSA-g94x)', () => {
   const mint = (photoId, eventId) => secureImageService.generateSecureToken(
     photoId,
     `gallery_public_${eventId}_${Date.now()}`,
-    { clientFingerprint: 'test-fp', maxUses: 100, expiresIn: 3600 },
+    { clientFingerprint: 'test-fp', maxUses: 100, expiresIn: 3600,
+      galleryAccess: require('../../src/services/galleryAccessService').grant({ id: eventId }, 'public') },
   );
 
   const view = (slug, photoId, token) => request(app)
@@ -114,7 +115,7 @@ describe('secure-image view route token binding (GHSA-g94x)', () => {
     const token = mint(photoA, galleryA);
     const res = await view('secimg-private-b', photoB, token);
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/not valid for this photo/i);
+    expect(res.body.code).toBe('INVALID_GALLERY_GRANT');
   });
 
   it('rejects a gallery-A token replayed on gallery B with A\'s photoId', async () => {
@@ -123,7 +124,7 @@ describe('secure-image view route token binding (GHSA-g94x)', () => {
     // check (sessionId gallery A != URL gallery B) must catch it.
     const res = await view('secimg-private-b', photoA, token);
     expect(res.status).toBe(403);
-    expect(res.body.error).toMatch(/not valid for this gallery/i);
+    expect(res.body.code).toBe('INVALID_GALLERY_GRANT');
   });
 
   it('lets a token read its own gallery + photo (binding passes)', async () => {

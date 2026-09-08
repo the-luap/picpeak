@@ -1,4 +1,4 @@
-const cron = require('node-cron');
+const { scheduledTask } = require('./scheduledTask');
 const { db } = require('../database/db');
 const { archiveEvent } = require('./archiveService');
 const { queueEmail, getSupportEmail } = require('./emailProcessor');
@@ -6,14 +6,9 @@ const { buildShareLinkVariants } = require('./shareLinkService');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
 
-function startExpirationChecker() {
-  // Check every hour for expired events and warnings
-  cron.schedule('0 * * * *', async () => {
-    await checkExpirations();
-  });
-
-  logger.info('Expiration checker started');
-}
+const task = scheduledTask(checkExpirations, { schedule: '0 * * * *' });
+function startExpirationChecker() { task.start(); }
+const stopExpirationChecker = () => task.stop();
 
 async function checkExpirations() {
   try {
@@ -248,6 +243,7 @@ async function handleExpiredEvent(event, { sendLegacyEmails = true } = {}) {
 }
 
 module.exports = {
+  stopExpirationChecker,
   startExpirationChecker,
   // Reused by the workflow notify_gallery_* actions so the engine path sends the
   // exact same emails as the legacy hourly checker.

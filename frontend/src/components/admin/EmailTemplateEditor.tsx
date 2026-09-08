@@ -31,6 +31,29 @@ interface EmailTemplateEditorProps {
   variables?: string[];
 }
 
+const MenuButton: React.FC<{
+  onClick: () => void;
+  active?: boolean;
+  children: React.ReactNode;
+  title: string;
+  disabled?: boolean;
+}> = ({ onClick, active, children, title, disabled }) => (
+  <button
+    onMouseDown={event => event.preventDefault()}
+    onClick={onClick}
+    disabled={disabled}
+    className={`p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors ${
+      active
+        ? 'bg-accent-dark/15 text-accent-dark'
+        : 'text-neutral-700 dark:text-neutral-300'
+    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    title={title}
+    type="button"
+  >
+    {children}
+  </button>
+);
+
 export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
   content,
   onChange,
@@ -44,8 +67,13 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
   const [showVariables, setShowVariables] = useState(false);
 
   const editor = useEditor({
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
+        link: false,
+        // v2 StarterKit had no TrailingNode; v3 would append an empty <p> to
+        // templates ending in a heading/list and persist it in the email HTML.
+        trailingNode: false,
         hardBreak: false,
       }),
       HardBreak.configure({
@@ -75,7 +103,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
   // Sync editor when content prop changes externally
   React.useEffect(() => {
     if (editor && !isSourceMode && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, { emitUpdate: false });
       setSourceContent(content);
     }
   }, [content, editor, isSourceMode]);
@@ -134,27 +162,7 @@ export const EmailTemplateEditor: React.FC<EmailTemplateEditorProps> = ({
     return null;
   }
 
-  const MenuButton: React.FC<{
-    onClick: () => void;
-    active?: boolean;
-    children: React.ReactNode;
-    title: string;
-    disabled?: boolean;
-  }> = ({ onClick, active, children, title, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors ${
-        active
-          ? 'bg-accent-dark/15 text-accent-dark'
-          : 'text-neutral-700 dark:text-neutral-300'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-      title={title}
-      type="button"
-    >
-      {children}
-    </button>
-  );
+
 
   return (
     <div className="border border-neutral-300 dark:border-neutral-600 rounded-lg overflow-hidden">

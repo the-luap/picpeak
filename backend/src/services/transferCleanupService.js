@@ -17,7 +17,7 @@
  *                  are deleted, which is what the retention cap is about.)
  */
 
-const cron = require('node-cron');
+const { scheduledTask } = require('./scheduledTask');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
 const { formatBoolean } = require('../utils/dbCompat');
@@ -26,13 +26,9 @@ const transferService = require('./transferService');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function startTransferCleanup() {
-  // Hourly at :15 — staggered from the gallery expiration checker (:00).
-  cron.schedule('15 * * * *', async () => {
-    await runTransferCleanup();
-  });
-  logger.info('Transfer cleanup scheduler started');
-}
+const task = scheduledTask(runTransferCleanup, { schedule: '15 * * * *' });
+function startTransferCleanup() { task.start(); }
+const stopTransferCleanup = () => task.stop();
 
 async function runTransferCleanup() {
   try {
@@ -138,6 +134,7 @@ async function deleteRetiredTransfers() {
 }
 
 module.exports = {
+  stopTransferCleanup,
   startTransferCleanup,
   // exported for tests / manual invocation
   runTransferCleanup,

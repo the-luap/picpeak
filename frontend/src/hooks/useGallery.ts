@@ -26,7 +26,7 @@ export const useGalleryPhotos = (
   return useQuery({
     queryKey: ['gallery-photos', slug, filter, guestId],
     // Pass guestId so backend can filter per-guest views when needed
-    queryFn: () => galleryService.getGalleryPhotos(slug, filter, guestId),
+    queryFn: ({ signal }) => galleryService.getGalleryPhotos(slug, filter, guestId, signal),
     enabled,
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes

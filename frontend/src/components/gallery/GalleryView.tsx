@@ -1,4 +1,8 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useGalleryFiltering, resolveMediaType } from './hooks/useGalleryFiltering';
+import { useGalleryUpload } from './hooks/useGalleryUpload';
+import { useGallerySelection } from './hooks/useGallerySelection';
+import { UploadProcessingNotice } from './UploadProcessingNotice';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -34,9 +38,7 @@ import { GuestIdentityProvider } from '../../contexts/GuestIdentityContext';
 import type { FilterType, FeedbackFilterType } from './GalleryFilter';
 import { analyticsService } from '../../services/analytics.service';
 import { useDevToolsProtection } from '../../hooks/useDevToolsProtection';
-import { api } from '../../config/api';
-import { Upload, Menu, Eye, EyeOff, Shield, X, Download, ChevronLeft, Loader2 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { Upload, Menu, Eye, EyeOff, Shield, X, Download, ChevronLeft } from 'lucide-react';
 import { galleryService } from '../../services/gallery.service';
 import { feedbackService, type ColorLabel } from '../../services/feedback.service';
 import { useWatermarkSettings } from '../../hooks/useWatermarkSettings';
@@ -122,8 +124,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
   const [brandingSettings, setBrandingSettings] = useState<any>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
   const [feedbackEnabled, setFeedbackEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const { watermarkEnabled } = useWatermarkSettings();
@@ -188,19 +188,6 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
   const [guestId, setGuestId] = useState<string>('');
   const [staticHeroPhoto, setStaticHeroPhoto] = useState<Photo | null>(null);
 
-  const resolveMediaType = (photo: Photo) => {
-    if (photo.media_type === 'video' || photo.media_type === 'photo') {
-      return photo.media_type;
-    }
-    if (photo.mime_type && photo.mime_type.startsWith('video/')) {
-      return 'video';
-    }
-    if ((photo as any).type === 'video') {
-      return 'video';
-    }
-    return 'photo';
-  };
-  
   // Generate a unique guest ID for this session
   useEffect(() => {
     // Use existing guest ID from localStorage or generate new one
@@ -215,6 +202,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
   // Fetch photos WITHOUT filter (always get all photos, filter on frontend)
   // This ensures counts are always calculated from the full dataset
   const { data, isLoading, error, refetch } = useGalleryPhotos(slug, 'all', guestId);
+  const { isSelectionMode, setIsSelectionMode, selectedPhotos, setSelectedPhotos } = useGallerySelection(data?.photos);
   
   // Set protection level when data is available
   useEffect(() => {
@@ -251,109 +239,9 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
     return () => { timers.forEach(clearTimeout); clearInterval(interval); };
   }, [hiddenUntilReveal, revealArmed, revealAtMs, refetch]);
 
-  // Post-upload refresh (P4-E.01). A guest upload is *queued*: the route
-  // answers 202 and the row lands as `processing_status: 'pending'`, while
-  // the photo list only returns completed rows. A single immediate refetch
-  // therefore comes back with a byte-identical payload (which the browser is
-  // answered with a 304), so the guest saw their upload silently vanish until
-  // they hard-reloaded.
-  //
-  // The first fix polled the photo list blind against a count baseline, which
-  // cannot tell a slow worker from a photo that failed processing — it just
-  // stopped after 60s with nothing on screen either way. Poll the upload
-  // group's real processing status instead (B7): it drives the "processing…"
-  // notice, refetches the grid as photos land rather than only at the end, and
-  // reports a failure instead of a silence.
-  const uploadRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [uploadProcessing, setUploadProcessing] = useState<{ complete: number; total: number } | null>(null);
-  const stopUploadRefresh = () => {
-    if (uploadRefreshTimerRef.current) {
-      clearInterval(uploadRefreshTimerRef.current);
-      uploadRefreshTimerRef.current = null;
-    }
-  };
-  useEffect(() => stopUploadRefresh, []);
+  const { uploadProcessing, handleUploadComplete } = useGalleryUpload(slug, refetch, () => setShowUploadModal(false));
 
-  const handleUploadComplete = (uploadIds: string[] = []) => {
-    setShowUploadModal(false);
-    stopUploadRefresh();
-
-    // Nothing to follow (no id came back, e.g. every file failed on the wire).
-    // Refetch once rather than polling something unknowable.
-    if (uploadIds.length === 0) {
-      void refetch();
-      return;
-    }
-
-    setUploadProcessing({ complete: 0, total: uploadIds.length });
-    const deadline = Date.now() + 120_000;
-    let lastComplete = 0;
-    let inFlight = false;
-
-    const finish = async (announce?: () => void) => {
-      stopUploadRefresh();
-      setUploadProcessing(null);
-      await refetch();
-      announce?.();
-    };
-
-    const poll = async () => {
-      // The interval keeps firing while a slow request is open; without this
-      // the requests stack up for the whole deadline.
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        const status = await galleryService.getUploadStatus(slug, uploadIds);
-        setUploadProcessing({
-          complete: status.complete + status.failed,
-          total: status.total || uploadIds.length,
-        });
-
-        // Refetch as each photo lands, not only once the batch settles, so a
-        // large upload fills the grid progressively.
-        if (status.complete > lastComplete) {
-          lastComplete = status.complete;
-          void refetch();
-        }
-
-        if (status.pending === 0 && status.processing === 0) {
-          await finish(() => {
-            if (status.failed > 0) {
-              toast.error(t('upload.processingFailed', { count: status.failed }));
-            }
-          });
-        } else if (Date.now() > deadline) {
-          // Bounded. The worker is genuinely still running, so say that rather
-          // than leaving the guest with a grid that quietly never updated.
-          await finish(() => toast.info(t('upload.processingStillRunning')));
-        }
-      } catch {
-        // The status signal is a convenience — the photos are stored either
-        // way — so a failing status call degrades to the plain refetch.
-        await finish();
-      } finally {
-        inFlight = false;
-      }
-    };
-
-    uploadRefreshTimerRef.current = setInterval(poll, 2000);
-    void poll();
-  };
-
-  // The two layout branches below that render the photo grid have no shared
-  // wrapper, so the notice is shared as a value rather than as markup.
-  const uploadProcessingNotice = uploadProcessing ? (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full bg-neutral-900/90 px-4 py-2 text-sm text-white shadow-lg">
-      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-      <span>
-        {t('upload.processing')}{' '}
-        {t('upload.processingProgress', {
-          complete: uploadProcessing.complete,
-          total: uploadProcessing.total,
-        })}
-      </span>
-    </div>
-  ) : null;
+  const uploadProcessingNotice = <UploadProcessingNotice processing={uploadProcessing} />;
 
   // Get individual protection settings from event
   const disableRightClick = data?.event?.disable_right_click === true;
@@ -427,8 +315,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
     queryFn: async () => {
       try {
         // Use public endpoint to get feedback settings
-        const response = await api.get(`/gallery/${slug}/feedback-settings`);
-        return response.data;
+        return await feedbackService.getGalleryFeedbackSettings(slug);
       } catch (error) {
         console.error('Error fetching feedback settings:', error);
         // If endpoint doesn't exist or returns error, default to disabled
@@ -755,7 +642,7 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
     setSelectedPersonIds([]);
     setPeopleMatchAny(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [setSelectedPhotos]);
 
   // The address bar is the source of truth, so Back/Forward walk in and out of
   // folders instead of leaving the gallery.
@@ -769,130 +656,14 @@ export const GalleryView: React.FC<GalleryViewProps> = ({ slug, event, requiresP
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  }, [setSelectedPhotos]);
 
-  // Filter and sort photos
-  const filteredPhotos = useMemo(() => {
-    if (!data?.photos) return [];
-
-    // Folder containment (#1160) comes FIRST: at root this drops every photo that
-    // lives in a folder, inside a folder it keeps only that folder's photos.
-    // Everything below narrows within that scope, so a search or a feedback chip
-    // never reaches across a folder boundary.
-    let photos = photosInScope(data.photos, data.categories, openFolder?.id ?? null);
-
-    if (mediaFilter === 'photo') {
-      photos = photos.filter(photo => resolveMediaType(photo) !== 'video');
-    } else if (mediaFilter === 'video') {
-      photos = photos.filter(photo => resolveMediaType(photo) === 'video');
-    }
-
-    // Apply category filter. Only meaningful at root — inside a folder every
-    // photo already shares the folder's category.
-    if (selectedCategoryId && !openFolder) {
-      photos = photos.filter(photo => photo.category_id === selectedCategoryId);
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      photos = photos.filter(photo => 
-        photo.filename.toLowerCase().includes(term)
-      );
-    }
-    
-    // Apply feedback filters. Multi-select (#889): a photo matching ANY
-    // active filter passes (OR-combined); an empty set means no feedback
-    // filtering. In guest identity mode each filter has to scope to the
-    // *current guest's* interactions (#538 bug 1) — the aggregate counts
-    // on each photo row are global across all guests, which gave an empty
-    // grid when the guest had liked photos that nobody else had touched.
-    // Falls back to the aggregate-count check in simple/non-guest mode
-    // where there's no per-person identity to scope by.
-    if (activeFilters.length > 0) {
-      const matchers: Record<FeedbackFilterType, (photo: Photo) => boolean> = {
-        liked: (photo) => isGuestIdentityMode
-          ? myFeedbackPhotoIds.liked.has(photo.id)
-          : (photo.like_count || 0) > 0,
-        favorited: (photo) => isGuestIdentityMode
-          ? myFeedbackPhotoIds.favorited.has(photo.id)
-          : (photo.favorite_count || 0) > 0,
-        rated: (photo) => isGuestIdentityMode
-          ? myFeedbackPhotoIds.rated.has(photo.id)
-          : (photo.average_rating || 0) > 0 || (photo.total_ratings || 0) > 0,
-        commented: (photo) => isGuestIdentityMode
-          ? myFeedbackPhotoIds.commented.has(photo.id)
-          : (photo.comment_count || 0) > 0,
-      };
-      photos = photos.filter(photo => activeFilters.some(filter => matchers[filter](photo)));
-    }
-
-    // Apply people filter (#1074). Composes with every filter above rather
-    // than replacing them, so "photos of Anna that I liked" works.
-    //
-    // Two people selected means AND by default ("photos with both Anna and
-    // Ben") — that is what someone picking a second face is almost always
-    // asking for. `peopleMatchAny` flips it to OR for the couple-shots case.
-    if (selectedPersonIds.length > 0) {
-      photos = photos.filter(photo => {
-        const ids = photo.person_ids || [];
-        return peopleMatchAny
-          ? selectedPersonIds.some(id => ids.includes(id))
-          : selectedPersonIds.every(id => ids.includes(id));
-      });
-    }
-
-    // Apply colour-label filters (#1044). Guest-scoped by construction:
-    // `my_color_label` is the requesting viewer's own label, which is what a
-    // proofing client means by "show me my greens". Composes with (ANDs
-    // against) every filter above, like the people filter.
-    if (activeColorFilters.length > 0) {
-      photos = photos.filter(photo =>
-        !!photo.my_color_label && activeColorFilters.includes(photo.my_color_label as ColorLabel)
-      );
-    }
-
-    // Apply sorting
-    // Each comparator defaults to its natural order (desc for dates/size/rating, asc for name).
-    // The flip multiplier reverses that when sortDesc differs from the natural order.
-    const flip = sortDesc ? 1 : -1;
-    photos.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          // Natural order is ascending (A-Z); flip when sortDesc=true
-          return (sortDesc ? -1 : 1) * a.filename.localeCompare(b.filename);
-        case 'size':
-          return flip * (b.size - a.size);
-        case 'rating': {
-          const ratingA = a.average_rating || 0;
-          const ratingB = b.average_rating || 0;
-          if (ratingA !== ratingB) {
-            return flip * (ratingB - ratingA);
-          }
-          return flip * ((b.comment_count || 0) - (a.comment_count || 0));
-        }
-        case 'capture_date': {
-          const captureDateA = a.captured_at || a.uploaded_at;
-          const captureDateB = b.captured_at || b.uploaded_at;
-          return flip * (new Date(captureDateB).getTime() - new Date(captureDateA).getTime());
-        }
-        case 'date':
-        default:
-          return flip * (new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime());
-      }
-    });
-    
-    // Transform full-size URLs for watermarks if enabled
-    // Note: Thumbnails are watermarked server-side at the thumbnail endpoint
-    if (watermarkEnabled) {
-      photos = photos.map(photo => ({
-        ...photo,
-        url: `/api/gallery/${slug}/photo/${photo.id}`
-      }));
-    }
-    
-    return photos;
-  }, [data?.photos, data?.categories, openFolder, selectedCategoryId, searchTerm, sortBy, sortDesc, watermarkEnabled, slug, activeFilters, activeColorFilters, mediaFilter, isGuestIdentityMode, myFeedbackPhotoIds, selectedPersonIds, peopleMatchAny]);
+  const filteredPhotos = useGalleryFiltering({
+    sourcePhotos: data?.photos, categories: data?.categories, folderId: openFolder?.id ?? null,
+    selectedCategoryId, searchTerm, sortBy, sortDesc, watermarkEnabled, slug,
+    activeFilters, activeColorFilters, mediaFilter, isGuestIdentityMode, myFeedbackPhotoIds,
+    selectedPersonIds, peopleMatchAny,
+  });
 
   // Counts shown in the filter chips ("Liked (N)", etc.). In guest
   // mode these need to mirror the per-guest filter behaviour above —

@@ -1,3 +1,4 @@
+const { requestLogPath } = require('../utils/requestLogPath');
 /**
  * Customer Authentication Middleware
  *
@@ -10,10 +11,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const { db } = require('../database/db');
-const { formatBoolean } = require('../utils/dbCompat');
-const { isTokenRevoked } = require('../utils/tokenRevocation');
-const { isTokenBeforeCutoff } = require('../utils/sessionCutoff');
+const sessionAccess = require('../services/sessionAccessService');
 const logger = require('../utils/logger');
 const { getCustomerTokenFromRequest } = require('../utils/tokenUtils');
 
@@ -25,7 +23,7 @@ async function customerAuth(req, res, next) {
       // normal (page polling, pre-login session probes). Bump to debug
       // for noisy investigations only.
       logger.debug('[customerAuth] no token on request', {
-        url: req.originalUrl,
+        url: requestLogPath(req.originalUrl),
         hasCookieHeader: !!req.headers?.cookie,
         cookieKeys: Object.keys(req.cookies || {}),
       });
@@ -42,7 +40,7 @@ async function customerAuth(req, res, next) {
       decoded = verified.payload;
     } catch (err) {
       logger.warn('[customerAuth] jwt verification failed', {
-        url: req.originalUrl,
+        url: requestLogPath(req.originalUrl),
         errorName: err.name,
         errorMessage: err.message,
       });
@@ -52,71 +50,10 @@ async function customerAuth(req, res, next) {
       return res.status(401).json({ error: 'Invalid token', code: 'JWT_INVALID' });
     }
 
-    if (await isTokenRevoked(decoded)) {
-      logger.warn('[customerAuth] token revoked', {
-        url: req.originalUrl,
-        customerId: decoded.customerId,
-        tokenType: decoded.type,
-        iat: decoded.iat,
-      });
-      return res.status(401).json({ error: 'Token has been revoked', code: 'TOKEN_REVOKED' });
-    }
-
-    // Reject sessions issued before the global restore cutoff.
-    if (await isTokenBeforeCutoff(decoded)) {
-      return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_INVALIDATED' });
-    }
-
-    if (decoded.type !== 'customer') {
-      logger.warn('[customerAuth] wrong token type', {
-        url: req.originalUrl,
-        tokenType: decoded.type,
-      });
-      return res.status(403).json({ error: 'Insufficient permissions', code: 'WRONG_TOKEN_TYPE' });
-    }
-
-    // IP drift gets logged but doesn't reject — same lenient policy as
-    // adminAuth. Customers may roam between mobile networks frequently.
-    const currentIp = req.ip || req.connection.remoteAddress;
-    if (decoded.ip && decoded.ip !== currentIp) {
-      logger.info('Customer token used from different IP', {
-        customerId: decoded.customerId,
-        tokenIp: decoded.ip,
-        currentIp,
-      });
-    }
-
-    const customer = await db('customer_accounts')
-      .where({ id: decoded.customerId, is_active: formatBoolean(true) })
-      .select('id', 'email', 'display_name', 'first_name', 'last_name', 'password_changed_at', 'preferred_language')
-      .first();
-
-    if (!customer) {
-      // Either deleted, deactivated, or the id was forged. 401 across the
-      // board so the frontend session-expiry handler kicks in.
-      logger.warn('[customerAuth] customer row not found / inactive', {
-        url: req.originalUrl,
-        customerId: decoded.customerId,
-      });
-      return res.status(401).json({ error: 'Invalid token', code: 'CUSTOMER_NOT_FOUND' });
-    }
-
-    if (customer.password_changed_at) {
-      const passwordChangedSeconds = Math.floor(
-        new Date(customer.password_changed_at).getTime() / 1000
-      );
-      if (decoded.iat < passwordChangedSeconds) {
-        logger.warn('[customerAuth] token rejected: password_changed_at', {
-          url: req.originalUrl,
-          customerId: decoded.customerId,
-          iat: decoded.iat,
-          passwordChangedSeconds,
-        });
-        return res.status(401).json({
-          error: 'Token invalid due to password change',
-          code: 'PASSWORD_CHANGED',
-        });
-      }
+    const customer = await sessionAccess.customer(decoded);
+    const requestIp = req.ip || req.connection?.remoteAddress;
+    if (decoded.ip && requestIp && decoded.ip !== requestIp) {
+      logger.info('customer session IP changed', { accountId: customer.id, tokenIp: decoded.ip, requestIp });
     }
 
     req.customer = {
@@ -131,7 +68,10 @@ async function customerAuth(req, res, next) {
     next();
   } catch (error) {
     logger.error('Customer auth middleware error:', error);
-    res.status(401).json({ error: 'Authentication failed' });
+    res.status(error.statusCode || 401).json({
+      error: error.isOperational ? error.message : 'Authentication failed',
+      ...(error.isOperational && { code: error.code }),
+    });
   }
 }
 
