@@ -29,6 +29,7 @@ jest.mock('../../src/services/productUsageService', () =>
       'tick',
       'status',
       'dismiss',
+      'markPromptShown',
       'enable',
       'disable',
       'abandon',
@@ -129,6 +130,7 @@ const ROUTES = [
   ['post', '/abandon'],
   ['post', '/retry'],
   ['post', '/dismiss'],
+  ['post', '/prompt-seen'],
   ['get', '/preview'],
   ['get', '/export'],
   ['put', '/feedback-preferences'],
@@ -177,6 +179,15 @@ test('owner sees no-store status and supplies consent to the service', async () 
     .send({ consent_version: 'usage-consent.v1' })
     .expect(200);
   expect(service.enable).toHaveBeenCalledWith('usage-consent.v1');
+});
+test('only a settings editor can acknowledge the prompt without opting in', async () => {
+  await request(app)
+    .post('/api/admin/usage/prompt-seen')
+    .set('Authorization', `Bearer ${token('admin')}`)
+    .expect('Cache-Control', 'no-store')
+    .expect(200);
+  expect(service.markPromptShown).toHaveBeenCalledTimes(1);
+  expect(service.enable).not.toHaveBeenCalled();
 });
 test('public/gallery paths and failed/unauthenticated admin operations never set feature markers', async () => {
   const { EventEmitter } = require('events');

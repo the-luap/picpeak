@@ -39,6 +39,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(usage.status).mockResolvedValue({ status: 'disabled', collector_url: 'https://custom-collector.example.test' } as never);
   vi.mocked(usage.enable).mockResolvedValue({ status: 'active' } as never);
+  vi.mocked(usage.promptSeen).mockResolvedValue({ status: 'disabled', prompt_shown: true } as never);
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
 });
 afterEach(cleanup);
@@ -92,6 +93,8 @@ it('skipping the invitation never enables reporting', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'setup.usageReporting.skip' }));
   await screen.findByText('setup.community.mission');
   expect(usage.enable).not.toHaveBeenCalled();
+  expect(usage.promptSeen).toHaveBeenCalledTimes(1);
+  expect(client.getQueryData(['productUsage'])).toMatchObject({ status: 'disabled', prompt_shown: true });
 });
 
 it.each(['failed', 'invalid'])('keeps setup usable when collector configuration is %s', async (failure) => {
