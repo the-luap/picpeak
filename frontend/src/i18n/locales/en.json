@@ -4925,6 +4925,21 @@
       "saveFailed": "Some event type changes could not be saved — you can finish them in Settings → Event Types.",
       "deleteFailed": "A deletion failed — the list has been reloaded. Built-in types can only be deleted here, so retry or continue with them kept."
     },
+    "usageReporting": {
+      "subtitle": "One more thing",
+      "intro": "Want to help shape what PicPeak builds next? Anonymous usage reporting is optional, and it works differently from the analytics you're used to declining.",
+      "oneWayTitle": "Not like Google Analytics",
+      "oneWayDesc": "A one-way channel only: PicPeak sends signed reports but can never receive commands back. No photos, names, emails or click tracking — ever.",
+      "mutualTitle": "See what everyone else uses",
+      "mutualDesc": "As a participant, you can browse the same shared dataset — which features other installations actually use, not just what you send.",
+      "feedbackTitle": "Share feedback directly",
+      "feedbackDesc": "Send quick feedback or feature requests straight to the maintainer, right from Settings.",
+      "consentCheck": "I agree to participate — I can turn this off anytime in Settings → Product usage.",
+      "enable": "Yes, I'll participate",
+      "skip": "Maybe later",
+      "enabled": "Thanks for participating!",
+      "enableFailed": "Couldn't enable it just now — you can try again anytime in Settings → Product usage."
+    },
     "community": {
       "subtitle": "You're all set",
       "mission": "PicPeak exists so photographers can own their galleries and client data — on their own server, without monthly SaaS fees. Thanks for giving it a try.",

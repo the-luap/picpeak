@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Key, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, ArrowRight, Copy, Check, ExternalLink, Bug, Lightbulb, Star, Coffee } from 'lucide-react';
+import { Key, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, ArrowRight, Copy, Check, ExternalLink, Bug, Lightbulb, Star, Coffee, ShieldOff, Users, MessageSquare } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { useAdminAuth } from '../contexts';
 import { setupService } from '../services/setup.service';
 import { settingsService } from '../services/settings.service';
 import { featureFlagsService, type FeatureFlags, type FeatureKey } from '../services/featureFlags.service';
+import { productUsageService } from '../services/productUsage.service';
 import { PicpeakRestoreCard } from '../components/admin/PicpeakBackupCard';
 import { SetupConfigStep } from '../components/admin/SetupConfigStep';
 import { SetupEventTypesStep } from '../components/admin/SetupEventTypesStep';
@@ -34,6 +35,17 @@ const COMMUNITY_LINKS: {
   { key: 'feature', href: 'https://github.com/PicPeak/picpeak/issues/new?template=feature_request.md', icon: Lightbulb },
   { key: 'star', href: 'https://github.com/PicPeak/picpeak', icon: Star },
   { key: 'support', href: 'https://www.buymeacoffee.com/theluap', icon: Coffee },
+];
+
+// Anonymous usage-reporting opt-in, one step before the final thank-you
+// screen. Kept deliberately short — most people reflexively decline "send us
+// data" prompts, so this leads with what makes PicPeak's reporting different
+// from typical analytics rather than repeating the full disclosure the
+// Settings → Product usage tab already shows in detail.
+const USAGE_REPORTING_POINTS: { key: string; icon: LucideIcon }[] = [
+  { key: 'oneWay', icon: ShieldOff },
+  { key: 'mutual', icon: Users },
+  { key: 'feedback', icon: MessageSquare },
 ];
 
 // "How will you use PicPeak?" — the opt-in feature groups shown after the admin
@@ -70,7 +82,7 @@ export const SetupPage: React.FC = () => {
     staleTime: Infinity,
   });
 
-  const [step, setStep] = useState<'token' | 'account' | 'usage' | 'eventTypes' | 'restore' | 'config' | 'community'>('token');
+  const [step, setStep] = useState<'token' | 'account' | 'usage' | 'eventTypes' | 'restore' | 'config' | 'usageReporting' | 'community'>('token');
   const [form, setForm] = useState({ token: '', email: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +91,8 @@ export const SetupPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedFeatures, setSelectedFeatures] = useState<Set<FeatureKey>>(new Set());
   const [isSavingFeatures, setIsSavingFeatures] = useState(false);
+  const [usageReportingConsent, setUsageReportingConsent] = useState(false);
+  const [isEnablingUsageReporting, setIsEnablingUsageReporting] = useState(false);
 
   if (statusLoading) {
     return <Loading fullScreen />;
@@ -275,6 +289,22 @@ export const SetupPage: React.FC = () => {
     setStep('config');
   };
 
+  // Best-effort, same as the feature-flag save above: a collector hiccup on a
+  // fresh install must not trap the admin here. They can always opt in later
+  // from Settings → Product usage, where the full disclosure lives.
+  const enableUsageReporting = async () => {
+    setIsEnablingUsageReporting(true);
+    try {
+      await productUsageService.enable();
+      toast.success(t('setup.usageReporting.enabled'));
+    } catch (_) {
+      toast.warn(t('setup.usageReporting.enableFailed'));
+    } finally {
+      setIsEnablingUsageReporting(false);
+      setStep('community');
+    }
+  };
+
   const stepNumber = step === 'token' ? 1 : step === 'account' ? 2 : 3;
 
   return (
@@ -305,9 +335,11 @@ export const SetupPage: React.FC = () => {
                     ? t('setup.restoreStepSubtitle')
                     : step === 'config'
                       ? t('setup.config.subtitle')
-                      : step === 'community'
-                        ? t('setup.community.subtitle')
-                        : t('setup.usageSubtitle')}
+                      : step === 'usageReporting'
+                        ? t('setup.usageReporting.subtitle')
+                        : step === 'community'
+                          ? t('setup.community.subtitle')
+                          : t('setup.usageSubtitle')}
           </p>
           {(step === 'token' || step === 'account' || step === 'usage') && (
             <p className="mt-3 text-xs font-medium tracking-wide uppercase" style={{ color: '#171717', opacity: 0.5 }}>
@@ -537,8 +569,62 @@ export const SetupPage: React.FC = () => {
           ) : step === 'config' ? (
             <SetupConfigStep
               selectedFeatures={selectedFeatures}
-              onDone={() => setStep('community')}
+              onDone={() => setStep('usageReporting')}
             />
+          ) : step === 'usageReporting' ? (
+            <div className="space-y-6">
+              <p className="text-sm text-neutral-700">{t('setup.usageReporting.intro')}</p>
+
+              <div className="space-y-2">
+                {USAGE_REPORTING_POINTS.map(({ key, icon: Icon }) => (
+                  <div key={key} className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3">
+                    <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--color-primary, #5C8762)' }} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-neutral-800">
+                        {t(`setup.usageReporting.${key}Title`)}
+                      </span>
+                      <span className="block text-xs text-neutral-500">
+                        {t(`setup.usageReporting.${key}Desc`)}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-neutral-200 p-3 cursor-pointer hover:bg-neutral-50 transition-colors">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300"
+                  checked={usageReportingConsent}
+                  onChange={(e) => setUsageReportingConsent(e.target.checked)}
+                />
+                <span className="text-xs text-neutral-600">{t('setup.usageReporting.consentCheck')}</span>
+              </label>
+
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  isLoading={isEnablingUsageReporting}
+                  disabled={!usageReportingConsent}
+                  onClick={enableUsageReporting}
+                >
+                  {t('setup.usageReporting.enable')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  disabled={isEnablingUsageReporting}
+                  onClick={() => setStep('community')}
+                >
+                  {t('setup.usageReporting.skip')}
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-6">
               <p className="text-sm text-neutral-700">{t('setup.community.mission')}</p>

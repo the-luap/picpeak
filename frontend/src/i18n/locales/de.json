@@ -5043,6 +5043,21 @@
       "saveFailed": "Einige Änderungen konnten nicht gespeichert werden — Sie können sie unter Einstellungen → Veranstaltungsarten abschließen.",
       "deleteFailed": "Eine Löschung ist fehlgeschlagen — die Liste wurde neu geladen. Mitgelieferte Arten können nur hier gelöscht werden; versuchen Sie es erneut oder fahren Sie mit ihnen fort."
     },
+    "usageReporting": {
+      "subtitle": "Noch eine Sache",
+      "intro": "Möchten Sie helfen, die Weiterentwicklung von PicPeak mitzugestalten? Die anonyme Nutzungsstatistik ist freiwillig — und funktioniert anders als das Tracking, das Sie sonst gewohnt sind abzulehnen.",
+      "oneWayTitle": "Anders als Google Analytics & Co.",
+      "oneWayDesc": "Ein reiner Einwegkanal: PicPeak sendet signierte Berichte, kann aber niemals Befehle zurückempfangen. Keine Fotos, Namen, E-Mails oder Klickverfolgung — niemals.",
+      "mutualTitle": "Sehen, was alle anderen nutzen",
+      "mutualDesc": "Als Teilnehmer sehen Sie denselben geteilten Datensatz — welche Funktionen andere Installationen wirklich verwenden, nicht nur das, was Sie selbst senden.",
+      "feedbackTitle": "Feedback direkt teilen",
+      "feedbackDesc": "Senden Sie kurzes Feedback oder Funktionswünsche direkt an den Entwickler — ganz einfach aus den Einstellungen.",
+      "consentCheck": "Ich bin einverstanden — jederzeit wieder abschaltbar unter Einstellungen → Produktnutzung.",
+      "enable": "Ja, ich möchte teilnehmen",
+      "skip": "Vielleicht später",
+      "enabled": "Danke für Ihre Teilnahme!",
+      "enableFailed": "Konnte gerade nicht aktiviert werden — Sie können es jederzeit unter Einstellungen → Produktnutzung erneut versuchen."
+    },
     "community": {
       "subtitle": "Alles bereit",
       "mission": "PicPeak gibt es, damit Fotografinnen und Fotografen ihre Galerien und Kundendaten selbst besitzen — auf dem eigenen Server, ohne monatliche SaaS-Gebühren. Danke, dass Sie es ausprobieren.",
