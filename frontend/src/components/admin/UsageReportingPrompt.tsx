@@ -56,7 +56,7 @@ export default function UsageReportingPrompt() {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6 space-y-6">
           <div>
             <h2 className="text-lg font-semibold text-neutral-900 mb-1">
