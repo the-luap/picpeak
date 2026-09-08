@@ -1021,14 +1021,53 @@ async function isPreviewValid(previewPath) {
  */
 function previewTierKeys(photo) {
   if (!photo) return [];
+  return PREVIEW_WIDTHS
+    .filter((w) => w !== DEFAULT_PREVIEW_LONG_EDGE)
+    .flatMap((w) => previewTierKeyCandidates(photo, w));
+}
+
+/**
+ * The output basename every preview tier of a photo is written under.
+ *
+ * ALWAYS scoped by photo id, managed rows included. Basenames are not unique
+ * across events — two galleries can each hold an IMG_0001.jpg — and because a
+ * tier is served straight from a cache hit without re-reading the source, a
+ * collision hands one gallery's photo to another. Scoping by id is what makes
+ * the cache safe to trust; it is not a tidiness choice.
+ */
+function previewTierBasename(photo) {
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
   const sourceBasename = path.basename(
     (isExternal ? (photo.external_relpath || photo.filename) : photo.path) || `photo-${photo.id}`
   );
-  const outputBasename = `p${photo.id}_${sourceBasename}`;
-  return PREVIEW_WIDTHS
-    .filter((w) => w !== DEFAULT_PREVIEW_LONG_EDGE)
-    .map((w) => path.posix.join('previews', `preview_w${w}_${outputBasename}`));
+  return `p${photo.id}_${sourceBasename}`;
+}
+
+/**
+ * Every storage key one preview tier of a photo can live under, most likely
+ * first.
+ *
+ * generatePreviewImage rewrites the extension to match the encoding it chose
+ * — `.jpg`, or `.webp` for a source with alpha or more than one frame — and
+ * which one that is cannot be known without probing the source, which is the
+ * work the cache exists to skip. The lookup used to probe a single key that
+ * kept the SOURCE extension, so for anything but a lowercase `.jpg` source
+ * (`.png`, `.JPG`, `.heic`, RAW) it never matched what had been written: every
+ * tier request re-ran Sharp, and cleanup, deriving the same key, never found
+ * the files it left behind.
+ *
+ * The source-extension key stays in the list, last: previews written before
+ * the extension rewrite carry it (JPEG bytes under a `.png` name, still
+ * served as JPEG), and they have to be found by cleanup as well as lookup.
+ */
+function previewTierKeyCandidates(photo, width) {
+  const outputBasename = previewTierBasename(photo);
+  const stem = `preview_w${width}_`;
+  const base = outputBasename.replace(/\.[^./\\]+$/, '');
+  const keys = [`${stem}${base}.jpg`, `${stem}${base}.webp`];
+  const legacy = `${stem}${outputBasename}`;
+  if (!keys.includes(legacy)) keys.push(legacy);
+  return keys.map((k) => path.posix.join('previews', k));
 }
 
 /** Best-effort removal of every responsive tier for a photo. */
@@ -1196,23 +1235,17 @@ async function ensurePreviewImageAtWidthUnguarded(photo, width) {
   if (!event) return null;
 
   const isExternal = photo.source_origin === 'external' || photo.source_origin === 'reference';
-  const sourceBasename = path.basename(
-    (isExternal ? (photo.external_relpath || photo.filename) : photo.path) || `photo-${photo.id}`
-  );
-  // ALWAYS scoped by photo id, managed rows included. Basenames are not unique
-  // across events — two galleries can each hold an IMG_0001.jpg — and because a
-  // tier is served straight from a cache hit without re-reading the source, a
-  // collision hands one gallery's photo to another. Scoping by id is what makes
-  // the cache safe to trust; it is not a tidiness choice.
-  const outputBasename = `p${photo.id}_${sourceBasename}`;
-  const key = path.posix.join('previews', `preview_w${width}_${outputBasename}`);
+  const outputBasename = previewTierBasename(photo);
 
   // Cache hit: nothing to do. This is the common path once a gallery has been
-  // browsed at a given size.
-  try {
-    if (await storage.stat(key)) return key;
-  } catch (e) {
-    // fall through and regenerate
+  // browsed at a given size. Every key the tier can have been written under
+  // is probed — see previewTierKeyCandidates for why there is more than one.
+  for (const key of previewTierKeyCandidates(photo, width)) {
+    try {
+      if (await storage.stat(key)) return key;
+    } catch (e) {
+      // fall through to the next candidate, then regenerate
+    }
   }
 
   try {

@@ -129,8 +129,15 @@ describe('preview tiers (#1095)', () => {
     it('derives every non-default tier key for cleanup', () => {
       // Tiers live outside preview_path, so delete/archive/regenerate have no
       // other way to find them. 1920 is excluded because that IS preview_path.
+      // Two candidates per width — the encoder picks `.jpg` or `.webp` and the
+      // cleanup list cannot know which without probing the source.
       const keys = imageProcessor.previewTierKeys({ id: 5, path: 'e/a.jpg', source_origin: 'managed' });
-      expect(keys).toHaveLength(imageProcessor.PREVIEW_WIDTHS.length - 1);
+      const widths = imageProcessor.PREVIEW_WIDTHS.filter((w) => w !== 1920);
+      expect(keys).toHaveLength(widths.length * 2);
+      for (const w of widths) {
+        expect(keys).toContain(`previews/preview_w${w}_p5_a.jpg`);
+        expect(keys).toContain(`previews/preview_w${w}_p5_a.webp`);
+      }
       expect(keys.some((k) => k.includes('w1920'))).toBe(false);
       expect(keys.every((k) => k.includes('p5_'))).toBe(true);
     });
