@@ -5043,6 +5043,21 @@
       "saveFailed": "Einige Änderungen konnten nicht gespeichert werden — Sie können sie unter Einstellungen → Veranstaltungsarten abschließen.",
       "deleteFailed": "Eine Löschung ist fehlgeschlagen — die Liste wurde neu geladen. Mitgelieferte Arten können nur hier gelöscht werden; versuchen Sie es erneut oder fahren Sie mit ihnen fort."
     },
+    "usageReporting": {
+      "subtitle": "Noch eine Sache",
+      "intro": "Helfen Sie, PicPeak mit freiwilligen Produktnutzungsberichten weiterzuentwickeln. Die Berichte verwenden eine pseudonyme Installations-ID. Prüfen Sie vor Ihrer Entscheidung, was geteilt wird.",
+      "oneWayTitle": "Die Berichterstattung bleibt unter Ihrer Kontrolle",
+      "oneWayDesc": "PicPeak sendet signierte Nutzungsberichte. Dieser Kanal kann keine Befehle auf Ihrer Installation ausführen. Fotos, Kundennamen, E-Mails und die Verfolgung von Galeriebesuchern sind ausgeschlossen.",
+      "mutualTitle": "Sehen, was alle anderen nutzen",
+      "mutualDesc": "Teilnehmer können geteilte Funktionskombinationen und Galerie-/Fotoanzahlen einsehen, auch für Gruppen mit nur einer Installation. Die Einwilligungsinformationen erläutern den vollständigen Umfang.",
+      "feedbackTitle": "Feedback direkt teilen",
+      "feedbackDesc": "Senden Sie kurzes Feedback oder Funktionswünsche direkt an den Entwickler — ganz einfach aus den Einstellungen.",
+      "consentCheck": "Ich bin einverstanden — jederzeit wieder abschaltbar unter Einstellungen → Produktnutzung.",
+      "enable": "Ja, ich möchte teilnehmen",
+      "skip": "Vielleicht später",
+      "enabled": "Danke für Ihre Teilnahme!",
+      "enableFailed": "Konnte gerade nicht aktiviert werden — Sie können es jederzeit unter Einstellungen → Produktnutzung erneut versuchen."
+    },
     "community": {
       "subtitle": "Alles bereit",
       "mission": "PicPeak gibt es, damit Fotografinnen und Fotografen ihre Galerien und Kundendaten selbst besitzen — auf dem eigenen Server, ohne monatliche SaaS-Gebühren. Danke, dass Sie es ausprobieren.",
