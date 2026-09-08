@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.1-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.0-beta.0...v3.131.1-beta.0) (2026-09-08)
+
+
+### Bug Fixes
+
+* **usage:** explain and de-emphasize the pending-packet button lock ([#1363](https://github.com/PicPeak/picpeak/issues/1363)) ([9f4b9ba](https://github.com/PicPeak/picpeak/commit/9f4b9bab46264d83dcdf698ce5bc318703eb10ee))
+
 ## [3.131.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.130.2-beta.0...v3.131.0-beta.0) (2026-09-08)
 
 
