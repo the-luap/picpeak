@@ -5,6 +5,20 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.130.1-beta.0](https://github.com/PicPeak/picpeak/compare/v3.130.0-beta.0...v3.130.1-beta.0) (2026-09-08)
+
+
+### Bug Fixes
+
+* **images:** probe and clean up preview tiers under the extension the encoder actually wrote ([#1355](https://github.com/PicPeak/picpeak/issues/1355)) ([acb25a9](https://github.com/PicPeak/picpeak/commit/acb25a9a1ce9887e51ff769d98f65379a5a1b803))
+* **images:** single-flight lazy rendition generation and keep the old rendition during replacement ([#1350](https://github.com/PicPeak/picpeak/issues/1350)) ([c97341e](https://github.com/PicPeak/picpeak/commit/c97341e4547257aab57fb746bad4203a1adaf560))
+
+
+### Documentation
+
+* define security support across stable and main ([#1351](https://github.com/PicPeak/picpeak/issues/1351)) ([0e459b3](https://github.com/PicPeak/picpeak/commit/0e459b3293ce9132ee8bb8324c6e76692e580cc5))
+* refresh repository support and community links ([#1349](https://github.com/PicPeak/picpeak/issues/1349)) ([f83cbe9](https://github.com/PicPeak/picpeak/commit/f83cbe9109c5c7b25a0b50e0f0e3244d32421e7e))
+
 ## [3.130.0-beta.0](https://github.com/PicPeak/picpeak/compare/v3.129.0-beta.0...v3.130.0-beta.0) (2026-09-07)
 
 
