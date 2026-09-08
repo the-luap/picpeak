@@ -62,13 +62,18 @@ The actual mechanics, in order:
 
 ## Hotfix path (backport to current stable)
 
-If a critical bug or security issue affects the current stable and `main` has moved too far for a full promotion to be appropriate, backport just the fix:
+Regular bug fixes are generally backported automatically from `main` to `stable`. Keep backports focused on the fix, without unrelated features, and resolve conflicts manually when needed.
+
+**Security fixes are always released on both `stable` and `main`.** Do not wait for a full promotion to deliver a security update. A fix first applied to `stable` must also be forward-ported to `main`; a fix first applied to `main` must also reach `stable`. See [SECURITY.md](SECURITY.md) for the support policy.
+
+When a backport needs manual handling:
 
 1. Create a `security/cve-backport-X.Y.Z` or `fix/critical-X.Y.Z` branch off `stable`.
 2. Cherry-pick or hand-write the minimal fix.
 3. Open a PR to `stable` with the smallest possible diff.
 4. After merge, release-please will propose a patch-level stable release (e.g. `v3.55.1`).
 5. **Forward-port the fix to `main`** if it isn't already there. Otherwise the next full promotion will reintroduce the bug.
+6. For security fixes, verify that the fix has been published through **both** release channels; merging the code is only part of delivery.
 
 PR #412 ("backport 18 dependency CVE patches from beta") is a worked example of this path (predates the rename; the mechanics are unchanged).
 
