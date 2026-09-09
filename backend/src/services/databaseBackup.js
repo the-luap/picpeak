@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { spawnAsync, spawnToFile } = require('../utils/safeExec');
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
-const { createReadStream, createWriteStream } = require('fs');
+const { createReadStream, createWriteStream, realpathSync } = require('fs');
 const { db } = require('../database/db');
 const knexConfig = require('../../knexfile');
 const logger = require('../utils/logger');
@@ -51,8 +51,39 @@ function getPubliclyServableRoots() {
     // on overlap but express.static falls through to this one on a miss).
     // COPY --chown=nodejs:nodejs in the Dockerfile makes this nodejs-owned
     // and therefore writable at runtime, not just a read-only image layer.
-    path.resolve(__dirname, '../../assets/fonts')
+    path.resolve(__dirname, '../../assets/fonts'),
+    // The all-in-one image's built frontend bundle (Dockerfile.aio ships it
+    // nodejs-owned) — server.js serves it unauthenticated as the SPA itself.
+    process.env.FRONTEND_DIR || path.resolve(__dirname, '../../../frontend/dist')
   ];
+}
+
+// Resolves symlinks in whatever prefix of candidatePath currently exists,
+// then re-appends any not-yet-created remainder literally. A plain
+// fs.realpathSync would throw ENOENT for the common case where the backup
+// destination doesn't exist yet; a plain path.resolve() would miss the
+// all-in-one image's `/app/storage -> /data/storage` symlink (Dockerfile.aio),
+// which lets `/app/storage/uploads/logos` alias the real public logos
+// directory under a name that never lexically matches it.
+function resolveRealish(candidatePath) {
+  let current = path.resolve(candidatePath);
+  const remainder = [];
+  for (;;) {
+    try {
+      const real = realpathSync(current);
+      return remainder.length ? path.join(real, ...remainder) : real;
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        return path.resolve(candidatePath);
+      }
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return path.resolve(candidatePath);
+      }
+      remainder.unshift(path.basename(current));
+      current = parent;
+    }
+  }
 }
 
 function isUnderPubliclyServableRoot(candidatePath) {
@@ -60,9 +91,9 @@ function isUnderPubliclyServableRoot(candidatePath) {
   // (default macOS APFS, NTFS, and Docker Desktop's bind-mount passthrough
   // of either) `STORAGE_PATH/UPLOADS/logos` and `.../uploads/logos` name the
   // same directory on disk even though path.resolve() never folds case.
-  const resolved = path.resolve(candidatePath).toLowerCase();
+  const resolved = resolveRealish(candidatePath).toLowerCase();
   return getPubliclyServableRoots().some((root) => {
-    const resolvedRoot = path.resolve(root).toLowerCase();
+    const resolvedRoot = resolveRealish(root).toLowerCase();
     return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
   });
 }

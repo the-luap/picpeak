@@ -215,6 +215,7 @@ describe('DatabaseBackupService', () => {
       await expect(service.backup({})).rejects.toThrow(stop.message);
 
       expect(mkdirSpy).toHaveBeenCalledWith('/data/db-backups', { recursive: true });
+      mkdirSpy.mockRestore();
     });
 
     it('falls back to /backup/database only when nothing is configured', async () => {
@@ -229,6 +230,7 @@ describe('DatabaseBackupService', () => {
       await expect(service.backup({})).rejects.toThrow(stop.message);
 
       expect(mkdirSpy).toHaveBeenCalledWith('/backup/database', { recursive: true });
+      mkdirSpy.mockRestore();
     });
   });
 
@@ -288,6 +290,40 @@ describe('DatabaseBackupService', () => {
       await expect(service.backup({})).rejects.toThrow('publicly served directory');
 
       expect(mkdirSpy).not.toHaveBeenCalled();
+      mkdirSpy.mockRestore();
+    });
+
+    it('flags FRONTEND_DIR — the all-in-one image serves its built SPA unauthenticated', () => {
+      const originalFrontendDir = process.env.FRONTEND_DIR;
+      process.env.FRONTEND_DIR = '/app/frontend/dist';
+      try {
+        expect(isUnderPubliclyServableRoot('/app/frontend/dist')).toBe(true);
+        expect(isUnderPubliclyServableRoot(path.join('/app/frontend/dist', 'assets'))).toBe(true);
+      } finally {
+        if (originalFrontendDir === undefined) delete process.env.FRONTEND_DIR;
+        else process.env.FRONTEND_DIR = originalFrontendDir;
+      }
+    });
+
+    it('resolves a symlinked alias of a public root to the same real directory (all-in-one /app/storage -> /data/storage)', async () => {
+      const os = require('os');
+      const realRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'picpeak-real-'));
+      const linkRoot = path.join(os.tmpdir(), `picpeak-link-${process.pid}-${Date.now()}`);
+      await fs.mkdir(path.join(realRoot, 'uploads', 'logos'), { recursive: true });
+      await fs.symlink(realRoot, linkRoot, 'dir');
+
+      try {
+        // STORAGE_PATH (what the guard's roots are built from) is the real
+        // path; the attacker-supplied destination goes through the symlink
+        // — exactly the all-in-one image's /app/storage -> /data/storage.
+        process.env.STORAGE_PATH = realRoot;
+        const aliased = path.join(linkRoot, 'uploads', 'logos');
+
+        expect(isUnderPubliclyServableRoot(aliased)).toBe(true);
+      } finally {
+        await fs.unlink(linkRoot);
+        await fs.rm(realRoot, { recursive: true, force: true });
+      }
     });
   });
 
