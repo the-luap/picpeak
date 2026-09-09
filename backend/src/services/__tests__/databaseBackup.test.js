@@ -1,4 +1,3 @@
-const { DatabaseBackupService } = require('../databaseBackup');
 const { db } = require('../../database/db');
 const fs = require('fs').promises;
 const path = require('path');
@@ -9,6 +8,10 @@ jest.mock('../../database/db');
 jest.mock('../../utils/logger');
 jest.mock('../emailProcessor');
 jest.mock('child_process');
+jest.mock('node-cron', () => ({ schedule: jest.fn(() => ({ stop: jest.fn() })) }));
+
+const { DatabaseBackupService, startScheduledBackups, databaseBackupService, isUnderPubliclyServableRoot } = require('../databaseBackup');
+const cron = require('node-cron');
 
 describe('DatabaseBackupService', () => {
   let service;
@@ -185,6 +188,213 @@ describe('DatabaseBackupService', () => {
       expect(config.database_backup_enabled).toBe(true);
       expect(config.database_backup_compress).toBe(true);
       expect(config.database_backup_retention_days).toBe(30);
+    });
+  });
+
+  describe('backup() destination path resolution (#1365)', () => {
+    // getBackupConfig() returns database_backup_*-prefixed keys.
+    // Regression: backup() used to destructure the unprefixed names
+    // (`destinationPath`, ...) straight off that object, which never
+    // matched, so the configured path was silently ignored and every
+    // run tried to create the hardcoded /backup/database default.
+    it('creates the directory from database_backup_destination_path when configured', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_destination_path', setting_value: JSON.stringify('/data/db-backups') }
+        ])
+      });
+
+      const stop = new Error('stop after mkdir — nothing past it matters for this test');
+      const mkdirSpy = jest.spyOn(fs, 'mkdir').mockRejectedValue(stop);
+
+      await expect(service.backup({})).rejects.toThrow(stop.message);
+
+      expect(mkdirSpy).toHaveBeenCalledWith('/data/db-backups', { recursive: true });
+      mkdirSpy.mockRestore();
+    });
+
+    it('falls back to /backup/database only when nothing is configured', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([])
+      });
+
+      const stop = new Error('stop after mkdir');
+      const mkdirSpy = jest.spyOn(fs, 'mkdir').mockRejectedValue(stop);
+
+      await expect(service.backup({})).rejects.toThrow(stop.message);
+
+      expect(mkdirSpy).toHaveBeenCalledWith('/backup/database', { recursive: true });
+      mkdirSpy.mockRestore();
+    });
+  });
+
+  describe('isUnderPubliclyServableRoot (GHSA-jw8m class, #1365)', () => {
+    const originalStoragePath = process.env.STORAGE_PATH;
+    const storage = '/tmp/picpeak-test-storage';
+
+    beforeEach(() => {
+      process.env.STORAGE_PATH = storage;
+    });
+
+    afterAll(() => {
+      if (originalStoragePath === undefined) {
+        delete process.env.STORAGE_PATH;
+      } else {
+        process.env.STORAGE_PATH = originalStoragePath;
+      }
+    });
+
+    it.each([
+      path.join(storage, 'uploads', 'logos'),
+      path.join(storage, 'uploads', 'logos', 'sub'),
+      path.join(storage, 'uploads', 'favicons'),
+      path.join(storage, 'fonts'),
+      path.join(storage, 'fonts', 'inter'),
+      // Bundled fallback fonts — nodejs-owned per the Dockerfile's
+      // COPY --chown, and served at the same public /fonts route.
+      path.resolve(__dirname, '../../../assets/fonts'),
+      // Case-insensitive-but-preserving filesystems (APFS, NTFS, Docker
+      // Desktop bind mounts of either) resolve this to the same directory
+      // as uploads/logos even though path.resolve() never folds case.
+      path.join(storage, 'UPLOADS', 'Logos')
+    ])('flags %s as publicly servable', (candidate) => {
+      expect(isUnderPubliclyServableRoot(candidate)).toBe(true);
+    });
+
+    it.each([
+      path.join(storage, 'backups'),
+      path.join(storage, 'uploads', 'contracts', 'signed'),
+      path.join(storage, 'uploads', 'transfers', '123'),
+      '/data/db-backups'
+    ])('does not flag %s', (candidate) => {
+      expect(isUnderPubliclyServableRoot(candidate)).toBe(false);
+    });
+
+    it('backup() refuses a destination inside a publicly servable root without ever calling mkdir', async () => {
+      const publicPath = path.join(storage, 'uploads', 'logos');
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_destination_path', setting_value: JSON.stringify(publicPath) }
+        ])
+      });
+
+      const mkdirSpy = jest.spyOn(fs, 'mkdir');
+
+      await expect(service.backup({})).rejects.toThrow('publicly served directory');
+
+      expect(mkdirSpy).not.toHaveBeenCalled();
+      mkdirSpy.mockRestore();
+    });
+
+    it('flags FRONTEND_DIR — the all-in-one image serves its built SPA unauthenticated', () => {
+      const originalFrontendDir = process.env.FRONTEND_DIR;
+      process.env.FRONTEND_DIR = '/app/frontend/dist';
+      try {
+        expect(isUnderPubliclyServableRoot('/app/frontend/dist')).toBe(true);
+        expect(isUnderPubliclyServableRoot(path.join('/app/frontend/dist', 'assets'))).toBe(true);
+      } finally {
+        if (originalFrontendDir === undefined) delete process.env.FRONTEND_DIR;
+        else process.env.FRONTEND_DIR = originalFrontendDir;
+      }
+    });
+
+    it('resolves a symlinked alias of a public root to the same real directory (all-in-one /app/storage -> /data/storage)', async () => {
+      const os = require('os');
+      const realRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'picpeak-real-'));
+      const linkRoot = path.join(os.tmpdir(), `picpeak-link-${process.pid}-${Date.now()}`);
+      await fs.mkdir(path.join(realRoot, 'uploads', 'logos'), { recursive: true });
+      await fs.symlink(realRoot, linkRoot, 'dir');
+
+      try {
+        // STORAGE_PATH (what the guard's roots are built from) is the real
+        // path; the attacker-supplied destination goes through the symlink
+        // — exactly the all-in-one image's /app/storage -> /data/storage.
+        process.env.STORAGE_PATH = realRoot;
+        const aliased = path.join(linkRoot, 'uploads', 'logos');
+
+        expect(isUnderPubliclyServableRoot(aliased)).toBe(true);
+      } finally {
+        await fs.unlink(linkRoot);
+        await fs.rm(realRoot, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('startScheduledBackups (#1365)', () => {
+    // Same key-mismatch bug as backup(): getBackupConfig() returns
+    // database_backup_*-prefixed keys, but this read `config.enabled` /
+    // `config.schedule` / `config.retentionDays` — always undefined, so
+    // the scheduler silently treated every install as disabled.
+    it('does not start the schedule while database_backup_enabled is false', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'false' }
+        ])
+      });
+
+      await startScheduledBackups();
+
+      expect(cron.schedule).not.toHaveBeenCalled();
+    });
+
+    it('starts the schedule with the configured cron when database_backup_enabled is true', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_schedule', setting_value: JSON.stringify('0 4 * * *') }
+        ])
+      });
+
+      await startScheduledBackups();
+
+      expect(cron.schedule).toHaveBeenCalledWith('0 4 * * *', expect.any(Function));
+    });
+
+    it('re-reads retention on every tick instead of the value captured at schedule start (#1365)', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_retention_days', setting_value: JSON.stringify(30) }
+        ])
+      });
+
+      await startScheduledBackups();
+      const tick = cron.schedule.mock.calls[0][1];
+
+      // A /config update between schedule-start and this tick raised
+      // retention to 365 — the closed-over 30 must not be what runs.
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_retention_days', setting_value: JSON.stringify(365) }
+        ])
+      });
+      jest.spyOn(databaseBackupService, 'backup').mockResolvedValue({ success: true });
+      const cleanupSpy = jest.spyOn(databaseBackupService, 'cleanupOldBackups').mockResolvedValue(undefined);
+
+      await tick();
+
+      expect(cleanupSpy).toHaveBeenCalledWith(365);
+
+      jest.restoreAllMocks();
+    });
+  });
+
+  describe('cleanupOldBackups destructive-retention guard (#1365)', () => {
+    it.each([-1, 0, NaN, Infinity])('refuses retentionDays=%s without touching the database', async (bad) => {
+      const dbSpy = jest.fn();
+      db.mockImplementation(dbSpy);
+
+      await service.cleanupOldBackups(bad);
+
+      expect(dbSpy).not.toHaveBeenCalled();
     });
   });
 
