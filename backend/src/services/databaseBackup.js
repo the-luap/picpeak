@@ -296,14 +296,26 @@ class DatabaseBackupService {
     let backupRun = null;
     
     try {
-      // Get configuration
+      // Get configuration. getBackupConfig() returns the raw
+      // database_backup_*-prefixed setting keys, not the unprefixed
+      // names used internally below — map them explicitly rather than
+      // spreading `config` straight into the destructure, which silently
+      // matched nothing and always fell through to the hardcoded
+      // defaults (notably `/backup/database`, regardless of what was
+      // configured).
       const config = await this.getBackupConfig();
       const {
         destinationPath = '/backup/database',
         compress = true,
         validateIntegrity = true,
         includeChecksums = true
-      } = { ...config, ...options };
+      } = {
+        destinationPath: config.database_backup_destination_path,
+        compress: config.database_backup_compress,
+        validateIntegrity: config.database_backup_validate_integrity,
+        includeChecksums: config.database_backup_include_checksums,
+        ...options
+      };
       
       // Create backup directory
       await fs.mkdir(destinationPath, { recursive: true });
@@ -423,7 +435,7 @@ class DatabaseBackupService {
       logger.info(`Database backup completed: ${finalFile} (${(finalStats.size / 1024 / 1024).toFixed(2)} MB) in ${durationSeconds}s`);
       
       // Send success notification if configured
-      if (config.emailOnSuccess) {
+      if (config.database_backup_email_on_success) {
         await this.sendBackupNotification('success', {
           duration: durationSeconds,
           size: finalStats.size,
@@ -457,7 +469,7 @@ class DatabaseBackupService {
       
       // Send failure notification
       const config = await this.getBackupConfig();
-      if (config.emailOnFailure) {
+      if (config.database_backup_email_on_failure) {
         await this.sendBackupNotification('failure', {
           error: error.message
         });
@@ -686,25 +698,25 @@ async function startScheduledBackups() {
   
   try {
     const config = await databaseBackupService.getBackupConfig();
-    
-    if (!config.enabled) {
+
+    if (!config.database_backup_enabled) {
       logger.info('Database backup service is disabled');
       return;
     }
-    
+
     // Stop existing schedule
     if (backupSchedule) {
       backupSchedule.stop();
     }
-    
+
     // Default schedule: 3 AM daily (offset from file backups at 2 AM)
-    const schedule = config.schedule || '0 3 * * *';
-    
+    const schedule = config.database_backup_schedule || '0 3 * * *';
+
     backupSchedule = cron.schedule(schedule, async () => {
       logger.info('Starting scheduled database backup');
       try {
         await databaseBackupService.backup();
-        await databaseBackupService.cleanupOldBackups(config.retentionDays || 30);
+        await databaseBackupService.cleanupOldBackups(config.database_backup_retention_days || 30);
       } catch (error) {
         logger.error('Scheduled database backup failed:', error);
       }
