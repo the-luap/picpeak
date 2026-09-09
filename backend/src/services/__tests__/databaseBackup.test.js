@@ -1,5 +1,6 @@
 const { db } = require('../../database/db');
 const fs = require('fs').promises;
+const path = require('path');
 const crypto = require('crypto');
 
 // Mock dependencies
@@ -9,7 +10,7 @@ jest.mock('../emailProcessor');
 jest.mock('child_process');
 jest.mock('node-cron', () => ({ schedule: jest.fn(() => ({ stop: jest.fn() })) }));
 
-const { DatabaseBackupService, startScheduledBackups } = require('../databaseBackup');
+const { DatabaseBackupService, startScheduledBackups, isUnderPubliclyServableRoot } = require('../databaseBackup');
 const cron = require('node-cron');
 
 describe('DatabaseBackupService', () => {
@@ -228,6 +229,58 @@ describe('DatabaseBackupService', () => {
       await expect(service.backup({})).rejects.toThrow(stop.message);
 
       expect(mkdirSpy).toHaveBeenCalledWith('/backup/database', { recursive: true });
+    });
+  });
+
+  describe('isUnderPubliclyServableRoot (GHSA-jw8m class, #1365)', () => {
+    const originalStoragePath = process.env.STORAGE_PATH;
+    const storage = '/tmp/picpeak-test-storage';
+
+    beforeEach(() => {
+      process.env.STORAGE_PATH = storage;
+    });
+
+    afterAll(() => {
+      if (originalStoragePath === undefined) {
+        delete process.env.STORAGE_PATH;
+      } else {
+        process.env.STORAGE_PATH = originalStoragePath;
+      }
+    });
+
+    it.each([
+      path.join(storage, 'uploads', 'logos'),
+      path.join(storage, 'uploads', 'logos', 'sub'),
+      path.join(storage, 'uploads', 'favicons'),
+      path.join(storage, 'fonts'),
+      path.join(storage, 'fonts', 'inter')
+    ])('flags %s as publicly servable', (candidate) => {
+      expect(isUnderPubliclyServableRoot(candidate)).toBe(true);
+    });
+
+    it.each([
+      path.join(storage, 'backups'),
+      path.join(storage, 'uploads', 'contracts', 'signed'),
+      path.join(storage, 'uploads', 'transfers', '123'),
+      '/data/db-backups'
+    ])('does not flag %s', (candidate) => {
+      expect(isUnderPubliclyServableRoot(candidate)).toBe(false);
+    });
+
+    it('backup() refuses a destination inside a publicly servable root without ever calling mkdir', async () => {
+      const publicPath = path.join(storage, 'uploads', 'logos');
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_destination_path', setting_value: JSON.stringify(publicPath) }
+        ])
+      });
+
+      const mkdirSpy = jest.spyOn(fs, 'mkdir');
+
+      await expect(service.backup({})).rejects.toThrow('publicly served directory');
+
+      expect(mkdirSpy).not.toHaveBeenCalled();
     });
   });
 

@@ -28,6 +28,36 @@ const packageJson = require('../../package.json');
 // createSQLiteBackup below.
 const FACE_TABLES = ['photo_faces', 'event_people', 'event_people_merge_dismissals'];
 
+function getStoragePath() {
+  return process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+}
+
+// Public, unauthenticated static mounts (server.js) that must never become a
+// backup destination — a dump landing there is downloadable by anyone who
+// learns or guesses the filename, GHSA-jw8m-43r2-jqrm's exact class. Before
+// #1365, `database_backup_destination_path` was silently ignored (a
+// destructuring bug always fell back to the hardcoded /backup/database), so
+// this setting being freely writable by any backup.create holder — the
+// built-in `admin` role has it without settings.edit or backup.restore — was
+// harmless. Making the setting actually take effect reopens that exact
+// exfiltration path unless it's rejected here too.
+function getPubliclyServableRoots() {
+  const storage = getStoragePath();
+  return [
+    path.join(storage, 'uploads', 'logos'),
+    path.join(storage, 'uploads', 'favicons'),
+    path.join(storage, 'fonts')
+  ];
+}
+
+function isUnderPubliclyServableRoot(candidatePath) {
+  const resolved = path.resolve(candidatePath);
+  return getPubliclyServableRoots().some((root) => {
+    const resolvedRoot = path.resolve(root);
+    return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
+  });
+}
+
 /**
  * Database Backup Service
  * Supports both SQLite and PostgreSQL with proper escaping,
@@ -396,6 +426,12 @@ class DatabaseBackupService {
         ...options
       };
       
+      if (isUnderPubliclyServableRoot(destinationPath)) {
+        throw new Error(
+          `Refusing to write a database backup to a publicly served directory: ${destinationPath}`
+        );
+      }
+
       // Create backup directory
       await fs.mkdir(destinationPath, { recursive: true });
       
@@ -822,5 +858,6 @@ module.exports = {
   databaseBackupService,
   startScheduledBackups,
   stopScheduledBackups,
+  isUnderPubliclyServableRoot,
   DatabaseBackupService // Export class for testing
 };
