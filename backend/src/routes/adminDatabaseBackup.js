@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const { databaseBackupService } = require('../services/databaseBackup');
+const { databaseBackupService, isUnderPubliclyServableRoot } = require('../services/databaseBackup');
 const { db } = require('../database/db');
 const logger = require('../utils/logger');
 const { getPagination } = require('../utils/routeHelpers');
@@ -60,7 +60,18 @@ router.put('/config', requirePermission('backup.create'), async (req, res) => {
       'database_backup_email_on_failure',
       'database_backup_email_on_success'
     ];
-    
+
+    // A backup.create holder (the built-in `admin` role has it without
+    // settings.edit or backup.restore) could otherwise point backups at a
+    // public static mount and fetch the dump unauthenticated — see
+    // isUnderPubliclyServableRoot's comment (GHSA-jw8m-43r2-jqrm class).
+    if (
+      typeof req.body.database_backup_destination_path === 'string'
+      && isUnderPubliclyServableRoot(req.body.database_backup_destination_path)
+    ) {
+      return res.status(400).json({ error: 'Destination path must not be inside a publicly served directory' });
+    }
+
     const updates = [];
     
     for (const [key, value] of Object.entries(req.body)) {
