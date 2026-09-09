@@ -10,7 +10,7 @@ jest.mock('../emailProcessor');
 jest.mock('child_process');
 jest.mock('node-cron', () => ({ schedule: jest.fn(() => ({ stop: jest.fn() })) }));
 
-const { DatabaseBackupService, startScheduledBackups, isUnderPubliclyServableRoot } = require('../databaseBackup');
+const { DatabaseBackupService, startScheduledBackups, databaseBackupService, isUnderPubliclyServableRoot } = require('../databaseBackup');
 const cron = require('node-cron');
 
 describe('DatabaseBackupService', () => {
@@ -249,7 +249,14 @@ describe('DatabaseBackupService', () => {
       path.join(storage, 'uploads', 'logos', 'sub'),
       path.join(storage, 'uploads', 'favicons'),
       path.join(storage, 'fonts'),
-      path.join(storage, 'fonts', 'inter')
+      path.join(storage, 'fonts', 'inter'),
+      // Bundled fallback fonts — nodejs-owned per the Dockerfile's
+      // COPY --chown, and served at the same public /fonts route.
+      path.resolve(__dirname, '../../../assets/fonts'),
+      // Case-insensitive-but-preserving filesystems (APFS, NTFS, Docker
+      // Desktop bind mounts of either) resolve this to the same directory
+      // as uploads/logos even though path.resolve() never folds case.
+      path.join(storage, 'UPLOADS', 'Logos')
     ])('flags %s as publicly servable', (candidate) => {
       expect(isUnderPubliclyServableRoot(candidate)).toBe(true);
     });
@@ -310,6 +317,48 @@ describe('DatabaseBackupService', () => {
       await startScheduledBackups();
 
       expect(cron.schedule).toHaveBeenCalledWith('0 4 * * *', expect.any(Function));
+    });
+
+    it('re-reads retention on every tick instead of the value captured at schedule start (#1365)', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_retention_days', setting_value: JSON.stringify(30) }
+        ])
+      });
+
+      await startScheduledBackups();
+      const tick = cron.schedule.mock.calls[0][1];
+
+      // A /config update between schedule-start and this tick raised
+      // retention to 365 — the closed-over 30 must not be what runs.
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_retention_days', setting_value: JSON.stringify(365) }
+        ])
+      });
+      jest.spyOn(databaseBackupService, 'backup').mockResolvedValue({ success: true });
+      const cleanupSpy = jest.spyOn(databaseBackupService, 'cleanupOldBackups').mockResolvedValue(undefined);
+
+      await tick();
+
+      expect(cleanupSpy).toHaveBeenCalledWith(365);
+
+      jest.restoreAllMocks();
+    });
+  });
+
+  describe('cleanupOldBackups destructive-retention guard (#1365)', () => {
+    it.each([-1, 0, NaN, Infinity])('refuses retentionDays=%s without touching the database', async (bad) => {
+      const dbSpy = jest.fn();
+      db.mockImplementation(dbSpy);
+
+      await service.cleanupOldBackups(bad);
+
+      expect(dbSpy).not.toHaveBeenCalled();
     });
   });
 

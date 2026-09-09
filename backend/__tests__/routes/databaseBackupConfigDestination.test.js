@@ -95,4 +95,28 @@ describe('database backup destination-path config guard (GHSA-jw8m class, #1365)
     const row = await db('app_settings').where({ setting_key: 'database_backup_destination_path' }).first();
     expect(JSON.parse(row.setting_value)).toBe(safePath);
   });
+
+  // A retention of 0 or less pushes cleanupOldBackups' cutoff to today or
+  // the future, deleting every completed backup on the next scheduled run
+  // — a backup.create holder achieving what backup.delete gates on /cleanup.
+  it.each([-1, 0])('rejects database_backup_retention_days=%s', async (bad) => {
+    const res = await request(app)
+      .put('/api/admin/database-backup/config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ database_backup_retention_days: bad });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts a positive database_backup_retention_days', async () => {
+    const res = await request(app)
+      .put('/api/admin/database-backup/config')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ database_backup_retention_days: 90 });
+
+    expect(res.status).toBe(200);
+
+    const row = await db('app_settings').where({ setting_key: 'database_backup_retention_days' }).first();
+    expect(JSON.parse(row.setting_value)).toBe(90);
+  });
 });
