@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { spawnAsync, spawnToFile } = require('../utils/safeExec');
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
-const { createReadStream, createWriteStream } = require('fs');
+const { createReadStream, createWriteStream, realpathSync } = require('fs');
 const { db } = require('../database/db');
 const knexConfig = require('../../knexfile');
 const logger = require('../utils/logger');
@@ -27,6 +27,76 @@ const packageJson = require('../../package.json');
 // — so the rows are deleted from the temp copy before it is finalised. See
 // createSQLiteBackup below.
 const FACE_TABLES = ['photo_faces', 'event_people', 'event_people_merge_dismissals'];
+
+function getStoragePath() {
+  return process.env.STORAGE_PATH || path.join(__dirname, '../../../storage');
+}
+
+// Public, unauthenticated static mounts (server.js) that must never become a
+// backup destination — a dump landing there is downloadable by anyone who
+// learns or guesses the filename, GHSA-jw8m-43r2-jqrm's exact class. Before
+// #1365, `database_backup_destination_path` was silently ignored (a
+// destructuring bug always fell back to the hardcoded /backup/database), so
+// this setting being freely writable by any backup.create holder — the
+// built-in `admin` role has it without settings.edit or backup.restore — was
+// harmless. Making the setting actually take effect reopens that exact
+// exfiltration path unless it's rejected here too.
+function getPubliclyServableRoots() {
+  const storage = getStoragePath();
+  return [
+    path.join(storage, 'uploads', 'logos'),
+    path.join(storage, 'uploads', 'favicons'),
+    path.join(storage, 'fonts'),
+    // Bundled fallback fonts (server.js mounts both at /fonts, storage wins
+    // on overlap but express.static falls through to this one on a miss).
+    // COPY --chown=nodejs:nodejs in the Dockerfile makes this nodejs-owned
+    // and therefore writable at runtime, not just a read-only image layer.
+    path.resolve(__dirname, '../../assets/fonts'),
+    // The all-in-one image's built frontend bundle (Dockerfile.aio ships it
+    // nodejs-owned) — server.js serves it unauthenticated as the SPA itself.
+    process.env.FRONTEND_DIR || path.resolve(__dirname, '../../../frontend/dist')
+  ];
+}
+
+// Resolves symlinks in whatever prefix of candidatePath currently exists,
+// then re-appends any not-yet-created remainder literally. A plain
+// fs.realpathSync would throw ENOENT for the common case where the backup
+// destination doesn't exist yet; a plain path.resolve() would miss the
+// all-in-one image's `/app/storage -> /data/storage` symlink (Dockerfile.aio),
+// which lets `/app/storage/uploads/logos` alias the real public logos
+// directory under a name that never lexically matches it.
+function resolveRealish(candidatePath) {
+  let current = path.resolve(candidatePath);
+  const remainder = [];
+  for (;;) {
+    try {
+      const real = realpathSync(current);
+      return remainder.length ? path.join(real, ...remainder) : real;
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        return path.resolve(candidatePath);
+      }
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return path.resolve(candidatePath);
+      }
+      remainder.unshift(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+function isUnderPubliclyServableRoot(candidatePath) {
+  // Lowercased comparison: on a case-insensitive-but-preserving filesystem
+  // (default macOS APFS, NTFS, and Docker Desktop's bind-mount passthrough
+  // of either) `STORAGE_PATH/UPLOADS/logos` and `.../uploads/logos` name the
+  // same directory on disk even though path.resolve() never folds case.
+  const resolved = resolveRealish(candidatePath).toLowerCase();
+  return getPubliclyServableRoots().some((root) => {
+    const resolvedRoot = resolveRealish(root).toLowerCase();
+    return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
+  });
+}
 
 /**
  * Database Backup Service
@@ -375,15 +445,33 @@ class DatabaseBackupService {
     let backupRun = null;
     
     try {
-      // Get configuration
+      // Get configuration. getBackupConfig() returns the raw
+      // database_backup_*-prefixed setting keys, not the unprefixed
+      // names used internally below — map them explicitly rather than
+      // spreading `config` straight into the destructure, which silently
+      // matched nothing and always fell through to the hardcoded
+      // defaults (notably `/backup/database`, regardless of what was
+      // configured).
       const config = await this.getBackupConfig();
       const {
         destinationPath = '/backup/database',
         compress = true,
         validateIntegrity = true,
         includeChecksums = true
-      } = { ...config, ...options };
+      } = {
+        destinationPath: config.database_backup_destination_path,
+        compress: config.database_backup_compress,
+        validateIntegrity: config.database_backup_validate_integrity,
+        includeChecksums: config.database_backup_include_checksums,
+        ...options
+      };
       
+      if (isUnderPubliclyServableRoot(destinationPath)) {
+        throw new Error(
+          `Refusing to write a database backup to a publicly served directory: ${destinationPath}`
+        );
+      }
+
       // Create backup directory
       await fs.mkdir(destinationPath, { recursive: true });
       
@@ -502,7 +590,7 @@ class DatabaseBackupService {
       logger.info(`Database backup completed: ${finalFile} (${(finalStats.size / 1024 / 1024).toFixed(2)} MB) in ${durationSeconds}s`);
       
       // Send success notification if configured
-      if (config.emailOnSuccess) {
+      if (config.database_backup_email_on_success) {
         await this.sendBackupNotification('success', {
           duration: durationSeconds,
           size: finalStats.size,
@@ -536,7 +624,7 @@ class DatabaseBackupService {
       
       // Send failure notification
       const config = await this.getBackupConfig();
-      if (config.emailOnFailure) {
+      if (config.database_backup_email_on_failure) {
         await this.sendBackupNotification('failure', {
           error: error.message
         });
@@ -617,10 +705,19 @@ class DatabaseBackupService {
    * Clean up old backups
    */
   async cleanupOldBackups(retentionDays = 30) {
+    // A zero/negative/non-finite value pushes the cutoff to today or the
+    // future, matching (and deleting) every completed backup — including
+    // the one a scheduled run just created. Defense in depth: PUT /config
+    // already rejects such values, but this is also reachable with
+    // whatever database_backup_retention_days happens to be persisted.
+    if (!Number.isFinite(retentionDays) || retentionDays < 1) {
+      logger.error(`Refusing to clean up backups with invalid retentionDays: ${retentionDays}`);
+      return;
+    }
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-      
+
       // Get old backup records
       const oldBackups = await db('database_backup_runs')
         .where('completed_at', '<', cutoffDate)
@@ -765,25 +862,30 @@ async function startScheduledBackups() {
   
   try {
     const config = await databaseBackupService.getBackupConfig();
-    
-    if (!config.enabled) {
+
+    if (!config.database_backup_enabled) {
       logger.info('Database backup service is disabled');
       return;
     }
-    
+
     // Stop existing schedule
     if (backupSchedule) {
       backupSchedule.stop();
     }
-    
+
     // Default schedule: 3 AM daily (offset from file backups at 2 AM)
-    const schedule = config.schedule || '0 3 * * *';
-    
+    const schedule = config.database_backup_schedule || '0 3 * * *';
+
     backupSchedule = cron.schedule(schedule, async () => {
       logger.info('Starting scheduled database backup');
       try {
         await databaseBackupService.backup();
-        await databaseBackupService.cleanupOldBackups(config.retentionDays || 30);
+        // Re-read retention on every tick rather than closing over the value
+        // from schedule start — a retention-only /config update doesn't
+        // restart the schedule (only enabled/schedule changes do), so the
+        // closed-over value would otherwise run stale until next restart.
+        const latestConfig = await databaseBackupService.getBackupConfig();
+        await databaseBackupService.cleanupOldBackups(latestConfig.database_backup_retention_days || 30);
       } catch (error) {
         logger.error('Scheduled database backup failed:', error);
       }
@@ -810,5 +912,6 @@ module.exports = {
   databaseBackupService,
   startScheduledBackups,
   stopScheduledBackups,
+  isUnderPubliclyServableRoot,
   DatabaseBackupService // Export class for testing
 };
