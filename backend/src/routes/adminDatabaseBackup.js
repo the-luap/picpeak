@@ -72,6 +72,16 @@ router.put('/config', requirePermission('backup.create'), async (req, res) => {
       return res.status(400).json({ error: 'Destination path must not be inside a publicly served directory' });
     }
 
+    // A retention of 0 or less pushes cleanupOldBackups' cutoff to today or
+    // the future, deleting every completed backup on the next scheduled run
+    // — a backup.create holder achieving what backup.delete gates on /cleanup.
+    if (
+      req.body.database_backup_retention_days !== undefined
+      && (!Number.isFinite(req.body.database_backup_retention_days) || req.body.database_backup_retention_days < 1)
+    ) {
+      return res.status(400).json({ error: 'database_backup_retention_days must be a positive number' });
+    }
+
     const updates = [];
     
     for (const [key, value] of Object.entries(req.body)) {

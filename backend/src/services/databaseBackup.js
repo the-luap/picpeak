@@ -46,14 +46,23 @@ function getPubliclyServableRoots() {
   return [
     path.join(storage, 'uploads', 'logos'),
     path.join(storage, 'uploads', 'favicons'),
-    path.join(storage, 'fonts')
+    path.join(storage, 'fonts'),
+    // Bundled fallback fonts (server.js mounts both at /fonts, storage wins
+    // on overlap but express.static falls through to this one on a miss).
+    // COPY --chown=nodejs:nodejs in the Dockerfile makes this nodejs-owned
+    // and therefore writable at runtime, not just a read-only image layer.
+    path.resolve(__dirname, '../../assets/fonts')
   ];
 }
 
 function isUnderPubliclyServableRoot(candidatePath) {
-  const resolved = path.resolve(candidatePath);
+  // Lowercased comparison: on a case-insensitive-but-preserving filesystem
+  // (default macOS APFS, NTFS, and Docker Desktop's bind-mount passthrough
+  // of either) `STORAGE_PATH/UPLOADS/logos` and `.../uploads/logos` name the
+  // same directory on disk even though path.resolve() never folds case.
+  const resolved = path.resolve(candidatePath).toLowerCase();
   return getPubliclyServableRoots().some((root) => {
-    const resolvedRoot = path.resolve(root);
+    const resolvedRoot = path.resolve(root).toLowerCase();
     return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
   });
 }
@@ -665,10 +674,19 @@ class DatabaseBackupService {
    * Clean up old backups
    */
   async cleanupOldBackups(retentionDays = 30) {
+    // A zero/negative/non-finite value pushes the cutoff to today or the
+    // future, matching (and deleting) every completed backup — including
+    // the one a scheduled run just created. Defense in depth: PUT /config
+    // already rejects such values, but this is also reachable with
+    // whatever database_backup_retention_days happens to be persisted.
+    if (!Number.isFinite(retentionDays) || retentionDays < 1) {
+      logger.error(`Refusing to clean up backups with invalid retentionDays: ${retentionDays}`);
+      return;
+    }
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-      
+
       // Get old backup records
       const oldBackups = await db('database_backup_runs')
         .where('completed_at', '<', cutoffDate)
@@ -831,7 +849,12 @@ async function startScheduledBackups() {
       logger.info('Starting scheduled database backup');
       try {
         await databaseBackupService.backup();
-        await databaseBackupService.cleanupOldBackups(config.database_backup_retention_days || 30);
+        // Re-read retention on every tick rather than closing over the value
+        // from schedule start — a retention-only /config update doesn't
+        // restart the schedule (only enabled/schedule changes do), so the
+        // closed-over value would otherwise run stale until next restart.
+        const latestConfig = await databaseBackupService.getBackupConfig();
+        await databaseBackupService.cleanupOldBackups(latestConfig.database_backup_retention_days || 30);
       } catch (error) {
         logger.error('Scheduled database backup failed:', error);
       }
