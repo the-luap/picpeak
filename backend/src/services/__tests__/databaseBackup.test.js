@@ -1,4 +1,3 @@
-const { DatabaseBackupService } = require('../databaseBackup');
 const { db } = require('../../database/db');
 const fs = require('fs').promises;
 const crypto = require('crypto');
@@ -8,6 +7,10 @@ jest.mock('../../database/db');
 jest.mock('../../utils/logger');
 jest.mock('../emailProcessor');
 jest.mock('child_process');
+jest.mock('node-cron', () => ({ schedule: jest.fn(() => ({ stop: jest.fn() })) }));
+
+const { DatabaseBackupService, startScheduledBackups } = require('../databaseBackup');
+const cron = require('node-cron');
 
 describe('DatabaseBackupService', () => {
   let service;
@@ -188,6 +191,76 @@ describe('DatabaseBackupService', () => {
       expect(config.database_backup_enabled).toBe(true);
       expect(config.database_backup_compress).toBe(true);
       expect(config.database_backup_retention_days).toBe(30);
+    });
+  });
+
+  describe('backup() destination path resolution (#1365)', () => {
+    // getBackupConfig() returns database_backup_*-prefixed keys.
+    // Regression: backup() used to destructure the unprefixed names
+    // (`destinationPath`, ...) straight off that object, which never
+    // matched, so the configured path was silently ignored and every
+    // run tried to create the hardcoded /backup/database default.
+    it('creates the directory from database_backup_destination_path when configured', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_destination_path', setting_value: JSON.stringify('/data/db-backups') }
+        ])
+      });
+
+      const stop = new Error('stop after mkdir — nothing past it matters for this test');
+      const mkdirSpy = jest.spyOn(fs, 'mkdir').mockRejectedValue(stop);
+
+      await expect(service.backup({})).rejects.toThrow(stop.message);
+
+      expect(mkdirSpy).toHaveBeenCalledWith('/data/db-backups', { recursive: true });
+    });
+
+    it('falls back to /backup/database only when nothing is configured', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([])
+      });
+
+      const stop = new Error('stop after mkdir');
+      const mkdirSpy = jest.spyOn(fs, 'mkdir').mockRejectedValue(stop);
+
+      await expect(service.backup({})).rejects.toThrow(stop.message);
+
+      expect(mkdirSpy).toHaveBeenCalledWith('/backup/database', { recursive: true });
+    });
+  });
+
+  describe('startScheduledBackups (#1365)', () => {
+    // Same key-mismatch bug as backup(): getBackupConfig() returns
+    // database_backup_*-prefixed keys, but this read `config.enabled` /
+    // `config.schedule` / `config.retentionDays` — always undefined, so
+    // the scheduler silently treated every install as disabled.
+    it('does not start the schedule while database_backup_enabled is false', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'false' }
+        ])
+      });
+
+      await startScheduledBackups();
+
+      expect(cron.schedule).not.toHaveBeenCalled();
+    });
+
+    it('starts the schedule with the configured cron when database_backup_enabled is true', async () => {
+      db.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue([
+          { setting_key: 'database_backup_enabled', setting_value: 'true' },
+          { setting_key: 'database_backup_schedule', setting_value: JSON.stringify('0 4 * * *') }
+        ])
+      });
+
+      await startScheduledBackups();
+
+      expect(cron.schedule).toHaveBeenCalledWith('0 4 * * *', expect.any(Function));
     });
   });
 
