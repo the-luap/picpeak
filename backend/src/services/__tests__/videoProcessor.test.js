@@ -3,9 +3,13 @@ jest.mock('fluent-ffmpeg');
 jest.mock('../storage', () => ({
   getStorage: jest.fn()
 }));
+jest.mock('../imageProcessor', () => ({
+  generateVideoPlaceholder: jest.fn()
+}));
 
 const ffmpeg = require('fluent-ffmpeg');
 const { getStorage } = require('../storage');
+const { generateVideoPlaceholder } = require('../imageProcessor');
 const {
   extractVideoMetadata,
   processUploadedVideo
@@ -46,6 +50,7 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
   beforeEach(() => {
     storage = { putFromFile: jest.fn().mockResolvedValue(undefined), exists: jest.fn().mockResolvedValue(true) };
     getStorage.mockReturnValue(storage);
+    generateVideoPlaceholder.mockResolvedValue('thumbnails/thumb_placeholder.jpg');
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -68,9 +73,11 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
     expect(result.success).toBe(true);
     expect(result.metadata).toBeNull();
     expect(result.thumbnailKey).toBe('thumbnails/thumb_video.jpg');
+    // A real thumbnail already succeeded — never touch the placeholder path.
+    expect(generateVideoPlaceholder).not.toHaveBeenCalled();
   });
 
-  it('keeps the metadata when only thumbnail generation fails', async () => {
+  it('falls back to the SVG placeholder when thumbnail generation fails, so the gallery never falls back to rendering the raw video as an <img> (codex review)', async () => {
     ffmpeg.ffprobe = jest.fn((videoPath, cb) => {
       cb(null, {
         streams: [{ codec_type: 'video', width: 1080, height: 1920, codec_name: 'h264' }],
@@ -85,15 +92,18 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
       }
     }));
 
-    const result = await processUploadedVideo('/tmp/video.mp4', 'thumbnails/thumb_video.jpg');
+    const result = await processUploadedVideo('/tmp/video.mp4', 'thumbnails/thumb_wedding_001.jpg');
 
     expect(result.success).toBe(true);
     expect(result.metadata).toEqual(expect.objectContaining({ duration: 5, videoCodec: 'h264' }));
-    expect(result.thumbnailKey).toBeNull();
+    // thumbnailKey is always thumbnails/thumb_<name>.jpg — strip the prefix
+    // back to a filename so generateVideoPlaceholder recomputes the same key.
+    expect(generateVideoPlaceholder).toHaveBeenCalledWith('wedding_001.jpg');
+    expect(result.thumbnailKey).toBe('thumbnails/thumb_placeholder.jpg');
     expect(storage.putFromFile).not.toHaveBeenCalled();
   });
 
-  it('still succeeds with both null when metadata AND thumbnail fail — never throws, never blocks the upload', async () => {
+  it('still resolves with a null thumbnail when metadata, thumbnail generation, AND the placeholder all fail — never throws, never blocks the upload', async () => {
     ffmpeg.ffprobe = jest.fn((videoPath, cb) => cb(new Error('Invalid data found when processing input')));
     ffmpeg.mockImplementation(() => ({
       screenshots() { return this; },
@@ -102,6 +112,7 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
         return this;
       }
     }));
+    generateVideoPlaceholder.mockRejectedValue(new Error('sharp render failed'));
 
     const result = await processUploadedVideo('/tmp/corrupt.mp4', 'thumbnails/thumb_corrupt.jpg');
 
