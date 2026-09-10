@@ -10,9 +10,9 @@
  * built-in `admin` role) carrying far more permissions than the actor
  * itself held.
  *
- * The fix reuses assertActorMayGrant() — the same containment already
- * applied to roles.manage (see adminRolesGuards.test.js) — inside the
- * role_id branch of updateAdminUser.
+ * The fix adds assertActorMayGrant() — a local containment guard, since
+ * stable does not yet have main's custom-role-creation service or its
+ * roles.manage equivalent — inside the role_id branch of updateAdminUser.
  */
 const path = require('path');
 const fs = require('fs');
@@ -29,6 +29,23 @@ const { bootCrmDb, seedMinimal, assignAdminRole } = require('../integration/help
 const svc = require('../../src/services/userManagementService');
 const { clearPermissionCache } = require('../../src/middleware/permissions');
 
+// Stable has no custom-role-creation service (that's main-only); build a role
+// directly against the roles/permissions/role_permissions schema instead.
+async function createRole(db, name, permissionNames) {
+  const [roleRow] = await db('roles').insert({
+    name, display_name: name, is_system: false, priority: 10, created_at: new Date(), updated_at: new Date(),
+  }).returning('id');
+  const roleId = roleRow?.id ?? roleRow;
+  if (permissionNames.length > 0) {
+    const perms = await db('permissions').whereIn('name', permissionNames).select('id', 'name');
+    if (perms.length !== permissionNames.length) {
+      throw new Error(`Missing seeded permission(s) for: ${permissionNames.join(', ')}`);
+    }
+    await db('role_permissions').insert(perms.map((p) => ({ role_id: roleId, permission_id: p.id })));
+  }
+  return { id: roleId };
+}
+
 describe('updateAdminUser — role-grant privilege-escalation guard (GHSA-rv8w-m6mx-7j4q)', () => {
   let db; let cleanup;
   let superId;
@@ -43,10 +60,7 @@ describe('updateAdminUser — role-grant privilege-escalation guard (GHSA-rv8w-m
     await assignAdminRole(db, superId, 'super_admin');
 
     // The attacker in GHSA-rv8w-m6mx-7j4q: users.edit only, nothing else.
-    const limitedRole = await svc.createRole(
-      { name: 'limited_user_editor', permissions: ['users.edit', 'events.view'] },
-      superId,
-    );
+    const limitedRole = await createRole(db, 'limited_user_editor', ['users.edit', 'events.view']);
     limitedRoleId = limitedRole.id;
     const limitedIns = await db('admin_users').insert({
       username: 'limited', email: 'limited@example.com', password_hash: 'x',
@@ -55,17 +69,11 @@ describe('updateAdminUser — role-grant privilege-escalation guard (GHSA-rv8w-m
     limitedId = limitedIns[0]?.id ?? limitedIns[0];
 
     // A role carrying a permission the limited actor does not hold.
-    const powerfulRole = await svc.createRole(
-      { name: 'powerful_role', permissions: ['users.edit', 'settings.banking'] },
-      superId,
-    );
+    const powerfulRole = await createRole(db, 'powerful_role', ['users.edit', 'settings.edit']);
     powerfulRoleId = powerfulRole.id;
 
     // A role whose permissions ARE a subset of what the limited actor holds.
-    const modestRole = await svc.createRole(
-      { name: 'modest_role', permissions: ['events.view'] },
-      superId,
-    );
+    const modestRole = await createRole(db, 'modest_role', ['events.view']);
     modestRoleId = modestRole.id;
 
     clearPermissionCache();
