@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.46.12](https://github.com/PicPeak/picpeak/compare/v3.46.11...v3.46.12) (2026-09-10)
+
+
+### Bug Fixes
+
+* **backup:** honor the configured database-backup destination path ([#1367](https://github.com/PicPeak/picpeak/issues/1367)) ([3420745](https://github.com/PicPeak/picpeak/commit/34207456e6c1ed2908ab34335ab0fd4d99503e90))
+* **video:** try metadata extraction and thumbnail generation independently ([#1372](https://github.com/PicPeak/picpeak/issues/1372)) ([1316ed0](https://github.com/PicPeak/picpeak/commit/1316ed05b3938da59eb8cb263a5334909e351bfe))
+
 ## [3.46.11](https://github.com/PicPeak/picpeak/compare/v3.46.10...v3.46.11) (2026-09-08)
 
 
