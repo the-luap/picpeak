@@ -145,12 +145,18 @@ async function getVideoDuration(videoPath) {
  * generateVideoThumbnail() would have succeeded on its own — thumbnailing
  * doesn't need valid duration/width/height, it just seeks and grabs a frame.
  * Trying both steps independently means a real thumbnail (and whatever
- * metadata ffprobe *can* read) survives far more often; the callers' throw
- * handling stays as a backstop for anything still unexpected.
+ * metadata ffprobe *can* read) survives far more often. metadata is still
+ * allowed to come back null (ffprobe failed) — a video with no thumbnail
+ * would fall back to rendering the raw video as an <img> in the gallery
+ * grid (`photo.thumbnail_url || photo.url`), so this only resolves when a
+ * real thumbnail or the SVG placeholder produced *something*; if both fail
+ * (storage backend down, disk full — not a quirk of one file) it throws
+ * instead, so the caller surfaces a retryable failure rather than silently
+ * completing with nothing to show.
  *
  * @param {string} videoPath - Local path to the source video (ffmpeg requires fs).
  * @param {string} thumbnailKey - Relative storage key for the thumbnail.
- * @returns {Promise<{success: boolean, metadata: Object|null, thumbnailKey: string|null}>}
+ * @returns {Promise<{success: boolean, metadata: Object|null, thumbnailKey: string}>}
  */
 async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
   let metadata = null;
@@ -210,6 +216,18 @@ async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
     } catch (error) {
       logger.error('Video placeholder generation also failed', { error: error.message, videoPath });
     }
+  }
+
+  // A real thumbnail AND the ffmpeg-free SVG placeholder both failing points
+  // at something systemic (storage backend down, disk full) rather than a
+  // quirk of this one file — that's worth surfacing as a retryable failure
+  // rather than silently completing with no thumbnail at all, which would
+  // make the gallery fall back to rendering the raw video as an <img>
+  // (codex review, #1371/#1372). Metadata (if any was extracted) is lost
+  // here, same trade-off the callers' own pre-existing total-failure
+  // handling already makes.
+  if (!generatedThumbnailKey) {
+    throw new Error('Unable to generate any thumbnail (real or placeholder) for this video');
   }
 
   return {
