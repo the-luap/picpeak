@@ -263,6 +263,16 @@ async function updateAdminUser(id, updates, updatedById, requestingAdmin = {}) {
       throw new ValidationError('Only Super Admins can assign the Super Admin role');
     }
 
+    // Privilege-escalation guard (GHSA-rv8w-m6mx-7j4q): holding `users.edit`
+    // must not let an actor hand out a role carrying permissions they don't
+    // themselves have — same containment assertActorMayGrant already gives
+    // `roles.manage` for role create/edit, reused here for role assignment.
+    const targetRolePermissions = await db('role_permissions')
+      .join('permissions', 'permissions.id', 'role_permissions.permission_id')
+      .where('role_permissions.role_id', role.id)
+      .pluck('permissions.name');
+    await assertActorMayGrant(updatedById, targetRolePermissions);
+
     // Prevent self-role-update
     if (id === updatedById) {
       throw new ValidationError('Cannot change your own role');
