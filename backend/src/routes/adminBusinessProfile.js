@@ -23,6 +23,7 @@ const { requirePermission } = require('../middleware/permissions');
 const { handleAsync, validateRequest, successResponse } = require('../utils/routeHelpers');
 const { getStoragePath } = require('../config/storage');
 const { uploadedPdfLogoPath } = require('../utils/safePath');
+const { validateFileType, ALLOWED_MEDIA_TYPES } = require('../utils/fileSecurityUtils');
 const businessProfileService = require('../services/businessProfileService');
 const { db } = require('../database/db');
 const { validateIban } = require('../utils/iban');
@@ -95,6 +96,19 @@ const router = express.Router();
 // but accepts SVG in addition to PNG / JPEG — the PDF renderer
 // rasterises SVGs to PNG on the fly via resolveLogoFile() so the
 // admin can drop a vector logo here and have it work in print.
+//
+// GHSA-6wrv-9pr4-hhmw: this route used to take the stored extension
+// straight from `file.originalname` and only checked `file.mimetype`
+// against an allowlist — a file could declare an image MIME type
+// while carrying a `.html`/`.js` extension and arbitrary content, get
+// served same-origin from /uploads/logos with that extension, and
+// execute as script in the browser. Fixed the same way every sibling
+// upload route (adminSettings.js, adminCMS.js) already does it:
+// `validateFileType()` pairs the claimed MIME type against the
+// extension, and the extension actually written to disk is looked up
+// from the validated MIME type — never taken from client input.
+const PDF_LOGO_ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
+
 const pdfLogoStorage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
     const dir = path.join(getStoragePath(), 'uploads/logos');
@@ -102,7 +116,11 @@ const pdfLogoStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
+    // fileFilter (below) runs before this and already rejected any
+    // mimetype outside PDF_LOGO_ALLOWED_MIME_TYPES, so the lookup below
+    // always hits. The extension is derived from the validated MIME
+    // type, never from file.originalname.
+    const ext = ALLOWED_MEDIA_TYPES[file.mimetype]?.extensions[0] || '.png';
     cb(null, `pdf-logo-${Date.now()}${ext}`);
   },
 });
@@ -111,9 +129,11 @@ const pdfLogoUpload = multer({
   storage: pdfLogoStorage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Only PNG, JPEG and SVG logos are allowed'));
+    if (validateFileType(file.originalname, file.mimetype, PDF_LOGO_ALLOWED_MIME_TYPES)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PNG, JPEG and SVG logos are allowed'));
+    }
   },
 });
 
@@ -426,7 +446,19 @@ router.put(
     body('defaultLocale').optional({ values: 'falsy' }).isString().isLength({ max: 8 }),
     body('defaultQrFormat').optional({ values: 'falsy' }).isIn(['swiss', 'epc', 'none']),
     body('footerLine').optional({ values: 'falsy' }).isString().isLength({ max: 255 }),
-    body('logoPath').optional({ values: 'falsy' }).isString().isLength({ max: 512 }),
+    // GHSA-6wrv-9pr4-hhmw: logoPath is mass-assignable here, so it must
+    // only ever be settable to a path the POST /logo upload route itself
+    // produced (or '' to clear it, allowed by `values: 'falsy'` above) —
+    // not an arbitrary string chaining in a file uploaded elsewhere.
+    // uploadedPdfLogoPath() is the same pattern check the delete/replace
+    // cleanup path already trusts to name a file this route wrote.
+    body('logoPath').optional({ values: 'falsy' }).isString().isLength({ max: 512 })
+      .custom((value) => {
+        if (!uploadedPdfLogoPath(value, getStoragePath())) {
+          throw new Error('logoPath must be a path produced by the logo upload endpoint');
+        }
+        return true;
+      }),
     // Bundled-fonts dropdown (migration 121). Free-text upload field
     // (pdfFontTtfPath, migration 103) was retired from the UI in
     // favour of this dropdown; the column stays in the DB so any
