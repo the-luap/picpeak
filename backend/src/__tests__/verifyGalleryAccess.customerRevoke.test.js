@@ -38,6 +38,10 @@ jest.mock('../utils/tokenUtils', () => ({
   getGalleryTokenFromRequest: jest.fn(),
 }));
 
+jest.mock('../utils/tokenRevocation', () => ({
+  isTokenRevoked: jest.fn().mockResolvedValue(false),
+}));
+
 jest.mock('../utils/dbCompat', () => ({
   formatBoolean: (v) => (v ? 1 : 0),
 }));
@@ -45,6 +49,7 @@ jest.mock('../utils/dbCompat', () => ({
 const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+const { isTokenRevoked } = require('../utils/tokenRevocation');
 const { verifyGalleryAccess } = require('../middleware/gallery');
 
 function makeRes() {
@@ -93,6 +98,55 @@ beforeEach(() => {
   db.mockReset();
   jwt.verify.mockReset();
   getGalleryTokenFromRequest.mockReset();
+  isTokenRevoked.mockReset();
+  isTokenRevoked.mockResolvedValue(false);
+});
+
+// ---- revoked gallery token (GHSA-q7f7-gjx8-mf6h) -----------------------
+
+describe('verifyGalleryAccess — revoked token', () => {
+  it('returns 401 TOKEN_REVOKED and never reaches the events query when revoked', async () => {
+    getGalleryTokenFromRequest.mockReturnValue('tkn');
+    jwt.verify.mockReturnValue({ type: 'gallery', eventId: 42 });
+    isTokenRevoked.mockResolvedValue(true);
+
+    const req = makeReq();
+    const res = makeRes();
+    const next = jest.fn();
+    await verifyGalleryAccess(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'TOKEN_REVOKED' }),
+    );
+    expect(db).not.toHaveBeenCalled();
+  });
+
+  it('proceeds normally when the token is not revoked', async () => {
+    getGalleryTokenFromRequest.mockReturnValue('tkn');
+    jwt.verify.mockReturnValue({ type: 'gallery', eventId: 42 });
+    isTokenRevoked.mockResolvedValue(false);
+
+    const eventsChain = {};
+    eventsChain.where = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.select = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.first = jest.fn().mockResolvedValue({
+      id: 42, slug: 'test-event', is_active: true, is_archived: false,
+    });
+    db.mockImplementationOnce(() => eventsChain);
+
+    const req = makeReq();
+    const res = makeRes();
+    const next = jest.fn();
+    await verifyGalleryAccess(req, res, next);
+
+    expect(isTokenRevoked).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'gallery', eventId: 42 }),
+    );
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
 });
 
 // ---- customer-minted JWT, assignment intact ----------------------------

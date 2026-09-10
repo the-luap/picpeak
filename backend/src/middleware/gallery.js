@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { db, withRetry } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+const { isTokenRevoked } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 
 // Check if the request carries a valid admin preview token (Feature 3)
@@ -87,6 +88,14 @@ async function verifyGalleryAccess(req, res, next) {
     // lacking an eventId to fail the id match below.
     if (decoded.type !== 'gallery') {
       return res.status(403).json({ error: 'Invalid token type for gallery access' });
+    }
+
+    // Gallery logout writes to the revocation store (see routes/auth.js),
+    // but nothing on this path ever read it back (GHSA-q7f7-gjx8-mf6h) — a
+    // logged-out gallery JWT kept working until natural expiry.
+    if (await isTokenRevoked(decoded)) {
+      logger.warn('[verifyGalleryAccess] Revoked token used', { eventId: decoded.eventId });
+      return res.status(401).json({ error: 'Token has been revoked', code: 'TOKEN_REVOKED' });
     }
 
     // If we have a slug in the URL params or from pre-middleware, verify it matches
