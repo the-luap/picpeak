@@ -610,9 +610,15 @@ async function generateVideoPlaceholder(originalFilename, options = {}) {
   const thumbnailRelKey = path.posix.join('thumbnails', thumbnailFilename);
   const storage = getStorage();
 
-  const settings = await getThumbnailSettings();
-  const width = settings.width || DEFAULT_THUMBNAIL_WIDTH;
-  const height = settings.height || DEFAULT_THUMBNAIL_HEIGHT;
+  // Skip the settings lookup when the caller already supplies dimensions.
+  // This can run from inside an open per-file SQLite transaction (chunked
+  // video upload's fallback path in videoProcessor.js) — a second,
+  // un-transacted db() query for settings there deadlocks against SQLite's
+  // single-connection pool until acquireConnectionTimeout (60s), reproduced
+  // directly against an isolated SQLite db (codex review of #1371/#1372).
+  const settings = (options.width && options.height) ? {} : await getThumbnailSettings();
+  const width = options.width || settings.width || DEFAULT_THUMBNAIL_WIDTH;
+  const height = options.height || settings.height || DEFAULT_THUMBNAIL_HEIGHT;
 
   if (options.regenerate) {
     await storage.delete(thumbnailRelKey).catch(() => {});
@@ -1495,4 +1501,6 @@ module.exports = {
   extractRawPreview,
   withProcessableImage,
   RAW_EXTENSIONS,
+  DEFAULT_THUMBNAIL_WIDTH,
+  DEFAULT_THUMBNAIL_HEIGHT,
 };
