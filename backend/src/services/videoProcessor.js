@@ -32,7 +32,10 @@ async function extractVideoMetadata(videoPath) {
         const audioStream = metadata.streams.find(s => s.codec_type === 'audio');
 
         const result = {
-          duration: Math.floor(metadata.format.duration || 0),
+          // null (not 0) when ffprobe genuinely has no duration — a real
+          // 0-second clip and "unknown" must stay distinguishable, since
+          // downstream code treats `duration != null` as "trust this value".
+          duration: metadata.format.duration != null ? Math.floor(metadata.format.duration) : null,
           width: videoStream?.width || null,
           height: videoStream?.height || null,
           videoCodec: videoStream?.codec_name || null,
@@ -130,35 +133,108 @@ async function getVideoDuration(videoPath) {
  * Process an uploaded video: extract metadata and produce a thumbnail through
  * the storage backend.
  *
+ * Metadata extraction and thumbnail generation are independent, best-effort
+ * steps — mirroring how the image pipeline treats thumbnail/dimension/EXIF
+ * failures (log a warning, keep the upload). This used to gate everything
+ * behind isValidVideo(), which rejects the whole video if ffprobe can't read
+ * even one of duration/width/height — common on some iPhone/Lightroom-
+ * exported MP4s (#1370). Callers (photoProcessor.js's processPhoto and
+ * processUploadedPhotos) already catch that throw and fall back to a static
+ * placeholder thumbnail plus a metadata-only retry (codex review of #845),
+ * but that fallback never got a REAL thumbnail even when
+ * generateVideoThumbnail() would have succeeded on its own — thumbnailing
+ * doesn't need valid duration/width/height, it just seeks and grabs a frame.
+ * Trying both steps independently means a real thumbnail (and whatever
+ * metadata ffprobe *can* read) survives far more often. metadata is still
+ * allowed to come back null (ffprobe failed) — a video with no thumbnail
+ * would fall back to rendering the raw video as an <img> in the gallery
+ * grid (`photo.thumbnail_url || photo.url`), so this only resolves when a
+ * real thumbnail or the SVG placeholder produced *something*; if both fail
+ * (storage backend down, disk full — not a quirk of one file) it throws
+ * instead, so the caller surfaces a retryable failure rather than silently
+ * completing with nothing to show.
+ *
  * @param {string} videoPath - Local path to the source video (ffmpeg requires fs).
  * @param {string} thumbnailKey - Relative storage key for the thumbnail.
- * @returns {Promise<{success: boolean, metadata: Object, thumbnailKey: string}>}
+ * @returns {Promise<{success: boolean, metadata: Object|null, thumbnailKey: string}>}
  */
 async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
+  let metadata = null;
   try {
-    const isValid = await isValidVideo(videoPath);
-    if (!isValid) {
-      throw new Error('Invalid video file');
-    }
-
-    const metadata = await extractVideoMetadata(videoPath);
-    await generateVideoThumbnail(videoPath, thumbnailKey, options);
-
-    const storage = getStorage();
-    const exists = await storage.exists(thumbnailKey);
-    if (!exists) {
-      throw new Error('Thumbnail generation failed (not in storage)');
-    }
-
-    return {
-      success: true,
-      metadata,
-      thumbnailKey
-    };
+    metadata = await extractVideoMetadata(videoPath);
   } catch (error) {
-    logger.error('Error processing video', { error: error.message, videoPath });
-    throw error;
+    logger.error('Video metadata extraction failed — continuing without duration/codec/dimensions', {
+      error: error.message,
+      videoPath
+    });
   }
+
+  let generatedThumbnailKey = null;
+  try {
+    await generateVideoThumbnail(videoPath, thumbnailKey, options);
+    const storage = getStorage();
+    if (await storage.exists(thumbnailKey)) {
+      generatedThumbnailKey = thumbnailKey;
+    }
+  } catch (error) {
+    logger.error('Video thumbnail generation failed — continuing without a thumbnail', {
+      error: error.message,
+      videoPath
+    });
+  }
+
+  // Never return "success" with no thumbnail at all: the gallery grid
+  // (GridGalleryLayout/JustifiedGalleryLayout) falls back to
+  // `photo.thumbnail_url || photo.url` when there's no thumbnail, which
+  // makes AuthenticatedImage download the full ORIGINAL VIDEO and try to
+  // render it as an <img> — a broken tile and a multi-GB fetch just from
+  // opening the gallery (codex review, #1371/#1372). Fall back to the same
+  // ffmpeg-free SVG placeholder the callers already generate for a total
+  // processing failure, so a bare thumbnail-generation failure degrades to
+  // that placeholder too, not to "no thumbnail". thumbnailKey is always
+  // `thumbnails/thumb_<name>.jpg` (see callers) — strip the prefix back to
+  // a filename so generateVideoPlaceholder recomputes this exact same key.
+  if (!generatedThumbnailKey) {
+    try {
+      const {
+        generateVideoPlaceholder,
+        DEFAULT_THUMBNAIL_WIDTH,
+        DEFAULT_THUMBNAIL_HEIGHT
+      } = require('./imageProcessor');
+      const placeholderFilename = path.basename(thumbnailKey).replace(/^thumb_/, '');
+      // Explicit width/height make generateVideoPlaceholder skip its
+      // configured-thumbnail-size DB lookup (see its own comment) — this
+      // call can run from inside processUploadedPhotos' open per-file
+      // SQLite transaction, where that lookup would otherwise deadlock.
+      const placeholderKey = await generateVideoPlaceholder(placeholderFilename, {
+        width: DEFAULT_THUMBNAIL_WIDTH,
+        height: DEFAULT_THUMBNAIL_HEIGHT
+      });
+      if (placeholderKey) {
+        generatedThumbnailKey = placeholderKey;
+      }
+    } catch (error) {
+      logger.error('Video placeholder generation also failed', { error: error.message, videoPath });
+    }
+  }
+
+  // A real thumbnail AND the ffmpeg-free SVG placeholder both failing points
+  // at something systemic (storage backend down, disk full) rather than a
+  // quirk of this one file — that's worth surfacing as a retryable failure
+  // rather than silently completing with no thumbnail at all, which would
+  // make the gallery fall back to rendering the raw video as an <img>
+  // (codex review, #1371/#1372). Metadata (if any was extracted) is lost
+  // here, same trade-off the callers' own pre-existing total-failure
+  // handling already makes.
+  if (!generatedThumbnailKey) {
+    throw new Error('Unable to generate any thumbnail (real or placeholder) for this video');
+  }
+
+  return {
+    success: true,
+    metadata,
+    thumbnailKey: generatedThumbnailKey
+  };
 }
 
 /**
