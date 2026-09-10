@@ -14,7 +14,8 @@ const { body, param, validationResult } = require('express-validator');
 const { safeValidationErrors } = require('../utils/routeHelpers');
 const { adminAuth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/permissions');
-const { requireEventOwnership } = require('../middleware/ownership');
+const { requireEventOwnership, canAccessEvent } = require('../middleware/ownership');
+const { db } = require('../database/db');
 const galleryShortUrlService = require('../services/galleryShortUrlService');
 const logger = require('../utils/logger');
 
@@ -87,6 +88,30 @@ router.post(
 );
 
 /**
+ * Ownership guard for the by-short-url-id DELETE route (GHSA-9h7q-2jpf-vj85).
+ * GET/POST take :eventId directly so requireEventOwnership applies as-is;
+ * DELETE takes the short URL row's own :id, so resolve its event first and
+ * apply the same ownership predicate requireEventOwnership uses. Sends the
+ * response and returns false when the caller may not act on it (404 if the
+ * row doesn't exist, 403 if it exists but belongs to another admin).
+ */
+async function assertOwnsShortUrl(req, res, id) {
+  const row = await db('gallery_short_urls').where({ id }).first('event_id');
+  if (!row) {
+    res.status(404).json({ error: 'Short URL not found' });
+    return false;
+  }
+  if (req.admin.roleName !== 'super_admin') {
+    const event = await db('events').where({ id: row.event_id }).first('created_by');
+    if (!canAccessEvent(req.admin, event)) {
+      res.status(403).json({ error: 'Access denied' });
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * DELETE /api/admin/short-urls/:id
  * Soft-delete. The public route serves 410 Gone on a deleted row so the
  * admin can tell their delete worked (vs. 404 for an unknown slug).
@@ -99,10 +124,9 @@ router.delete(
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: safeValidationErrors(errors) });
     try {
-      const ok = await galleryShortUrlService.softDelete(
-        parseInt(req.params.id, 10),
-        req.admin?.id || null,
-      );
+      const id = parseInt(req.params.id, 10);
+      if (!(await assertOwnsShortUrl(req, res, id))) return;
+      const ok = await galleryShortUrlService.softDelete(id, req.admin?.id || null);
       if (!ok) return res.status(404).json({ error: 'Short URL not found' });
       res.status(204).end();
     } catch (err) {
