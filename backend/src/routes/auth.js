@@ -243,8 +243,14 @@ router.post('/admin/login/mfa', [
       return res.status(401).json({ error: getGenericAuthError() });
     }
 
-    // TOTP first, then a one-time recovery code.
-    let ok = mfaService.verifyTotpEncrypted(code, admin.two_factor_secret);
+    // TOTP first, then a one-time recovery code. verifyTotpEncryptedStep also
+    // enforces replay protection (GHSA-qcwx-r25m-j869): a code whose matched
+    // step doesn't advance past this admin's two_factor_last_used_step is
+    // rejected, so the same code can't complete two logins.
+    const totpStep = mfaService.verifyTotpEncryptedStep(
+      code, admin.two_factor_secret, admin.two_factor_last_used_step
+    );
+    let ok = totpStep !== null;
     let usedRecovery = false;
     let remainingHashes = null;
     if (!ok) {
@@ -272,6 +278,11 @@ router.post('/admin/login/mfa', [
         null,
         { type: 'admin', id: admin.id, name: admin.username }
       );
+    } else {
+      await db('admin_users').where('id', admin.id).update({
+        two_factor_last_used_step: totpStep,
+        updated_at: new Date()
+      });
     }
 
     await logActivity('admin_mfa_login',

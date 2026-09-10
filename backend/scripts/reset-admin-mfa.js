@@ -36,6 +36,7 @@ const MFA_CLEAR = {
   two_factor_secret: null,
   two_factor_recovery_codes: null,
   two_factor_enrolled_at: null,
+  two_factor_last_used_step: null,
   updated_at: new Date(),
 };
 
