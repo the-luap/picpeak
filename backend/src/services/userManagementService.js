@@ -48,6 +48,16 @@ async function createInvitation({ email, roleId, invitedById, inviterRoleName })
     throw new ValidationError('Only Super Admins can invite new Super Admins');
   }
 
+  // Privilege-escalation guard (GHSA-rv8w-m6mx-7j4q): holding `users.create`
+  // must not let an actor invite someone into a role carrying permissions
+  // they don't themselves have — same containment updateAdminUser already
+  // gives role assignment, reused here for invitations.
+  const targetRolePermissions = await db('role_permissions')
+    .join('permissions', 'permissions.id', 'role_permissions.permission_id')
+    .where('role_permissions.role_id', role.id)
+    .pluck('permissions.name');
+  await assertActorMayGrant(invitedById, targetRolePermissions);
+
   // Generate secure invitation token (64 characters hex = 32 bytes)
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
