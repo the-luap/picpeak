@@ -50,7 +50,10 @@ const { validateFileType } = require('../utils/fileSecurityUtils');
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  // CVE-2026-82333: single unnamed field (`logo` or `watermarkLogo`) per
+  // route — no legitimate array-indexed field names, so reject any
+  // bracket-index field name.
+  limits: { fileSize: 5 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 5MB
   fileFilter: (req, file, cb) => {
     // Note: SVG files are excluded from magic number validation for logos
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
@@ -78,7 +81,9 @@ const faviconStorage = multer.diskStorage({
 
 const faviconUpload = multer({
   storage: faviconStorage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB — roomy enough for a 512×512+ square PNG
+  // CVE-2026-82333: single unnamed `favicon` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 2 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 2MB — roomy enough for a 512×512+ square PNG
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon'];
     const name = file.originalname.toLowerCase();

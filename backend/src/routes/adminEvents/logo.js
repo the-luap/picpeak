@@ -30,7 +30,9 @@ const eventLogoStorage = multer.diskStorage({
 
 const eventLogoUpload = multer({
   storage: eventLogoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  // CVE-2026-82333: single unnamed `logo` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 5 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {

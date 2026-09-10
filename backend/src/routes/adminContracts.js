@@ -72,7 +72,9 @@ const signedPdfStorage = multer.diskStorage({
 
 const signedPdfUpload = multer({
   storage: signedPdfStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  // CVE-2026-82333: single unnamed `file` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 10 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 10 MB
   fileFilter: (req, file, cb) => {
     const allowed = ['application/pdf'];
     if (validateFileType(file.originalname, file.mimetype, allowed)) return cb(null, true);

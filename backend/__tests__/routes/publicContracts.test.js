@@ -25,14 +25,18 @@ process.env.STORAGE_PATH = path.join(tmpDir, 'storage');
 fs.mkdirSync(process.env.STORAGE_PATH, { recursive: true });
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'crm-route-test-secret';
 
+const express = require('express');
+const cookieParser = require('cookie-parser');
 const request = require('supertest');
 const { bootCrmDb, seedMinimal, createPublicToken, buildRouteApp } = require('../integration/helpers/crmDb');
 const tokenGuards = require('../../src/utils/publicTokenGuards');
+const { errorHandler } = require('../../src/middleware/errorHandler');
 
 describe('publicContracts routes', () => {
   let db;
   let cleanup;
   let app;
+  let appWithErrorHandler;
   let customerId;
   let contractId;
 
@@ -51,6 +55,17 @@ describe('publicContracts routes', () => {
     contractId = inserted[0]?.id ?? inserted[0];
 
     app = buildRouteApp('/api/public/contracts', require('../../src/routes/publicContracts'));
+
+    // A second app instance wired to the REAL production error handler
+    // (buildRouteApp's is a simplified stand-in that only reads
+    // err.statusCode/err.status, which a bare MulterError doesn't set).
+    // Used below to verify the actual 4xx contract end-to-end, not just
+    // that multer aborted the request.
+    appWithErrorHandler = express();
+    appWithErrorHandler.use(express.json());
+    appWithErrorHandler.use(cookieParser());
+    appWithErrorHandler.use('/api/public/contracts', require('../../src/routes/publicContracts'));
+    appWithErrorHandler.use(errorHandler);
   }, 120000);
 
   afterAll(async () => {
@@ -130,6 +145,40 @@ describe('publicContracts routes', () => {
         .post(`/api/public/contracts/${fakeToken}/upload-signed-pdf`)
         .attach('file', Buffer.from('%PDF-1.4 fake'), 'signed.pdf');
       expect(res.status).toBe(404);
+    });
+
+    // CVE-2026-82333 regression (#1374 follow-up): multer 2.3.0 added an
+    // opt-in `fieldArrayIndexLimit` that must be set to actually close the
+    // field-parser DoS — the version bump alone does nothing. This route is
+    // unauthenticated (token-in-URL only), so it's the sharpest place to
+    // prove a crafted request with an oversized array-index field name
+    // (`evil[999999999]`) is rejected rather than accepted or left to hang.
+    it('rejects a multipart request with an oversized array-index field name', async () => {
+      const token = await createPublicToken(db, 'contract_action_tokens', {
+        contract_id: contractId,
+      });
+      const res = await request(app)
+        .post(`/api/public/contracts/${token}/upload-signed-pdf`)
+        .field('evil[999999999]', 'x')
+        .attach('file', Buffer.from('%PDF-1.4 fake'), 'signed.pdf');
+      // multer aborts the request before the handler runs; buildRouteApp's
+      // generic error handler falls back to 500 for a bare MulterError
+      // (see appWithErrorHandler test below for the real 4xx contract), so
+      // here we only assert the upload was NOT accepted/processed.
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.body.error).not.toBe(undefined);
+    });
+
+    it('maps the oversized array-index rejection to a 400 through the real error handler', async () => {
+      const token = await createPublicToken(db, 'contract_action_tokens', {
+        contract_id: contractId,
+      });
+      const res = await request(appWithErrorHandler)
+        .post(`/api/public/contracts/${token}/upload-signed-pdf`)
+        .field('evil[999999999]', 'x')
+        .attach('file', Buffer.from('%PDF-1.4 fake'), 'signed.pdf');
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe('VALIDATION_ERROR');
     });
   });
 
