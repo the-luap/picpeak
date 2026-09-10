@@ -32,7 +32,10 @@ async function extractVideoMetadata(videoPath) {
         const audioStream = metadata.streams.find(s => s.codec_type === 'audio');
 
         const result = {
-          duration: Math.floor(metadata.format.duration || 0),
+          // null (not 0) when ffprobe genuinely has no duration — a real
+          // 0-second clip and "unknown" must stay distinguishable, since
+          // downstream code treats `duration != null` as "trust this value".
+          duration: metadata.format.duration != null ? Math.floor(metadata.format.duration) : null,
           width: videoStream?.width || null,
           height: videoStream?.height || null,
           videoCodec: videoStream?.codec_name || null,
@@ -130,35 +133,55 @@ async function getVideoDuration(videoPath) {
  * Process an uploaded video: extract metadata and produce a thumbnail through
  * the storage backend.
  *
+ * Metadata extraction and thumbnail generation are independent, best-effort
+ * steps — mirroring how the image pipeline treats thumbnail/dimension/EXIF
+ * failures (log a warning, keep the upload). This used to gate everything
+ * behind isValidVideo(), which rejects the whole video if ffprobe can't read
+ * even one of duration/width/height — common on some iPhone/Lightroom-
+ * exported MP4s (#1370). Callers (photoProcessor.js's processPhoto and
+ * processUploadedPhotos) already catch that throw and fall back to a static
+ * placeholder thumbnail plus a metadata-only retry (codex review of #845),
+ * but that fallback never got a REAL thumbnail even when
+ * generateVideoThumbnail() would have succeeded on its own — thumbnailing
+ * doesn't need valid duration/width/height, it just seeks and grabs a frame.
+ * Trying both steps independently means a real thumbnail (and whatever
+ * metadata ffprobe *can* read) survives far more often; the callers' throw
+ * handling stays as a backstop for anything still unexpected.
+ *
  * @param {string} videoPath - Local path to the source video (ffmpeg requires fs).
  * @param {string} thumbnailKey - Relative storage key for the thumbnail.
- * @returns {Promise<{success: boolean, metadata: Object, thumbnailKey: string}>}
+ * @returns {Promise<{success: boolean, metadata: Object|null, thumbnailKey: string|null}>}
  */
 async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
+  let metadata = null;
   try {
-    const isValid = await isValidVideo(videoPath);
-    if (!isValid) {
-      throw new Error('Invalid video file');
-    }
-
-    const metadata = await extractVideoMetadata(videoPath);
-    await generateVideoThumbnail(videoPath, thumbnailKey, options);
-
-    const storage = getStorage();
-    const exists = await storage.exists(thumbnailKey);
-    if (!exists) {
-      throw new Error('Thumbnail generation failed (not in storage)');
-    }
-
-    return {
-      success: true,
-      metadata,
-      thumbnailKey
-    };
+    metadata = await extractVideoMetadata(videoPath);
   } catch (error) {
-    logger.error('Error processing video', { error: error.message, videoPath });
-    throw error;
+    logger.error('Video metadata extraction failed — continuing without duration/codec/dimensions', {
+      error: error.message,
+      videoPath
+    });
   }
+
+  let generatedThumbnailKey = null;
+  try {
+    await generateVideoThumbnail(videoPath, thumbnailKey, options);
+    const storage = getStorage();
+    if (await storage.exists(thumbnailKey)) {
+      generatedThumbnailKey = thumbnailKey;
+    }
+  } catch (error) {
+    logger.error('Video thumbnail generation failed — continuing without a thumbnail', {
+      error: error.message,
+      videoPath
+    });
+  }
+
+  return {
+    success: true,
+    metadata,
+    thumbnailKey: generatedThumbnailKey
+  };
 }
 
 /**
