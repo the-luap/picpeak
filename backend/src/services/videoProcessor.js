@@ -177,6 +177,30 @@ async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
     });
   }
 
+  // Never return "success" with no thumbnail at all: the gallery grid
+  // (GridGalleryLayout/JustifiedGalleryLayout) falls back to
+  // `photo.thumbnail_url || photo.url` when there's no thumbnail, which
+  // makes AuthenticatedImage download the full ORIGINAL VIDEO and try to
+  // render it as an <img> — a broken tile and a multi-GB fetch just from
+  // opening the gallery (codex review, #1371/#1372). Fall back to the same
+  // ffmpeg-free SVG placeholder the callers already generate for a total
+  // processing failure, so a bare thumbnail-generation failure degrades to
+  // that placeholder too, not to "no thumbnail". thumbnailKey is always
+  // `thumbnails/thumb_<name>.jpg` (see callers) — strip the prefix back to
+  // a filename so generateVideoPlaceholder recomputes this exact same key.
+  if (!generatedThumbnailKey) {
+    try {
+      const { generateVideoPlaceholder } = require('./imageProcessor');
+      const placeholderFilename = path.basename(thumbnailKey).replace(/^thumb_/, '');
+      const placeholderKey = await generateVideoPlaceholder(placeholderFilename);
+      if (placeholderKey) {
+        generatedThumbnailKey = placeholderKey;
+      }
+    } catch (error) {
+      logger.error('Video placeholder generation also failed', { error: error.message, videoPath });
+    }
+  }
+
   return {
     success: true,
     metadata,
