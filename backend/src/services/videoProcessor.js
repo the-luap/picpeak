@@ -190,9 +190,20 @@ async function processUploadedVideo(videoPath, thumbnailKey, options = {}) {
   // a filename so generateVideoPlaceholder recomputes this exact same key.
   if (!generatedThumbnailKey) {
     try {
-      const { generateVideoPlaceholder } = require('./imageProcessor');
+      const {
+        generateVideoPlaceholder,
+        DEFAULT_THUMBNAIL_WIDTH,
+        DEFAULT_THUMBNAIL_HEIGHT
+      } = require('./imageProcessor');
       const placeholderFilename = path.basename(thumbnailKey).replace(/^thumb_/, '');
-      const placeholderKey = await generateVideoPlaceholder(placeholderFilename);
+      // Explicit width/height make generateVideoPlaceholder skip its
+      // configured-thumbnail-size DB lookup (see its own comment) — this
+      // call can run from inside processUploadedPhotos' open per-file
+      // SQLite transaction, where that lookup would otherwise deadlock.
+      const placeholderKey = await generateVideoPlaceholder(placeholderFilename, {
+        width: DEFAULT_THUMBNAIL_WIDTH,
+        height: DEFAULT_THUMBNAIL_HEIGHT
+      });
       if (placeholderKey) {
         generatedThumbnailKey = placeholderKey;
       }

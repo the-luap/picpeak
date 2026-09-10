@@ -4,7 +4,9 @@ jest.mock('../storage', () => ({
   getStorage: jest.fn()
 }));
 jest.mock('../imageProcessor', () => ({
-  generateVideoPlaceholder: jest.fn()
+  generateVideoPlaceholder: jest.fn(),
+  DEFAULT_THUMBNAIL_WIDTH: 300,
+  DEFAULT_THUMBNAIL_HEIGHT: 300
 }));
 
 const ffmpeg = require('fluent-ffmpeg');
@@ -98,7 +100,10 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
     expect(result.metadata).toEqual(expect.objectContaining({ duration: 5, videoCodec: 'h264' }));
     // thumbnailKey is always thumbnails/thumb_<name>.jpg — strip the prefix
     // back to a filename so generateVideoPlaceholder recomputes the same key.
-    expect(generateVideoPlaceholder).toHaveBeenCalledWith('wedding_001.jpg');
+    // Explicit width/height so generateVideoPlaceholder skips its DB-backed
+    // settings lookup — this can run inside an open per-file SQLite
+    // transaction (chunked video upload), where that lookup deadlocks.
+    expect(generateVideoPlaceholder).toHaveBeenCalledWith('wedding_001.jpg', { width: 300, height: 300 });
     expect(result.thumbnailKey).toBe('thumbnails/thumb_placeholder.jpg');
     expect(storage.putFromFile).not.toHaveBeenCalled();
   });
