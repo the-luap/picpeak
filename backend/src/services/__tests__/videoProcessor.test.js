@@ -108,7 +108,7 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
     expect(storage.putFromFile).not.toHaveBeenCalled();
   });
 
-  it('still resolves with a null thumbnail when metadata, thumbnail generation, AND the placeholder all fail — never throws, never blocks the upload', async () => {
+  it('throws when metadata, thumbnail generation, AND the placeholder all fail, so the caller surfaces a retryable failure instead of completing with nothing to show (codex review)', async () => {
     ffmpeg.ffprobe = jest.fn((videoPath, cb) => cb(new Error('Invalid data found when processing input')));
     ffmpeg.mockImplementation(() => ({
       screenshots() { return this; },
@@ -119,8 +119,7 @@ describe('processUploadedVideo degrades gracefully instead of rejecting the whol
     }));
     generateVideoPlaceholder.mockRejectedValue(new Error('sharp render failed'));
 
-    const result = await processUploadedVideo('/tmp/corrupt.mp4', 'thumbnails/thumb_corrupt.jpg');
-
-    expect(result).toEqual({ success: true, metadata: null, thumbnailKey: null });
+    await expect(processUploadedVideo('/tmp/corrupt.mp4', 'thumbnails/thumb_corrupt.jpg'))
+      .rejects.toThrow('Unable to generate any thumbnail');
   });
 });
