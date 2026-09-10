@@ -23,7 +23,7 @@ const { requirePermission } = require('../middleware/permissions');
 const { handleAsync, validateRequest, successResponse } = require('../utils/routeHelpers');
 const { getStoragePath } = require('../config/storage');
 const { uploadedPdfLogoPath } = require('../utils/safePath');
-const { validateFileType, ALLOWED_MEDIA_TYPES } = require('../utils/fileSecurityUtils');
+const { validateFileType, validateFileContent, ALLOWED_MEDIA_TYPES } = require('../utils/fileSecurityUtils');
 const businessProfileService = require('../services/businessProfileService');
 const { db } = require('../database/db');
 const { validateIban } = require('../utils/iban');
@@ -377,6 +377,19 @@ router.post(
   handleAsync(async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No logo file uploaded' });
+    }
+
+    // fileFilter above only pairs the claimed MIME type against the
+    // extension — it runs on the in-flight stream, before any bytes are
+    // written, so it can't inspect content. Content-sniff the bytes multer
+    // just wrote to disk (magic numbers) before trusting them; SVG has no
+    // magic-number check (validateFileContent returns true for it), it's
+    // protected by the CSP header instead. Matches the cleanup-then-reject
+    // pattern createFileUploadValidator() uses for other upload routes.
+    const contentIsValid = await validateFileContent(req.file.path, req.file.mimetype);
+    if (!contentIsValid) {
+      try { await fs.unlink(req.file.path); } catch (_) { /* ignore */ }
+      return res.status(400).json({ error: 'File content does not match its declared type' });
     }
 
     // Clean up the previous PDF logo on disk if it was uploaded via

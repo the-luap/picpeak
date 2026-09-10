@@ -17,6 +17,14 @@
  *   (c) legitimate PNG/JPEG/SVG uploads still succeed,
  *   (d) `logoPath` on PUT cannot be set to an arbitrary string pointing at
  *       another file, only to a path the upload route itself produced.
+ *
+ * Defense-in-depth (not a re-opening of the above): fileFilter only pairs
+ * the claimed MIME type against the extension — it can't see the bytes,
+ * since it runs before multer finishes writing the stream to disk. A file
+ * whose declared MIME/extension pair is valid but whose actual content
+ * doesn't match (e.g. a PNG-declared upload that isn't really a PNG) is
+ * now caught by validateFileContent() (magic-number check) after multer
+ * writes it, closing the gap where declared-vs-actual content diverges.
  */
 
 const path = require('path');
@@ -34,6 +42,16 @@ const request = require('supertest');
 const {
   bootCrmDb, seedMinimal, assignAdminRole, mintAdminToken, buildRouteApp,
 } = require('./helpers/crmDb');
+
+// Real magic-number-prefixed payloads, for content-sniffing to accept.
+const REAL_PNG_BYTES = Buffer.concat([
+  Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+  Buffer.from('not a real png body, but the header is real'),
+]);
+const REAL_JPEG_BYTES = Buffer.concat([
+  Buffer.from([0xFF, 0xD8, 0xFF]),
+  Buffer.from('not a real jpeg body, but the header is real'),
+]);
 
 describe('business profile — logo upload content/extension validation', () => {
   let db;
@@ -102,7 +120,7 @@ describe('business profile — logo upload content/extension validation', () => 
   });
 
   it('accepts a legitimate PNG upload and stores it with a .png extension', async () => {
-    const res = await uploadLogo(Buffer.from('fake png bytes'), 'logo.png', 'image/png');
+    const res = await uploadLogo(REAL_PNG_BYTES, 'logo.png', 'image/png');
     expect(res.status).toBe(200);
     const logoPath = (res.body.data || res.body).logoPath;
     expect(logoPath).toMatch(/^\/uploads\/logos\/pdf-logo-\d+\.png$/);
@@ -114,10 +132,21 @@ describe('business profile — logo upload content/extension validation', () => 
   });
 
   it('accepts a legitimate JPEG upload and stores it with a .jpg extension', async () => {
-    const res = await uploadLogo(Buffer.from('fake jpeg bytes'), 'logo.jpg', 'image/jpeg');
+    const res = await uploadLogo(REAL_JPEG_BYTES, 'logo.jpg', 'image/jpeg');
     expect(res.status).toBe(200);
     const logoPath = (res.body.data || res.body).logoPath;
     expect(logoPath).toMatch(/^\/uploads\/logos\/pdf-logo-\d+\.jpg$/);
+  });
+
+  it('rejects a PNG-declared upload whose bytes are not actually a PNG, and leaves nothing on disk', async () => {
+    const before = logosDirFiles();
+    const res = await uploadLogo(Buffer.from('totally not a png'), 'logo.png', 'image/png');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/content does not match/i);
+
+    // No new file left behind: the rejected upload's own file was cleaned
+    // up, and every other file on disk (if any) is unchanged.
+    expect(logosDirFiles()).toEqual(before);
   });
 
   it('accepts a legitimate SVG upload and always stores it with a .svg extension, even under a spoofed filename', async () => {
@@ -147,7 +176,7 @@ describe('business profile — logo upload content/extension validation', () => 
   });
 
   it('accepts logoPath on PUT when it matches the pattern this route itself writes', async () => {
-    const upload = await uploadLogo(Buffer.from('fake png bytes'), 'logo2.png', 'image/png');
+    const upload = await uploadLogo(REAL_PNG_BYTES, 'logo2.png', 'image/png');
     const uploadedPath = (upload.body.data || upload.body).logoPath;
 
     // Round-trip: PUT-ing back the exact value the upload endpoint
