@@ -1566,20 +1566,35 @@ END $$;`
     // cloud-metadata address for unauthenticated egress via the server.
     // Prod-only, matching S3StorageAdapter's own gate (dev points at
     // localhost MinIO deliberately).
+    //
+    // A boolean isHostAllowed() preflight is check-then-connect: the AWS
+    // SDK re-resolves the endpoint hostname on its own when it actually
+    // connects, so a DNS-rebinding attacker (or an infra rebinding
+    // condition) could answer the preflight lookup with a public address
+    // and the SDK's own later lookup with a private/metadata one.
+    // validateExternalUrlWithAddresses's resolved addresses get pinned
+    // into the S3Client's requestHandler via pinnedRequestOptions, so the
+    // connection can only land on an address that was actually vetted.
+    let pinnedAgents = {};
     if (process.env.NODE_ENV === 'production' && s3Config && s3Config.endpoint) {
-      const { isHostAllowed } = require('../utils/networkValidation');
-      const { hostname } = new URL(
-        /^https?:\/\//.test(s3Config.endpoint) ? s3Config.endpoint : `https://${s3Config.endpoint}`
-      );
-      if (!(await isHostAllowed(hostname))) {
+      const { validateExternalUrlWithAddresses } = require('../utils/networkValidation');
+      const { pinnedRequestOptions } = require('../utils/pinnedRequest');
+      const endpointUrl = /^https?:\/\//.test(s3Config.endpoint)
+        ? s3Config.endpoint
+        : `https://${s3Config.endpoint}`;
+      const urlCheck = await validateExternalUrlWithAddresses(endpointUrl);
+      if (!urlCheck.valid) {
         throw new Error('S3 endpoint resolves to a private or internal network address');
       }
+      const { httpAgent, httpsAgent } = pinnedRequestOptions(urlCheck);
+      pinnedAgents = { httpAgent, httpsAgent };
     }
 
     const [, bucket, key] = s3PathMatch;
     const s3Client = new S3StorageAdapter({
       ...s3Config,
-      bucket
+      bucket,
+      ...pinnedAgents
     });
 
     await s3Client.download(key, localPath);
