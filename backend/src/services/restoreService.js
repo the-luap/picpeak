@@ -1628,6 +1628,23 @@ END $$;`
       throw new Error('Invalid S3 URL format');
     }
 
+    // SSRF guard: this method calls S3StorageAdapter.download() directly
+    // rather than going through testConnection(), so it must re-run the same
+    // DNS-resolving host check testConnection() applies — otherwise an
+    // admin-configured S3 endpoint could point at a private/internal or
+    // cloud-metadata address for unauthenticated egress via the server.
+    // Prod-only, matching S3StorageAdapter's own gate (dev points at
+    // localhost MinIO deliberately).
+    if (process.env.NODE_ENV === 'production' && s3Config && s3Config.endpoint) {
+      const { isHostAllowed } = require('../utils/networkValidation');
+      const { hostname } = new URL(
+        /^https?:\/\//.test(s3Config.endpoint) ? s3Config.endpoint : `https://${s3Config.endpoint}`
+      );
+      if (!(await isHostAllowed(hostname))) {
+        throw new Error('S3 endpoint resolves to a private or internal network address');
+      }
+    }
+
     const [, bucket, key] = s3PathMatch;
     const s3Client = new S3StorageAdapter({
       ...s3Config,
