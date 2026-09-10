@@ -102,6 +102,7 @@ jest.mock('../../src/utils/logger', () => ({
 }));
 
 const invoiceService = require('../../src/services/invoiceService');
+const emailProcessor = require('../../src/services/emailProcessor');
 
 function resetChains() {
   for (const k of Object.keys(tableChains)) delete tableChains[k];
@@ -261,7 +262,10 @@ describe('invoiceService.releaseForDelivery', () => {
 });
 
 describe('invoiceService.recordPaymentCheckAction', () => {
-  beforeEach(() => resetChains());
+  beforeEach(() => {
+    resetChains();
+    emailProcessor.queueEmail.mockClear();
+  });
 
   it('rejects invalid actions', async () => {
     await expect(invoiceService.recordPaymentCheckAction({
@@ -321,6 +325,71 @@ describe('invoiceService.recordPaymentCheckAction', () => {
       token: 'a'.repeat(64), action: 'partial', amountMinor: 9999,
     })).rejects.toMatchObject({ statusCode: 400 });
   });
+
+  // GHSA-wg94-f86h-vq68 hardening: every write via this unauthenticated
+  // route notifies the admin. Uses 'paid_full' as the exercised action —
+  // it stays inside markPaid (no workflow-engine / PDF-rendering
+  // dependencies to stub) while still going through the full
+  // recordPaymentCheckAction write path.
+  it('queues an admin notification email after a successful action', async () => {
+    pickChainFor('invoice_payment_check_tokens')._firstValue = {
+      id: 1, used_at: null,
+      expires_at: new Date(Date.now() + 86400000),
+    };
+    pickChainFor('invoices')._firstValue = {
+      id: 5, invoice_number: 'INV-0005', status: 'overdue',
+      total_amount_minor: 10000, paid_amount_minor: 0, late_fee_amount_minor: 0,
+      customer_account_id: 7, created_by_admin_id: 42,
+      currency: 'CHF', language: 'de', event_id: null,
+    };
+    pickChainFor('admin_users')._firstValue = { id: 42, email: 'admin@example.com', username: 'admin' };
+    pickChainFor('business_profile')._firstValue = null;
+    pickChainFor('customer_accounts')._firstValue = { id: 7, email: 'c@example.com', display_name: 'Test Customer' };
+
+    const result = await invoiceService.recordPaymentCheckAction({
+      token: 'a'.repeat(64), action: 'paid_full', ip: '203.0.113.7',
+    });
+    expect(result).toEqual({ applied: 'paid_full' });
+
+    expect(emailProcessor.queueEmail).toHaveBeenCalledTimes(1);
+    const [, recipientEmail, templateKey, data] = emailProcessor.queueEmail.mock.calls[0];
+    expect(recipientEmail).toBe('admin@example.com');
+    expect(templateKey).toBe('invoice_payment_check_action_recorded');
+    expect(data.invoice_number).toBe('INV-0005');
+    expect(data.action).toBe('paid_full');
+    expect(data.ip).toBe('203.0.113.7');
+  });
+
+  it('does not fail (or roll back) the ledger write when the admin notification fails to send', async () => {
+    pickChainFor('invoice_payment_check_tokens')._firstValue = {
+      id: 1, used_at: null,
+      expires_at: new Date(Date.now() + 86400000),
+    };
+    pickChainFor('invoices')._firstValue = {
+      id: 5, invoice_number: 'INV-0005', status: 'overdue',
+      total_amount_minor: 10000, paid_amount_minor: 0, late_fee_amount_minor: 0,
+      customer_account_id: 7, created_by_admin_id: 42,
+      currency: 'CHF', language: 'de', event_id: null,
+    };
+    pickChainFor('admin_users')._firstValue = { id: 42, email: 'admin@example.com', username: 'admin' };
+    pickChainFor('business_profile')._firstValue = null;
+    pickChainFor('customer_accounts')._firstValue = { id: 7, email: 'c@example.com', display_name: 'Test Customer' };
+    emailProcessor.queueEmail.mockRejectedValueOnce(new Error('smtp down'));
+
+    // The write itself (token consumption + markPaid) must still
+    // succeed — the notification is best-effort only.
+    const result = await invoiceService.recordPaymentCheckAction({
+      token: 'a'.repeat(64), action: 'paid_full', ip: '203.0.113.7',
+    });
+    expect(result).toEqual({ applied: 'paid_full' });
+
+    // Token was actually consumed (the real assertion that the write
+    // committed): the mock chain's .update() ran with used_at set.
+    const tokenChain = pickChainFor('invoice_payment_check_tokens');
+    expect(tokenChain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ used_at: expect.any(Date), used_action: 'paid_full' }),
+    );
+  });
 });
 
 describe('invoiceService.queuePaymentCheckEmail', () => {
@@ -370,5 +439,36 @@ describe('invoiceService.queuePaymentCheckEmail', () => {
     const res = await invoiceService.queuePaymentCheckEmail(1, { skipThrottle: true });
     expect(res.sent).toBe(true);
     expect(res.token).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  // GHSA-wg94-f86h-vq68 hardening: token TTL shortened from 30 days to 72h.
+  it('mints a token with a ~72h TTL, not the old 30-day window', async () => {
+    pickChainFor('invoices')._firstValue = {
+      id: 1, status: 'overdue',
+      customer_account_id: 5,
+      created_by_admin_id: 42,
+      total_amount_minor: 10000,
+      currency: 'CHF',
+      language: 'de',
+      reminder_level: 0,
+      due_date: '2026-05-01',
+      last_payment_check_at: null,
+      event_id: null,
+    };
+    pickChainFor('admin_users')._firstValue = { id: 42, email: 'admin@example.com', username: 'admin' };
+    pickChainFor('business_profile')._firstValue = null;
+    pickChainFor('customer_accounts')._firstValue = { id: 5, email: 'c@example.com', display_name: 'Test' };
+
+    const before = Date.now();
+    const res = await invoiceService.queuePaymentCheckEmail(1);
+    expect(res.sent).toBe(true);
+
+    const tokenChain = pickChainFor('invoice_payment_check_tokens');
+    const insertedRow = tokenChain.insert.mock.calls[0][0];
+    const ttlMs = new Date(insertedRow.expires_at).getTime() - before;
+    expect(ttlMs).toBeGreaterThan(71 * 60 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(72 * 60 * 60 * 1000 + 5000);
+    // Well under the old 30-day TTL — the actual regression guard.
+    expect(ttlMs).toBeLessThan(24 * 60 * 60 * 1000 * 30);
   });
 });
