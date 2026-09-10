@@ -50,7 +50,7 @@ const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 const { isTokenRevoked } = require('../utils/tokenRevocation');
-const { verifyGalleryAccess } = require('../middleware/gallery');
+const { verifyGalleryAccess, isAdminPreview } = require('../middleware/gallery');
 
 function makeRes() {
   const res = {};
@@ -146,6 +146,103 @@ describe('verifyGalleryAccess — revoked token', () => {
     );
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
+  });
+});
+
+// ---- revoked admin-preview token (?preview=<adminJWT>) ------------------
+//
+// isAdminPreview() decodes the ?preview= admin JWT independently of the
+// main gallery-token flow above, and previously never checked
+// isTokenRevoked — a revoked admin session kept granting preview access
+// via a bookmarked/shared preview link indefinitely. Same gap as
+// GHSA-q7f7-gjx8-mf6h, just in this sibling code path.
+
+describe('isAdminPreview — token revocation', () => {
+  it('returns false for a revoked admin token', async () => {
+    jwt.verify.mockReturnValue({ type: 'admin', id: 1 });
+    isTokenRevoked.mockResolvedValue(true);
+
+    const result = await isAdminPreview({ query: { preview: 'revoked-admin-jwt' } });
+
+    expect(result).toBe(false);
+    expect(isTokenRevoked).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'admin' }),
+    );
+  });
+
+  it('returns true for a valid, non-revoked admin token', async () => {
+    jwt.verify.mockReturnValue({ type: 'admin', id: 1 });
+    isTokenRevoked.mockResolvedValue(false);
+
+    const result = await isAdminPreview({ query: { preview: 'valid-admin-jwt' } });
+
+    expect(result).toBe(true);
+  });
+});
+
+describe('verifyGalleryAccess — revoked admin preview token', () => {
+  it('does not grant preview access; falls through to the normal flow and 401s', async () => {
+    getGalleryTokenFromRequest.mockReturnValue(undefined); // no gallery-scoped token
+    jwt.verify.mockReturnValue({ type: 'admin', id: 1 }); // decoded ?preview= token
+    isTokenRevoked.mockResolvedValue(true);
+
+    const eventsChain = {};
+    eventsChain.where = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.select = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.first = jest.fn().mockResolvedValue({
+      id: 42, slug: 'test-event', is_active: true, is_archived: false,
+      is_draft: false, require_password: true,
+    });
+    db.mockImplementationOnce(() => eventsChain);
+
+    const req = makeReq();
+    req.query = { preview: 'revoked-admin-jwt' };
+    const res = makeRes();
+    const next = jest.fn();
+    await verifyGalleryAccess(req, res, next);
+
+    expect(isTokenRevoked).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'admin' }),
+    );
+    // adminPreview resolved to false, so the code took the extra
+    // is_draft:false where() call it only skips for a real preview.
+    expect(eventsChain.where).toHaveBeenCalledTimes(2);
+    expect(eventsChain.where).toHaveBeenNthCalledWith(2, { is_draft: 0 });
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'No token provided' }),
+    );
+  });
+
+  it('a non-revoked admin preview token still works', async () => {
+    getGalleryTokenFromRequest.mockReturnValue(undefined);
+    jwt.verify.mockReturnValue({ type: 'admin', id: 1 });
+    isTokenRevoked.mockResolvedValue(false);
+
+    const eventsChain = {};
+    eventsChain.where = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.select = jest.fn().mockReturnValue(eventsChain);
+    eventsChain.first = jest.fn().mockResolvedValue({
+      id: 42, slug: 'test-event', is_active: true, is_archived: false,
+      is_draft: true, require_password: false,
+    });
+    db.mockImplementationOnce(() => eventsChain);
+
+    const req = makeReq();
+    req.query = { preview: 'valid-admin-jwt' };
+    const res = makeRes();
+    const next = jest.fn();
+    await verifyGalleryAccess(req, res, next);
+
+    expect(isTokenRevoked).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'admin' }),
+    );
+    // adminPreview resolved to true, so no is_draft filter was applied.
+    expect(eventsChain.where).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(req.event).toEqual(expect.objectContaining({ id: 42 }));
   });
 });
 
