@@ -109,7 +109,9 @@ const pdfLogoStorage = multer.diskStorage({
 
 const pdfLogoUpload = multer({
   storage: pdfLogoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  // CVE-2026-82333: single unnamed `logo` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 5 * 1024 * 1024, fieldArrayIndexLimit: 0 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/png', 'image/jpeg', 'image/svg+xml'];
     if (allowed.includes(file.mimetype)) cb(null, true);

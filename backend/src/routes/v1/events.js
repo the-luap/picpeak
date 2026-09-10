@@ -69,7 +69,9 @@ const photoStorage = multer.diskStorage({
 });
 const buildPhotoUpload = (maxFileSizeBytes) => multer({
   storage: photoStorage,
-  limits: { fileSize: maxFileSizeBytes },
+  // CVE-2026-82333: single unnamed `photo` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: maxFileSizeBytes, fieldArrayIndexLimit: 0 },
   fileFilter: (_req, file, cb) => {
     if (/^image\//.test(file.mimetype)) cb(null, true);
     else cb(new Error('Only image uploads are accepted on this endpoint'));
