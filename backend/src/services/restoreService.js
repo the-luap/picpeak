@@ -22,6 +22,85 @@ function pathEscapes(baseDir, candidate) {
   const rel = path.relative(path.resolve(baseDir), path.resolve(candidate));
   return !rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel);
 }
+
+// GHSA-xfvx: `manifest.database.backup_file` is just as attacker-influenceable
+// as the file-manifest entries `pathEscapes` guards above (hand-crafted or
+// tampered backup manifest) — an absolute path or a `..`-laden relative one
+// must not be allowed to point the SQLite/PG restore at an arbitrary file on
+// disk. Resolve the SAME operator-configured backup roots that
+// `adminRestore.js`'s `checkRestorePathsAllowed` (GHSA-fw4c) enforces for the
+// top-level `source`/`manifestPath` request fields, plus the already-trusted
+// `backupPath` this restore run resolved to (always included, so this never
+// fails open even when no backup_destination_path/backup_manifest_path is
+// configured yet).
+async function getConfiguredBackupRoots(trustedRoot) {
+  const roots = [];
+  if (trustedRoot) roots.push(trustedRoot);
+  try {
+    const rows = await db('app_settings')
+      .whereIn('setting_key', ['backup_destination_path', 'backup_manifest_path'])
+      .select('setting_value');
+    for (const row of rows) {
+      let value;
+      try { value = JSON.parse(row.setting_value); } catch (_) { value = row.setting_value; }
+      if (value) roots.push(value);
+    }
+  } catch (_) {
+    // best effort — fall through to whatever roots we already have
+  }
+  for (const extra of (process.env.RESTORE_ALLOWED_ROOTS || '').split(':')) {
+    if (extra.trim()) roots.push(extra.trim());
+  }
+  return roots.map((r) => path.resolve(r));
+}
+
+function isContainedInRoots(candidate, resolvedRoots) {
+  const resolved = path.resolve(candidate);
+  return resolvedRoots.some(
+    (root) => resolved === root || resolved.startsWith(root + path.sep)
+  );
+}
+
+// sqlite3's `.restore`/`.backup` are dot-commands parsed by sqlite3's OWN
+// tokenizer, not the shell — spawn()'s argv separation (shell: false) does
+// NOT protect against a single quote embedded in the path breaking out of
+// the `.restore '<path>'` argument, since the whole `.restore '<path>'`
+// string is one argv element that sqlite3 re-parses itself. sqlite3 offers
+// no parameterized dot-command form, so constrain the path to a
+// conservative safe charset before it is ever interpolated (GHSA-xfvx).
+const SAFE_SQLITE_PATH_RE = /^[A-Za-z0-9._/-]+$/;
+function assertSafeSqlitePath(p) {
+  if (typeof p !== 'string' || !SAFE_SQLITE_PATH_RE.test(p)) {
+    throw new Error(`Refusing to run sqlite3 against an unsafe path: ${p}`);
+  }
+}
+
+// GHSA-xfvx: the layered candidate resolution for `manifest.database.backup_file`
+// (see performDatabaseRestore), factored out so the containment rule can be
+// pinned directly in tests without exercising the surrounding DB-swap/spawn
+// side effects. `warn` is an optional `(msg, meta) => void` logger hook.
+async function resolveContainedDbBackupCandidates(backupPath, dbBackupFile, warn) {
+  const allowedRoots = await getConfiguredBackupRoots(backupPath);
+  const rawCandidates = [
+    // (1) Honour absolute paths recorded by the dumper.
+    path.isAbsolute(dbBackupFile) ? dbBackupFile : null,
+    // (2) Relative-to-backupPath as-stored (no basename munging).
+    path.join(backupPath, dbBackupFile),
+    // (3) Legacy reconstruct. Inherently safe: path.basename() strips any
+    // directory component, so this candidate can never escape backupPath.
+    path.join(backupPath, 'database', path.basename(dbBackupFile)),
+  ].filter(Boolean);
+
+  return rawCandidates.filter((candidate) => {
+    const contained = isContainedInRoots(candidate, allowedRoots);
+    if (!contained && warn) {
+      warn('Refusing database backup candidate outside configured backup roots', {
+        candidate, dbBackupFile,
+      });
+    }
+    return contained;
+  });
+}
 const { formatBytes } = require('../utils/formatBytes');
 const os = require('os');
 
@@ -892,14 +971,26 @@ class RestoreService {
     // `Database backup file not found: local/database/...sql.gz`
     // even though the file existed at exactly the path the manifest
     // recorded.
-    const candidates = [
-      // (1) Honour absolute paths recorded by the dumper.
-      path.isAbsolute(dbBackupFile) ? dbBackupFile : null,
-      // (2) Relative-to-backupPath as-stored (no basename munging).
-      path.join(backupPath, dbBackupFile),
-      // (3) Legacy reconstruct.
-      path.join(backupPath, 'database', path.basename(dbBackupFile)),
-    ].filter(Boolean);
+    // GHSA-xfvx: `dbBackupFile` comes straight out of the manifest, which is
+    // attacker-influenceable (hand-crafted or tampered backup). Neither
+    // candidate (1) nor (2) below used to be checked for containment, so a
+    // manifest could point `.restore` at an arbitrary file anywhere on disk
+    // (absolute path, or `../../` traversal through the path.join). Resolve
+    // each candidate and drop any that escape the configured backup roots
+    // BEFORE it's ever fs.access'd/candidate-listed. Candidate (3) is
+    // inherently safe (path.basename() strips any directory component) and
+    // is always inside `backupPath`, which is itself always one of the
+    // allowed roots below.
+    const candidates = await resolveContainedDbBackupCandidates(
+      backupPath, dbBackupFile, (msg, meta) => this.log('warn', msg, meta)
+    );
+
+    if (candidates.length === 0) {
+      throw new Error(
+        'Database backup file path is not inside a configured backup location. ' +
+        `Manifest recorded path: ${dbBackupFile}.`
+      );
+    }
 
     let dbBackupPath = null;
     for (const candidate of candidates) {
@@ -969,7 +1060,12 @@ class RestoreService {
         await fs.copyFile(dbPath, currentBackup);
         
         try {
-          // Restore from backup
+          // Restore from backup. `restoreFile` is contained-checked above,
+          // but the FILENAME component still comes from the manifest — a
+          // quote in it would break out of the `.restore '<path>'` dot-
+          // command sqlite3 parses (GHSA-xfvx). Charset-validate right
+          // before use as the final gate.
+          assertSafeSqlitePath(restoreFile);
           await spawnAsync('sqlite3', [dbPath, `.restore '${restoreFile}'`]);
 
           // Verify integrity
@@ -1466,6 +1562,10 @@ END $$;`
 
         if (this.dbType === 'sqlite') {
           const dbPath = knexConfig.connection.filename;
+          // Defense in depth: same dot-command injection surface as the
+          // main restore path (GHSA-xfvx), even though this path is
+          // internally generated rather than manifest-controlled.
+          assertSafeSqlitePath(decompressedPath);
           await spawnAsync('sqlite3', [dbPath, `.restore '${decompressedPath}'`]);
         } else {
           const { host, port, user, password, database } = knexConfig.connection;
@@ -1736,5 +1836,14 @@ const restoreService = new RestoreService();
 
 module.exports = {
   restoreService,
-  RestoreService // Export class for testing
+  RestoreService, // Export class for testing
+  // Exposed for tests: the manifest `database.backup_file` containment +
+  // sqlite dot-command charset rules (GHSA-xfvx) are worth pinning directly.
+  _internal: {
+    getConfiguredBackupRoots,
+    isContainedInRoots,
+    assertSafeSqlitePath,
+    pathEscapes,
+    resolveContainedDbBackupCandidates,
+  },
 };

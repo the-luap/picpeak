@@ -810,24 +810,72 @@ async function checkRestorePathsAllowed({ source, manifestPath }) {
     if (extra.trim()) roots.push(extra.trim());
   }
   if (roots.length === 0) {
-    // Nothing configured to compare against — a restore can't be scoped, so
-    // don't pretend to enforce. Discovery would find nothing either.
-    return null;
+    // GHSA-xfvx: nothing configured to compare against used to mean "a
+    // restore can't be scoped, so don't pretend to enforce" — returning
+    // null (allow). That's fail-OPEN: on a fresh install (or one where an
+    // operator never set backup_destination_path/backup_manifest_path) any
+    // authenticated `backup.restore` caller could point source/manifestPath
+    // — and, via the manifest, database.backup_file — at literally any path
+    // on disk. Require configuration instead of silently allowing
+    // everything; the normal restore wizard already needs one of these
+    // settings populated to discover backups in the first place.
+    logger.warn('Refusing restore: no backup location configured to scope it to', { candidates });
+    return 'No backup location is configured (backup_destination_path / backup_manifest_path). ' +
+      'Configure one before restoring.';
   }
 
   const resolvedRoots = roots.map((r) => path.resolve(r));
-  for (const candidate of candidates) {
+  const isInsideRoots = (candidate) => {
     const resolved = path.resolve(candidate);
-    const inside = resolvedRoots.some(
+    return resolvedRoots.some(
       (root) => resolved === root || resolved.startsWith(root + path.sep)
     );
-    if (!inside) {
+  };
+
+  for (const candidate of candidates) {
+    if (!isInsideRoots(candidate)) {
       logger.warn('Refusing restore path outside the configured backup roots', {
         candidate, roots,
       });
       return 'Backup source and manifest path must be inside a configured backup location';
     }
   }
+
+  // GHSA-xfvx: source/manifestPath containment alone isn't enough — the
+  // manifest FILE (which just passed containment above) can itself carry a
+  // `database.backup_file` field that restoreService's candidate resolution
+  // used to hand straight to `sqlite3 .restore` with no containment check at
+  // all. Peek at the manifest here (it's already proven to live inside an
+  // allowed root) and reject an ABSOLUTE backup_file that escapes the same
+  // roots — the case that's unambiguous to check without re-deriving
+  // restoreService's own `backupPath` resolution for the relative-path
+  // candidates. This is deliberately defense in depth, not the only gate:
+  // restoreService.performDatabaseRestore independently re-derives and
+  // enforces containment (including relative/`..` candidates) against
+  // `backupPath` right before ever using the resolved path, and remains the
+  // authoritative check for S3-sourced manifests (downloaded after this
+  // pre-check runs).
+  if (manifestPath && !isS3(manifestPath) && !isTypeToken(manifestPath)) {
+    try {
+      const raw = await fs.readFile(manifestPath, 'utf8');
+      const trimmed = raw.trimStart();
+      const parsed = (trimmed.startsWith('{') || trimmed.startsWith('['))
+        ? JSON.parse(raw)
+        : null; // non-JSON (e.g. YAML) manifests are re-checked inside restoreService
+      const dbBackupFile = parsed?.database?.backup_file;
+      if (typeof dbBackupFile === 'string' && path.isAbsolute(dbBackupFile) && !isInsideRoots(dbBackupFile)) {
+        logger.warn('Refusing restore: manifest database.backup_file escapes configured backup roots', {
+          manifestPath, backupFile: dbBackupFile,
+        });
+        return 'Manifest database.backup_file must be inside a configured backup location';
+      }
+    } catch (_) {
+      // Unreadable/corrupt/non-JSON manifest: let the normal restore flow
+      // surface the real error (loadAndValidateManifest) instead of failing
+      // this pre-check for an unrelated reason.
+    }
+  }
+
   return null;
 }
 
