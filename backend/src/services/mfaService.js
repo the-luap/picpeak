@@ -133,6 +133,40 @@ function verifyTotpEncryptedStep(code, storedSecret, lastUsedStep) {
   }
 }
 
+/**
+ * Persist a newly-matched TOTP step, but only if it still advances
+ * `two_factor_last_used_step` at write time (`db('admin_users').where('id',
+ * adminId).whereNull(...).orWhere(...).update(...)`).
+ *
+ * matchTotpStep()'s "does this advance past lastUsedStep" check is read
+ * against a snapshot taken earlier in the request. Two concurrent requests
+ * carrying the same captured code can both read the same lastUsedStep and
+ * both pass that check before either write lands — a plain, unconditional
+ * UPDATE would let both persist, defeating replay protection. Guarding the
+ * UPDATE with the same condition and checking the affected-row count makes
+ * only the first writer succeed; a losing concurrent request gets 0 affected
+ * rows and must be treated as a replay by the caller.
+ *
+ * @param {object} db - knex instance
+ * @param {number} adminId
+ * @param {number} totpStep - matched step from verifyTotpEncryptedStep()
+ * @param {object} [extraFields] - additional columns to set in the same UPDATE
+ * @returns {Promise<boolean>} true if this call won the race and persisted
+ */
+async function persistTotpStep(db, adminId, totpStep, extraFields = {}) {
+  const affected = await db('admin_users')
+    .where('id', adminId)
+    .where(function () {
+      this.whereNull('two_factor_last_used_step')
+        .orWhere('two_factor_last_used_step', '<', totpStep);
+    })
+    .update({
+      two_factor_last_used_step: totpStep,
+      ...extraFields
+    });
+  return affected > 0;
+}
+
 /** otpauth:// URI for an authenticator app. */
 function buildOtpauthUri(accountName, plainSecret) {
   return authenticator.keyuri(accountName, ISSUER, plainSecret);
@@ -220,6 +254,7 @@ module.exports = {
   verifyTotp,
   verifyTotpEncrypted,
   verifyTotpEncryptedStep,
+  persistTotpStep,
   buildOtpauthUri,
   buildQrDataUrl,
   generateRecoveryCodes,

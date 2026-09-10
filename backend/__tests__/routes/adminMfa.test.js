@@ -38,6 +38,7 @@ const { authenticator } = require('otplib');
 const {
   bootCrmDb, mintAdminToken, buildRouteApp,
 } = require('../integration/helpers/crmDb');
+const mfaService = require('../../src/services/mfaService');
 
 jest.setTimeout(120000);
 
@@ -235,6 +236,138 @@ describe('MFA disable — /api/admin/auth/mfa/disable', () => {
     expect(row.two_factor_secret).toBeNull();
     expect(row.two_factor_recovery_codes).toBeNull();
   });
+
+  // Concurrency regression: a plain UPDATE with no conditional guard let two
+  // requests carrying the same captured code both read the same
+  // two_factor_last_used_step and both persist, defeating replay protection.
+  // The guarded UPDATE (mfaService.persistTotpStep) makes only the first
+  // writer's affected-row count > 0; the loser must be rejected.
+  it('two concurrent disable requests with the SAME captured code: only one succeeds', async () => {
+    const admin = await seedAdmin();
+    const { secret, token } = await enroll(admin.id);
+    const code = authenticator.generate(secret);
+
+    const [r1, r2] = await Promise.all([
+      request(adminApp)
+        .post('/api/admin/auth/mfa/disable')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ code }),
+      request(adminApp)
+        .post('/api/admin/auth/mfa/disable')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ code }),
+    ]);
+
+    expect([r1.status, r2.status].sort()).toEqual([200, 400]);
+
+    const status = await request(adminApp)
+      .get('/api/admin/auth/mfa/status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(status.body.enabled).toBe(false);
+  });
+});
+
+describe('MFA regenerate recovery codes — /api/admin/auth/mfa/recovery-codes', () => {
+  it('a valid TOTP regenerates the recovery codes and persists the step', async () => {
+    const admin = await seedAdmin();
+    const { secret, token } = await enroll(admin.id);
+
+    const res = await request(adminApp)
+      .post('/api/admin/auth/mfa/recovery-codes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: authenticator.generate(secret) });
+
+    expect(res.status).toBe(200);
+    expect(res.body.recoveryCodes).toHaveLength(10);
+  });
+
+  it('a wrong code is rejected (400)', async () => {
+    const admin = await seedAdmin();
+    const { secret, token } = await enroll(admin.id);
+    const valid = authenticator.generate(secret);
+    const wrong = valid === '000000' ? '111111' : '000000';
+
+    const res = await request(adminApp)
+      .post('/api/admin/auth/mfa/recovery-codes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: wrong });
+    expect(res.status).toBe(400);
+  });
+
+  // Concurrency regression (see the disable test above for the mechanism):
+  // this is the endpoint called out as the worst lost-update case, since it
+  // both rotates the recovery codes and (previously) persisted the step in
+  // one unconditional UPDATE.
+  it('two concurrent regenerations with the SAME captured code: only one succeeds', async () => {
+    const admin = await seedAdmin();
+    const { secret, token } = await enroll(admin.id);
+    const code = authenticator.generate(secret);
+
+    const [r1, r2] = await Promise.all([
+      request(adminApp)
+        .post('/api/admin/auth/mfa/recovery-codes')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ code }),
+      request(adminApp)
+        .post('/api/admin/auth/mfa/recovery-codes')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ code }),
+    ]);
+
+    expect([r1.status, r2.status].sort()).toEqual([200, 400]);
+    const winner = r1.status === 200 ? r1 : r2;
+    expect(winner.body.recoveryCodes).toHaveLength(10);
+
+    const row = await db('admin_users').where({ id: admin.id }).first();
+    expect(row.two_factor_last_used_step).not.toBeNull();
+  });
+});
+
+describe('mfaService.persistTotpStep — atomic replay-tracking persist', () => {
+  // Deterministic simulation of the race: two "concurrent" requests that
+  // read the SAME two_factor_last_used_step and computed the SAME totpStep
+  // from the same captured code. Calling persistTotpStep twice in a row with
+  // that identical totpStep reproduces exactly the DB-level outcome of a
+  // true race, without relying on event-loop timing.
+  it('the second writer with the same totpStep affects 0 rows and is rejected', async () => {
+    const admin = await seedAdmin();
+    const { secret } = await enroll(admin.id);
+    const row = await db('admin_users').where({ id: admin.id }).first();
+    const code = authenticator.generate(secret);
+    const totpStep = mfaService.verifyTotpEncryptedStep(code, row.two_factor_secret, null);
+    expect(totpStep).toEqual(expect.any(Number));
+
+    const first = await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+    expect(first).toBe(true);
+
+    // The row's two_factor_last_used_step has now already advanced to
+    // totpStep by the time this "losing" write runs — the guard condition
+    // (whereNull OR < totpStep) is false, so 0 rows are affected.
+    const second = await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+    expect(second).toBe(false);
+
+    const after = await db('admin_users').where({ id: admin.id }).first();
+    expect(Number(after.two_factor_last_used_step)).toBe(totpStep);
+  });
+
+  it('succeeds when the new step advances past the current one', async () => {
+    const admin = await seedAdmin();
+    const { secret } = await enroll(admin.id);
+    const row = await db('admin_users').where({ id: admin.id }).first();
+    const code = authenticator.generate(secret);
+    const totpStep = mfaService.verifyTotpEncryptedStep(code, row.two_factor_secret, null);
+
+    const ok = await mfaService.persistTotpStep(db, admin.id, totpStep, {});
+    expect(ok).toBe(true);
+
+    const nextStepAuthenticator = authenticator.clone({ epoch: Date.now() + 30000 });
+    const nextCode = nextStepAuthenticator.generate(secret);
+    const nextStep = mfaService.verifyTotpEncryptedStep(nextCode, row.two_factor_secret, totpStep);
+    expect(nextStep).toBeGreaterThan(totpStep);
+
+    const advanced = await mfaService.persistTotpStep(db, admin.id, nextStep, {});
+    expect(advanced).toBe(true);
+  });
 });
 
 describe('Admin login challenge — /api/auth/admin/login[/mfa]', () => {
@@ -330,6 +463,38 @@ describe('Admin login challenge — /api/auth/admin/login[/mfa]', () => {
     expect(third.status).toBe(200);
     expect(third.body.user).toBeDefined();
     expect(third.body.user.id).toBe(admin.id);
+  });
+
+  // Concurrency regression: verifyTotpEncryptedStep()'s "does this advance"
+  // check was read against a snapshot taken earlier in the request, then a
+  // PLAIN update persisted the step — two concurrent requests carrying the
+  // SAME captured code could both pass the check and both complete a login
+  // before either write landed. The persist is now a conditional UPDATE
+  // (mfaService.persistTotpStep), so only the first writer's affected-row
+  // count is > 0 and the other is correctly treated as a replay.
+  it('two concurrent login/mfa requests with the SAME captured code: only one completes', async () => {
+    const admin = await seedAdmin();
+    const { secret } = await enroll(admin.id);
+    const code = authenticator.generate(secret);
+
+    const c1 = await request(authApp)
+      .post('/api/auth/admin/login')
+      .send({ username: admin.username, password: admin.password });
+    const c2 = await request(authApp)
+      .post('/api/auth/admin/login')
+      .send({ username: admin.username, password: admin.password });
+
+    const [r1, r2] = await Promise.all([
+      request(authApp).post('/api/auth/admin/login/mfa').send({ mfaToken: c1.body.mfaToken, code }),
+      request(authApp).post('/api/auth/admin/login/mfa').send({ mfaToken: c2.body.mfaToken, code }),
+    ]);
+
+    expect([r1.status, r2.status].sort()).toEqual([200, 401]);
+    const winner = r1.status === 200 ? r1 : r2;
+    const loser = r1.status === 200 ? r2 : r1;
+    expect(winner.body.user).toBeDefined();
+    expect(loser.body.user).toBeUndefined();
+    expect(loser.body.code).toBe('MFA_INVALID');
   });
 
   it('login/mfa with a wrong code is 401 MFA_INVALID', async () => {

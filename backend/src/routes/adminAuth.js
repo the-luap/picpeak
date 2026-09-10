@@ -309,10 +309,17 @@ router.post('/mfa/disable', [
     throw new ValidationError('Two-factor authentication is not enabled');
   }
 
+  // Persist the matched step atomically right here (see mfaService.persistTotpStep):
+  // two concurrent requests carrying the same captured code can't both read the
+  // same last-used step and both win — only the first writer's UPDATE affects a
+  // row, so a losing concurrent request is correctly treated as invalid below.
   const totpStep = mfaService.verifyTotpEncryptedStep(
     req.body.code, admin.two_factor_secret, admin.two_factor_last_used_step
   );
-  const totpOk = totpStep !== null;
+  let totpOk = false;
+  if (totpStep !== null) {
+    totpOk = await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+  }
   let recoveryOk = false;
   if (!totpOk) {
     const stored = mfaService.parseRecoveryCodes(admin.two_factor_recovery_codes);
@@ -352,17 +359,22 @@ router.post('/mfa/recovery-codes', [
   if (!isMfaEnabled(admin)) {
     throw new ValidationError('Two-factor authentication is not enabled');
   }
+  // Persist the matched step atomically right here (see mfaService.persistTotpStep):
+  // two concurrent requests carrying the same captured code can't both read the
+  // same last-used step and both win — only the first writer's UPDATE affects a
+  // row, so a losing concurrent request is correctly treated as invalid below.
   const totpStep = mfaService.verifyTotpEncryptedStep(
     req.body.code, admin.two_factor_secret, admin.two_factor_last_used_step
   );
-  if (totpStep === null) {
+  const totpOk = totpStep !== null
+    && await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+  if (!totpOk) {
     throw new ValidationError('Invalid verification code');
   }
 
   const { plain, hashed } = await mfaService.generateRecoveryCodes();
   await db('admin_users').where('id', admin.id).update({
     two_factor_recovery_codes: JSON.stringify(hashed),
-    two_factor_last_used_step: totpStep,
     updated_at: new Date()
   });
 
