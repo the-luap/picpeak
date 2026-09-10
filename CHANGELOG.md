@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.3-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.2-beta.0...v3.131.3-beta.0) (2026-09-10)
+
+
+### Bug Fixes
+
+* **video:** try metadata extraction and thumbnail generation independently ([#1371](https://github.com/PicPeak/picpeak/issues/1371)) ([a2bf1f6](https://github.com/PicPeak/picpeak/commit/a2bf1f644c78734fc9a86a24d441b7a70bdb38fb))
+
 ## [3.131.2-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.1-beta.0...v3.131.2-beta.0) (2026-09-09)
 
 
