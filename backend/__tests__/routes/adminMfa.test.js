@@ -284,6 +284,54 @@ describe('Admin login challenge — /api/auth/admin/login[/mfa]', () => {
     expect(res.body.user.id).toBe(admin.id);
   });
 
+  // GHSA-qcwx-r25m-j869: verifyTotp() was stateless, so otplib's window:1
+  // tolerance let the same 6-digit code complete two independent logins
+  // within its ~90s validity window. mfaService now tracks each admin's
+  // last-consumed TOTP step and rejects a code that doesn't advance past it.
+  it('#GHSA-qcwx-r25m-j869 — a TOTP code cannot be replayed into a second login', async () => {
+    const admin = await seedAdmin();
+    const { secret } = await enroll(admin.id);
+    const code = authenticator.generate(secret);
+
+    // First use of the code completes a login.
+    const c1 = await request(authApp)
+      .post('/api/auth/admin/login')
+      .send({ username: admin.username, password: admin.password });
+    const first = await request(authApp)
+      .post('/api/auth/admin/login/mfa')
+      .send({ mfaToken: c1.body.mfaToken, code });
+    expect(first.status).toBe(200);
+    expect(first.body.user).toBeDefined();
+
+    // Replaying the SAME code for an independent second login must fail,
+    // even though otplib's window:1 tolerance still considers it valid.
+    const c2 = await request(authApp)
+      .post('/api/auth/admin/login')
+      .send({ username: admin.username, password: admin.password });
+    const replay = await request(authApp)
+      .post('/api/auth/admin/login/mfa')
+      .send({ mfaToken: c2.body.mfaToken, code });
+    expect(replay.status).toBe(401);
+    expect(replay.body.code).toBe('MFA_INVALID');
+    expect(replay.body.user).toBeUndefined();
+
+    // A freshly generated code for the NEXT TOTP step is not a replay and
+    // succeeds. Generated via a cloned authenticator with a future epoch
+    // rather than mocking Date.now(), so mfaService's own step computation
+    // (real Date.now()) still lands the match one step ahead.
+    const nextStepAuthenticator = authenticator.clone({ epoch: Date.now() + 30000 });
+    const nextCode = nextStepAuthenticator.generate(secret);
+    const c3 = await request(authApp)
+      .post('/api/auth/admin/login')
+      .send({ username: admin.username, password: admin.password });
+    const third = await request(authApp)
+      .post('/api/auth/admin/login/mfa')
+      .send({ mfaToken: c3.body.mfaToken, code: nextCode });
+    expect(third.status).toBe(200);
+    expect(third.body.user).toBeDefined();
+    expect(third.body.user.id).toBe(admin.id);
+  });
+
   it('login/mfa with a wrong code is 401 MFA_INVALID', async () => {
     const admin = await seedAdmin();
     const { secret } = await enroll(admin.id);

@@ -3,7 +3,11 @@
  *
  * Responsibilities:
  *   - generate/verify TOTP secrets (otplib, standard SHA1/6-digit/30s so
- *     Google Authenticator / Authy / 1Password all work);
+ *     Google Authenticator / Authy / 1Password all work), with replay
+ *     protection: verifyTotpEncryptedStep() rejects a code whose matched
+ *     time-step doesn't advance past the admin's last consumed one
+ *     (GHSA-qcwx-r25m-j869 — otplib's window:1 tolerance alone lets a
+ *     captured code stay valid across several time-steps, ~90s);
  *   - encrypt the secret at rest (AES-256-GCM) so a DB leak alone doesn't
  *     yield working authenticator seeds;
  *   - generate/verify one-time recovery codes, hashed (bcrypt) and single-use;
@@ -67,22 +71,65 @@ function decryptSecret(stored) {
   return pt.toString('utf8');
 }
 
-/** Verify a 6-digit TOTP code against the (plaintext) secret. */
-function verifyTotp(code, plainSecret) {
-  if (!code || !plainSecret) return false;
+/** Absolute TOTP time-step for "now" (Math.floor(Date.now() / 30000)). */
+function currentTotpStep() {
+  return Math.floor(Date.now() / 30000);
+}
+
+/**
+ * Core TOTP check. Returns the matched absolute time-step (always a
+ * positive, truthy integer) when `code` is valid for `plainSecret`;
+ * otherwise `null`.
+ *
+ * When `lastUsedStep` is given, a code whose matched step doesn't advance
+ * past it is treated as invalid — replay protection. Without this, otplib's
+ * window:1 tolerance lets a captured code stay valid across several real
+ * time-steps (~90s), so the same code could complete two independent admin
+ * logins (GHSA-qcwx-r25m-j869).
+ */
+function matchTotpStep(code, plainSecret, lastUsedStep) {
+  if (!code || !plainSecret) return null;
   try {
-    return authenticator.verify({ token: String(code).replace(/\s+/g, ''), secret: plainSecret });
+    const token = String(code).replace(/\s+/g, '');
+    const delta = authenticator.checkDelta(token, plainSecret);
+    if (typeof delta !== 'number') return null;
+    const step = currentTotpStep() + delta;
+    if (typeof lastUsedStep === 'number' && step <= lastUsedStep) return null;
+    return step;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify a 6-digit TOTP code against the (plaintext) secret. Pass
+ * `lastUsedStep` (the admin's previously-consumed step) to also enforce
+ * replay protection — see matchTotpStep().
+ */
+function verifyTotp(code, plainSecret, lastUsedStep) {
+  return matchTotpStep(code, plainSecret, lastUsedStep) !== null;
+}
+
+/** Verify a code against a STORED (encrypted) secret. */
+function verifyTotpEncrypted(code, storedSecret, lastUsedStep) {
+  try {
+    return verifyTotp(code, decryptSecret(storedSecret), lastUsedStep);
   } catch {
     return false;
   }
 }
 
-/** Verify a code against a STORED (encrypted) secret. */
-function verifyTotpEncrypted(code, storedSecret) {
+/**
+ * Like verifyTotpEncrypted(), but returns the matched step (or `null` when
+ * the code is invalid/replayed) instead of a boolean, so a caller that
+ * grants a session or a sensitive action can persist it as the admin's new
+ * `two_factor_last_used_step`.
+ */
+function verifyTotpEncryptedStep(code, storedSecret, lastUsedStep) {
   try {
-    return verifyTotp(code, decryptSecret(storedSecret));
+    return matchTotpStep(code, decryptSecret(storedSecret), lastUsedStep);
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -169,8 +216,10 @@ module.exports = {
   generateSecret,
   encryptSecret,
   decryptSecret,
+  currentTotpStep,
   verifyTotp,
   verifyTotpEncrypted,
+  verifyTotpEncryptedStep,
   buildOtpauthUri,
   buildQrDataUrl,
   generateRecoveryCodes,
