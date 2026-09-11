@@ -66,8 +66,12 @@ const signedPdfStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const contractId = Number(req.params.id);
+    if (!Number.isInteger(contractId) || contractId <= 0) {
+      return cb(new Error('Invalid contract id'));
+    }
     const ext = path.extname(file.originalname) || '.pdf';
-    cb(null, `contract-${req.params.id}-${Date.now()}${ext}`);
+    cb(null, `contract-${contractId}-${Date.now()}${ext}`);
   },
 });
 
