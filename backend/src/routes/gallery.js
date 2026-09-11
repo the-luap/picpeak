@@ -186,7 +186,11 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
 
   const event = await db('events')
     .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
-    .select('id', 'share_link', 'share_token', 'is_draft')
+    // created_by is the ownership input for verifyAdminPreview (#1411).
+    // Omitting it made every draft look ownerless here, so a non-owning admin
+    // holding events.view/photos.view validated another photographer's share
+    // link while /resolve and /info correctly refused them.
+    .select('id', 'share_link', 'share_token', 'is_draft', 'created_by')
     .first();
 
   if (!event) {

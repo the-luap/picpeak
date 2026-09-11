@@ -90,8 +90,11 @@ export const galleryService = {
     if (!isIOS()) {
       this.triggerDirectDownload(
         // Native anchor download: bypasses the axios interceptor, so a draft
-        // preview needs the flag on the URL itself (#1386).
-        withAdminPreview(api.getUri({ url: `/gallery/${slug}/download/${photoId}` })),
+        // preview needs the flag on the URL itself (#1386). Applied to the
+        // relative path BEFORE getUri: with an absolute VITE_API_URL getUri
+        // returns an absolute URL, and withAdminPreview refuses those by
+        // design, which would silently drop the flag.
+        api.getUri({ url: withAdminPreview(`/gallery/${slug}/download/${photoId}`) }),
         filename,
       );
       return;

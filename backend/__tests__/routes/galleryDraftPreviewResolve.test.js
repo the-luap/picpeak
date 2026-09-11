@@ -182,6 +182,17 @@ describe('draft preview through the short share URL (#1386)', () => {
       expect(res.status).toBe(404);
     });
 
+    it('404s a non-owning admin on verify-token too (#1411)', async () => {
+      // This route selected its own columns and omitted created_by, so the
+      // ownership check saw an ownerless event and waved the caller through
+      // while /resolve and /info refused them.
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/verify-token/${DRAFT_TOKEN}?admin_preview=1`),
+        foreignId,
+      );
+      expect(res.status).toBe(404);
+    });
+
     it('404s an admin who does not own the event (#1411)', async () => {
       // Was 200: a valid signature was the whole check, so any admin previewed
       // any draft, including another photographer's. Now ownership applies —
