@@ -29,6 +29,7 @@ const {
 } = require('../../services/downloadFilenameService');
 const { buildContentDisposition } = require('../../utils/filenameSanitizer');
 const { getStorage } = require('../../services/storage');
+const { createArchiveStreamGuard } = require('../../utils/archiveStreamGuard');
 const fs = require('fs');
 function parseByteRange(header, size) {
   if (!header || typeof header !== 'string' || !size) return null;
@@ -401,6 +402,8 @@ async function bumpEventDownloadCounts(eventId) {
 }
 
 router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, blockHiddenGallery, async (req, res) => {
+  // Hoisted so the catch can reclaim reads opened before the failure.
+  let guard = null;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -497,6 +500,17 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, block
       throw err;
     });
 
+    // Reclaim storage reads on every exit (#1399 follow-up). A guest closing
+    // the tab mid-download used to leave every appended-but-undrained read
+    // parked on its socket for the life of the process.
+    guard = createArchiveStreamGuard();
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        guard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Get watermark settings - apply if global setting OR event-level setting is enabled
@@ -562,8 +576,9 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, block
         if (rendered) {
           archive.append(rendered, { name: archiveName });
         } else if (storageKey) {
+          if (!await guard.acquire()) break;
           const stream = await storage.get(storageKey);
-          archive.append(stream, { name: archiveName });
+          archive.append(guard.track(stream), { name: archiveName });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name: archiveName });
         }
@@ -605,12 +620,15 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, block
       }
     }
   } catch (error) {
+    if (guard) guard.destroyAll();
     errorResponse(res, error, 500, 'Failed to create download archive');
   }
 });
 
 // Download selected photos as ZIP
 router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken, blockHiddenGallery, async (req, res) => {
+  // Hoisted so the catch can reclaim reads opened before the failure.
+  let selectedGuard = null;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -679,6 +697,17 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         // ignore double-send errors
       }
     });
+
+    // Same reclaim contract as download-all above (#1399 follow-up).
+    selectedGuard = createArchiveStreamGuard();
+    archive.on('error', () => selectedGuard.destroyAll());
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        selectedGuard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Check watermark settings - apply if global setting OR event-level setting is enabled
@@ -723,8 +752,9 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         if (rendered) {
           archive.append(rendered, { name });
         } else if (storageKey) {
+          if (!await selectedGuard.acquire()) break;
           const stream = await selectedStorage.get(storageKey);
-          archive.append(stream, { name });
+          archive.append(selectedGuard.track(stream), { name });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name });
         }
@@ -763,6 +793,7 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
       }
     }
   } catch (error) {
+    if (selectedGuard) selectedGuard.destroyAll();
     errorResponse(res, error, 500, 'Failed to download selected photos');
   }
 });

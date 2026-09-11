@@ -28,6 +28,7 @@ const crypto = require('crypto');
 const archiver = require('archiver');
 const { db } = require('../database/db');
 const { getStorage } = require('./storage');
+const { createArchiveStreamGuard } = require('../utils/archiveStreamGuard');
 const { getUseOriginalFilenames, getZipEntryNames } = require('./downloadFilenameService');
 const { renderPhotoForDownload, resolveWatermarkSettings } = require('./downloadRendition');
 const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
@@ -297,8 +298,13 @@ class DownloadJobService {
         const output = fs.createWriteStream(tmpPath);
         // level 0 — photos are already compressed, so deflate only burns CPU.
         const archive = archiver('zip', { zlib: { level: 0 } });
+        // Bound and reclaim the storage reads (#1399 follow-up). The per-photo
+        // catch below deliberately skips a bad source, but it never destroyed
+        // the stream it had already opened, so every skipped photo leaked a
+        // socket for the life of the process.
+        const guard = createArchiveStreamGuard();
         output.on('close', resolve);
-        archive.on('error', reject);
+        archive.on('error', (err) => { guard.destroyAll(); reject(err); });
         archive.pipe(output);
 
         (async () => {
@@ -312,7 +318,8 @@ class DownloadJobService {
               } else {
                 const key = resolvePhotoStorageKey(event, photo);
                 if (key) {
-                  archive.append(await storage.get(key), { name });
+                  if (!await guard.acquire()) break;
+                  archive.append(guard.track(await storage.get(key)), { name });
                 } else {
                   archive.file(resolvePhotoFilePath(event, photo), { name });
                 }
@@ -331,7 +338,7 @@ class DownloadJobService {
             }
           }
           archive.finalize();
-        })().catch(reject);
+        })().catch((err) => { guard.destroyAll(); reject(err); });
       });
 
       if (appended === 0) {
