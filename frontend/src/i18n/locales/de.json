@@ -1770,7 +1770,9 @@
     "folderPhotoCount_one": "{{count}} Foto",
     "folderPhotoCount_other": "{{count}} Fotos",
     "preparingProgress_one": "{{count}} Foto verpackt",
-    "preparingProgress_other": "{{count}} Fotos verpackt"
+    "preparingProgress_other": "{{count}} Fotos verpackt",
+    "videoFormatUnsupported": "Dieses Videoformat kann in diesem Browser nicht abgespielt werden. Laden Sie es herunter, um es anzusehen.",
+    "videoLoadFailed": "Dieses Video konnte nicht geladen werden."
   },
   "categories": {
     "title": "Fotokategorien",

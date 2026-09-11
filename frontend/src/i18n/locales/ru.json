@@ -352,7 +352,9 @@
     "backToGallery": "Все фото",
     "downloadFolder": "Скачать папку ({{count}})",
     "downloadFolderCapped": "Скачать первые {{limit}} из {{total}}",
-    "downloadEverything": "Скачать все фото"
+    "downloadEverything": "Скачать все фото",
+    "videoFormatUnsupported": "Этот формат видео не воспроизводится в этом браузере. Скачайте файл, чтобы посмотреть его.",
+    "videoLoadFailed": "Не удалось загрузить это видео."
   },
   "categories": {
     "title": "Категории фото",

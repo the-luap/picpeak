@@ -1268,7 +1268,9 @@
     "folderPhotoCount_one": "{{count}} photos",
     "folderPhotoCount_other": "{{count}} photos",
     "preparingProgress_one": "{{count}} photos packaged",
-    "preparingProgress_other": "{{count}} photos packaged"
+    "preparingProgress_other": "{{count}} photos packaged",
+    "videoFormatUnsupported": "This video format cannot be played in this browser. Download it to watch it.",
+    "videoLoadFailed": "This video could not be loaded."
   },
   "categories": {
     "title": "Photo Categories",

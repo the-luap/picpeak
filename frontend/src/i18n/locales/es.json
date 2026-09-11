@@ -315,7 +315,9 @@
     "backToGallery": "Todas las fotos",
     "downloadFolder": "Descargar carpeta ({{count}})",
     "downloadFolderCapped": "Descargar las primeras {{limit}} de {{total}}",
-    "downloadEverything": "Descargar todas las fotos"
+    "downloadEverything": "Descargar todas las fotos",
+    "videoFormatUnsupported": "Este formato de vídeo no se puede reproducir en este navegador. Descárgalo para verlo.",
+    "videoLoadFailed": "No se ha podido cargar este vídeo."
   },
   "categories": {
     "title": "Categorías de fotos",

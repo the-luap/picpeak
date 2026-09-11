@@ -70,7 +70,14 @@ router.get('/:slug/photo/:photoId',
       // Check protection level - basic and standard protection allow direct JWT access
       const protectionLevel = req.event.protection_level || 'standard';
 
-      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
+      // Videos are exempt (#1370). The secure-images endpoint this bounces to
+      // pipes every byte through sharp (secureImageService.processProtectedImage),
+      // which throws on an mp4 — so under enhanced/maximum a video was
+      // unservable by either route, and the lightbox showed a poster stuck at
+      // 0:00. Serving it here instead is not a new exposure: thumbnails of the
+      // same videos already come from this route at every protection level, and
+      // the guest still needs a valid gallery token to get here at all.
+      if (!isVideo && (protectionLevel === 'enhanced' || protectionLevel === 'maximum')) {
         // For enhanced/maximum protection, redirect to secure endpoint
         return res.status(302).json({
           error: 'Secure access required',
