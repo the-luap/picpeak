@@ -115,6 +115,16 @@ api.interceptors.request.use(
             }
           }
         }
+
+        // Admin draft preview (#1386). The gallery tab was opened with
+        // ?admin_preview=1; forward that intent flag on every gallery API call
+        // so the backend applies the draft bypass. The HttpOnly admin_token
+        // cookie authenticates it server-side — no credential in the URL.
+        // Harmless for guests: without a valid admin cookie the check fails
+        // closed and they get exactly what they got before.
+        if (new URLSearchParams(window.location.search).get('admin_preview') === '1') {
+          config.params = { ...(config.params as Record<string, unknown> | undefined), admin_preview: 1 };
+        }
       }
     }
 

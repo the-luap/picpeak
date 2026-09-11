@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from 'lucide-react';
+import { withAdminPreview } from '../../utils/adminPreview';
 
 interface VideoPlayerProps {
   src: string;
@@ -176,10 +177,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       onMouseMove={handleMouseMove}
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
+      {/* A bare <video src> never touches the axios interceptor, so a draft
+          preview needs the flag on the URL itself (#1386) — otherwise the
+          gallery renders and the video 404s. */}
       <video
         ref={videoRef}
-        src={src}
-        poster={poster}
+        src={withAdminPreview(src)}
+        poster={poster ? withAdminPreview(poster) : poster}
         autoPlay={autoPlay}
         muted={muted}
         loop={loop}

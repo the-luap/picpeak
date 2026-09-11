@@ -2,6 +2,7 @@ import { api } from '../config/api';
 import type { GalleryInfo, GalleryData, GalleryStats, ResolvedGalleryIdentifier } from '../types';
 import { normalizeRequirePassword } from '../utils/accessControl';
 import { parseContentDispositionFilename } from '../utils/contentDisposition';
+import { withAdminPreview } from '../utils/adminPreview';
 
 // iOS is the only platform whose system share sheet exposes a
 // first-party "Save Image" / "Save to Photos" action for files
@@ -88,7 +89,12 @@ export const galleryService = {
   async savePhotoToDevice(slug: string, photoId: number, filename: string): Promise<void> {
     if (!isIOS()) {
       this.triggerDirectDownload(
-        api.getUri({ url: `/gallery/${slug}/download/${photoId}` }),
+        // Native anchor download: bypasses the axios interceptor, so a draft
+        // preview needs the flag on the URL itself (#1386). Applied to the
+        // relative path BEFORE getUri: with an absolute VITE_API_URL getUri
+        // returns an absolute URL, and withAdminPreview refuses those by
+        // design, which would silently drop the flag.
+        api.getUri({ url: withAdminPreview(`/gallery/${slug}/download/${photoId}`) }),
         filename,
       );
       return;
@@ -215,7 +221,7 @@ export const galleryService = {
       // Native browser download — the server sends Content-Length so
       // the browser shows a real progress bar and mobile doesn't crash.
       const link = document.createElement('a');
-      link.href = `/api/gallery/${slug}/download-all`;
+      link.href = withAdminPreview(`/api/gallery/${slug}/download-all`);
       link.setAttribute('download', `${slug}.zip`);
       document.body.appendChild(link);
       link.click();

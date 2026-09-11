@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildResourceUrl } from '../../utils/url';
+import { withAdminPreview } from '../../utils/adminPreview';
 import {
   getActiveGallerySlug,
   getGalleryToken,
@@ -140,11 +141,15 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
       // Build full URL for the image. Only relative paths are app-owned;
       // an absolute URL is passed through untouched.
       const isRelative = rawUrl.startsWith('/');
-      const fullImageUrl = rawUrl.startsWith('/admin')
-        ? buildResourceUrl(`/api${rawUrl}`)
+      // Flag goes on while the URL is still relative: buildResourceUrl can
+      // return an absolute URL in split deployments, and withAdminPreview
+      // deliberately refuses those (#1386).
+      const previewUrl = isRelative ? withAdminPreview(rawUrl) : rawUrl;
+      const fullImageUrl = previewUrl.startsWith('/admin')
+        ? buildResourceUrl(`/api${previewUrl}`)
         : isRelative
-          ? buildResourceUrl(rawUrl)
-          : rawUrl;
+          ? buildResourceUrl(previewUrl)
+          : previewUrl;
 
       const headers: Record<string, string> = {};
       // Attach the gallery bearer token ONLY to relative (same-app) image

@@ -26,7 +26,7 @@ function resolveHeroLogoVisible(perEvent, globalDefault) {
 }
 const watermarkService = require('../services/watermarkService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
-const { verifyGalleryAccess, denySlideshowToken, isAdminPreview } = require('../middleware/gallery');
+const { verifyGalleryAccess, denySlideshowToken, verifyAdminPreview } = require('../middleware/gallery');
 const { resolveGuest } = require('../middleware/guestAuth');
 const { generateGuestIdentifier } = require('../middleware/feedbackRateLimit');
 const secureImageService = require('../services/secureImageService');
@@ -111,10 +111,35 @@ async function checkSlugRedirect(slug) {
   }
 }
 
+// Admin preview of an unpublished gallery (#1386). The /info route below has
+// honoured ?preview= for drafts for a while; this route never did, so the
+// short-URL form of a draft's share link 404'd with "Gallery Not Found" while
+// the long slug form worked.
+//
+// Deliberately a second lookup on the miss path rather than a widened filter:
+// the published case keeps its single query and cannot start returning drafts
+// however this evolves, and an unverified caller never gets so far as knowing
+// the draft exists.
+async function resolveDraftForAdminPreview(req, identifier) {
+  // A preview credential is required either way, so checking up front costs
+  // nothing and keeps an unknown identifier from paying for a second set of
+  // lookups on the public 404 path. admin_preview=1 is what the frontend
+  // sends; the bare ?preview=<jwt> is the legacy hand-built-link form.
+  if (req.query?.admin_preview !== '1' && !req.query?.preview) return null;
+  const result = await resolveShareIdentifier(identifier, { includeDrafts: true });
+  if (!result) return null;
+  // Authorized against THIS event, not just against a valid signature (#1411).
+  return await verifyAdminPreview(req, result.event) ? result : null;
+}
+
 // Resolve gallery identifier (slug or token) to canonical data
 router.get('/resolve/:identifier', handleAsync(async (req, res) => {
   const { identifier } = req.params;
   let result = await resolveShareIdentifier(identifier);
+
+  if (!result) {
+    result = await resolveDraftForAdminPreview(req, identifier);
+  }
 
   // If not found, check for redirect
   if (!result) {
@@ -161,11 +186,21 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
   const { slug, token } = req.params;
 
   const event = await db('events')
-    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false), is_draft: formatBoolean(false) })
-    .select('id', 'share_link', 'share_token')
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    // created_by is the ownership input for verifyAdminPreview (#1411).
+    // Omitting it made every draft look ownerless here, so a non-owning admin
+    // holding events.view/photos.view validated another photographer's share
+    // link while /resolve and /info correctly refused them.
+    .select('id', 'share_link', 'share_token', 'is_draft', 'created_by')
     .first();
 
   if (!event) {
+    throw new NotFoundError('Gallery');
+  }
+
+  // Drafts are visible to an authorized admin preview only (#1386, #1411).
+  // Without this the preview clears /resolve and then 404s one step later.
+  if (event.is_draft && !await verifyAdminPreview(req, event)) {
     throw new NotFoundError('Gallery');
   }
 
@@ -211,6 +246,8 @@ router.get('/:slug/info', async (req, res) => {
         'hero_divider_style',
         'hero_image_anchor',
         'is_draft',
+        // Ownership input for the preview check (#1411).
+        'created_by',
         'default_photo_sort',
         // Per-event promotional override (#440). Resolution into a
         // ready-to-render markdown string happens below so the
@@ -238,8 +275,10 @@ router.get('/:slug/info', async (req, res) => {
       return res.status(404).json({ error: 'Gallery has been archived and is no longer available' });
     }
 
-    // Check if event is a draft (allow admin preview)
-    if (event.is_draft && !(await isAdminPreview(req))) {
+    // Check if event is a draft (allow an AUTHORIZED admin preview — #1411:
+    // a valid signature alone used to be enough, so any admin previewed any
+    // draft, including one belonging to a different photographer).
+    if (event.is_draft && !await verifyAdminPreview(req, event)) {
       return res.status(404).json({ error: 'Gallery is not yet published' });
     }
     

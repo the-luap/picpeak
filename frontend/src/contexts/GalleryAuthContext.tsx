@@ -249,6 +249,24 @@ export const GalleryAuthProvider: React.FC<GalleryAuthProviderProps> = ({ childr
         if (routeInfo.token) {
           const verify = await galleryService.verifyToken(currentSlug, routeInfo.token);
           if (verify?.valid) {
+            // An admin preview does not take a guest session (#1386). The admin
+            // cookie plus admin_preview=1 already authorizes every gallery call,
+            // and shareLinkLogin refuses drafts AND records a failed attempt
+            // when it does — so opening a draft preview five times would lock
+            // share-link logins out for that IP, even after publishing.
+            const isAdminPreview = typeof window !== 'undefined'
+              && new URLSearchParams(window.location.search).get('admin_preview') === '1';
+            if (isAdminPreview) {
+              const previewData = await galleryService.getGalleryPhotos(currentSlug);
+              if (previewData?.event) {
+                const previewEvent = normalizeEvent(previewData.event);
+                setEvent(previewEvent);
+                setActiveGallerySlug(currentSlug);
+                setIsAuthenticated(true);
+                return;
+              }
+            }
+
             const response = await authService.shareLinkLogin(currentSlug, routeInfo.token);
             if (response?.event) {
               // Store token and slug BEFORE setting authenticated state to avoid
