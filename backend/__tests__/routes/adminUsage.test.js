@@ -64,6 +64,11 @@ beforeAll(async () => {
     t.integer('role_id');
     t.boolean('is_active');
     t.timestamp('password_changed_at');
+    // adminAuth() now selects this on every request (GHSA-h4w8-57xq-53fx
+    // must_change_password enforcement) — without the column the join
+    // throws and every route in this file 401s before reaching the
+    // permission check it's meant to test.
+    t.boolean('must_change_password');
   });
   await mockDb.schema.createTable('permissions', (t) => {
     t.increments('id');

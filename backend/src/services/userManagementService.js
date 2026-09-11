@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { db, logActivity } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
-const { generateReadablePassword } = require('../utils/passwordGenerator');
+const { generateSecurePassword } = require('../utils/passwordGenerator');
 const { getBcryptRounds } = require('../utils/passwordValidation');
 const { getAbsoluteFrontendUrl } = require('../utils/frontendUrl');
 const { queueEmail } = require('./emailProcessor');
@@ -494,7 +494,10 @@ async function resetAdminPassword(id, resetById) {
     throw new ValidationError('This account is managed by your identity provider (SSO) — reset the password there.');
   }
 
-  const newPassword = generateReadablePassword();
+  // GHSA-h4w8-57xq-53fx: this password is emailed to the admin and is a live
+  // credential until they change it, so it needs real entropy — not the
+  // ~2^21 wordlist-based generateReadablePassword() used for gallery resets.
+  const newPassword = generateSecurePassword(16);
   const passwordHash = await bcrypt.hash(newPassword, getBcryptRounds());
 
   await db('admin_users').where('id', id).update({
