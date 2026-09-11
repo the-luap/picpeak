@@ -38,6 +38,18 @@ const DEBOUNCE_MS = 5000;
 // Two keeps the next photo's round trip overlapped with the current write
 // without ever leaving more than one socket idle.
 const MAX_INFLIGHT_READS = 2;
+// How many cached zips may be REBUILT at once in the background (#1399).
+//
+// invalidateAll() invalidates every event that has a cached zip, and each
+// invalidate() arms its own debounce timer in the same tick — so they all fire
+// together and, before this, every one of them started building at once. Each
+// build opens its own storage reads, so 25 events was enough to exhaust the S3
+// agent pool and stall uploads, thumbnails and gallery reads until the burst
+// finished.
+//
+// This caps the BACKGROUND path only. A foreground generateZip() — a guest
+// actually waiting for a download — is never queued behind a rebuild.
+const MAX_CONCURRENT_REGENS = 2;
 
 class DownloadZipService {
   constructor() {
@@ -45,11 +57,42 @@ class DownloadZipService {
     this.debounceTimers = new Map();  // eventId -> setTimeout handle
     this.versions = new Map();        // eventId -> generation counter
     this.buildCancellers = new Map(); // eventId -> abort the in-flight build
+    this.regenActive = 0;             // background rebuilds running right now
+    this.regenWaiters = [];           // resolvers parked waiting for a slot
+    this.stopped = false;
+  }
+
+  /**
+   * Run a BACKGROUND rebuild under the concurrency cap (#1399). Foreground
+   * callers deliberately do not go through here: someone is waiting on that
+   * response, and making them queue behind a settings-change burst would trade
+   * one stall for another.
+   */
+  async _withRegenSlot(fn) {
+    if (this.stopped) return undefined;
+    if (this.regenActive >= MAX_CONCURRENT_REGENS) {
+      await new Promise((resolve) => this.regenWaiters.push(resolve));
+      // Shutdown can drain the queue while we were parked.
+      if (this.stopped) return undefined;
+    }
+    this.regenActive += 1;
+    try {
+      return await fn();
+    } finally {
+      this.regenActive -= 1;
+      const next = this.regenWaiters.shift();
+      if (next) next();
+    }
   }
 
   async stop() {
+    this.stopped = true;
     for (const timer of this.debounceTimers.values()) clearTimeout(timer);
     this.debounceTimers.clear();
+    // Release anything parked for a slot so shutdown can't hang on a queue
+    // that will never drain — they check `stopped` and return without building.
+    const waiters = this.regenWaiters.splice(0);
+    for (const resume of waiters) resume();
     await Promise.allSettled([...this.activeBuilds.values()].map(build => build.promise));
     this.versions.clear();
     this.buildCancellers.clear();
@@ -364,7 +407,9 @@ class DownloadZipService {
     // Debounce regeneration
     const newTimer = setTimeout(() => {
       this.debounceTimers.delete(eventId);
-      this.generateZip(eventId).catch(err =>
+      // Through the cap (#1399): invalidateAll arms every one of these in the
+      // same tick, so without it they all start building together.
+      this._withRegenSlot(() => this.generateZip(eventId)).catch(err =>
         logger.warn('downloadZipService debounced regen error', { eventId, error: err.message })
       );
     }, DEBOUNCE_MS);
