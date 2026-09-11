@@ -313,7 +313,9 @@
       "anonymous": "Anónimo"
     },
     "rated": "Valorado",
-    "commented": "Comentado"
+    "commented": "Comentado",
+    "videoFormatUnsupported": "Este formato de vídeo no se puede reproducir en este navegador. Descárgalo para verlo.",
+    "videoLoadFailed": "No se ha podido cargar este vídeo."
   },
   "categories": {
     "title": "Categorías de fotos",

@@ -849,7 +849,17 @@ router.get('/:slug/photos', verifyGalleryAccess, resolveGuest, async (req, res) 
       },
       categories: categories,
       photos: photos.map(photo => {
-        const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
+        // Videos always take the JWT route (#1370). The secure-images template
+        // below can never serve one — the route runs the bytes through sharp,
+        // which throws on an mp4 — and nothing substitutes the {{token}}
+        // placeholder for the <video> element either, so under enhanced/maximum
+        // a video resolved to a 403 and the lightbox sat at 0:00. The matching
+        // exemption is on the /photo/:photoId route below.
+        const isVideo = photo.media_type === 'video'
+          || (photo.mime_type && photo.mime_type.startsWith('video/'));
+        const useJwtUrl = isVideo
+          || protectionSettings.protection_level === 'basic'
+          || protectionSettings.protection_level === 'standard';
         // Add watermark version to URLs for cache busting when settings change
         const wmQuery = wmVersion ? `?${wmVersion}` : '';
         const photoUrl = useJwtUrl ?
@@ -1734,7 +1744,14 @@ router.get('/:slug/photo/:photoId',
       // Check protection level - basic and standard protection allow direct JWT access
       const protectionLevel = req.event.protection_level || 'standard';
 
-      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
+      // Videos are exempt (#1370). The secure-images endpoint this bounces to
+      // pipes every byte through sharp (secureImageService.processProtectedImage),
+      // which throws on an mp4 — so under enhanced/maximum a video was
+      // unservable by either route, and the lightbox showed a poster stuck at
+      // 0:00. Serving it here instead is not a new exposure: thumbnails of the
+      // same videos already come from this route at every protection level, and
+      // the guest still needs a valid gallery token to get here at all.
+      if (!isVideo && (protectionLevel === 'enhanced' || protectionLevel === 'maximum')) {
         // For enhanced/maximum protection, redirect to secure endpoint
         return res.status(302).json({
           error: 'Secure access required',
