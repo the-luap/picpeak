@@ -334,7 +334,9 @@
     "photosSelected_one": "{{count}} photo sélectionnée",
     "photosSelected_other": "{{count}} photos sélectionnées",
     "downloadSelected_one": "Télécharger {{count}} photo",
-    "downloadSelected_other": "Télécharger {{count}} photos"
+    "downloadSelected_other": "Télécharger {{count}} photos",
+    "videoFormatUnsupported": "Ce format vidéo ne peut pas être lu dans ce navigateur. Téléchargez-la pour la regarder.",
+    "videoLoadFailed": "Cette vidéo n'a pas pu être chargée."
   },
   "categories": {
     "title": "Catégories de photos",

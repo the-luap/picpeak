@@ -46,6 +46,7 @@ const {
 } = require('../services/downloadFilenameService');
 const { buildContentDisposition } = require('../utils/filenameSanitizer');
 const { getStorage } = require('../services/storage');
+const { createArchiveStreamGuard } = require('../utils/archiveStreamGuard');
 const { setGalleryAuthCookies } = require('../utils/tokenUtils');
 // Read globals from app_settings (the real table) — settingsService.getSetting
 // queries a non-existent `settings` table and throws.
@@ -888,7 +889,17 @@ router.get('/:slug/photos', verifyGalleryAccess, resolveGuest, async (req, res) 
       },
       categories: categories,
       photos: photos.map(photo => {
-        const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
+        // Videos always take the JWT route (#1370). The secure-images template
+        // below can never serve one — the route runs the bytes through sharp,
+        // which throws on an mp4 — and nothing substitutes the {{token}}
+        // placeholder for the <video> element either, so under enhanced/maximum
+        // a video resolved to a 403 and the lightbox sat at 0:00. The matching
+        // exemption is on the /photo/:photoId route below.
+        const isVideo = photo.media_type === 'video'
+          || (photo.mime_type && photo.mime_type.startsWith('video/'));
+        const useJwtUrl = isVideo
+          || protectionSettings.protection_level === 'basic'
+          || protectionSettings.protection_level === 'standard';
         // Add watermark version to URLs for cache busting when settings change
         const wmQuery = wmVersion ? `?${wmVersion}` : '';
         const photoUrl = useJwtUrl ?
@@ -1355,6 +1366,10 @@ async function bumpEventDownloadCounts(eventId) {
 }
 
 router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async (req, res) => {
+  // Hoisted so the catch can reclaim reads opened before the failure, and so a
+  // cancelled download never reaches finalize() (see the close handler below).
+  let guard = null;
+  let cancelled = false;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -1469,6 +1484,22 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
       throw err;
     });
 
+    // Bound and reclaim the storage reads. archiver drains its sources one at
+    // a time, so appending one read per photo parks an S3 socket per photo
+    // holding unread bytes, and nothing reclaims them — archiver's abort()
+    // does not touch source streams, and the SDK clears its socket timeout as
+    // soon as response headers land.
+    guard = createArchiveStreamGuard({
+      onFatalError: () => { cancelled = true; guard.destroyAll(); archive.abort(); },
+    });
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        cancelled = true;
+        guard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Get watermark settings - apply if global setting OR event-level setting is enabled
@@ -1537,8 +1568,9 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
 
           archive.append(watermarkedBuffer, { name: archiveName });
         } else if (storageKey) {
+          if (!await guard.acquire()) break;
           const stream = await storage.get(storageKey);
-          archive.append(stream, { name: archiveName });
+          archive.append(guard.track(stream), { name: archiveName });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name: archiveName });
         }
@@ -1553,6 +1585,7 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
       }
     }
 
+    if (cancelled) return;
     await archive.finalize();
 
     // Log bulk download
@@ -1569,12 +1602,19 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
         .increment('download_count', 1).catch(() => {});
     }
   } catch (error) {
+    if (guard) guard.destroyAll();
+    // The client already left and the ZIP headers are gone; sending JSON here
+    // throws ERR_HTTP_HEADERS_SENT out of an async handler with nothing to
+    // catch it.
+    if (cancelled || res.headersSent) return;
     errorResponse(res, error, 500, 'Failed to create download archive');
   }
 });
 
 // Download selected photos as ZIP
 router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken, async (req, res) => {
+  let selectedGuard = null;
+  let selectedCancelled = false;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -1634,6 +1674,19 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         // ignore double-send errors
       }
     });
+
+    selectedGuard = createArchiveStreamGuard({
+      onFatalError: () => { selectedCancelled = true; selectedGuard.destroyAll(); archive.abort(); },
+    });
+    archive.on('error', () => selectedGuard.destroyAll());
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        selectedCancelled = true;
+        selectedGuard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Check watermark settings - apply if global setting OR event-level setting is enabled
@@ -1680,8 +1733,9 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
             : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), effectiveSettings);
           archive.append(buf, { name });
         } else if (storageKey) {
+          if (!await selectedGuard.acquire()) break;
           const stream = await selectedStorage.get(storageKey);
-          archive.append(stream, { name });
+          archive.append(selectedGuard.track(stream), { name });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name });
         }
@@ -1696,6 +1750,7 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
       }
     }
 
+    if (selectedCancelled) return;
     await archive.finalize();
 
     await db('access_logs').insert({
@@ -1711,6 +1766,8 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         .increment('download_count', 1).catch(() => {});
     }
   } catch (error) {
+    if (selectedGuard) selectedGuard.destroyAll();
+    if (selectedCancelled || res.headersSent) return;
     errorResponse(res, error, 500, 'Failed to download selected photos');
   }
 });
@@ -1773,7 +1830,14 @@ router.get('/:slug/photo/:photoId',
       // Check protection level - basic and standard protection allow direct JWT access
       const protectionLevel = req.event.protection_level || 'standard';
 
-      if (protectionLevel === 'enhanced' || protectionLevel === 'maximum') {
+      // Videos are exempt (#1370). The secure-images endpoint this bounces to
+      // pipes every byte through sharp (secureImageService.processProtectedImage),
+      // which throws on an mp4 — so under enhanced/maximum a video was
+      // unservable by either route, and the lightbox showed a poster stuck at
+      // 0:00. Serving it here instead is not a new exposure: thumbnails of the
+      // same videos already come from this route at every protection level, and
+      // the guest still needs a valid gallery token to get here at all.
+      if (!isVideo && (protectionLevel === 'enhanced' || protectionLevel === 'maximum')) {
         // For enhanced/maximum protection, redirect to secure endpoint
         return res.status(302).json({
           error: 'Secure access required',

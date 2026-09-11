@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertTriangle } from 'lucide-react';
 import { withAdminPreview } from '../../utils/adminPreview';
 
 interface VideoPlayerProps {
@@ -25,8 +26,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   width = '100%',
   height = 'auto'
 }) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(muted);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -52,11 +55,28 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => setIsPlaying(false);
 
+    // Without this the element just sits on its poster at 0:00 and says
+    // nothing (#1370) — a guest cannot tell a failed request from a codec
+    // their browser will not decode, and neither could we from their report.
+    // MEDIA_ERR_SRC_NOT_SUPPORTED is the one worth naming: it is what an
+    // HEVC/H.265 phone recording does everywhere except Safari, and the
+    // photographer's answer is to download the file rather than retry.
+    const handleError = () => {
+      const code = video.error?.code;
+      setLoadError(
+        code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED
+          ? t('gallery.videoFormatUnsupported', 'This video format cannot be played in this browser. Download it to watch it.')
+          : t('gallery.videoLoadFailed', 'This video could not be loaded.')
+      );
+      setIsPlaying(false);
+    };
+
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('error', handleError);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -64,8 +84,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [t]);
+
+  // Arrowing to the next video in the lightbox reuses this element, so a
+  // stale error would otherwise stick to a clip that loads fine.
+  useEffect(() => {
+    setLoadError(null);
+  }, [src]);
 
   const togglePlayPause = () => {
     const video = videoRef.current;
@@ -165,7 +192,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onClick={togglePlayPause}
       />
 
-      {controls && (
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-6 text-center">
+          <div className="flex flex-col items-center gap-2 text-white">
+            <AlertTriangle size={28} />
+            <span className="text-sm max-w-xs">{loadError}</span>
+          </div>
+        </div>
+      )}
+
+      {controls && !loadError && (
         <div
           className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
             showControls ? 'opacity-100' : 'opacity-0'
@@ -218,7 +254,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       {/* Play button overlay when paused */}
-      {!isPlaying && showControls && (
+      {!isPlaying && showControls && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center">
           <button
             onClick={togglePlayPause}

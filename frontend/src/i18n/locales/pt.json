@@ -342,7 +342,9 @@
     "photosCount_many": "{{count}} fotos",
     "photosCount_one": "{{count}} foto",
     "photosCount_other": "{{count}} fotos",
-    "poweredBy": "Desenvolvido por PicPeak"
+    "poweredBy": "Desenvolvido por PicPeak",
+    "videoFormatUnsupported": "Este formato de vídeo não pode ser reproduzido neste navegador. Baixe o arquivo para assistir.",
+    "videoLoadFailed": "Não foi possível carregar este vídeo."
   },
   "categories": {
     "title": "Categorias de Fotos",

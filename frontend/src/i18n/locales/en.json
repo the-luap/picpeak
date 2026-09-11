@@ -472,7 +472,9 @@
     "photosSelected_one": "{{count}} photo selected",
     "photosSelected_other": "{{count}} photos selected",
     "downloadSelected_one": "Download {{count}} photo",
-    "downloadSelected_other": "Download {{count}} photos"
+    "downloadSelected_other": "Download {{count}} photos",
+    "videoFormatUnsupported": "This video format cannot be played in this browser. Download it to watch it.",
+    "videoLoadFailed": "This video could not be loaded."
   },
   "categories": {
     "title": "Photo Categories",
