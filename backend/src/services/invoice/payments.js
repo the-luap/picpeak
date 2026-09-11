@@ -12,6 +12,15 @@ const { ensureInt } = require('../../utils/numericHelpers');
 const { formatMajor } = require('./helpers');
 const { applyReminder, resolveAdminEmailForInvoice, resolvePerReminderFeeMinor, resolveSkontoPercentForInvoice } = require('./reminders');
 
+// Payment-check token lifetime (GHSA-wg94-f86h-vq68 hardening). This
+// unauthenticated magic link is the only gate on a write to the
+// invoice ledger, so it's kept short rather than the prior 30 days.
+// The scheduler re-queues a fresh token daily (throttled by
+// last_payment_check_at, see queuePaymentCheckEmail below) for as
+// long as the invoice stays past its reminder cutoff, so a short TTL
+// doesn't strand an admin who hasn't acted yet — they just get a new
+// link on the next tick.
+const PAYMENT_CHECK_TOKEN_TTL_MS = 72 * 60 * 60 * 1000; // 72h
 
 /**
  * Record a payment against an invoice. Supports partial payments
@@ -226,7 +235,7 @@ async function queuePaymentCheckEmail(invoiceId, { skipThrottle = false } = {}) 
   }
 
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + PAYMENT_CHECK_TOKEN_TTL_MS);
   await db('invoice_payment_check_tokens').insert({
     invoice_id: invoiceId,
     token,
@@ -379,6 +388,45 @@ async function getPaymentCheckByToken(token) {
 }
 
 /**
+ * Best-effort admin notification for every write via the public,
+ * unauthenticated payment-check route (GHSA-wg94-f86h-vq68
+ * hardening). Token possession is the only gate on that route, so
+ * this fires on every successful action — 'paid_full', 'partial',
+ * 'unpaid', 'paid_with_skonto' — regardless of what the ledger
+ * effect ends up being, so an admin always sees the action happen.
+ * Callers MUST wrap this in try/catch: a failed send must never
+ * fail (or roll back) the ledger write it's reporting on.
+ */
+async function notifyAdminOfPaymentCheckAction({ invoice, action, amountMinor, ip }) {
+  const adminContact = await resolveAdminEmailForInvoice(invoice);
+  if (!adminContact?.email) {
+    logger.warn('Payment-check action notification skipped — no admin email resolved',
+      { invoiceId: invoice.id, action });
+    return;
+  }
+
+  const profile = await db('business_profile').where({ id: 1 }).first();
+  const locale = invoice.language || profile?.default_locale || 'de';
+  const customer = await db('customer_accounts').where({ id: invoice.customer_account_id }).first();
+
+  await emailProcessor.queueEmail(invoice.event_id || null, adminContact.email,
+    'invoice_payment_check_action_recorded', {
+      invoice_number: invoice.invoice_number,
+      customer_name: customer?.company_name
+        || customer?.display_name
+        || [customer?.first_name, customer?.last_name].filter(Boolean).join(' ')
+        || customer?.email || '',
+      event_name: invoice.event_name || '',
+      __language: locale,
+      action,
+      amount: amountMinor ? formatMajor(ensureInt(amountMinor), invoice.currency, locale) : '',
+      has_amount: !!amountMinor,
+      ip: ip || 'unknown',
+      recorded_at: formatShortDate(new Date()),
+    });
+}
+
+/**
  * Record the admin's payment-check action and fire the downstream
  * consequences:
  *   - 'paid_full' → markPaid for the outstanding amount, no reminder.
@@ -445,6 +493,19 @@ async function recordPaymentCheckAction({ token, action, amountMinor, ip, adminI
       invoice.event_id || null,
       adminId ? `admin:${adminId}` : 'public:payment-check');
   } catch (_) {}
+
+  // Notify the admin this write happened. Best-effort / non-blocking
+  // — the ledger write above already committed, and a failed
+  // notification send must not undo or fail it.
+  if (!adminId) {
+    try {
+      await notifyAdminOfPaymentCheckAction({ invoice, action, amountMinor, ip });
+    } catch (err) {
+      logger.warn('Payment-check action admin notification failed', {
+        invoiceId: invoice.id, action, err: err.message,
+      });
+    }
+  }
 
   // --- Apply the action -----------------------------------------
   if (action === 'paid_full') {

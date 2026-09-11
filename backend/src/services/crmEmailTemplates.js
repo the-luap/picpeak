@@ -360,6 +360,56 @@ Rechnung {{invoice_number}} für {{customer_name}}{{#if event_name}} ({{event_na
 Automatische Benachrichtigung — keine Aktion erforderlich.`,
 },
   },
+  invoice_payment_check_action_recorded: {
+    // GHSA-wg94-f86h-vq68 hardening: the payment-check link at
+    // /payment-check/:token is unauthenticated by design (see
+    // publicPaymentCheck.js) — token possession is the only gate.
+    // This notifies the admin every time that link is used to write
+    // to the invoice ledger, so the no-login convenience stays but an
+    // admin always sees the action happen.
+    category: 'billing', feature_flag: 'bills',
+    variables: ['invoice_number', 'customer_name', 'event_name', 'action', 'has_amount', 'amount', 'ip', 'recorded_at'],
+    en: {
+      subject: 'Payment-check action recorded: invoice {{invoice_number}}',
+      body_html: `<h2>Payment-check link used</h2>
+<p>Someone used the unauthenticated payment-check link for invoice <strong>{{invoice_number}}</strong>{{#if customer_name}} ({{customer_name}}){{/if}}{{#if event_name}}, {{event_name}}{{/if}} and recorded: <strong>{{action}}</strong>{{#if has_amount}} ({{amount}}){{/if}}.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; margin: 16px 0;">
+  <tr><td style="color: #666;">Action</td><td><strong>{{action}}</strong></td></tr>
+  {{#if has_amount}}<tr><td style="color: #666;">Amount</td><td>{{amount}}</td></tr>{{/if}}
+  <tr><td style="color: #666;">IP address</td><td>{{ip}}</td></tr>
+  <tr><td style="color: #666;">Recorded at</td><td>{{recorded_at}}</td></tr>
+</table>
+<p style="font-size: 13px; color: #666;">This link requires no login — only the token in the URL. If you don't recognise this action, review the invoice in the admin panel.</p>`,
+      body_text: `Payment-check link used
+
+Invoice {{invoice_number}}{{#if customer_name}} ({{customer_name}}){{/if}}{{#if event_name}}, {{event_name}}{{/if}} — recorded: {{action}}{{#if has_amount}} ({{amount}}){{/if}}.
+
+  IP address:   {{ip}}
+  Recorded at:  {{recorded_at}}
+
+This link requires no login — only the token in the URL. If you don't recognise this action, review the invoice in the admin panel.`,
+    },
+    de: {
+      subject: 'Zahlungsprüfung ausgelöst: Rechnung {{invoice_number}}',
+      body_html: `<h2>Zahlungsprüfungs-Link verwendet</h2>
+<p>Der nicht-authentifizierte Zahlungsprüfungs-Link für Rechnung <strong>{{invoice_number}}</strong>{{#if customer_name}} ({{customer_name}}){{/if}}{{#if event_name}}, {{event_name}}{{/if}} wurde verwendet und hat erfasst: <strong>{{action}}</strong>{{#if has_amount}} ({{amount}}){{/if}}.</p>
+<table role="presentation" cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; margin: 16px 0;">
+  <tr><td style="color: #666;">Aktion</td><td><strong>{{action}}</strong></td></tr>
+  {{#if has_amount}}<tr><td style="color: #666;">Betrag</td><td>{{amount}}</td></tr>{{/if}}
+  <tr><td style="color: #666;">IP-Adresse</td><td>{{ip}}</td></tr>
+  <tr><td style="color: #666;">Erfasst am</td><td>{{recorded_at}}</td></tr>
+</table>
+<p style="font-size: 13px; color: #666;">Dieser Link erfordert kein Login — nur den Token in der URL. Falls Ihnen diese Aktion unbekannt vorkommt, prüfen Sie die Rechnung im Admin-Bereich.</p>`,
+      body_text: `Zahlungsprüfungs-Link verwendet
+
+Rechnung {{invoice_number}}{{#if customer_name}} ({{customer_name}}){{/if}}{{#if event_name}}, {{event_name}}{{/if}} — erfasst: {{action}}{{#if has_amount}} ({{amount}}){{/if}}.
+
+  IP-Adresse: {{ip}}
+  Erfasst am: {{recorded_at}}
+
+Dieser Link erfordert kein Login — nur den Token in der URL. Falls Ihnen diese Aktion unbekannt vorkommt, prüfen Sie die Rechnung im Admin-Bereich.`,
+    },
+  },
   invoice_collections_handoff: {
     category: 'billing', feature_flag: 'bills',
     variables: ['invoice_number', 'customer_name', 'customer_email', 'customer_address', 'event_name', 'original_amount', 'late_fee_amount', 'paid_amount', 'outstanding_amount', 'due_date', 'reminder_level'],
