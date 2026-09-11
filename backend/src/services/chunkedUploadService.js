@@ -266,6 +266,18 @@ async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {})
     const partPath = `${chunkPath}.${crypto.randomBytes(6).toString('hex')}.part`;
     try {
       chunkLength = await writeChunkStream(source, partPath, allowance);
+      // Re-check the aggregate before publishing. `allowance` was computed
+      // before the body arrived, so a chunk that completed while this one was
+      // still streaming is not counted in it — two overlapping 0.75MB chunks
+      // under a 1MB cap would otherwise both be accepted. The buffered version
+      // got this right for free by checking after the read; streaming has to
+      // ask again.
+      const bankedNow = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0);
+      if (bankedNow + chunkLength > uploadMeta.maxFileSizeBytes) {
+        await fs.rm(partPath, { force: true }).catch(() => {});
+        await abortUpload(uploadId);
+        throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+      }
       await fs.rename(partPath, chunkPath);
     } catch (err) {
       if (err.overAllowance) {

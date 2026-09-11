@@ -192,6 +192,24 @@ describe('chunked upload streams the body under a cap (#1403)', () => {
         .rejects.toMatchObject({ code: 'ENOENT' });
     });
 
+    it('counts chunks that landed while another was still streaming', async () => {
+      const { uploadId } = await init({ totalChunks: 3 });
+
+      // Start a slow 0.75MB chunk. Its allowance is computed now, when nothing
+      // else is banked.
+      const slow = new Readable({ read() {} });
+      const slowDone = chunkedUpload.uploadChunk(uploadId, 0, slow);
+
+      // A second 0.75MB chunk completes in the meantime.
+      await chunkedUpload.uploadChunk(uploadId, 1, Buffer.alloc(0.75 * MB));
+
+      // Finishing the first must not publish: 1.5MB against a 1MB cap.
+      slow.push(Buffer.alloc(0.75 * MB));
+      slow.push(null);
+      await expect(slowDone).rejects.toMatchObject({ code: 'FILE_TOO_LARGE', statusCode: 413 });
+      expect(chunkedUpload.getUploadStatus(uploadId)).toBeNull();
+    });
+
     it('does not destroy the request stream when it trips the cap', async () => {
       const { uploadId } = await init();
       const source = countingSource(8 * MB);
