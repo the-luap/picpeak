@@ -116,13 +116,53 @@ async function initializeUpload(options) {
 }
 
 /**
+ * Stream `source` into `chunkPath`, refusing to write more than `allowance`
+ * bytes (#1403). The cap is the backstop for a request that lies about its
+ * Content-Length or omits it: the moment the running total passes the
+ * allowance the source is destroyed and the partial file removed, so an
+ * oversized body costs the allowance rather than its own size.
+ */
+function writeChunkStream(source, chunkPath, allowance) {
+  const fsSync = require('fs');
+  return new Promise((resolve, reject) => {
+    const out = fsSync.createWriteStream(chunkPath);
+    let written = 0;
+    let failed = null;
+
+    const fail = (err) => {
+      if (failed) return;
+      failed = err;
+      source.destroy();
+      out.destroy();
+      fsSync.unlink(chunkPath, () => reject(err));
+    };
+
+    source.on('data', (buf) => {
+      written += buf.length;
+      if (written > allowance) {
+        fail(Object.assign(new Error('CHUNK_OVER_ALLOWANCE'), { overAllowance: true }));
+      }
+    });
+    source.on('error', fail);
+    out.on('error', fail);
+    out.on('finish', () => { if (!failed) resolve(written); });
+    source.pipe(out);
+  });
+}
+
+/**
  * Upload a single chunk
  * @param {string} uploadId - Upload ID
  * @param {number} chunkIndex - Chunk index (0-based)
- * @param {Buffer} chunkData - Chunk data
+ * @param {Buffer|import('stream').Readable} source - Chunk bytes, or a stream
+ *   of them (the request). A stream is never read until every check below has
+ *   passed, so a rejected request costs nothing (#1403).
+ * @param {Object} [options]
+ * @param {number} [options.declaredBytes] - Content-Length, when the caller
+ *   has one. Checked against the remaining allowance before the body is read.
  * @returns {Promise<Object>} - Chunk upload result
  */
-async function uploadChunk(uploadId, chunkIndex, chunkData) {
+async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {}) {
   const uploadMeta = activeUploads.get(uploadId);
 
   if (!uploadMeta) {
@@ -148,19 +188,44 @@ async function uploadChunk(uploadId, chunkIndex, chunkData) {
   // Enforce the per-file cap on the running byte total. The upload is
   // aborted, not just rejected: the chunks on disk are already over the
   // limit and the client can't complete the file any more.
-  const receivedBytes = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0) + chunkData.length;
-  if (receivedBytes > uploadMeta.maxFileSizeBytes) {
+  //
+  // What this chunk may still contribute — everything already banked, minus a
+  // re-sent copy of this same index. Computed before the body is touched so a
+  // Content-Length that already blows the budget is refused having read zero
+  // bytes (#1403).
+  const bankedBytes = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0);
+  const allowance = uploadMeta.maxFileSizeBytes - bankedBytes;
+
+  if (Number.isFinite(declaredBytes) && declaredBytes > allowance) {
     await abortUpload(uploadId);
     throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
   }
 
-  // Write chunk to disk
   const chunkPath = path.join(uploadMeta.uploadDir, `chunk_${String(chunkIndex).padStart(6, '0')}`);
-  await fs.writeFile(chunkPath, chunkData);
+  let chunkLength;
+
+  if (Buffer.isBuffer(source)) {
+    if (bankedBytes + source.length > uploadMeta.maxFileSizeBytes) {
+      await abortUpload(uploadId);
+      throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+    }
+    await fs.writeFile(chunkPath, source);
+    chunkLength = source.length;
+  } else {
+    try {
+      chunkLength = await writeChunkStream(source, chunkPath, allowance);
+    } catch (err) {
+      if (err.overAllowance) {
+        await abortUpload(uploadId);
+        throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+      }
+      throw err;
+    }
+  }
 
   // Mark chunk as received
   uploadMeta.receivedChunks.add(chunkIndex);
-  uploadMeta.chunkSizes.set(chunkIndex, chunkData.length);
+  uploadMeta.chunkSizes.set(chunkIndex, chunkLength);
 
   const progress = (uploadMeta.receivedChunks.size / uploadMeta.expectedChunks) * 100;
 

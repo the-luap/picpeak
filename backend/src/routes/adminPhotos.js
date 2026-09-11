@@ -1701,14 +1701,16 @@ router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, r
   try {
     const { uploadId, chunkIndex } = req.params;
 
-    // Get chunk data from request body
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const chunkData = Buffer.concat(chunks);
-
-    const result = await chunkedUpload.uploadChunk(uploadId, parseInt(chunkIndex), chunkData);
+    // The request stream is handed over unread (#1403). Every check — unknown
+    // upload id, bad index, the per-file cap against Content-Length — runs
+    // inside uploadChunk before a byte is consumed, and the body is then
+    // streamed to the chunk file under a hard cap rather than concatenated in
+    // memory. Buffering it first meant a rejected 300MB request still cost
+    // 300MB of heap.
+    const declaredBytes = Number(req.headers['content-length']);
+    const result = await chunkedUpload.uploadChunk(uploadId, parseInt(chunkIndex), req, {
+      declaredBytes: Number.isFinite(declaredBytes) ? declaredBytes : undefined,
+    });
 
     res.json(result);
   } catch (error) {
