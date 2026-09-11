@@ -157,6 +157,41 @@ describe('chunked upload streams the body under a cap (#1403)', () => {
       expect(chunkedUpload.getUploadStatus(uploadId).receivedChunks).toBe(1);
     });
 
+    it('keeps two in-flight sends of the same chunk off each other\'s staging file', async () => {
+      const { uploadId } = await init();
+      const chunkPath = path.join(process.env.STORAGE_PATH, 'chunks', uploadId, 'chunk_000000');
+
+      // Two requests for the same index, overlapping. A shared .part path let
+      // whichever renamed first publish bytes the other had already truncated.
+      const slow = new Readable({ read() {} });
+      const doomed = new Readable({ read() {} });
+      const slowDone = chunkedUpload.uploadChunk(uploadId, 0, slow);
+      const doomedDone = chunkedUpload.uploadChunk(uploadId, 0, doomed);
+
+      doomed.push(Buffer.alloc(2));
+      doomed.destroy(new Error('retry gave up'));
+      await expect(doomedDone).rejects.toThrow();
+
+      slow.push(Buffer.alloc(10));
+      slow.push(null);
+      await expect(slowDone).resolves.toBeTruthy();
+
+      // The surviving attempt's 10 bytes, not the failed one's 2.
+      expect((await fs.stat(chunkPath)).size).toBe(10);
+    });
+
+    it('leaves no staging files behind after a failure', async () => {
+      const { uploadId } = await init();
+      await expect(chunkedUpload.uploadChunk(uploadId, 0, countingSource(8 * MB)))
+        .rejects.toMatchObject({ statusCode: 413 });
+      // The cap path aborts the whole upload, so the directory is gone; what
+      // must not happen is a .part file reappearing after cleanup because the
+      // write stream's open() was still pending when the unlink ran.
+      await new Promise((r) => setTimeout(r, 50));
+      await expect(fs.readdir(path.join(process.env.STORAGE_PATH, 'chunks', uploadId)))
+        .rejects.toMatchObject({ code: 'ENOENT' });
+    });
+
     it('does not destroy the request stream when it trips the cap', async () => {
       const { uploadId } = await init();
       const source = countingSource(8 * MB);

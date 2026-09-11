@@ -154,8 +154,17 @@ function writeChunkStream(source, partPath, allowance) {
       settled = true;
       source.unpipe(out);
       if (err) {
-        out.destroy();
-        fsSync.unlink(partPath, () => reject(err));
+        // Wait for the descriptor to actually close before unlinking. destroy()
+        // does not await a pending open(), so unlinking straight away races it:
+        // the unlink fails with ENOENT and the open then recreates the .part
+        // file after cleanup was supposed to be done.
+        const removePart = () => fsSync.unlink(partPath, () => reject(err));
+        if (out.destroyed) {
+          removePart();
+        } else {
+          out.once('close', removePart);
+          out.destroy();
+        }
       } else {
         resolve(value);
       }
@@ -250,7 +259,11 @@ async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {})
     // path directly truncates it the moment the stream opens, so a re-sent
     // chunk that then failed left receivedChunks/chunkSizes still claiming the
     // old copy: status reported 100% and completeUpload died on ENOENT.
-    const partPath = `${chunkPath}.part`;
+    //
+    // The suffix is per-attempt, not per-index: two in-flight requests for the
+    // same chunk would otherwise share one staging file, and whichever renamed
+    // first would publish bytes the other had already truncated.
+    const partPath = `${chunkPath}.${crypto.randomBytes(6).toString('hex')}.part`;
     try {
       chunkLength = await writeChunkStream(source, partPath, allowance);
       await fs.rename(partPath, chunkPath);
