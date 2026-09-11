@@ -115,6 +115,31 @@ api.interceptors.request.use(
             }
           }
         }
+
+        // Admin draft preview (#1386). The admin opens the gallery with
+        // ?preview=<admin jwt> on the page URL, but nothing carried that into
+        // the API calls the page then makes — so the backend's draft escape
+        // was unreachable and previewing an unpublished gallery 404'd.
+        //
+        // Sent as a header rather than a query parameter on purpose: the
+        // credential is the admin's own session token, and query strings reach
+        // nginx access logs, browser history and Referer headers.
+        const previewToken = new URLSearchParams(window.location.search).get('preview');
+        if (previewToken) {
+          if (!config.headers) {
+            config.headers = new AxiosHeaders();
+          }
+          if (config.headers instanceof AxiosHeaders) {
+            if (!config.headers.get('x-admin-preview')) {
+              config.headers.set('x-admin-preview', previewToken);
+            }
+          } else {
+            const headersRecord = config.headers as Record<string, string | undefined>;
+            if (!headersRecord['x-admin-preview']) {
+              headersRecord['x-admin-preview'] = previewToken;
+            }
+          }
+        }
       }
     }
 

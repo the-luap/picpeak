@@ -5,8 +5,14 @@ const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 const logger = require('../utils/logger');
 
 // Check if the request carries a valid admin preview token (Feature 3)
+//
+// The header is the transport the frontend actually uses (#1386): the admin's
+// own session JWT is the credential here, and a query string reaches nginx
+// access logs, browser history and Referer headers. ?preview= is still
+// accepted because the gallery PAGE url carries it — that is what the browser
+// navigates to — and hand-built links in the wild rely on it.
 function isAdminPreview(req) {
-  const previewToken = req.query?.preview;
+  const previewToken = req.headers?.['x-admin-preview'] || req.query?.preview;
   if (!previewToken) return false;
   try {
     const decoded = jwt.verify(previewToken, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });

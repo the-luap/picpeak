@@ -45,8 +45,10 @@ const LIVE_TOKEN = 'feedfacefeedfacefeedfacefeedface';
 describe('draft preview through the short share URL (#1386)', () => {
   let db; let cleanup; let app; let adminId; let foreignId;
 
-  // Stable's isAdminPreview reads the token out of ?preview=.
+  // Stable's isAdminPreview accepts the token from the x-admin-preview header
+  // (what the frontend sends) or ?preview= (what the page URL carries).
   const preview = (id = adminId) => `preview=${mintAdminToken(id)}`;
+  const withHeader = (req, id = adminId) => req.set('x-admin-preview', mintAdminToken(id));
 
   async function insertEvent({ slug, token, isDraft }) {
     await db('events').insert({
@@ -110,6 +112,37 @@ describe('draft preview through the short share URL (#1386)', () => {
         .get(`/api/gallery/${DRAFT_SLUG}/verify-token/${DRAFT_TOKEN}?${preview()}`);
       expect(res.status).toBe(200);
       expect(res.body.valid).toBe(true);
+    });
+  });
+
+  // The transport the SHIPPED frontend uses. The first cut of this fix only
+  // tested ?preview=, which the browser never sends on an API call — so the
+  // suite passed while the feature stayed broken end to end. Caught in review.
+  describe('the header transport the frontend actually sends', () => {
+    it('resolves the draft from the x-admin-preview header alone', async () => {
+      const res = await withHeader(request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}`));
+      expect(res.status).toBe(200);
+      expect(res.body.slug).toBe(DRAFT_SLUG);
+    });
+
+    it('clears verify-token from the header alone', async () => {
+      const res = await withHeader(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/verify-token/${DRAFT_TOKEN}`),
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.valid).toBe(true);
+    });
+
+    it('serves /info for the draft from the header alone', async () => {
+      const res = await withHeader(request(app).get(`/api/gallery/${DRAFT_SLUG}/info`));
+      expect(res.status).toBe(200);
+    });
+
+    it('404s when the header carries something that is not an admin JWT', async () => {
+      const res = await request(app)
+        .get(`/api/gallery/resolve/${DRAFT_TOKEN}`)
+        .set('x-admin-preview', 'not-a-jwt');
+      expect(res.status).toBe(404);
     });
   });
 

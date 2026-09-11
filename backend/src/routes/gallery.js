@@ -120,10 +120,11 @@ async function checkSlugRedirect(slug) {
 // however this evolves, and an unverified caller never gets so far as knowing
 // the draft exists.
 async function resolveDraftForAdminPreview(req, identifier) {
-  // isAdminPreview requires this, so checking it up front costs nothing and
-  // keeps an unknown identifier from paying for a second set of lookups on
-  // the public 404 path.
-  if (!req.query?.preview) return null;
+  // isAdminPreview requires one of these, so checking up front costs nothing
+  // and keeps an unknown identifier from paying for a second set of lookups on
+  // the public 404 path. The header is what the frontend sends; the query
+  // parameter is what the gallery page URL itself carries.
+  if (!req.headers?.['x-admin-preview'] && !req.query?.preview) return null;
   if (!isAdminPreview(req)) return null;
   return await resolveShareIdentifier(identifier, { includeDrafts: true });
 }
