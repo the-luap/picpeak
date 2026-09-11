@@ -22,7 +22,13 @@ export const HeaderStyleCard: React.FC<HeaderStyleCardProps> = ({ localTheme, ha
       <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
         {t('branding.headerStyleDescription', 'Choose how the gallery header appears. The header style is independent of the photo layout.')}
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* auto-fit/minmax rather than viewport breakpoints (#1412): the
+          breakpoints size the columns off the WINDOW, but this card sits in a
+          settings panel that is far narrower, so `lg:grid-cols-3` produced
+          three ~85px columns no German string could fit in. A minimum track
+          width lets the column count follow the container instead, and drops
+          to fewer columns when there is no room. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-4">
         {(Object.keys(headerStyleIcons) as HeaderStyleType[]).map((style) => (
           <button
             type="button"
@@ -34,14 +40,21 @@ export const HeaderStyleCard: React.FC<HeaderStyleCardProps> = ({ localTheme, ha
                 : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
             }`}
           >
-            <div className="flex flex-col items-center text-center">
+            {/* min-w-0 + break-words: a grid item will not shrink below its
+                min-content width, and German compounds here are long enough to
+                exceed a narrow column — "Veranstaltungsinfo-Overlay" and
+                "Veranstaltungsdetails" spilled out of the card and over the
+                neighbouring one at three columns in a narrow panel (#1412).
+                Any translation can do this, so the constraint belongs on the
+                element rather than on the strings. */}
+            <div className="flex flex-col items-center text-center w-full min-w-0">
               <div className="mb-2 text-neutral-700 dark:text-neutral-300">
                 {headerStyleIcons[style]}
               </div>
-              <span className="font-medium text-sm capitalize text-neutral-900 dark:text-neutral-100">
+              <span className="w-full break-words font-medium text-sm capitalize text-neutral-900 dark:text-neutral-100">
                 {t(`branding.headerStyleOptions.${style}`, style)}
               </span>
-              <span className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+              <span className="w-full break-words text-xs text-neutral-600 dark:text-neutral-400 mt-1">
                 {t(`branding.headerStyleDescriptions.${style}`, '')}
               </span>
             </div>
@@ -61,7 +74,7 @@ export const HeaderStyleCard: React.FC<HeaderStyleCardProps> = ({ localTheme, ha
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-4">
             {t('branding.heroDividerDescription', 'Choose how the transition between the hero image and gallery content looks.')}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-3">
             {(Object.keys(dividerStylePreviews) as HeroDividerStyle[]).map((divider) => (
               <button
                 type="button"
@@ -73,12 +86,12 @@ export const HeaderStyleCard: React.FC<HeaderStyleCardProps> = ({ localTheme, ha
                     : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
                 }`}
               >
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center w-full min-w-0">
                   <div className="w-full mb-2 bg-neutral-800 rounded-t overflow-hidden">
                     <div className="h-8"></div>
                     {dividerStylePreviews[divider]}
                   </div>
-                  <span className="text-xs font-medium capitalize text-neutral-900 dark:text-neutral-100">
+                  <span className="w-full break-words text-xs font-medium capitalize text-neutral-900 dark:text-neutral-100">
                     {t(`branding.dividerOptions.${divider}`, divider)}
                   </span>
                 </div>
