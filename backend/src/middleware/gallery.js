@@ -2,15 +2,28 @@ const jwt = require('jsonwebtoken');
 const { db, withRetry } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+const { isTokenRevoked } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 
 // Check if the request carries a valid admin preview token (Feature 3)
-function isAdminPreview(req) {
+async function isAdminPreview(req) {
   const previewToken = req.query?.preview;
   if (!previewToken) return false;
   try {
     const decoded = jwt.verify(previewToken, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });
-    return decoded.type === 'admin';
+    if (decoded.type !== 'admin') return false;
+
+    // Same gap this file already closed for the main gallery-token path
+    // (GHSA-q7f7-gjx8-mf6h): a revoked admin session must not keep
+    // granting preview access via a bookmarked/shared ?preview= link.
+    // Treat a revoked token the same as an invalid one -- fail the
+    // preview check, don't throw, so callers fall through to the normal
+    // gallery-token flow.
+    if (await isTokenRevoked(decoded)) {
+      return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
@@ -28,7 +41,7 @@ async function verifyGalleryAccess(req, res, next) {
         return res.status(401).json({ error: 'No token provided' });
       }
 
-      const adminPreview = isAdminPreview(req);
+      const adminPreview = await isAdminPreview(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({
@@ -89,10 +102,18 @@ async function verifyGalleryAccess(req, res, next) {
       return res.status(403).json({ error: 'Invalid token type for gallery access' });
     }
 
+    // Gallery logout writes to the revocation store (see routes/auth.js),
+    // but nothing on this path ever read it back (GHSA-q7f7-gjx8-mf6h) — a
+    // logged-out gallery JWT kept working until natural expiry.
+    if (await isTokenRevoked(decoded)) {
+      logger.warn('[verifyGalleryAccess] Revoked token used', { eventId: decoded.eventId });
+      return res.status(401).json({ error: 'Token has been revoked', code: 'TOKEN_REVOKED' });
+    }
+
     // If we have a slug in the URL params or from pre-middleware, verify it matches
     if (requestedSlug) {
       // Verify by slug and ensure it matches the token's event
-      const adminPreviewToken = isAdminPreview(req);
+      const adminPreviewToken = await isAdminPreview(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({
@@ -112,7 +133,7 @@ async function verifyGalleryAccess(req, res, next) {
       }
     } else {
       // Fallback to using eventId from token
-      const adminPreviewFallback = isAdminPreview(req);
+      const adminPreviewFallback = await isAdminPreview(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({

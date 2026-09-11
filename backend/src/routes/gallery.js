@@ -238,7 +238,7 @@ router.get('/:slug/info', async (req, res) => {
     }
 
     // Check if event is a draft (allow admin preview)
-    if (event.is_draft && !isAdminPreview(req)) {
+    if (event.is_draft && !(await isAdminPreview(req))) {
       return res.status(404).json({ error: 'Gallery is not yet published' });
     }
     
