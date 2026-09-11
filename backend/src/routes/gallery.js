@@ -110,10 +110,32 @@ async function checkSlugRedirect(slug) {
   }
 }
 
+// Admin preview of an unpublished gallery (#1386). The /info route below has
+// honoured ?preview= for drafts for a while; this route never did, so the
+// short-URL form of a draft's share link 404'd with "Gallery Not Found" while
+// the long slug form worked.
+//
+// Deliberately a second lookup on the miss path rather than a widened filter:
+// the published case keeps its single query and cannot start returning drafts
+// however this evolves, and an unverified caller never gets so far as knowing
+// the draft exists.
+async function resolveDraftForAdminPreview(req, identifier) {
+  // isAdminPreview requires this, so checking it up front costs nothing and
+  // keeps an unknown identifier from paying for a second set of lookups on
+  // the public 404 path.
+  if (!req.query?.preview) return null;
+  if (!isAdminPreview(req)) return null;
+  return await resolveShareIdentifier(identifier, { includeDrafts: true });
+}
+
 // Resolve gallery identifier (slug or token) to canonical data
 router.get('/resolve/:identifier', handleAsync(async (req, res) => {
   const { identifier } = req.params;
   let result = await resolveShareIdentifier(identifier);
+
+  if (!result) {
+    result = await resolveDraftForAdminPreview(req, identifier);
+  }
 
   // If not found, check for redirect
   if (!result) {
@@ -160,11 +182,17 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
   const { slug, token } = req.params;
 
   const event = await db('events')
-    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false), is_draft: formatBoolean(false) })
-    .select('id', 'share_link', 'share_token')
+    .where({ slug, is_active: formatBoolean(true), is_archived: formatBoolean(false) })
+    .select('id', 'share_link', 'share_token', 'is_draft')
     .first();
 
   if (!event) {
+    throw new NotFoundError('Gallery');
+  }
+
+  // Drafts are visible to a verified admin preview only (#1386). Without this
+  // the preview clears /resolve and then 404s one step later, here.
+  if (event.is_draft && !isAdminPreview(req)) {
     throw new NotFoundError('Gallery');
   }
 
