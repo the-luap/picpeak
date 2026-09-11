@@ -23,8 +23,12 @@ const eventLogoStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return cb(new Error('Invalid event id'));
+    }
     const ext = path.extname(file.originalname);
-    cb(null, `event-${req.params.id}-logo-${Date.now()}${ext}`);
+    cb(null, `event-${eventId}-logo-${Date.now()}${ext}`);
   }
 });
 
