@@ -11,7 +11,44 @@ const { generateReadablePassword } = require('../utils/passwordGenerator');
 const { getBcryptRounds } = require('../utils/passwordValidation');
 const { queueEmail } = require('./emailProcessor');
 const logger = require('../utils/logger');
-const { ConflictError, NotFoundError, ValidationError } = require('../utils/errors');
+const { ConflictError, ForbiddenError, NotFoundError, ValidationError } = require('../utils/errors');
+
+/**
+ * Guard against granting a role whose permissions exceed the actor's own.
+ * Super admins may grant any role. Everyone else may only grant permissions
+ * they already hold themselves (GHSA-rv8w-m6mx-7j4q).
+ * @param {number} actorId - ID of the admin performing the grant
+ * @param {string[]} permissionNames - permission names carried by the target role
+ */
+async function assertActorMayGrant(actorId, permissionNames) {
+  if (!permissionNames || permissionNames.length === 0) {
+    return;
+  }
+
+  const actor = await db('admin_users').where('id', actorId).first();
+  if (!actor) {
+    throw new NotFoundError('Admin user', actorId);
+  }
+
+  const actorRole = await db('roles').where('id', actor.role_id).first();
+  if (actorRole && actorRole.name === 'super_admin') {
+    return;
+  }
+
+  const actorPermissions = await db('role_permissions')
+    .join('permissions', 'permissions.id', 'role_permissions.permission_id')
+    .where('role_permissions.role_id', actor.role_id)
+    .pluck('permissions.name');
+
+  const actorPermissionSet = new Set(actorPermissions);
+  const missing = permissionNames.filter((name) => !actorPermissionSet.has(name));
+
+  if (missing.length > 0) {
+    throw new ForbiddenError(
+      `You can only grant permissions your own role already holds. Missing: ${missing.join(', ')}`
+    );
+  }
+}
 
 /**
  * Create a new admin user invitation
@@ -46,6 +83,16 @@ async function createInvitation({ email, roleId, invitedById, inviterRoleName })
   if (role.name === 'super_admin' && inviterRoleName !== 'super_admin') {
     throw new ValidationError('Only Super Admins can invite new Super Admins');
   }
+
+  // Privilege-escalation guard (GHSA-rv8w-m6mx-7j4q): holding `users.create`
+  // must not let an actor invite someone into a role carrying permissions
+  // they don't themselves have — same containment updateAdminUser already
+  // gives role assignment, reused here for invitations.
+  const targetRolePermissions = await db('role_permissions')
+    .join('permissions', 'permissions.id', 'role_permissions.permission_id')
+    .where('role_permissions.role_id', role.id)
+    .pluck('permissions.name');
+  await assertActorMayGrant(invitedById, targetRolePermissions);
 
   // Generate secure invitation token (64 characters hex = 32 bytes)
   const token = crypto.randomBytes(32).toString('hex');
@@ -262,6 +309,16 @@ async function updateAdminUser(id, updates, updatedById, requestingAdmin = {}) {
     if (superAdminRole && role.id === superAdminRole.id && !isSuperAdmin) {
       throw new ValidationError('Only Super Admins can assign the Super Admin role');
     }
+
+    // Privilege-escalation guard (GHSA-rv8w-m6mx-7j4q): holding `users.edit`
+    // must not let an actor hand out a role carrying permissions they don't
+    // themselves have — same containment assertActorMayGrant already gives
+    // `roles.manage` for role create/edit, reused here for role assignment.
+    const targetRolePermissions = await db('role_permissions')
+      .join('permissions', 'permissions.id', 'role_permissions.permission_id')
+      .where('role_permissions.role_id', role.id)
+      .pluck('permissions.name');
+    await assertActorMayGrant(updatedById, targetRolePermissions);
 
     // Prevent self-role-update
     if (id === updatedById) {
