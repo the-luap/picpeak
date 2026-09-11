@@ -289,7 +289,14 @@ async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {})
         await abortUpload(uploadId);
         throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
       }
-      await fs.rename(partPath, chunkPath);
+      await fs.rename(partPath, chunkPath).catch(async (renameErr) => {
+        // A failed publish (ENOSPC, a vanished directory) left the fully
+        // written staging file behind. Its name is per-attempt, so a client
+        // that retries instead of aborting just accumulates more of them until
+        // the upload expires.
+        await fs.rm(partPath, { force: true }).catch(() => {});
+        throw renameErr;
+      });
     } catch (err) {
       if (err.overAllowance) {
         await abortUpload(uploadId);

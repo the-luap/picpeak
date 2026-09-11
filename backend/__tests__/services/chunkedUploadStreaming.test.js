@@ -210,6 +210,21 @@ describe('chunked upload streams the body under a cap (#1403)', () => {
       expect(chunkedUpload.getUploadStatus(uploadId)).toBeNull();
     });
 
+    it('removes the staging file when publishing it fails', async () => {
+      const { uploadId } = await init();
+      const dir = path.join(process.env.STORAGE_PATH, 'chunks', uploadId);
+      // Make the rename fail by putting a directory where the chunk goes.
+      await fs.mkdir(path.join(dir, 'chunk_000000'), { recursive: true });
+
+      await expect(chunkedUpload.uploadChunk(uploadId, 0, countingSource(1024)))
+        .rejects.toThrow();
+
+      // The fully written .part must not survive a failed publish — its name is
+      // per-attempt, so retries would otherwise pile them up until expiry.
+      const leftovers = (await fs.readdir(dir)).filter((f) => f.endsWith('.part'));
+      expect(leftovers).toEqual([]);
+    });
+
     it('does not destroy the request stream when it trips the cap', async () => {
       const { uploadId } = await init();
       const source = countingSource(8 * MB);

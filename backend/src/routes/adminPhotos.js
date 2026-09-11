@@ -1718,6 +1718,13 @@ router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, r
     // large) carry their own status. Only a genuinely unexpected error should
     // reach the 500 below and the error log with it.
     if (error.statusCode) {
+      // Refusing the body early is the point — but it leaves unread bytes in
+      // flight on a connection this response still advertises as keep-alive.
+      // Node does not drain them, so the NEXT request on that socket hangs
+      // until it times out. Retire the connection instead.
+      if (!req.readableEnded) {
+        res.set('Connection', 'close');
+      }
       return res.status(error.statusCode).json({ error: error.message });
     }
     logger.error('Error uploading chunk:', error);
