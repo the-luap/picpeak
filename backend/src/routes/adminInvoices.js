@@ -67,7 +67,9 @@ const importedInvoiceStorage = multer.diskStorage({
 });
 const importedInvoiceUpload = multer({
   storage: importedInvoiceStorage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  // CVE-2026-82333: single unnamed `pdf` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 10 * 1024 * 1024, fieldArrayIndexLimit: 0 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === 'application/pdf') cb(null, true);
     else cb(new Error('Only PDF files are allowed for imported invoices'));

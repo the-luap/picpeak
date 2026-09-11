@@ -92,6 +92,16 @@ const handleKnownErrors = (err) => {
     return new ValidationError('Unexpected file field');
   }
 
+  // CVE-2026-82333: multer 2.3.0's fieldArrayIndexLimit rejects multipart
+  // field names with an oversized bracket array index (e.g. `a[99999999]`)
+  // before the DoS-prone field parser runs. Without this mapping the
+  // resulting MulterError has no .statusCode/.status and falls through to
+  // a 500 here, so map it to a proper 400 like the other multer limits.
+  if (err.code === 'LIMIT_FIELD_ARRAY_INDEX') {
+    const { ValidationError } = require('../utils/errors');
+    return new ValidationError('Field name array index too large');
+  }
+
   return err;
 };
 
