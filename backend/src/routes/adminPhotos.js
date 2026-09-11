@@ -1714,7 +1714,10 @@ router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, r
 
     res.json(result);
   } catch (error) {
-    if (error.statusCode === 413 || error.statusCode === 400) {
+    // Client-caused states (unknown/finished/expired upload, bad index, too
+    // large) carry their own status. Only a genuinely unexpected error should
+    // reach the 500 below and the error log with it.
+    if (error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
     logger.error('Error uploading chunk:', error);
@@ -1764,8 +1767,10 @@ router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, requirePer
       photos: uploadedPhotos
     });
   } catch (error) {
-    if (error.statusCode === 413) {
-      return res.status(413).json({ error: error.message });
+    // Same rule as the chunk route: a tagged status is a client-caused state
+    // (unknown/expired upload, missing chunks), not a server fault.
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
     }
     logger.error('Error completing chunked upload:', error);
     res.status(500).json({ error: error.message || 'Failed to complete upload' });

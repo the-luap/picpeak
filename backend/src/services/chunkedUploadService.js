@@ -41,6 +41,17 @@ function overAllowanceError() {
   return Object.assign(new Error('CHUNK_OVER_ALLOWANCE'), { overAllowance: true });
 }
 
+// A client-supplied upload id that is unknown, finished or expired is the
+// client's mistake, not the server's. These used to be plain Errors, so the
+// routes answered 500 — which reads as a backend fault in monitoring and
+// invites the client to retry something that will never succeed.
+function uploadStateError(message, statusCode) {
+  const err = new Error(message);
+  err.code = 'UPLOAD_STATE';
+  err.statusCode = statusCode;
+  return err;
+}
+
 function invalidChunkError(message) {
   const err = new Error(message);
   err.code = 'INVALID_CHUNK';
@@ -209,17 +220,17 @@ async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {})
   const uploadMeta = activeUploads.get(uploadId);
 
   if (!uploadMeta) {
-    throw new Error('Upload not found or expired');
+    throw uploadStateError('Upload not found or expired', 404);
   }
 
   if (uploadMeta.status !== 'in_progress') {
-    throw new Error(`Upload is ${uploadMeta.status}`);
+    throw uploadStateError(`Upload is ${uploadMeta.status}`, 409);
   }
 
   // Check expiration
   if (Date.now() > uploadMeta.expiresAt) {
     await abortUpload(uploadId);
-    throw new Error('Upload expired');
+    throw uploadStateError('Upload expired', 410);
   }
 
   // Only the announced chunk indices are valid — anything else would merge
@@ -320,12 +331,13 @@ async function completeUpload(uploadId) {
   const uploadMeta = activeUploads.get(uploadId);
 
   if (!uploadMeta) {
-    throw new Error('Upload not found or expired');
+    throw uploadStateError('Upload not found or expired', 404);
   }
 
   // Verify all chunks received
   if (uploadMeta.receivedChunks.size !== uploadMeta.expectedChunks) {
-    throw new Error(`Missing chunks: received ${uploadMeta.receivedChunks.size} of ${uploadMeta.expectedChunks}`);
+    throw uploadStateError(
+      `Missing chunks: received ${uploadMeta.receivedChunks.size} of ${uploadMeta.expectedChunks}`, 400);
   }
 
   uploadMeta.status = 'merging';

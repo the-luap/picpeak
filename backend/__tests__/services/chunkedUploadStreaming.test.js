@@ -222,6 +222,33 @@ describe('chunked upload streams the body under a cap (#1403)', () => {
     });
   });
 
+  // These were plain Errors, so the routes answered 500 for what are plainly
+  // client mistakes — a backend fault in monitoring, and an invitation to
+  // retry something that can never succeed.
+  describe('client-caused states carry their own status code', () => {
+    it('404s an unknown upload id rather than 500', async () => {
+      await expect(chunkedUpload.uploadChunk('does-not-exist', 0, Buffer.alloc(10)))
+        .rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    // 409 (wrong status) and 410 (expired) share uploadStateError with the two
+    // covered here. Reaching them from the public surface needs either a clock
+    // or a setter the service does not expose, and a test that pretends to
+    // exercise them while actually hitting the 404 path is worse than none.
+
+    it('404s completing an unknown upload rather than 500', async () => {
+      await expect(chunkedUpload.completeUpload('does-not-exist'))
+        .rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('400s completing an upload that is missing chunks', async () => {
+      const { uploadId } = await init();
+      await chunkedUpload.uploadChunk(uploadId, 0, Buffer.alloc(10));
+      await expect(chunkedUpload.completeUpload(uploadId))
+        .rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
   describe('the happy path still works', () => {
     it('writes a streamed chunk and reports progress', async () => {
       const { uploadId } = await init();
