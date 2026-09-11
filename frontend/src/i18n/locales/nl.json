@@ -336,7 +336,9 @@
     "backToGallery": "Alle foto's",
     "downloadFolder": "Map downloaden ({{count}})",
     "downloadFolderCapped": "Eerste {{limit}} van {{total}} downloaden",
-    "downloadEverything": "Alle foto's downloaden"
+    "downloadEverything": "Alle foto's downloaden",
+    "videoFormatUnsupported": "Deze video-indeling kan niet in deze browser worden afgespeeld. Download de video om hem te bekijken.",
+    "videoLoadFailed": "Deze video kon niet worden geladen."
   },
   "categories": {
     "title": "Fotocategorieen",

@@ -459,7 +459,17 @@ async function getGalleryPhotos({ event, query = {}, identity, accessLevel, admi
     reveal_at: hiddenForGuest ? (event.reveal_at || null) : undefined,
     categories: categories,
     photos: photos.map(photo => {
-      const useJwtUrl = (protectionSettings.protection_level === 'basic' || protectionSettings.protection_level === 'standard');
+      // Videos always take the JWT route (#1370). The secure-images template
+      // below can never serve one — the route runs the bytes through sharp,
+      // which throws on an mp4 — and nothing substitutes the {{token}}
+      // placeholder for the <video> element either, so under enhanced/maximum
+      // a video resolved to a 403 and the lightbox sat at 0:00. The matching
+      // exemption is in routes/gallery/media.js.
+      const isVideo = photo.media_type === 'video'
+        || (photo.mime_type && photo.mime_type.startsWith('video/'));
+      const useJwtUrl = isVideo
+        || protectionSettings.protection_level === 'basic'
+        || protectionSettings.protection_level === 'standard';
       // Watermark version (cache-busting) + admin-preview flag (#868). In
       // preview mode no gallery cookie is minted, so each <img> request must
       // re-assert the admin session — thread the flag onto every /api/gallery

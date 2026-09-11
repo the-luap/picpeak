@@ -336,7 +336,9 @@
     "backToGallery": "Vse fotografije",
     "downloadFolder": "Prenesi mapo ({{count}})",
     "downloadFolderCapped": "Prenesi prvih {{limit}} od {{total}}",
-    "downloadEverything": "Prenesi vse fotografije"
+    "downloadEverything": "Prenesi vse fotografije",
+    "videoFormatUnsupported": "Tega videoformata v tem brskalniku ni mogoče predvajati. Prenesite ga, da si ga ogledate.",
+    "videoLoadFailed": "Tega videa ni bilo mogoče naložiti."
   },
   "categories": {
     "title": "Kategorije fotografij",
