@@ -334,7 +334,9 @@
     "photosSelected_one": "Izbrana {{count}} fotografija",
     "photosSelected_other": "Izbranih {{count}} fotografij",
     "downloadSelected_one": "Prenesi {{count}} fotografijo",
-    "downloadSelected_other": "Prenesi {{count}} fotografij"
+    "downloadSelected_other": "Prenesi {{count}} fotografij",
+    "videoFormatUnsupported": "Tega videoformata v tem brskalniku ni mogoče predvajati. Prenesite ga, da si ga ogledate.",
+    "videoLoadFailed": "Tega videa ni bilo mogoče naložiti."
   },
   "categories": {
     "title": "Kategorije fotografij",

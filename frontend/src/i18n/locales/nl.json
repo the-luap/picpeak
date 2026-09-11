@@ -334,7 +334,9 @@
     },
     "photosCount_one": "{{count}} foto",
     "photosCount_other": "{{count}} foto's",
-    "poweredBy": "Mogelijk gemaakt door PicPeak"
+    "poweredBy": "Mogelijk gemaakt door PicPeak",
+    "videoFormatUnsupported": "Deze video-indeling kan niet in deze browser worden afgespeeld. Download de video om hem te bekijken.",
+    "videoLoadFailed": "Deze video kon niet worden geladen."
   },
   "categories": {
     "title": "Fotocategorieen",

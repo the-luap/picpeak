@@ -350,7 +350,9 @@
     "photosCount_many": "{{count}} фото",
     "photosCount_one": "{{count}} фото",
     "photosCount_other": "{{count}} фото",
-    "poweredBy": "Работает на PicPeak"
+    "poweredBy": "Работает на PicPeak",
+    "videoFormatUnsupported": "Этот формат видео не воспроизводится в этом браузере. Скачайте файл, чтобы посмотреть его.",
+    "videoLoadFailed": "Не удалось загрузить это видео."
   },
   "categories": {
     "title": "Категории фото",

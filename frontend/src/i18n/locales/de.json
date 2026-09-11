@@ -931,7 +931,9 @@
     },
     "photosCount_one": "{{count}} Foto",
     "photosCount_other": "{{count}} Fotos",
-    "poweredBy": "Bereitgestellt von PicPeak"
+    "poweredBy": "Bereitgestellt von PicPeak",
+    "videoFormatUnsupported": "Dieses Videoformat kann in diesem Browser nicht abgespielt werden. Laden Sie es herunter, um es anzusehen.",
+    "videoLoadFailed": "Dieses Video konnte nicht geladen werden."
   },
   "categories": {
     "title": "Fotokategorien",
