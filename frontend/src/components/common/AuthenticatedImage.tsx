@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildResourceUrl } from '../../utils/url';
+import { withAdminPreview } from '../../utils/adminPreview';
 import {
   getActiveGallerySlug,
   getGalleryToken,
@@ -30,19 +31,6 @@ interface AuthenticatedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImage
   protectionLevel?: 'basic' | 'standard' | 'enhanced' | 'maximum';
   useEnhancedProtection?: boolean;
   onLoad?: () => void;
-}
-
-/**
- * Admin draft preview (#1386). Native fetch() bypasses the axios interceptor,
- * so the intent flag has to be put on the URL here. The HttpOnly admin cookie
- * rides along on its own because these requests use credentials: 'include' —
- * only the flag is missing. Without this, a preview of an unpublished gallery
- * loads its metadata and then shows no thumbnails, hero or lightbox media.
- */
-function withAdminPreview(url: string, isRelative: boolean): string {
-  if (!isRelative || typeof window === 'undefined') return url;
-  if (new URLSearchParams(window.location.search).get('admin_preview') !== '1') return url;
-  return `${url}${url.includes('?') ? '&' : '?'}admin_preview=1`;
 }
 
 export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
@@ -153,11 +141,15 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
       // Build full URL for the image. Only relative paths are app-owned;
       // an absolute URL is passed through untouched.
       const isRelative = rawUrl.startsWith('/');
-      const fullImageUrl = rawUrl.startsWith('/admin')
-        ? buildResourceUrl(`/api${rawUrl}`)
+      // Flag goes on while the URL is still relative: buildResourceUrl can
+      // return an absolute URL in split deployments, and withAdminPreview
+      // deliberately refuses those (#1386).
+      const previewUrl = isRelative ? withAdminPreview(rawUrl) : rawUrl;
+      const fullImageUrl = previewUrl.startsWith('/admin')
+        ? buildResourceUrl(`/api${previewUrl}`)
         : isRelative
-          ? buildResourceUrl(rawUrl)
-          : rawUrl;
+          ? buildResourceUrl(previewUrl)
+          : previewUrl;
 
       const headers: Record<string, string> = {};
       // Attach the gallery bearer token ONLY to relative (same-app) image
@@ -172,7 +164,7 @@ export const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         }
       }
 
-      const response = await fetch(withAdminPreview(fullImageUrl, isRelative), {
+      const response = await fetch(fullImageUrl, {
         credentials: 'include',
         headers: Object.keys(headers).length ? headers : undefined,
       });

@@ -13,19 +13,6 @@ interface AuthenticatedVideoProps extends React.VideoHTMLAttributes<HTMLVideoEle
   slug?: string;
 }
 
-/**
- * Admin draft preview (#1386). Native fetch() bypasses the axios interceptor,
- * so the intent flag has to be put on the URL here. The HttpOnly admin cookie
- * rides along on its own because these requests use credentials: 'include' —
- * only the flag is missing. Without this, a preview of an unpublished gallery
- * loads its metadata and then shows no thumbnails, hero or lightbox media.
- */
-function withAdminPreview(url: string, isRelative: boolean): string {
-  if (!isRelative || typeof window === 'undefined') return url;
-  if (new URLSearchParams(window.location.search).get('admin_preview') !== '1') return url;
-  return `${url}${url.includes('?') ? '&' : '?'}admin_preview=1`;
-}
-
 export const AuthenticatedVideo: React.FC<AuthenticatedVideoProps> = ({
   src,
   fallbackSrc,
@@ -72,7 +59,7 @@ export const AuthenticatedVideo: React.FC<AuthenticatedVideoProps> = ({
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(withAdminPreview(fullUrl, rawUrl.startsWith('/')), {
+      const response = await fetch(fullUrl, {
         credentials: 'include',
         headers: Object.keys(headers).length ? headers : undefined,
       });
