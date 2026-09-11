@@ -1706,18 +1706,30 @@ router.post('/:eventId/chunked-upload/:uploadId/chunk/:chunkIndex', adminAuth, r
   try {
     const { uploadId, chunkIndex } = req.params;
 
-    // Get chunk data from request body
-    const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
-    const chunkData = Buffer.concat(chunks);
-
-    const result = await chunkedUpload.uploadChunk(uploadId, parseInt(chunkIndex), chunkData);
+    // The request stream is handed over unread (#1403). Every check — unknown
+    // upload id, bad index, the per-file cap against Content-Length — runs
+    // inside uploadChunk before a byte is consumed, and the body is then
+    // streamed to the chunk file under a hard cap rather than concatenated in
+    // memory. Buffering it first meant a rejected 300MB request still cost
+    // 300MB of heap.
+    const declaredBytes = Number(req.headers['content-length']);
+    const result = await chunkedUpload.uploadChunk(uploadId, parseInt(chunkIndex), req, {
+      declaredBytes: Number.isFinite(declaredBytes) ? declaredBytes : undefined,
+    });
 
     res.json(result);
   } catch (error) {
-    if (error.statusCode === 413 || error.statusCode === 400) {
+    // Client-caused states (unknown/finished/expired upload, bad index, too
+    // large) carry their own status. Only a genuinely unexpected error should
+    // reach the 500 below and the error log with it.
+    if (error.statusCode) {
+      // Refusing the body early is the point — but it leaves unread bytes in
+      // flight on a connection this response still advertises as keep-alive.
+      // Node does not drain them, so the NEXT request on that socket hangs
+      // until it times out. Retire the connection instead.
+      if (!req.readableEnded) {
+        res.set('Connection', 'close');
+      }
       return res.status(error.statusCode).json({ error: error.message });
     }
     logger.error('Error uploading chunk:', error);
@@ -1767,8 +1779,10 @@ router.post('/:eventId/chunked-upload/:uploadId/complete', adminAuth, requirePer
       photos: uploadedPhotos
     });
   } catch (error) {
-    if (error.statusCode === 413) {
-      return res.status(413).json({ error: error.message });
+    // Same rule as the chunk route: a tagged status is a client-caused state
+    // (unknown/expired upload, missing chunks), not a server fault.
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
     }
     logger.error('Error completing chunked upload:', error);
     res.status(500).json({ error: error.message || 'Failed to complete upload' });

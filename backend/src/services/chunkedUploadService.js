@@ -30,6 +30,28 @@ function fileTooLargeError(maxFileSizeBytes) {
   return err;
 }
 
+function prematureCloseError() {
+  const err = new Error('Request body closed before the chunk was fully received');
+  err.code = 'CHUNK_PREMATURE_CLOSE';
+  err.statusCode = 400;
+  return err;
+}
+
+function overAllowanceError() {
+  return Object.assign(new Error('CHUNK_OVER_ALLOWANCE'), { overAllowance: true });
+}
+
+// A client-supplied upload id that is unknown, finished or expired is the
+// client's mistake, not the server's. These used to be plain Errors, so the
+// routes answered 500 — which reads as a backend fault in monitoring and
+// invites the client to retry something that will never succeed.
+function uploadStateError(message, statusCode) {
+  const err = new Error(message);
+  err.code = 'UPLOAD_STATE';
+  err.statusCode = statusCode;
+  return err;
+}
+
 function invalidChunkError(message) {
   const err = new Error(message);
   err.code = 'INVALID_CHUNK';
@@ -116,27 +138,99 @@ async function initializeUpload(options) {
 }
 
 /**
+ * Stream `source` into `partPath`, refusing to write more than `allowance`
+ * bytes (#1403). The cap is the backstop for a request that lies about its
+ * Content-Length or omits it: the moment the running total passes the
+ * allowance the read stops and the partial file is removed, so an oversized
+ * body costs the allowance rather than its own size.
+ */
+function writeChunkStream(source, partPath, allowance) {
+  const fsSync = require('fs');
+  return new Promise((resolve, reject) => {
+    // A client that hung up while auth and ownership were awaiting the database
+    // hands us an already-dead stream. pipe() would then emit neither `end` nor
+    // `error`, leaving this promise pending forever with the write descriptor
+    // open. The async-iterator version this replaced rejected that case, so it
+    // has to be checked explicitly rather than inferred from an event.
+    if (source.destroyed || source.aborted) {
+      return reject(prematureCloseError());
+    }
+
+    const out = fsSync.createWriteStream(partPath);
+    let written = 0;
+    let settled = false;
+
+    const settle = (err, value) => {
+      if (settled) return;
+      settled = true;
+      source.unpipe(out);
+      if (err) {
+        // Wait for the descriptor to actually close before unlinking. destroy()
+        // does not await a pending open(), so unlinking straight away races it:
+        // the unlink fails with ENOENT and the open then recreates the .part
+        // file after cleanup was supposed to be done.
+        const removePart = () => fsSync.unlink(partPath, () => reject(err));
+        if (out.destroyed) {
+          removePart();
+        } else {
+          out.once('close', removePart);
+          out.destroy();
+        }
+      } else {
+        resolve(value);
+      }
+    };
+
+    source.on('data', (buf) => {
+      written += buf.length;
+      if (written > allowance) {
+        // Deliberately NOT source.destroy(). `source` is the IncomingMessage,
+        // and destroying it destroys the socket under it — the 413 the route is
+        // about to send would never reach the client, who would see a connection
+        // reset instead of the size-limit JSON. Pausing stops the read, which is
+        // the whole point of the cap.
+        source.pause();
+        settle(overAllowanceError());
+      }
+    });
+    source.on('error', settle);
+    source.on('aborted', () => settle(prematureCloseError()));
+    source.on('close', () => {
+      if (!source.readableEnded) settle(prematureCloseError());
+    });
+    out.on('error', settle);
+    out.on('finish', () => settle(null, written));
+    source.pipe(out);
+  });
+}
+
+/**
  * Upload a single chunk
  * @param {string} uploadId - Upload ID
  * @param {number} chunkIndex - Chunk index (0-based)
- * @param {Buffer} chunkData - Chunk data
+ * @param {Buffer|import('stream').Readable} source - Chunk bytes, or a stream
+ *   of them (the request). A stream is never read until every check below has
+ *   passed, so a rejected request costs nothing (#1403).
+ * @param {Object} [options]
+ * @param {number} [options.declaredBytes] - Content-Length, when the caller
+ *   has one. Checked against the remaining allowance before the body is read.
  * @returns {Promise<Object>} - Chunk upload result
  */
-async function uploadChunk(uploadId, chunkIndex, chunkData) {
+async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {}) {
   const uploadMeta = activeUploads.get(uploadId);
 
   if (!uploadMeta) {
-    throw new Error('Upload not found or expired');
+    throw uploadStateError('Upload not found or expired', 404);
   }
 
   if (uploadMeta.status !== 'in_progress') {
-    throw new Error(`Upload is ${uploadMeta.status}`);
+    throw uploadStateError(`Upload is ${uploadMeta.status}`, 409);
   }
 
   // Check expiration
   if (Date.now() > uploadMeta.expiresAt) {
     await abortUpload(uploadId);
-    throw new Error('Upload expired');
+    throw uploadStateError('Upload expired', 410);
   }
 
   // Only the announced chunk indices are valid — anything else would merge
@@ -148,19 +242,73 @@ async function uploadChunk(uploadId, chunkIndex, chunkData) {
   // Enforce the per-file cap on the running byte total. The upload is
   // aborted, not just rejected: the chunks on disk are already over the
   // limit and the client can't complete the file any more.
-  const receivedBytes = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0) + chunkData.length;
-  if (receivedBytes > uploadMeta.maxFileSizeBytes) {
+  //
+  // What this chunk may still contribute — everything already banked, minus a
+  // re-sent copy of this same index. Computed before the body is touched so a
+  // Content-Length that already blows the budget is refused having read zero
+  // bytes (#1403).
+  const bankedBytes = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0);
+  const allowance = uploadMeta.maxFileSizeBytes - bankedBytes;
+
+  if (Number.isFinite(declaredBytes) && declaredBytes > allowance) {
     await abortUpload(uploadId);
     throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
   }
 
-  // Write chunk to disk
   const chunkPath = path.join(uploadMeta.uploadDir, `chunk_${String(chunkIndex).padStart(6, '0')}`);
-  await fs.writeFile(chunkPath, chunkData);
+  let chunkLength;
+
+  if (Buffer.isBuffer(source)) {
+    if (bankedBytes + source.length > uploadMeta.maxFileSizeBytes) {
+      await abortUpload(uploadId);
+      throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+    }
+    await fs.writeFile(chunkPath, source);
+    chunkLength = source.length;
+  } else {
+    // Staged through a sibling .part file, then renamed. Writing the canonical
+    // path directly truncates it the moment the stream opens, so a re-sent
+    // chunk that then failed left receivedChunks/chunkSizes still claiming the
+    // old copy: status reported 100% and completeUpload died on ENOENT.
+    //
+    // The suffix is per-attempt, not per-index: two in-flight requests for the
+    // same chunk would otherwise share one staging file, and whichever renamed
+    // first would publish bytes the other had already truncated.
+    const partPath = `${chunkPath}.${crypto.randomBytes(6).toString('hex')}.part`;
+    try {
+      chunkLength = await writeChunkStream(source, partPath, allowance);
+      // Re-check the aggregate before publishing. `allowance` was computed
+      // before the body arrived, so a chunk that completed while this one was
+      // still streaming is not counted in it — two overlapping 0.75MB chunks
+      // under a 1MB cap would otherwise both be accepted. The buffered version
+      // got this right for free by checking after the read; streaming has to
+      // ask again.
+      const bankedNow = totalReceivedBytes(uploadMeta) - (uploadMeta.chunkSizes.get(chunkIndex) || 0);
+      if (bankedNow + chunkLength > uploadMeta.maxFileSizeBytes) {
+        await fs.rm(partPath, { force: true }).catch(() => {});
+        await abortUpload(uploadId);
+        throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+      }
+      await fs.rename(partPath, chunkPath).catch(async (renameErr) => {
+        // A failed publish (ENOSPC, a vanished directory) left the fully
+        // written staging file behind. Its name is per-attempt, so a client
+        // that retries instead of aborting just accumulates more of them until
+        // the upload expires.
+        await fs.rm(partPath, { force: true }).catch(() => {});
+        throw renameErr;
+      });
+    } catch (err) {
+      if (err.overAllowance) {
+        await abortUpload(uploadId);
+        throw fileTooLargeError(uploadMeta.maxFileSizeBytes);
+      }
+      throw err;
+    }
+  }
 
   // Mark chunk as received
   uploadMeta.receivedChunks.add(chunkIndex);
-  uploadMeta.chunkSizes.set(chunkIndex, chunkData.length);
+  uploadMeta.chunkSizes.set(chunkIndex, chunkLength);
 
   const progress = (uploadMeta.receivedChunks.size / uploadMeta.expectedChunks) * 100;
 
@@ -190,12 +338,13 @@ async function completeUpload(uploadId) {
   const uploadMeta = activeUploads.get(uploadId);
 
   if (!uploadMeta) {
-    throw new Error('Upload not found or expired');
+    throw uploadStateError('Upload not found or expired', 404);
   }
 
   // Verify all chunks received
   if (uploadMeta.receivedChunks.size !== uploadMeta.expectedChunks) {
-    throw new Error(`Missing chunks: received ${uploadMeta.receivedChunks.size} of ${uploadMeta.expectedChunks}`);
+    throw uploadStateError(
+      `Missing chunks: received ${uploadMeta.receivedChunks.size} of ${uploadMeta.expectedChunks}`, 400);
   }
 
   uploadMeta.status = 'merging';
