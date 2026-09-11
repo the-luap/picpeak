@@ -24,15 +24,52 @@ const watermarkService = require('./watermarkService');
 const { resolvePhotoStorageKey, resolvePhotoFilePath } = require('./photoResolver');
 const { getStorage } = require('./storage');
 const { getUseOriginalFilenames, getZipEntryNames } = require('./downloadFilenameService');
+const { createArchiveStreamGuard } = require('../utils/archiveStreamGuard');
 const logger = require('../utils/logger');
 
 const DEBOUNCE_MS = 5000;
+
+// How many cached zips may be REBUILT at once in the background.
+//
+// invalidateAll() invalidates every event that has a cached zip, and each
+// invalidate() arms its own debounce timer in the same tick — so they all fire
+// together and, before this, every one of them started building at once. Each
+// build opens its own storage reads, so 25 events was enough to exhaust the S3
+// agent pool and stall uploads, thumbnails and gallery reads until the burst
+// finished.
+//
+// This caps the BACKGROUND path only. A foreground generateZip() — a guest
+// actually waiting for a download — is never queued behind a rebuild.
+const MAX_CONCURRENT_REGENS = 2;
 
 class DownloadZipService {
   constructor() {
     this.activeBuilds = new Map();   // eventId -> { promise, version }
     this.debounceTimers = new Map();  // eventId -> setTimeout handle
     this.versions = new Map();        // eventId -> generation counter
+    this.buildCancellers = new Map(); // eventId -> abort the in-flight build
+    this.regenActive = 0;             // background rebuilds running right now
+    this.regenWaiters = [];           // resolvers parked waiting for a slot
+  }
+
+  /**
+   * Run a BACKGROUND rebuild under the concurrency cap. Foreground callers
+   * deliberately do not go through here: someone is waiting on that response,
+   * and making them queue behind a settings-change burst would trade one stall
+   * for another.
+   */
+  async _withRegenSlot(fn) {
+    if (this.regenActive >= MAX_CONCURRENT_REGENS) {
+      await new Promise((resolve) => this.regenWaiters.push(resolve));
+    }
+    this.regenActive += 1;
+    try {
+      return await fn();
+    } finally {
+      this.regenActive -= 1;
+      const next = this.regenWaiters.shift();
+      if (next) next();
+    }
   }
 
   /**
@@ -107,6 +144,7 @@ class DownloadZipService {
   async _build(eventId, version) {
     const storage = getStorage();
     let tmpDir;
+    let buildGuard = null;
 
     try {
       const event = await db('events').where({ id: eventId }).first();
@@ -152,8 +190,28 @@ class DownloadZipService {
         const output = fs.createWriteStream(tmpPath);
         const archive = archiver('zip', { zlib: { level: 0 } });
 
+        // Bound and reclaim the storage reads. archiver drains its sources one
+        // at a time, so appending one read per photo parks an S3 socket per
+        // photo holding unread bytes; nothing reclaims them, because
+        // archiver's abort() does not touch source streams and the SDK clears
+        // its socket timeout as soon as response headers land. An unbounded
+        // loop over a large event starves uploads, thumbnails and gallery
+        // reads for the duration of the build.
+        buildGuard = createArchiveStreamGuard({
+          onFatalError: (err) => { buildGuard.destroyAll(); archive.abort(); reject(err); },
+        });
+
+        // Invalidation cancels the build directly rather than leaving a note
+        // for the loop: with a read cap in place the loop can be parked waiting
+        // for a slot that a stalled archive will never free.
+        this.buildCancellers.set(eventId, () => {
+          buildGuard.destroyAll();
+          archive.abort();
+          reject(new Error('Build invalidated'));
+        });
+
         output.on('close', resolve);
-        archive.on('error', reject);
+        archive.on('error', (err) => { buildGuard.destroyAll(); reject(err); });
         archive.pipe(output);
 
         const uniqueTypes = new Set(photos.map(p => p.type)).size;
@@ -164,6 +222,7 @@ class DownloadZipService {
             const photo = photos[i];
             // Check if build was invalidated
             if (this.versions.get(eventId) !== version) {
+              buildGuard.destroyAll();
               archive.abort();
               return reject(new Error('Build invalidated'));
             }
@@ -203,8 +262,9 @@ class DownloadZipService {
                 logger.warn('Skipping watermark in pre-zip', { photoId: photo.id, error: err.message });
               }
             } else if (storageKey) {
+              if (!await buildGuard.acquire()) return;
               const stream = await storage.get(storageKey);
-              archive.append(stream, { name: archiveName });
+              archive.append(buildGuard.track(stream), { name: archiveName });
             } else {
               const filePath = resolvePhotoFilePath(event, photo);
               archive.file(filePath, { name: archiveName });
@@ -243,6 +303,10 @@ class DownloadZipService {
       logger.error('downloadZipService._build error', { eventId, error: err.message });
       return { success: false, error: err.message };
     } finally {
+      // Every exit path — success, invalidated, thrown — has to reclaim the
+      // reads, or they hold their sockets for the life of the process.
+      if (buildGuard) buildGuard.destroyAll();
+      this.buildCancellers.delete(eventId);
       if (tmpDir) {
         await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
       }
@@ -261,6 +325,12 @@ class DownloadZipService {
     const timer = this.debounceTimers.get(eventId);
     if (timer) clearTimeout(timer);
 
+    // Cancel an in-flight build directly. Bumping the version only stops it the
+    // next time the loop looks, and with a read cap the loop can be parked
+    // waiting for a slot a stalled archive will never free.
+    const cancelBuild = this.buildCancellers.get(eventId);
+    if (cancelBuild) cancelBuild();
+
     // Fire-and-forget cleanup
     this._cleanup(eventId).catch(err =>
       logger.warn('downloadZipService.invalidate cleanup error', { eventId, error: err.message })
@@ -269,7 +339,9 @@ class DownloadZipService {
     // Debounce regeneration
     const newTimer = setTimeout(() => {
       this.debounceTimers.delete(eventId);
-      this.generateZip(eventId).catch(err =>
+      // Through the cap: invalidateAll arms every one of these in the same
+      // tick, so without it they all start building together.
+      this._withRegenSlot(() => this.generateZip(eventId)).catch(err =>
         logger.warn('downloadZipService debounced regen error', { eventId, error: err.message })
       );
     }, DEBOUNCE_MS);
