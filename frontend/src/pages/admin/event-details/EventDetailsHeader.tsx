@@ -19,7 +19,6 @@ import type { Event } from '../../../types';
 import { Button, Card } from '../../../components/common';
 import { useLocalizedDate } from '../../../hooks/useLocalizedDate';
 import { useFeatureFlags } from '../../../contexts/FeatureFlagsContext';
-import { eventsService } from '../../../services/events.service';
 import { buildShareLinkUrl } from '../../../utils/url';
 import { isGalleryPublic } from '../../../utils/accessControl';
 import type { FeedbackSettings as FeedbackSettingsType } from '../../../services/feedback.service';
@@ -191,7 +190,7 @@ export const EventDetailsHeader: React.FC<EventDetailsHeaderProps> = ({
             {event.share_link && !isEditing && (
               <a
                 href={event.is_draft
-                  ? `${buildShareLinkUrl(event.share_link)}${buildShareLinkUrl(event.share_link).includes('?') ? '&' : '?'}preview=${eventsService.getPreviewToken() || ''}`
+                  ? `${buildShareLinkUrl(event.share_link)}${buildShareLinkUrl(event.share_link).includes('?') ? '&' : '?'}admin_preview=1`
                   : buildShareLinkUrl(event.share_link)
                 }
                 target="_blank"

@@ -45,10 +45,11 @@ const LIVE_TOKEN = 'feedfacefeedfacefeedfacefeedface';
 describe('draft preview through the short share URL (#1386)', () => {
   let db; let cleanup; let app; let adminId; let foreignId;
 
-  // Stable's isAdminPreview accepts the token from the x-admin-preview header
-  // (what the frontend sends) or ?preview= (what the page URL carries).
+  // Two transports. admin_preview=1 is an intent flag authenticated by the
+  // admin cookie — what the frontend sends. ?preview=<jwt> is the legacy
+  // hand-built-link form, kept working.
   const preview = (id = adminId) => `preview=${mintAdminToken(id)}`;
-  const withHeader = (req, id = adminId) => req.set('x-admin-preview', mintAdminToken(id));
+  const asAdmin = (req, id = adminId) => req.set('Cookie', `admin_token=${mintAdminToken(id)}`);
 
   async function insertEvent({ slug, token, isDraft }) {
     await db('events').insert({
@@ -118,30 +119,49 @@ describe('draft preview through the short share URL (#1386)', () => {
   // The transport the SHIPPED frontend uses. The first cut of this fix only
   // tested ?preview=, which the browser never sends on an API call — so the
   // suite passed while the feature stayed broken end to end. Caught in review.
-  describe('the header transport the frontend actually sends', () => {
-    it('resolves the draft from the x-admin-preview header alone', async () => {
-      const res = await withHeader(request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}`));
+  describe('admin_preview=1 authenticated by the admin cookie', () => {
+    it('resolves the draft', async () => {
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`),
+      );
       expect(res.status).toBe(200);
       expect(res.body.slug).toBe(DRAFT_SLUG);
     });
 
-    it('clears verify-token from the header alone', async () => {
-      const res = await withHeader(
-        request(app).get(`/api/gallery/${DRAFT_SLUG}/verify-token/${DRAFT_TOKEN}`),
+    it('clears verify-token', async () => {
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/verify-token/${DRAFT_TOKEN}?admin_preview=1`),
       );
       expect(res.status).toBe(200);
       expect(res.body.valid).toBe(true);
     });
 
-    it('serves /info for the draft from the header alone', async () => {
-      const res = await withHeader(request(app).get(`/api/gallery/${DRAFT_SLUG}/info`));
+    it('serves /info for the draft', async () => {
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/info?admin_preview=1`),
+      );
       expect(res.status).toBe(200);
     });
 
-    it('404s when the header carries something that is not an admin JWT', async () => {
+    it('serves draft MEDIA, which is what the flag on the URL is for', async () => {
+      // AuthenticatedImage/Video use native fetch and never see the axios
+      // interceptor, so the flag has to travel on the media URL itself. Without
+      // it the preview loaded metadata and showed no images at all.
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/photos?admin_preview=1`),
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it('404s with the flag but no admin cookie — the flag authorizes nothing', async () => {
+      const res = await request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`);
+      expect(res.status).toBe(404);
+    });
+
+    it('404s with the flag and a cookie that is not an admin JWT', async () => {
       const res = await request(app)
-        .get(`/api/gallery/resolve/${DRAFT_TOKEN}`)
-        .set('x-admin-preview', 'not-a-jwt');
+        .get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`)
+        .set('Cookie', 'admin_token=not-a-jwt');
       expect(res.status).toBe(404);
     });
   });
@@ -168,11 +188,16 @@ describe('draft preview through the short share URL (#1386)', () => {
     // it rather than being stricter than the branch it lives on. Main tightened
     // this by routing preview through verifyAdminPreview -> access.authorize.
     it('accepts any valid admin token, matching /info on this branch', async () => {
-      const res = await request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?${preview(foreignId)}`);
+      const res = await asAdmin(
+        request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`),
+        foreignId,
+      );
       expect(res.status).toBe(200);
 
-      const info = await request(app)
-        .get(`/api/gallery/${DRAFT_SLUG}/info?${preview(foreignId)}`);
+      const info = await asAdmin(
+        request(app).get(`/api/gallery/${DRAFT_SLUG}/info?admin_preview=1`),
+        foreignId,
+      );
       expect(info.status).toBe(200);
     });
 

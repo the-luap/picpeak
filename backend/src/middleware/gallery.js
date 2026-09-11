@@ -4,22 +4,46 @@ const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
 const logger = require('../utils/logger');
 
-// Check if the request carries a valid admin preview token (Feature 3)
+// Check if the request carries a valid admin preview credential (Feature 3).
 //
-// The header is the transport the frontend actually uses (#1386): the admin's
-// own session JWT is the credential here, and a query string reaches nginx
-// access logs, browser history and Referer headers. ?preview= is still
-// accepted because the gallery PAGE url carries it — that is what the browser
-// navigates to — and hand-built links in the wild rely on it.
+// Two transports (#1386):
+//
+//   admin_preview=1  — an INTENT flag, authenticated by the admin's existing
+//                      HttpOnly admin_token cookie (or an Authorization
+//                      bearer). This is the one the frontend uses. The cookie
+//                      rides along on same-origin requests automatically,
+//                      including the native fetch() that AuthenticatedImage
+//                      and AuthenticatedVideo use, so media works too — and
+//                      no credential ever appears in a URL.
+//
+//   preview=<jwt>    — the original transport, kept so existing hand-built
+//                      links keep working. It puts an admin JWT in the query
+//                      string, which reaches nginx access logs, browser
+//                      history and Referer headers, so nothing emits it any
+//                      more.
+//
+// The flag alone authorizes nothing: without a valid admin token on the
+// request this returns false, exactly as an anonymous guest would get.
 function isAdminPreview(req) {
-  const previewToken = req.headers?.['x-admin-preview'] || req.query?.preview;
-  if (!previewToken) return false;
-  try {
-    const decoded = jwt.verify(previewToken, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });
-    return decoded.type === 'admin';
-  } catch {
-    return false;
+  const verifyAdminJwt = (token) => {
+    if (!token) return false;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });
+      return decoded.type === 'admin';
+    } catch {
+      return false;
+    }
+  };
+
+  if (req.query?.admin_preview === '1') {
+    const header = req.headers?.authorization;
+    const bearer = header && header.startsWith('Bearer ') ? header.substring(7) : null;
+    if (verifyAdminJwt(req.cookies?.admin_token) || verifyAdminJwt(bearer)) {
+      return true;
+    }
   }
+
+  return verifyAdminJwt(req.query?.preview);
 }
 
 // Middleware to verify gallery access
