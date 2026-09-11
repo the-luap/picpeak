@@ -30,6 +30,17 @@ function fileTooLargeError(maxFileSizeBytes) {
   return err;
 }
 
+function prematureCloseError() {
+  const err = new Error('Request body closed before the chunk was fully received');
+  err.code = 'CHUNK_PREMATURE_CLOSE';
+  err.statusCode = 400;
+  return err;
+}
+
+function overAllowanceError() {
+  return Object.assign(new Error('CHUNK_OVER_ALLOWANCE'), { overAllowance: true });
+}
+
 function invalidChunkError(message) {
   const err = new Error(message);
   err.code = 'INVALID_CHUNK';
@@ -116,36 +127,59 @@ async function initializeUpload(options) {
 }
 
 /**
- * Stream `source` into `chunkPath`, refusing to write more than `allowance`
+ * Stream `source` into `partPath`, refusing to write more than `allowance`
  * bytes (#1403). The cap is the backstop for a request that lies about its
  * Content-Length or omits it: the moment the running total passes the
- * allowance the source is destroyed and the partial file removed, so an
- * oversized body costs the allowance rather than its own size.
+ * allowance the read stops and the partial file is removed, so an oversized
+ * body costs the allowance rather than its own size.
  */
-function writeChunkStream(source, chunkPath, allowance) {
+function writeChunkStream(source, partPath, allowance) {
   const fsSync = require('fs');
   return new Promise((resolve, reject) => {
-    const out = fsSync.createWriteStream(chunkPath);
-    let written = 0;
-    let failed = null;
+    // A client that hung up while auth and ownership were awaiting the database
+    // hands us an already-dead stream. pipe() would then emit neither `end` nor
+    // `error`, leaving this promise pending forever with the write descriptor
+    // open. The async-iterator version this replaced rejected that case, so it
+    // has to be checked explicitly rather than inferred from an event.
+    if (source.destroyed || source.aborted) {
+      return reject(prematureCloseError());
+    }
 
-    const fail = (err) => {
-      if (failed) return;
-      failed = err;
-      source.destroy();
-      out.destroy();
-      fsSync.unlink(chunkPath, () => reject(err));
+    const out = fsSync.createWriteStream(partPath);
+    let written = 0;
+    let settled = false;
+
+    const settle = (err, value) => {
+      if (settled) return;
+      settled = true;
+      source.unpipe(out);
+      if (err) {
+        out.destroy();
+        fsSync.unlink(partPath, () => reject(err));
+      } else {
+        resolve(value);
+      }
     };
 
     source.on('data', (buf) => {
       written += buf.length;
       if (written > allowance) {
-        fail(Object.assign(new Error('CHUNK_OVER_ALLOWANCE'), { overAllowance: true }));
+        // Deliberately NOT source.destroy(). `source` is the IncomingMessage,
+        // and destroying it destroys the socket under it — the 413 the route is
+        // about to send would never reach the client, who would see a connection
+        // reset instead of the size-limit JSON. Pausing stops the read, which is
+        // the whole point of the cap.
+        source.pause();
+        settle(overAllowanceError());
       }
     });
-    source.on('error', fail);
-    out.on('error', fail);
-    out.on('finish', () => { if (!failed) resolve(written); });
+    source.on('error', settle);
+    source.on('aborted', () => settle(prematureCloseError()));
+    source.on('close', () => {
+      if (!source.readableEnded) settle(prematureCloseError());
+    });
+    out.on('error', settle);
+    out.on('finish', () => settle(null, written));
     source.pipe(out);
   });
 }
@@ -212,8 +246,14 @@ async function uploadChunk(uploadId, chunkIndex, source, { declaredBytes } = {})
     await fs.writeFile(chunkPath, source);
     chunkLength = source.length;
   } else {
+    // Staged through a sibling .part file, then renamed. Writing the canonical
+    // path directly truncates it the moment the stream opens, so a re-sent
+    // chunk that then failed left receivedChunks/chunkSizes still claiming the
+    // old copy: status reported 100% and completeUpload died on ENOENT.
+    const partPath = `${chunkPath}.part`;
     try {
-      chunkLength = await writeChunkStream(source, chunkPath, allowance);
+      chunkLength = await writeChunkStream(source, partPath, allowance);
+      await fs.rename(partPath, chunkPath);
     } catch (err) {
       if (err.overAllowance) {
         await abortUpload(uploadId);

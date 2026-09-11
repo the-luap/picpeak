@@ -120,6 +120,55 @@ describe('chunked upload streams the body under a cap (#1403)', () => {
     });
   });
 
+  // Every case here was found by an external review of the first cut of this
+  // fix. All three are regressions the buffered version did not have: the
+  // async iterator it replaced rejected a dead request on its own, and never
+  // opened the chunk file at all until it had the whole body in hand.
+  describe('failure paths the streaming rewrite introduced', () => {
+    it('rejects an already-destroyed request instead of hanging forever', async () => {
+      const { uploadId } = await init();
+      const source = countingSource(1024);
+      source.destroy();
+      // pipe() on a dead stream emits neither `end` nor `error`, so without an
+      // explicit check this promise never settles and the write fd leaks.
+      await expect(chunkedUpload.uploadChunk(uploadId, 0, source))
+        .rejects.toMatchObject({ code: 'CHUNK_PREMATURE_CLOSE', statusCode: 400 });
+    });
+
+    it('leaves a previously banked chunk intact when a re-send fails', async () => {
+      const { uploadId } = await init();
+      await chunkedUpload.uploadChunk(uploadId, 0, Buffer.alloc(1000));
+      const chunkPath = path.join(process.env.STORAGE_PATH, 'chunks', uploadId, 'chunk_000000');
+      expect((await fs.stat(chunkPath)).size).toBe(1000);
+
+      // Re-send the same index, then fail it mid-flight.
+      const source = new Readable({ read() {} });
+      const pending = chunkedUpload.uploadChunk(uploadId, 0, source);
+      source.push(Buffer.alloc(10));
+      source.destroy(new Error('client went away'));
+      await expect(pending).rejects.toThrow();
+
+      // The banked copy must still be there: receivedChunks/chunkSizes still
+      // count it, so a truncated file here means status reports 100% and
+      // completeUpload dies on ENOENT.
+      expect((await fs.stat(chunkPath)).size).toBe(1000);
+      // Still counted as received — which is exactly why the file has to still
+      // be there and be the full 1000 bytes.
+      expect(chunkedUpload.getUploadStatus(uploadId).receivedChunks).toBe(1);
+    });
+
+    it('does not destroy the request stream when it trips the cap', async () => {
+      const { uploadId } = await init();
+      const source = countingSource(8 * MB);
+      await expect(chunkedUpload.uploadChunk(uploadId, 0, source))
+        .rejects.toMatchObject({ statusCode: 413 });
+      // `source` stands in for the IncomingMessage. Destroying it would take
+      // the socket down before the route could send its 413 JSON, so the client
+      // would see a connection reset instead of the error.
+      expect(source.destroyed).toBe(false);
+    });
+  });
+
   describe('the happy path still works', () => {
     it('writes a streamed chunk and reports progress', async () => {
       const { uploadId } = await init();
