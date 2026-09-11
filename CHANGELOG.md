@@ -5,6 +5,13 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.7-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.6-beta.0...v3.131.7-beta.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **admin:** keep header-style tiles from overflowing their cards ([#1422](https://github.com/PicPeak/picpeak/issues/1422)) ([7cd7654](https://github.com/PicPeak/picpeak/commit/7cd7654f99967080724d7498b72bea4986ae825d))
+
 ## [3.131.6-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.5-beta.0...v3.131.6-beta.0) (2026-09-11)
 
 
