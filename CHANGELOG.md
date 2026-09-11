@@ -5,6 +5,29 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.4-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.3-beta.0...v3.131.4-beta.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **backend:** bump sharp, nodemailer, multer, js-yaml, joi for security fixes ([#1374](https://github.com/PicPeak/picpeak/issues/1374)) ([f6b81fa](https://github.com/PicPeak/picpeak/commit/f6b81fabf05ab0bbce48e63bbdf3812b30aa10de))
+* **backend:** contain and sanitize the SQLite restore source path ([#1384](https://github.com/PicPeak/picpeak/issues/1384)) ([316bcbd](https://github.com/PicPeak/picpeak/commit/316bcbd67965ddec74801308a722b506bb8da265))
+* **backend:** enforce event ownership on short URL deletion ([#1379](https://github.com/PicPeak/picpeak/issues/1379)) ([e290207](https://github.com/PicPeak/picpeak/commit/e290207934708f8bf41676aec39a43474f0f6172))
+* **backend:** reject a replayed TOTP code within its validity window ([#1389](https://github.com/PicPeak/picpeak/issues/1389)) ([cdde937](https://github.com/PicPeak/picpeak/commit/cdde937d7fce130d67e331bd968cb2c4734902d4))
+* **backend:** require actor to hold every permission of a role they grant ([#1378](https://github.com/PicPeak/picpeak/issues/1378)) ([59ea83c](https://github.com/PicPeak/picpeak/commit/59ea83c84efdcf6d488853a25ba05f1d15ef1150))
+* **backend:** shorten payment-check token TTL and notify admin on use ([#1385](https://github.com/PicPeak/picpeak/issues/1385)) ([e324791](https://github.com/PicPeak/picpeak/commit/e3247911a071b5277d877a1fa0a39c544d3a03e8))
+* **backend:** use the strong password generator for resets and enforce must_change_password ([#1387](https://github.com/PicPeak/picpeak/issues/1387)) ([b798d8e](https://github.com/PicPeak/picpeak/commit/b798d8e4c19541da6ee1f58c2756182817b6c716))
+* **backend:** validate business-profile logo uploads by content, not filename ([#1381](https://github.com/PicPeak/picpeak/issues/1381)) ([abc9601](https://github.com/PicPeak/picpeak/commit/abc960170b1eac0fa1f3110015e8fce671d428ab))
+* **backend:** validate event id before using it in the logo storage filename ([#1382](https://github.com/PicPeak/picpeak/issues/1382)) ([38b0e1d](https://github.com/PicPeak/picpeak/commit/38b0e1d5842217030e7dd48247e523ded4b19c58))
+* **backend:** validate the S3 endpoint host before the restore download ([#1383](https://github.com/PicPeak/picpeak/issues/1383)) ([ec03089](https://github.com/PicPeak/picpeak/commit/ec03089d57c88ff0f7c21b6a4947ffb9ef9771f9))
+* **gallery:** bound and reclaim storage reads in the remaining zip builders ([#1410](https://github.com/PicPeak/picpeak/issues/1410)) ([70f5a8c](https://github.com/PicPeak/picpeak/commit/70f5a8c54e096f70c030d63414d5954190cb68a8))
+* **gallery:** keep an admin draft preview out of the guest share-login flow ([f92d4bb](https://github.com/PicPeak/picpeak/commit/f92d4bb2d9c2ea84f59dd4cfaa3a4272f1eec56b))
+* **gallery:** keep videos playable under enhanced and maximum protection ([#1404](https://github.com/PicPeak/picpeak/issues/1404)) ([1080388](https://github.com/PicPeak/picpeak/commit/1080388f28b846553cd670c66e9632275eb9c994))
+* **gallery:** let an admin preview a draft through its short share URL ([f92d4bb](https://github.com/PicPeak/picpeak/commit/f92d4bb2d9c2ea84f59dd4cfaa3a4272f1eec56b))
+* **gallery:** let an admin preview a draft through its short share URL ([#1405](https://github.com/PicPeak/picpeak/issues/1405)) ([f92d4bb](https://github.com/PicPeak/picpeak/commit/f92d4bb2d9c2ea84f59dd4cfaa3a4272f1eec56b))
+* **upload:** let the csrf gate pass application/octet-stream chunks ([#1401](https://github.com/PicPeak/picpeak/issues/1401)) ([7c0c5c1](https://github.com/PicPeak/picpeak/commit/7c0c5c1cda3921cbd9404dd77d64bdec7a9ae2aa))
+* **upload:** stop buffering a chunk body before anything checks its size ([#1406](https://github.com/PicPeak/picpeak/issues/1406)) ([4622478](https://github.com/PicPeak/picpeak/commit/4622478e44d5e63da031a2f27c5a5c335282eacb))
+
 ## [3.131.3-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.2-beta.0...v3.131.3-beta.0) (2026-09-10)
 
 
