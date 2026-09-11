@@ -264,6 +264,11 @@ router.post('/mfa/setup', adminAuth, handleAsync(async (req, res) => {
 
 // Complete enrollment: verify a code against the provisional secret, enable
 // MFA, and return one-time recovery codes (shown exactly once).
+//
+// No replay tracking here: this confirms an already-authenticated session
+// still holds the authenticator (no new session is granted), and starting
+// the last-used-step counter here would reject the very next login if it
+// lands in the same 30s TOTP step as this call.
 router.post('/mfa/enable', [
   adminAuth,
   body('code').notEmpty().withMessage('Verification code is required')
@@ -314,7 +319,17 @@ router.post('/mfa/disable', [
     throw new ValidationError('Two-factor authentication is not enabled');
   }
 
-  const totpOk = mfaService.verifyTotpEncrypted(req.body.code, admin.two_factor_secret);
+  // Persist the matched step atomically right here (see mfaService.persistTotpStep):
+  // two concurrent requests carrying the same captured code can't both read the
+  // same last-used step and both win — only the first writer's UPDATE affects a
+  // row, so a losing concurrent request is correctly treated as invalid below.
+  const totpStep = mfaService.verifyTotpEncryptedStep(
+    req.body.code, admin.two_factor_secret, admin.two_factor_last_used_step
+  );
+  let totpOk = false;
+  if (totpStep !== null) {
+    totpOk = await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+  }
   let recoveryOk = false;
   if (!totpOk) {
     const stored = mfaService.parseRecoveryCodes(admin.two_factor_recovery_codes);
@@ -329,6 +344,7 @@ router.post('/mfa/disable', [
     two_factor_secret: null,
     two_factor_recovery_codes: null,
     two_factor_enrolled_at: null,
+    two_factor_last_used_step: null,
     updated_at: new Date()
   });
 
@@ -353,7 +369,16 @@ router.post('/mfa/recovery-codes', [
   if (!isMfaEnabled(admin)) {
     throw new ValidationError('Two-factor authentication is not enabled');
   }
-  if (!mfaService.verifyTotpEncrypted(req.body.code, admin.two_factor_secret)) {
+  // Persist the matched step atomically right here (see mfaService.persistTotpStep):
+  // two concurrent requests carrying the same captured code can't both read the
+  // same last-used step and both win — only the first writer's UPDATE affects a
+  // row, so a losing concurrent request is correctly treated as invalid below.
+  const totpStep = mfaService.verifyTotpEncryptedStep(
+    req.body.code, admin.two_factor_secret, admin.two_factor_last_used_step
+  );
+  const totpOk = totpStep !== null
+    && await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+  if (!totpOk) {
     throw new ValidationError('Invalid verification code');
   }
 

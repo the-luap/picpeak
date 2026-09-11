@@ -92,6 +92,52 @@ describe('mfaService — TOTP verification', () => {
   });
 });
 
+describe('mfaService — replay protection (GHSA-qcwx-r25m-j869)', () => {
+  it('verifyTotp accepts a code once and rejects the same code as a replay', () => {
+    const secret = mfaService.generateSecret();
+    const code = authenticator.generate(secret);
+
+    // First use: no lastUsedStep yet, so it's accepted.
+    expect(mfaService.verifyTotp(code, secret)).toBe(true);
+
+    // Simulate persisting the matched step and replaying the same code: the
+    // matched step must strictly advance past lastUsedStep, so this fails.
+    const step = mfaService.currentTotpStep();
+    expect(mfaService.verifyTotp(code, secret, step)).toBe(false);
+    // A lastUsedStep the code hasn't caught up to yet also rejects it.
+    expect(mfaService.verifyTotp(code, secret, step + 1)).toBe(false);
+  });
+
+  it('verifyTotpEncryptedStep returns the matched step on success and null on replay', () => {
+    const secret = mfaService.generateSecret();
+    const stored = mfaService.encryptSecret(secret);
+    const code = authenticator.generate(secret);
+
+    const step = mfaService.verifyTotpEncryptedStep(code, stored, null);
+    expect(step).toEqual(expect.any(Number));
+    expect(step).toBeGreaterThan(0);
+
+    // Replaying the same code against the just-persisted step is rejected.
+    expect(mfaService.verifyTotpEncryptedStep(code, stored, step)).toBeNull();
+  });
+
+  it('a freshly generated code for the next TOTP step is accepted after a replay is rejected', () => {
+    const secret = mfaService.generateSecret();
+    const code = authenticator.generate(secret);
+    const step = mfaService.verifyTotpEncryptedStep(code, mfaService.encryptSecret(secret), null)
+      || mfaService.currentTotpStep();
+
+    // Same-step replay: rejected.
+    expect(mfaService.verifyTotp(code, secret, step)).toBe(false);
+
+    // A code minted for the next step (via a cloned authenticator with a
+    // future epoch, not by mocking Date.now()) advances past last_used_step.
+    const nextStepAuthenticator = authenticator.clone({ epoch: Date.now() + 30000 });
+    const nextCode = nextStepAuthenticator.generate(secret);
+    expect(mfaService.verifyTotp(nextCode, secret, step)).toBe(true);
+  });
+});
+
 describe('mfaService — otpauth URI / QR', () => {
   it('builds an otpauth:// URI containing issuer, account and secret', () => {
     const secret = mfaService.generateSecret();

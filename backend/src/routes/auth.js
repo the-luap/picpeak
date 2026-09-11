@@ -298,8 +298,22 @@ router.post('/admin/login/mfa', [
       return res.status(401).json({ error: getGenericAuthError() });
     }
 
-    // TOTP first, then a one-time recovery code.
-    let ok = mfaService.verifyTotpEncrypted(code, admin.two_factor_secret);
+    // TOTP first, then a one-time recovery code. verifyTotpEncryptedStep also
+    // enforces replay protection (GHSA-qcwx-r25m-j869): a code whose matched
+    // step doesn't advance past this admin's two_factor_last_used_step is
+    // rejected, so the same code can't complete two logins. The step is
+    // persisted atomically (persistTotpStep) right here, immediately after a
+    // match, so two concurrent requests carrying the same captured code
+    // can't both read the same last-used step and both win — only the first
+    // writer's UPDATE affects a row; the loser falls through and is treated
+    // as a replay below.
+    const totpStep = mfaService.verifyTotpEncryptedStep(
+      code, admin.two_factor_secret, admin.two_factor_last_used_step
+    );
+    let ok = false;
+    if (totpStep !== null) {
+      ok = await mfaService.persistTotpStep(db, admin.id, totpStep, { updated_at: new Date() });
+    }
     let usedRecovery = false;
     let remainingHashes = null;
     if (!ok) {
@@ -328,6 +342,7 @@ router.post('/admin/login/mfa', [
         { type: 'admin', id: admin.id, name: admin.username }
       );
     }
+    // else: the TOTP step was already persisted atomically above.
 
     await logActivity('admin_mfa_login',
       { admin_id: admin.id, method: usedRecovery ? 'recovery_code' : 'totp' },
