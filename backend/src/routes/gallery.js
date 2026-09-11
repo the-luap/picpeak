@@ -46,6 +46,7 @@ const {
 } = require('../services/downloadFilenameService');
 const { buildContentDisposition } = require('../utils/filenameSanitizer');
 const { getStorage } = require('../services/storage');
+const { createArchiveStreamGuard } = require('../utils/archiveStreamGuard');
 const { setGalleryAuthCookies } = require('../utils/tokenUtils');
 // Read globals from app_settings (the real table) — settingsService.getSetting
 // queries a non-existent `settings` table and throws.
@@ -1326,6 +1327,10 @@ async function bumpEventDownloadCounts(eventId) {
 }
 
 router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async (req, res) => {
+  // Hoisted so the catch can reclaim reads opened before the failure, and so a
+  // cancelled download never reaches finalize() (see the close handler below).
+  let guard = null;
+  let cancelled = false;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -1440,6 +1445,22 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
       throw err;
     });
 
+    // Bound and reclaim the storage reads. archiver drains its sources one at
+    // a time, so appending one read per photo parks an S3 socket per photo
+    // holding unread bytes, and nothing reclaims them — archiver's abort()
+    // does not touch source streams, and the SDK clears its socket timeout as
+    // soon as response headers land.
+    guard = createArchiveStreamGuard({
+      onFatalError: () => { cancelled = true; guard.destroyAll(); archive.abort(); },
+    });
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        cancelled = true;
+        guard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Get watermark settings - apply if global setting OR event-level setting is enabled
@@ -1508,8 +1529,9 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
 
           archive.append(watermarkedBuffer, { name: archiveName });
         } else if (storageKey) {
+          if (!await guard.acquire()) break;
           const stream = await storage.get(storageKey);
-          archive.append(stream, { name: archiveName });
+          archive.append(guard.track(stream), { name: archiveName });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name: archiveName });
         }
@@ -1524,6 +1546,7 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
       }
     }
 
+    if (cancelled) return;
     await archive.finalize();
 
     // Log bulk download
@@ -1540,12 +1563,19 @@ router.get('/:slug/download-all', verifyGalleryAccess, denySlideshowToken, async
         .increment('download_count', 1).catch(() => {});
     }
   } catch (error) {
+    if (guard) guard.destroyAll();
+    // The client already left and the ZIP headers are gone; sending JSON here
+    // throws ERR_HTTP_HEADERS_SENT out of an async handler with nothing to
+    // catch it.
+    if (cancelled || res.headersSent) return;
     errorResponse(res, error, 500, 'Failed to create download archive');
   }
 });
 
 // Download selected photos as ZIP
 router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken, async (req, res) => {
+  let selectedGuard = null;
+  let selectedCancelled = false;
   try {
     // Check if downloads are allowed for this event
     if (!parseBooleanInput(req.event.allow_downloads, true)) {
@@ -1605,6 +1635,19 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         // ignore double-send errors
       }
     });
+
+    selectedGuard = createArchiveStreamGuard({
+      onFatalError: () => { selectedCancelled = true; selectedGuard.destroyAll(); archive.abort(); },
+    });
+    archive.on('error', () => selectedGuard.destroyAll());
+    res.on('close', () => {
+      if (!res.writableFinished) {
+        selectedCancelled = true;
+        selectedGuard.destroyAll();
+        archive.abort();
+      }
+    });
+
     archive.pipe(res);
 
     // Check watermark settings - apply if global setting OR event-level setting is enabled
@@ -1651,8 +1694,9 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
             : await watermarkService.applyWatermark(resolvePhotoFilePath(req.event, photo), effectiveSettings);
           archive.append(buf, { name });
         } else if (storageKey) {
+          if (!await selectedGuard.acquire()) break;
           const stream = await selectedStorage.get(storageKey);
-          archive.append(stream, { name });
+          archive.append(selectedGuard.track(stream), { name });
         } else {
           archive.file(resolvePhotoFilePath(req.event, photo), { name });
         }
@@ -1667,6 +1711,7 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
       }
     }
 
+    if (selectedCancelled) return;
     await archive.finalize();
 
     await db('access_logs').insert({
@@ -1682,6 +1727,8 @@ router.post('/:slug/download-selected', verifyGalleryAccess, denySlideshowToken,
         .increment('download_count', 1).catch(() => {});
     }
   } catch (error) {
+    if (selectedGuard) selectedGuard.destroyAll();
+    if (selectedCancelled || res.headersSent) return;
     errorResponse(res, error, 500, 'Failed to download selected photos');
   }
 });
