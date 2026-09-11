@@ -149,7 +149,10 @@ const resolveShareIdentifier = async (identifier, { includeDrafts = false } = {}
       'expires_at',
       'is_active',
       'is_archived',
-      'is_draft'
+      'is_draft',
+      // Ownership input for the preview check (#1411) — a draft is only
+      // previewable by an admin who may see this event.
+      'created_by'
     )
     .where(includeDrafts ? UNPUBLISHED_EVENT_FILTER : ACTIVE_EVENT_FILTER);
 

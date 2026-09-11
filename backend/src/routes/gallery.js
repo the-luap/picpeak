@@ -26,7 +26,7 @@ function resolveHeroLogoVisible(perEvent, globalDefault) {
 }
 const watermarkService = require('../services/watermarkService');
 const watermarkGeneratorService = require('../services/watermarkGeneratorService');
-const { verifyGalleryAccess, denySlideshowToken, isAdminPreview } = require('../middleware/gallery');
+const { verifyGalleryAccess, denySlideshowToken, verifyAdminPreview } = require('../middleware/gallery');
 const { resolveGuest } = require('../middleware/guestAuth');
 const { generateGuestIdentifier } = require('../middleware/feedbackRateLimit');
 const secureImageService = require('../services/secureImageService');
@@ -120,13 +120,15 @@ async function checkSlugRedirect(slug) {
 // however this evolves, and an unverified caller never gets so far as knowing
 // the draft exists.
 async function resolveDraftForAdminPreview(req, identifier) {
-  // isAdminPreview requires one of these, so checking up front costs nothing
-  // and keeps an unknown identifier from paying for a second set of lookups on
-  // the public 404 path. admin_preview=1 is what the frontend sends; the bare
-  // ?preview=<jwt> is the legacy hand-built-link form.
+  // A preview credential is required either way, so checking up front costs
+  // nothing and keeps an unknown identifier from paying for a second set of
+  // lookups on the public 404 path. admin_preview=1 is what the frontend
+  // sends; the bare ?preview=<jwt> is the legacy hand-built-link form.
   if (req.query?.admin_preview !== '1' && !req.query?.preview) return null;
-  if (!isAdminPreview(req)) return null;
-  return await resolveShareIdentifier(identifier, { includeDrafts: true });
+  const result = await resolveShareIdentifier(identifier, { includeDrafts: true });
+  if (!result) return null;
+  // Authorized against THIS event, not just against a valid signature (#1411).
+  return await verifyAdminPreview(req, result.event) ? result : null;
 }
 
 // Resolve gallery identifier (slug or token) to canonical data
@@ -191,9 +193,9 @@ router.get('/:slug/verify-token/:token', handleAsync(async (req, res) => {
     throw new NotFoundError('Gallery');
   }
 
-  // Drafts are visible to a verified admin preview only (#1386). Without this
-  // the preview clears /resolve and then 404s one step later, here.
-  if (event.is_draft && !isAdminPreview(req)) {
+  // Drafts are visible to an authorized admin preview only (#1386, #1411).
+  // Without this the preview clears /resolve and then 404s one step later.
+  if (event.is_draft && !await verifyAdminPreview(req, event)) {
     throw new NotFoundError('Gallery');
   }
 
@@ -239,6 +241,8 @@ router.get('/:slug/info', async (req, res) => {
         'hero_divider_style',
         'hero_image_anchor',
         'is_draft',
+        // Ownership input for the preview check (#1411).
+        'created_by',
         'default_photo_sort',
         // Per-event promotional override (#440). Resolution into a
         // ready-to-render markdown string happens below so the
@@ -266,8 +270,10 @@ router.get('/:slug/info', async (req, res) => {
       return res.status(404).json({ error: 'Gallery has been archived and is no longer available' });
     }
 
-    // Check if event is a draft (allow admin preview)
-    if (event.is_draft && !isAdminPreview(req)) {
+    // Check if event is a draft (allow an AUTHORIZED admin preview — #1411:
+    // a valid signature alone used to be enough, so any admin previewed any
+    // draft, including one belonging to a different photographer).
+    if (event.is_draft && !await verifyAdminPreview(req, event)) {
       return res.status(404).json({ error: 'Gallery is not yet published' });
     }
     

@@ -182,23 +182,47 @@ describe('draft preview through the short share URL (#1386)', () => {
       expect(res.status).toBe(404);
     });
 
-    // Documenting stable's actual reach, not endorsing it: isAdminPreview here
-    // checks the JWT signature and type only — no role, permission or event
-    // ownership. /info has the same reach for drafts, so this route now matches
-    // it rather than being stricter than the branch it lives on. Main tightened
-    // this by routing preview through verifyAdminPreview -> access.authorize.
-    it('accepts any valid admin token, matching /info on this branch', async () => {
+    it('404s an admin who does not own the event (#1411)', async () => {
+      // Was 200: a valid signature was the whole check, so any admin previewed
+      // any draft, including another photographer's. Now ownership applies —
+      // the same rule requireEventOwnership enforces everywhere else.
       const res = await asAdmin(
         request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`),
         foreignId,
       );
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(404);
 
       const info = await asAdmin(
         request(app).get(`/api/gallery/${DRAFT_SLUG}/info?admin_preview=1`),
         foreignId,
       );
-      expect(info.status).toBe(200);
+      expect(info.status).toBe(404);
+    });
+
+    it('404s an admin whose role grants no gallery permissions (#1411)', async () => {
+      // The owner, but stripped of events.view/photos.view.
+      const original = (await db('admin_users').where({ id: adminId }).first()).role_id;
+      await db('admin_users').where({ id: adminId }).update({ role_id: null });
+      try {
+        const res = await asAdmin(
+          request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`),
+        );
+        expect(res.status).toBe(404);
+      } finally {
+        await db('admin_users').where({ id: adminId }).update({ role_id: original });
+      }
+    });
+
+    it('404s an admin whose account has been deactivated (#1411)', async () => {
+      await db('admin_users').where({ id: adminId }).update({ is_active: 0 });
+      try {
+        const res = await asAdmin(
+          request(app).get(`/api/gallery/resolve/${DRAFT_TOKEN}?admin_preview=1`),
+        );
+        expect(res.status).toBe(404);
+      } finally {
+        await db('admin_users').where({ id: adminId }).update({ is_active: 1 });
+      }
     });
 
     it('404s an anonymous verify-token for the draft', async () => {

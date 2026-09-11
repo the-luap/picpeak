@@ -2,9 +2,11 @@ const jwt = require('jsonwebtoken');
 const { db, withRetry } = require('../database/db');
 const { formatBoolean } = require('../utils/dbCompat');
 const { getGalleryTokenFromRequest } = require('../utils/tokenUtils');
+const { userHasAllPermissions } = require('./permissions');
+const { isTokenRevoked } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 
-// Check if the request carries a valid admin preview credential (Feature 3).
+// Admin preview of an unpublished gallery.
 //
 // Two transports (#1386):
 //
@@ -13,37 +15,117 @@ const logger = require('../utils/logger');
 //                      bearer). This is the one the frontend uses. The cookie
 //                      rides along on same-origin requests automatically,
 //                      including the native fetch() that AuthenticatedImage
-//                      and AuthenticatedVideo use, so media works too — and
-//                      no credential ever appears in a URL.
+//                      uses, so media works too — and no credential ever
+//                      appears in a URL.
 //
 //   preview=<jwt>    — the original transport, kept so existing hand-built
 //                      links keep working. It puts an admin JWT in the query
 //                      string, which reaches nginx access logs, browser
 //                      history and Referer headers, so nothing emits it any
 //                      more.
-//
-// The flag alone authorizes nothing: without a valid admin token on the
-// request this returns false, exactly as an anonymous guest would get.
-function isAdminPreview(req) {
-  const verifyAdminJwt = (token) => {
-    if (!token) return false;
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET, { issuer: 'picpeak-auth' });
-      return decoded.type === 'admin';
-    } catch {
-      return false;
-    }
-  };
-
+function previewTokenFrom(req) {
   if (req.query?.admin_preview === '1') {
     const header = req.headers?.authorization;
     const bearer = header && header.startsWith('Bearer ') ? header.substring(7) : null;
-    if (verifyAdminJwt(req.cookies?.admin_token) || verifyAdminJwt(bearer)) {
-      return true;
-    }
+    const candidate = req.cookies?.admin_token || bearer;
+    if (candidate) return candidate;
+  }
+  return req.query?.preview || null;
+}
+
+function decodeAdminToken(token) {
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256'], issuer: 'picpeak-auth',
+    });
+    return decoded.type === 'admin' ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signature-only predicate. It proves the caller holds SOME valid admin token
+ * and nothing else — not that the account still exists, not that the token is
+ * unrevoked, and not that this admin may see this event.
+ *
+ * Its only legitimate use is shaping the event lookup, which has to decide
+ * whether to include drafts BEFORE there is an event to authorize against.
+ * Every such lookup must be followed by assertDraftPreviewAllowed (#1411).
+ */
+function previewClaimed(req) {
+  return decodeAdminToken(previewTokenFrom(req)) !== null;
+}
+
+/**
+ * Full authorization for previewing a specific event (#1411).
+ *
+ * The signature check above used to be the whole story, so any valid admin
+ * token previewed any draft — including one created by a different admin, and
+ * including an account whose role grants neither events.view nor photos.view.
+ * `main` closes this via access.authorize; this is the same rule applied where
+ * this branch keeps its checks.
+ */
+async function verifyAdminPreview(req, event) {
+  const decoded = decodeAdminToken(previewTokenFrom(req));
+  if (!decoded || !event) return false;
+
+  // A signed-out or rotated session must stop previewing, same as it stops
+  // reaching every other admin surface.
+  try {
+    if (await isTokenRevoked(decoded)) return false;
+  } catch (error) {
+    // Fail closed: a transient DB fault must not become a free preview.
+    logger.warn('Admin preview revocation check failed', { error: error.message });
+    return false;
   }
 
-  return verifyAdminJwt(req.query?.preview);
+  let admin;
+  try {
+    admin = await db('admin_users')
+      .leftJoin('roles', 'roles.id', 'admin_users.role_id')
+      .where({ 'admin_users.id': decoded.id, 'admin_users.is_active': formatBoolean(true) })
+      .select('admin_users.id', 'roles.name as role_name')
+      .first();
+  } catch (error) {
+    // Same posture as adminAuth's join fallback: an install whose roles table
+    // predates the schema still has admins, but it has no role to check, so
+    // ownership below is the only gate that applies.
+    logger.debug('Admin preview role lookup failed', { error: error.message });
+    admin = await db('admin_users')
+      .where({ id: decoded.id, is_active: formatBoolean(true) })
+      .select('id').first();
+    if (admin) admin.role_name = null;
+  }
+  if (!admin) return false;
+
+  // Ownership: super_admin sees everything, everyone else sees ownerless
+  // (legacy/system) events plus their own — the rule requireEventOwnership
+  // and scopeEventsQuery already enforce elsewhere.
+  const owns = admin.role_name === 'super_admin'
+    || !event.created_by
+    || Number(event.created_by) === Number(admin.id);
+  if (!owns) return false;
+
+  try {
+    return await userHasAllPermissions(admin.id, ['events.view', 'photos.view']);
+  } catch (error) {
+    logger.warn('Admin preview permission check failed', { error: error.message });
+    return false;
+  }
+}
+
+/**
+ * Gate a loaded event behind the preview rules. Published events pass through
+ * untouched; a draft is visible only to an authorized admin preview. Returns
+ * false when the caller must be told the gallery does not exist.
+ */
+async function assertDraftPreviewAllowed(req, event) {
+  if (!event) return true;
+  const isDraft = event.is_draft === true || event.is_draft === 1 || event.is_draft === '1';
+  if (!isDraft) return true;
+  return verifyAdminPreview(req, event);
 }
 
 // Middleware to verify gallery access
@@ -58,7 +140,7 @@ async function verifyGalleryAccess(req, res, next) {
         return res.status(401).json({ error: 'No token provided' });
       }
 
-      const adminPreview = isAdminPreview(req);
+      const adminPreview = previewClaimed(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({
@@ -73,6 +155,12 @@ async function verifyGalleryAccess(req, res, next) {
       });
 
       if (!event) {
+        return res.status(404).json({ error: 'Gallery not found or expired' });
+      }
+
+      // The lookup above included drafts on a signature-only check. Authorize
+      // the draft now that there is an event to authorize against (#1411).
+      if (!await assertDraftPreviewAllowed(req, event)) {
         return res.status(404).json({ error: 'Gallery not found or expired' });
       }
 
@@ -122,7 +210,7 @@ async function verifyGalleryAccess(req, res, next) {
     // If we have a slug in the URL params or from pre-middleware, verify it matches
     if (requestedSlug) {
       // Verify by slug and ensure it matches the token's event
-      const adminPreviewToken = isAdminPreview(req);
+      const adminPreviewToken = previewClaimed(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({
@@ -142,7 +230,7 @@ async function verifyGalleryAccess(req, res, next) {
       }
     } else {
       // Fallback to using eventId from token
-      const adminPreviewFallback = isAdminPreview(req);
+      const adminPreviewFallback = previewClaimed(req);
       event = await withRetry(async () => {
         const q = db('events')
           .where({
@@ -159,6 +247,12 @@ async function verifyGalleryAccess(req, res, next) {
     
     if (!event) {
       logger.warn('[verifyGalleryAccess] Event not found for slug', { slug: requestedSlug || 'no-slug', tokenEventId: decoded.eventId });
+      return res.status(404).json({ error: 'Gallery not found or expired' });
+    }
+
+    // Same gate as the public branch above (#1411): the draft was included in
+    // the lookup on a signature-only check and has to be authorized here.
+    if (!await assertDraftPreviewAllowed(req, event)) {
       return res.status(404).json({ error: 'Gallery not found or expired' });
     }
 
@@ -232,5 +326,7 @@ function denySlideshowToken(req, res, next) {
 module.exports = {
   verifyGalleryAccess,
   denySlideshowToken,
-  isAdminPreview
+  previewClaimed,
+  verifyAdminPreview,
+  assertDraftPreviewAllowed
 };
