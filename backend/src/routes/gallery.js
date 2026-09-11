@@ -2381,7 +2381,12 @@ router.post('/:eventId/upload', verifyGalleryAccess, denySlideshowToken, async (
       dest: tempUploadDir,
       limits: {
         fileSize: 50 * 1024 * 1024, // 50MB per file (separate concern from #613)
-        files: maxFilesPerUpload
+        files: maxFilesPerUpload,
+        // CVE-2026-82333: files arrive as repeated `photos` parts via
+        // .array(), not bracket-indexed field names like `photos[0]` — no
+        // legitimate field name uses array-index syntax at all. Reject any
+        // that do.
+        fieldArrayIndexLimit: 0
       },
       fileFilter: (req, file, cb) => {
         if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {

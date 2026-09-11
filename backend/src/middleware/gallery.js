@@ -72,7 +72,11 @@ async function verifyAdminPreview(req, event) {
   if (!decoded || !event) return false;
 
   // A signed-out or rotated session must stop previewing, same as it stops
-  // reaching every other admin surface.
+  // reaching every other admin surface. This is the check isAdminPreview
+  // carried for GHSA-q7f7-gjx8-mf6h — a revoked admin session must not keep
+  // granting preview access through a bookmarked or shared link — kept here,
+  // at the point where preview is actually authorized rather than where the
+  // event lookup is merely shaped.
   try {
     if (await isTokenRevoked(decoded)) return false;
   } catch (error) {
@@ -205,6 +209,14 @@ async function verifyGalleryAccess(req, res, next) {
     // lacking an eventId to fail the id match below.
     if (decoded.type !== 'gallery') {
       return res.status(403).json({ error: 'Invalid token type for gallery access' });
+    }
+
+    // Gallery logout writes to the revocation store (see routes/auth.js),
+    // but nothing on this path ever read it back (GHSA-q7f7-gjx8-mf6h) — a
+    // logged-out gallery JWT kept working until natural expiry.
+    if (await isTokenRevoked(decoded)) {
+      logger.warn('[verifyGalleryAccess] Revoked token used', { eventId: decoded.eventId });
+      return res.status(401).json({ error: 'Token has been revoked', code: 'TOKEN_REVOKED' });
     }
 
     // If we have a slug in the URL params or from pre-middleware, verify it matches

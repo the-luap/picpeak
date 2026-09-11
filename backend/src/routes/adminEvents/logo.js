@@ -23,14 +23,20 @@ const eventLogoStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const eventId = Number(req.params.id);
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      return cb(new Error('Invalid event id'));
+    }
     const ext = path.extname(file.originalname);
-    cb(null, `event-${req.params.id}-logo-${Date.now()}${ext}`);
+    cb(null, `event-${eventId}-logo-${Date.now()}${ext}`);
   }
 });
 
 const eventLogoUpload = multer({
   storage: eventLogoStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  // CVE-2026-82333: single unnamed `logo` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 5 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 5MB
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
     if (validateFileType(file.originalname, file.mimetype, allowedMimeTypes)) {

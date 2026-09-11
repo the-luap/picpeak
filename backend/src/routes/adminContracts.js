@@ -65,14 +65,20 @@ const signedPdfStorage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    const contractId = Number(req.params.id);
+    if (!Number.isInteger(contractId) || contractId <= 0) {
+      return cb(new Error('Invalid contract id'));
+    }
     const ext = path.extname(file.originalname) || '.pdf';
-    cb(null, `contract-${req.params.id}-${Date.now()}${ext}`);
+    cb(null, `contract-${contractId}-${Date.now()}${ext}`);
   },
 });
 
 const signedPdfUpload = multer({
   storage: signedPdfStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  // CVE-2026-82333: single unnamed `file` field only — no legitimate
+  // array-indexed field names, so reject any bracket-index field name.
+  limits: { fileSize: 10 * 1024 * 1024, fieldArrayIndexLimit: 0 }, // 10 MB
   fileFilter: (req, file, cb) => {
     const allowed = ['application/pdf'];
     if (validateFileType(file.originalname, file.mimetype, allowed)) return cb(null, true);

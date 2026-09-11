@@ -42,6 +42,10 @@ class S3StorageAdapter extends stream.EventEmitter {
    * @param {number} [config.retryDelay=1000] - Initial retry delay in milliseconds
    * @param {number} [config.connectionTimeout=120000] - Ms to acquire+establish a socket
    * @param {number} [config.socketTimeout=60000] - Ms of socket inactivity before a request fails
+   * @param {http.Agent} [config.httpAgent] - Pre-built http.Agent to pin connections to a
+   *   DNS-resolved address set (see utils/pinnedRequest). Opt-in; when omitted the SDK's
+   *   default agent (its own DNS resolution) is used, matching prior behavior.
+   * @param {https.Agent} [config.httpsAgent] - Same as httpAgent, for TLS connections.
    */
   constructor(config) {
     super();
@@ -90,7 +94,13 @@ class S3StorageAdapter extends stream.EventEmitter {
       // into a bounded failure, not to enforce latency targets.
       requestHandler: {
         connectionTimeout: this.config.connectionTimeout,
-        socketTimeout: this.config.socketTimeout
+        socketTimeout: this.config.socketTimeout,
+        // Opt-in DNS pinning (see utils/pinnedRequest): only set when a
+        // caller explicitly passes agents built from a resolved address
+        // set. Every other caller leaves these undefined and gets the
+        // SDK's default agent behavior, unchanged.
+        ...(this.config.httpAgent && { httpAgent: this.config.httpAgent }),
+        ...(this.config.httpsAgent && { httpsAgent: this.config.httpsAgent })
       }
     };
     

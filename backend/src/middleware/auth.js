@@ -6,6 +6,18 @@ const { isTokenRevoked } = require('../utils/tokenRevocation');
 const logger = require('../utils/logger');
 const { getAdminTokenFromRequest } = require('../utils/tokenUtils');
 
+// GHSA-h4w8-57xq-53fx: must_change_password was written on reset (and on
+// invitation paths) but nothing server-side ever checked it — a forced-reset
+// admin could keep using the old/weak password indefinitely because the flag
+// only ever reached the frontend as a response field. This is the backstop
+// for callers that skip the UI entirely. Every route gated by adminAuth() is
+// blocked except the ones a flagged admin needs to clear the flag or leave:
+// change their password, and log out.
+const MUST_CHANGE_PASSWORD_EXEMPT_PATHS = new Set([
+  '/api/admin/auth/change-password',
+  '/api/admin/auth/logout',
+]);
+
 /**
  * Enhanced admin authentication middleware with revocation checking
  */
@@ -71,6 +83,7 @@ async function adminAuth(req, res, next) {
           'admin_users.username',
           'admin_users.email',
           'admin_users.password_changed_at',
+          'admin_users.must_change_password',
           'roles.id as role_id',
           'roles.name as role_name'
         )
@@ -89,7 +102,7 @@ async function adminAuth(req, res, next) {
       logger.debug('Roles table not available, falling back to basic auth', { error: joinError.message });
       admin = await db('admin_users')
         .where({ id: decoded.id, is_active: formatBoolean(true) })
-        .select('id', 'username', 'email', 'password_changed_at')
+        .select('id', 'username', 'email', 'password_changed_at', 'must_change_password')
         .first();
       if (admin) {
         admin.role_id = null;
@@ -119,13 +132,22 @@ async function adminAuth(req, res, next) {
       }
     }
 
+    if (admin.must_change_password
+      && !MUST_CHANGE_PASSWORD_EXEMPT_PATHS.has(req.originalUrl.split('?')[0])) {
+      return res.status(403).json({
+        error: 'Password change required before continuing',
+        code: 'MUST_CHANGE_PASSWORD'
+      });
+    }
+
     // Add user info to request (enhanced with role)
     req.admin = {
       id: admin.id,
       username: admin.username,
       email: admin.email,
       roleId: admin.role_id,
-      roleName: admin.role_name
+      roleName: admin.role_name,
+      mustChangePassword: !!admin.must_change_password
     };
     req.token = token; // Store token for potential revocation
     

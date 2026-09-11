@@ -72,7 +72,12 @@ const upload = multer({
     files: 2000, // Hard safety ceiling; actual limit enforced dynamically
     fieldSize: 10 * 1024 * 1024, // 10MB for non-file fields
     parts: 10000,
-    headerPairs: 2000
+    headerPairs: 2000,
+    // CVE-2026-82333: files arrive as repeated `photos` parts via
+    // .array('photos', N) — not bracket-indexed field names like
+    // `photos[0]` — so no legitimate field name uses array-index syntax
+    // at all. Reject any that do.
+    fieldArrayIndexLimit: 0
   },
   fileFilter: (req, file, cb) => {
     // req.allowedMimeTypes is populated by the middleware that runs before multer
