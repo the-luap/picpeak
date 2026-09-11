@@ -118,7 +118,15 @@ const ACTIVE_EVENT_FILTER = {
   is_draft: formatBoolean(false)
 };
 
-const resolveShareIdentifier = async (identifier) => {
+// Same filter minus the draft gate, for admin preview only (#1386). Callers
+// MUST authorize before returning anything it matched — see the /resolve
+// route, which only reaches for it after a verified admin preview.
+const UNPUBLISHED_EVENT_FILTER = {
+  is_active: formatBoolean(true),
+  is_archived: formatBoolean(false)
+};
+
+const resolveShareIdentifier = async (identifier, { includeDrafts = false } = {}) => {
   if (!identifier) {
     return null;
   }
@@ -140,9 +148,10 @@ const resolveShareIdentifier = async (identifier) => {
       'event_date',
       'expires_at',
       'is_active',
-      'is_archived'
+      'is_archived',
+      'is_draft'
     )
-    .where(ACTIVE_EVENT_FILTER);
+    .where(includeDrafts ? UNPUBLISHED_EVENT_FILTER : ACTIVE_EVENT_FILTER);
 
   let event = await baseQuery.clone().where({ slug: trimmed }).first();
   if (event) {
