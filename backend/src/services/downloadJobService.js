@@ -302,7 +302,11 @@ class DownloadJobService {
         // catch below deliberately skips a bad source, but it never destroyed
         // the stream it had already opened, so every skipped photo leaked a
         // socket for the life of the process.
-        const guard = createArchiveStreamGuard();
+        // A queued read that dies would otherwise stall the archive and hold
+        // its slot for the life of the build, so it fails the job instead.
+        const guard = createArchiveStreamGuard({
+          onFatalError: (err) => { guard.destroyAll(); archive.abort(); reject(err); },
+        });
         output.on('close', resolve);
         archive.on('error', (err) => { guard.destroyAll(); reject(err); });
         archive.pipe(output);

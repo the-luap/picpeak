@@ -24,7 +24,7 @@
 // fed, few enough that a build cannot monopolise the agent pool.
 const DEFAULT_MAX_IN_FLIGHT = 2;
 
-function createArchiveStreamGuard({ maxInFlight = DEFAULT_MAX_IN_FLIGHT } = {}) {
+function createArchiveStreamGuard({ maxInFlight = DEFAULT_MAX_IN_FLIGHT, onFatalError } = {}) {
   const openReads = new Set();
   let waiter = null;
   let closed = false;
@@ -59,7 +59,18 @@ function createArchiveStreamGuard({ maxInFlight = DEFAULT_MAX_IN_FLIGHT } = {}) 
       openReads.add(stream);
       stream.once('end', () => release(stream));
       stream.once('close', () => release(stream));
-      stream.once('error', () => release(stream));
+      stream.once('error', (err) => {
+        release(stream);
+        // A stream that errors while still QUEUED behind another has no
+        // archiver listener on it yet, so archiver never learns it failed.
+        // Absorbing the error here and leaving the dead stream in the queue
+        // makes the archive hang forever when it reaches it — and in
+        // downloadJobService the build keeps its slot with it. Hand the
+        // failure to the caller, which aborts the archive.
+        if (!closed && typeof onFatalError === 'function') {
+          onFatalError(err);
+        }
+      });
       return stream;
     },
 

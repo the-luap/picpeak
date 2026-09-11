@@ -55,6 +55,34 @@ describe('archiveStreamGuard (#1399 follow-up)', () => {
     expect(await guard.acquire()).toBe(true);
   });
 
+  it('reports a failed read so the caller can abort the archive', async () => {
+    // A stream that errors while still QUEUED has no archiver listener on it
+    // yet. Releasing its slot and saying nothing leaves a dead stream in the
+    // queue, and the archive hangs when it reaches it.
+    const seen = [];
+    const guard = createArchiveStreamGuard({ maxInFlight: 2, onFatalError: (e) => seen.push(e) });
+    await guard.acquire();
+    const queued = guard.track(makeStream());
+    queued.on('error', () => {});
+    queued.destroy(new Error('socket died'));
+    await new Promise((r) => setImmediate(r)); // 'error' lands on the next tick
+    expect(seen).toHaveLength(1);
+    expect(seen[0].message).toBe('socket died');
+  });
+
+  it('stays quiet about reads it destroyed itself', async () => {
+    // destroyAll is the caller's own teardown; reporting those back as fatal
+    // would re-enter the abort path it is already running.
+    const seen = [];
+    const guard = createArchiveStreamGuard({ onFatalError: (e) => seen.push(e) });
+    await guard.acquire();
+    const s1 = guard.track(makeStream());
+    s1.on('error', () => {});
+    guard.destroyAll();
+    await new Promise((r) => setImmediate(r));
+    expect(seen).toHaveLength(0);
+  });
+
   it('destroys every read still holding bytes', async () => {
     const guard = createArchiveStreamGuard({ maxInFlight: 5 });
     const streams = [makeStream(), makeStream(), makeStream()];
