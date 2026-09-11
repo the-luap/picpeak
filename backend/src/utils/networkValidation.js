@@ -244,4 +244,52 @@ async function validateExternalUrlAsync(urlString) {
   return { valid: true, reason: 'ok' };
 }
 
-module.exports = { isPrivateIP, validateExternalUrl, isHostAllowed, validateExternalUrlAsync, classifyHost };
+/**
+ * Same DNS-resolving vetting as classifyHost, but also returns the exact
+ * addresses that were checked — the piece classifyHost intentionally
+ * discards. Needed by any caller that then wants to PIN its connection to
+ * those addresses (utils/pinnedRequest.js) rather than trust a second,
+ * independent resolution done later by the underlying client — closing the
+ * TOCTOU/DNS-rebinding gap classifyHost's own doc comment calls out as
+ * residual risk. Purely additive: existing classifyHost/validateExternalUrlAsync
+ * callers and their return shapes are untouched.
+ * @param {string} urlString
+ * @returns {Promise<{ valid: boolean, error?: string, reason: string, hostname?: string, addresses?: Array<{address: string, family: number}> }>}
+ */
+async function validateExternalUrlWithAddresses(urlString) {
+  let parsed;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    return { valid: false, error: 'Invalid URL format', reason: 'invalid' };
+  }
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
+  if (isPrivateIP(parsed.hostname)) {
+    return { valid: false, error: 'URL points to a private or internal network address', reason: 'private' };
+  }
+  if (net.isIP(hostname)) {
+    return { valid: true, reason: 'ok', hostname, addresses: [{ address: hostname, family: net.isIP(hostname) }] };
+  }
+  let addresses;
+  try {
+    addresses = await dns.lookup(parsed.hostname, { all: true });
+  } catch {
+    return { valid: false, error: 'URL points to a private or internal network address', reason: 'unresolved' };
+  }
+  if (!addresses.length) {
+    return { valid: false, error: 'URL points to a private or internal network address', reason: 'unresolved' };
+  }
+  if (addresses.some((a) => isPrivateIP(a.address))) {
+    return { valid: false, error: 'URL points to a private or internal network address', reason: 'private' };
+  }
+  return { valid: true, reason: 'ok', hostname, addresses };
+}
+
+module.exports = {
+  isPrivateIP,
+  validateExternalUrl,
+  isHostAllowed,
+  validateExternalUrlAsync,
+  validateExternalUrlWithAddresses,
+  classifyHost,
+};
