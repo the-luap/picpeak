@@ -120,7 +120,14 @@ const createPhotoUploader = (options = {}) => {
       files: options.maxFiles || 2000,
       fieldSize: 10 * 1024 * 1024,
       parts: 10000,
-      headerPairs: 2000
+      headerPairs: 2000,
+      // CVE-2026-82333: no preset in this factory is currently wired up to
+      // a route (nothing imports createPhotoUploader et al. — routes build
+      // their own multer instances directly), but every preset gets the
+      // limit anyway so it can't be adopted later without it. None of the
+      // uploaders this factory builds have a legitimate use for
+      // array-indexed field names.
+      fieldArrayIndexLimit: 0
     },
     fileFilter: createFileFilter(ALLOWED_TYPES.media, {
       validateMagicNumbers: true
@@ -146,7 +153,8 @@ const createLogoUploader = (options = {}) => {
       }
     }),
     limits: {
-      fileSize: options.maxSize || SIZE_LIMITS.medium
+      fileSize: options.maxSize || SIZE_LIMITS.medium,
+      fieldArrayIndexLimit: 0 // CVE-2026-82333 — see createPhotoUploader comment
     },
     fileFilter: createFileFilter(ALLOWED_TYPES.logos, {
       skipMagicValidation: ['image/svg+xml']
@@ -172,7 +180,8 @@ const createFaviconUploader = (options = {}) => {
       }
     }),
     limits: {
-      fileSize: options.maxSize || SIZE_LIMITS.small
+      fileSize: options.maxSize || SIZE_LIMITS.small,
+      fieldArrayIndexLimit: 0 // CVE-2026-82333 — see createPhotoUploader comment
     },
     fileFilter: createFileFilter(ALLOWED_TYPES.favicons, {
       skipMagicValidation: ['image/x-icon', 'image/vnd.microsoft.icon']
@@ -194,7 +203,8 @@ const createGalleryUploader = (destDir, options = {}) => {
     dest: destDir,
     limits: {
       fileSize: options.maxSize || SIZE_LIMITS.large,
-      files: options.maxFiles || 10
+      files: options.maxFiles || 10,
+      fieldArrayIndexLimit: 0 // CVE-2026-82333 — see createPhotoUploader comment
     },
     fileFilter: createFileFilter(ALLOWED_TYPES.photos)
   };

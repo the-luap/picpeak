@@ -41,7 +41,10 @@ function diskUpload(subdir) {
       },
       filename: (_req, file, cb) => cb(null, `${subdir.split('/').pop()}-${Date.now()}${path.extname(file.originalname) || ''}`),
     }),
-    limits: { fileSize: 15 * 1024 * 1024 },
+    // CVE-2026-82333: both callers (`inboundUpload` → 'file', `proofUpload`
+    // → 'proof') take a single unnamed field — no legitimate array-indexed
+    // field names, so reject any bracket-index field name.
+    limits: { fileSize: 15 * 1024 * 1024, fieldArrayIndexLimit: 0 },
     fileFilter: (_req, file, cb) => (ALLOWED_MIME.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only PDF, JPEG or PNG files are allowed'))),
   });
 }

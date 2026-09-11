@@ -50,7 +50,10 @@ const tempStorage = multer.diskStorage({
 function buildAdminUploader(maxSizeBytes, allowed) {
   return multer({
     storage: tempStorage,
-    limits: { fileSize: maxSizeBytes, files: ADMIN_MAX_FILES },
+    // CVE-2026-82333: files arrive as repeated `files` parts via .array(),
+    // not bracket-indexed field names like `files[0]` — no legitimate
+    // field name uses array-index syntax at all. Reject any that do.
+    limits: { fileSize: maxSizeBytes, files: ADMIN_MAX_FILES, fieldArrayIndexLimit: 0 },
     fileFilter: (req, file, cb) => {
       if (validateFileType(file.originalname, file.mimetype, allowed)) return cb(null, true);
       return cb(new Error('This file type is not allowed'));

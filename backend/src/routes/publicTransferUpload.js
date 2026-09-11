@@ -122,7 +122,11 @@ const tempStorage = multer.diskStorage({
 function buildUploader(maxSizeBytes, allowed) {
   return multer({
     storage: tempStorage,
-    limits: { fileSize: maxSizeBytes, files: MAX_FILES_PER_UPLOAD },
+    // CVE-2026-82333: files arrive as repeated `files` parts via .array(),
+    // not bracket-indexed field names like `files[0]`, and this route is
+    // unauthenticated (token-only) — no legitimate field name uses
+    // array-index syntax at all. Reject any that do.
+    limits: { fileSize: maxSizeBytes, files: MAX_FILES_PER_UPLOAD, fieldArrayIndexLimit: 0 },
     fileFilter: (req, file, cb) => {
       if (validateFileType(file.originalname, file.mimetype, allowed)) return cb(null, true);
       return cb(new Error('This file type is not allowed'));
