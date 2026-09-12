@@ -27,6 +27,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(muted);
@@ -36,6 +37,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  // The hide timer reads these instead of state so it sees the value at the
+  // moment it fires, not the one captured when the mouse last moved.
+  const isPlayingRef = useRef(false);
+  const hoveringControlsRef = useRef(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -50,9 +55,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setDuration(video.duration);
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+    const handlePlay = () => {
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+    };
+    // A paused video always shows its controls. Without this, a hide timer
+    // armed during playback fired after the pause and left the guest with
+    // no visible play or fullscreen button — every click then went to the
+    // <video> itself and just toggled playback.
+    const handlePause = () => {
+      isPlayingRef.current = false;
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      setIsPlaying(false);
+      setShowControls(true);
+    };
+    const handleEnded = () => handlePause();
 
     // Without this the element just sits on its poster at 0:00 and says
     // nothing (#1370) — a guest cannot tell a failed request from a codec
@@ -87,6 +104,31 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [t]);
 
+  // Keep isFullscreen honest when the user leaves through Esc or the native
+  // UI rather than our button. Browsers with only the prefixed API (the
+  // webkitRequestFullscreen path below) fire webkitfullscreenchange and
+  // expose webkitFullscreenElement instead of the standard pair; iOS Safari
+  // only tells the <video> itself (webkitendfullscreen). Compare against our
+  // own container so another element going fullscreen does not flip us.
+  useEffect(() => {
+    const video = videoRef.current;
+    const handleFullscreenChange = () => {
+      const doc = document as Document & { webkitFullscreenElement?: Element | null };
+      const active = document.fullscreenElement || doc.webkitFullscreenElement || null;
+      setIsFullscreen(active !== null && active === containerRef.current);
+    };
+    const handleWebkitEnd = () => setIsFullscreen(false);
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    video?.addEventListener('webkitendfullscreen', handleWebkitEnd);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      video?.removeEventListener('webkitendfullscreen', handleWebkitEnd);
+    };
+  }, []);
+
   // Arrowing to the next video in the lightbox reuses this element, so a
   // stale error would otherwise stick to a clip that loads fine.
   useEffect(() => {
@@ -114,17 +156,32 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const toggleFullscreen = async () => {
     const video = videoRef.current;
-    if (!video) return;
+    const container = containerRef.current;
+    if (!video || !container) return;
 
     try {
       if (!isFullscreen) {
-        if (video.requestFullscreen) {
-          await video.requestFullscreen();
+        // Go fullscreen on the container so our controls come along. iPhone
+        // Safari has no Fullscreen API at all — only the video element's
+        // webkitEnterFullscreen, which hands off to the native player — so
+        // the button did nothing there before this fallback.
+        const el = container as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+        const nativeVideo = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+        if (el.requestFullscreen) {
+          await el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+          await el.webkitRequestFullscreen();
+        } else if (nativeVideo.webkitEnterFullscreen) {
+          nativeVideo.webkitEnterFullscreen();
+          return; // state is set by webkitendfullscreen on exit
         }
         setIsFullscreen(true);
       } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
+        const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> | void };
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
         }
         setIsFullscreen(false);
       }
@@ -149,16 +206,33 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleMouseMove = () => {
-    setShowControls(true);
+  const scheduleHideControls = () => {
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) {
+      // Resting the pointer on the bar must not hide it out from under the
+      // cursor — that is where the pointer is when someone is about to
+      // click pause or fullscreen.
+      if (isPlayingRef.current && !hoveringControlsRef.current) {
         setShowControls(false);
       }
     }, 3000);
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    scheduleHideControls();
+  };
+
+  const handleControlsMouseEnter = () => {
+    hoveringControlsRef.current = true;
+    setShowControls(true);
+  };
+
+  const handleControlsMouseLeave = () => {
+    hoveringControlsRef.current = false;
+    scheduleHideControls();
   };
 
   useEffect(() => {
@@ -171,10 +245,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={`relative bg-black rounded-lg overflow-hidden ${className}`}
       style={{ width, height: height === 'auto' ? undefined : height }}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => isPlaying && setShowControls(false)}
+      onMouseLeave={() => {
+        hoveringControlsRef.current = false;
+        if (isPlayingRef.current) setShowControls(false);
+      }}
     >
       <video
         ref={videoRef}
@@ -200,8 +278,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {controls && !loadError && (
         <div
           className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
-            showControls ? 'opacity-100' : 'opacity-0'
+            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
+          onMouseEnter={handleControlsMouseEnter}
+          onMouseLeave={handleControlsMouseLeave}
         >
           {/* Progress bar */}
           <div
@@ -249,12 +329,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Play button overlay when paused */}
+      {/* Play button overlay when paused. It renders after the control bar,
+          so it must not capture clicks itself: while paused the fullscreen,
+          mute and progress controls were unreachable underneath it, and a
+          click on the poster went to this div instead of the <video>. */}
       {!isPlaying && showControls && !loadError && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={togglePlayPause}
-            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-6 transition-colors"
+            className="pointer-events-auto bg-black/50 hover:bg-black/70 text-white rounded-full p-6 transition-colors"
             aria-label="Play"
           >
             <Play size={48} fill="white" />
