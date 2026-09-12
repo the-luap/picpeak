@@ -147,7 +147,7 @@ const cspDirectives = {
   connectSrc: ["'self'", 'https://www.google.com', 'https://www.gstatic.com'], // API connections
   fontSrc: ["'self'", "https:", "data:"], // Web fonts
   objectSrc: ["'none'"], // Disable plugins
-  mediaSrc: ["'self'"], // Audio/video
+  mediaSrc: ["'self'", "blob:"], // Audio/video, incl. page-created blobs (matches imgSrc)
   frameSrc: ["'self'", 'https://www.google.com'],
 };
 // Only upgrade insecure requests when HSTS explicitly enabled (HTTPS deployment)
