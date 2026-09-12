@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  extensionsToMimeTypes,
-  extensionsToAcceptString,
-  extensionsToLabel,
-  buildUploadAcceptString,
-  mimeTypeFromFilename,
-  resolveFileMimeType,
-} from '../fileTypes';
+import { extensionsToMimeTypes, extensionsToAcceptString, extensionsToLabel, buildUploadAcceptString } from '../fileTypes';
 
 describe('fileTypes', () => {
   describe('extensionsToMimeTypes', () => {
@@ -82,20 +75,6 @@ describe('fileTypes', () => {
     it('falls back to the configured default set, not a wider image/*', () => {
       expect(buildUploadAcceptString('', DESKTOP)).toBe('image/jpeg,image/png,image/webp');
       expect(buildUploadAcceptString('', ANDROID)).toBe('image/jpeg,image/png,image/webp,android/allowCamera');
-    });
-  });
-
-  describe('resolveFileMimeType', () => {
-    it('prefers the type the browser reports', () => {
-      expect(resolveFileMimeType({ name: 'clip.mov', type: 'video/quicktime' })).toBe('video/quicktime');
-    });
-    it('falls back to the extension when File.type is empty (common for .mov exports)', () => {
-      expect(resolveFileMimeType({ name: 'clip.MOV', type: '' })).toBe('video/quicktime');
-      expect(mimeTypeFromFilename('shoot.mp4')).toBe('video/mp4');
-    });
-    it('returns an empty string for an unknown extension rather than guessing', () => {
-      expect(mimeTypeFromFilename('notes.xyz')).toBe('');
-      expect(resolveFileMimeType({ name: 'notes.xyz' })).toBe('');
     });
   });
 });

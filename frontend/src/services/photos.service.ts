@@ -1,6 +1,5 @@
 import { api } from '../config/api';
 import { parseContentDispositionFilename } from '../utils/contentDisposition';
-import { resolveFileMimeType } from '../utils/fileTypes';
 
 export interface AdminPhoto {
   id: number;
@@ -229,20 +228,14 @@ class PhotosService {
     eventId: number,
     file: File,
     categoryId?: number | null,
-    onProgress?: (progress: number) => void,
-    mimeTypeOverride?: string
+    onProgress?: (progress: number) => void
   ): Promise<AdminPhoto[]> {
-    const mimeType = mimeTypeOverride || resolveFileMimeType(file);
-    if (!mimeType) {
-      throw new Error(`Unable to determine MIME type for ${file.name}`);
-    }
-
     // Initialize upload
     const { uploadId, expectedChunks } = await this.initChunkedUpload(
       eventId,
       file.name,
       file.size,
-      mimeType
+      file.type
     );
 
     try {

@@ -259,14 +259,20 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       (f) => !photosService.shouldUseChunkedUpload(f.size, MAX_BYTES_PER_CHUNK)
     );
 
-    if (replaceByName && largeFiles.length > 0) {
-      toast.info(
-        t(
-          'upload.largeFileReplaceSkipped',
-          'Replace-by-name is not applied to large files (chunked upload). Upload them without replace, or use smaller files.'
-        )
-      );
-    }
+    // The chunked complete step has no replace flag, so a large file with
+    // replace-by-name on would silently land as a second copy. Skip it and
+    // say so in the report rather than behind a toast.
+    const skippedForReplace: UploadFailure[] = replaceByName
+      ? largeFiles.map((f) => ({
+          filename: f.name,
+          reason: t(
+            'upload.largeFileReplaceSkipped',
+            'Replace-by-name is not supported for files above the batch size; upload it without replace.'
+          ),
+          kind: 'rejected' as const,
+        }))
+      : [];
+    const largeFilesToUpload = replaceByName ? [] : largeFiles;
 
     const chunks: File[][] = [];
     let currentChunk: File[] = [];
@@ -291,12 +297,12 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     }
 
     // Treat each large file as its own "unit" for progress (after multipart batches).
-    const totalUnits = chunks.length + largeFiles.length;
+    const totalUnits = chunks.length + largeFilesToUpload.length;
     setTotalChunks(Math.max(totalUnits, 1));
     let totalReplaced = 0;
     // Accumulates transfer-stage failures (per-file rejections + whole-chunk
     // failures) with their reasons, so the report can name each one.
-    const collected: UploadFailure[] = [];
+    const collected: UploadFailure[] = [...skippedForReplace];
     // Whether at least one chunk was accepted for background processing.
     let anyQueued = false;
     // Large-file chunked path processes synchronously on complete — count successes
@@ -306,8 +312,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
     try {
       // --- Large files: existing backend chunked-upload (10MB parts) ---
-      for (let li = 0; li < largeFiles.length; li++) {
-        const file = largeFiles[li];
+      for (let li = 0; li < largeFilesToUpload.length; li++) {
+        const file = largeFilesToUpload[li];
         setCurrentChunk(unitIndex + 1);
         setPhase({
           kind: 'transferring',

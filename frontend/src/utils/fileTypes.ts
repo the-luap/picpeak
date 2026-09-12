@@ -109,23 +109,3 @@ export function extensionsToLabel(extString?: string | null): string {
   if (labels.length === 0) return extensionsToLabel(DEFAULT_ALLOWED);
   return labels.join(', ');
 }
-
-/**
- * Guess a MIME type from a filename extension when the browser leaves
- * `File.type` empty (common for some .mov / camera exports).
- * Returns empty string if the extension is unknown.
- */
-export function mimeTypeFromFilename(filename: string): string {
-  const ext = filename.split('.').pop()?.trim().toLowerCase() || '';
-  return EXTENSION_TO_MIME[ext] || '';
-}
-
-/**
- * Prefer the browser-provided MIME type; fall back to extension mapping.
- */
-export function resolveFileMimeType(file: { name: string; type?: string }): string {
-  if (file.type && file.type.trim()) {
-    return file.type;
-  }
-  return mimeTypeFromFilename(file.name);
-}

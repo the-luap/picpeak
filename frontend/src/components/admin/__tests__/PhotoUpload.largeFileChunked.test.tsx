@@ -12,6 +12,8 @@
  *  - a file above the cap is sent via photosService.uploadLargeFile, not POSTed
  *  - a file under the cap keeps the multipart path untouched
  *  - a mixed selection does both, and reports progress over both
+ *  - with replace-by-name on, a large file is skipped into the report rather
+ *    than uploaded as a second copy (the chunked complete has no replace flag)
  */
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -154,5 +156,22 @@ describe('PhotoUpload large single files', () => {
     const report = await screen.findByTestId('upload-failure-report');
     expect(within(report).getByText('broken.mp4')).toBeInTheDocument();
     expect(within(report).getByText(/Transfer failed/)).toBeInTheDocument();
+  });
+
+  it('skips a large file into the report when replace-by-name is on', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithClient(<PhotoUpload eventId={7} />);
+    await waitFor(() => expect(screen.getByText('upload.videoSizeLimit')).toBeInTheDocument());
+    await user.click(screen.getByLabelText(/upload\.replaceByName/));
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, [file('recut.mp4', 'video/mp4', 3), file('ok.jpg', 'image/jpeg', 0.5)]);
+    await user.click(screen.getByRole('button', { name: /common\.upload/ }));
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledTimes(1));
+    expect(uploadLargeFile).not.toHaveBeenCalled();
+    const report = await screen.findByTestId('upload-failure-report');
+    expect(within(report).getByText('recut.mp4')).toBeInTheDocument();
+    expect(within(report).getByText(/largeFileReplaceSkipped/)).toBeInTheDocument();
   });
 });
