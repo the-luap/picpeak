@@ -5,6 +5,14 @@ All notable changes to PicPeak will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.131.8-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.7-beta.0...v3.131.8-beta.0) (2026-09-12)
+
+
+### Bug Fixes
+
+* **frontend:** allow blob: in the CSP media-src directive ([#1427](https://github.com/PicPeak/picpeak/issues/1427)) ([7d7ed04](https://github.com/PicPeak/picpeak/commit/7d7ed043de44df4921bf1af1fc1e5ab941f7675d))
+* **gallery:** keep the video controls reachable while paused, and go fullscreen on iOS ([#1426](https://github.com/PicPeak/picpeak/issues/1426)) ([03bc520](https://github.com/PicPeak/picpeak/commit/03bc5207c198cfde3dafb8743fb4a125a65e0dd5))
+
 ## [3.131.7-beta.0](https://github.com/PicPeak/picpeak/compare/v3.131.6-beta.0...v3.131.7-beta.0) (2026-09-11)
 
 
