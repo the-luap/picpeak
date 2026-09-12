@@ -10,6 +10,7 @@ import { settingsService } from '../../services/settings.service';
 import { useTranslation } from 'react-i18next';
 import { extensionsToMimeTypes, extensionsToAcceptString, extensionsToLabel } from '../../utils/fileTypes';
 import { useUploadProgress } from '../../hooks/useUploadProgress';
+import { photosService } from '../../services/photos.service';
 
 interface PhotoUploadProps {
   eventId: number;
@@ -242,15 +243,36 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
     // reverse proxies with request-size limits can drop it below their proxy's cap. Falls back
     // to 95MB (Cloudflare-safe headroom under 100MB) when the setting is unset — that matches
     // the value the migration seeds and is what worked in #208's resolution.
+    //
+    // That cap only splits *sets* of files: a lone file above it still went out as one
+    // POST and failed at the proxy. Route those through the existing chunked-upload API
+    // (10MB parts, reachable since #1377) and keep everything else on the multipart path.
     const MAX_FILES_PER_CHUNK = Math.max(1, Math.min(50, maxFilesPerUpload)); // Max 50 files per chunk
     const maxBatchSizeMb = Number(settings?.general_max_upload_batch_size_mb) || 95;
     const MAX_BYTES_PER_CHUNK = maxBatchSizeMb * 1024 * 1024;
-    const chunks: File[][] = [];
 
+    // Split: large singles use resumable/chunked API; the rest keep the proven multipart path.
+    const largeFiles = selectedFiles.filter((f) =>
+      photosService.shouldUseChunkedUpload(f.size, MAX_BYTES_PER_CHUNK)
+    );
+    const smallFiles = selectedFiles.filter(
+      (f) => !photosService.shouldUseChunkedUpload(f.size, MAX_BYTES_PER_CHUNK)
+    );
+
+    if (replaceByName && largeFiles.length > 0) {
+      toast.info(
+        t(
+          'upload.largeFileReplaceSkipped',
+          'Replace-by-name is not applied to large files (chunked upload). Upload them without replace, or use smaller files.'
+        )
+      );
+    }
+
+    const chunks: File[][] = [];
     let currentChunk: File[] = [];
     let currentChunkSize = 0;
 
-    for (const file of selectedFiles) {
+    for (const file of smallFiles) {
       // Start a new chunk if adding this file would exceed limits
       if (currentChunk.length >= MAX_FILES_PER_CHUNK ||
           (currentChunkSize + file.size > MAX_BYTES_PER_CHUNK && currentChunk.length > 0)) {
@@ -268,17 +290,69 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       chunks.push(currentChunk);
     }
 
-    setTotalChunks(chunks.length);
+    // Treat each large file as its own "unit" for progress (after multipart batches).
+    const totalUnits = chunks.length + largeFiles.length;
+    setTotalChunks(Math.max(totalUnits, 1));
     let totalReplaced = 0;
     // Accumulates transfer-stage failures (per-file rejections + whole-chunk
     // failures) with their reasons, so the report can name each one.
     const collected: UploadFailure[] = [];
     // Whether at least one chunk was accepted for background processing.
     let anyQueued = false;
+    // Large-file chunked path processes synchronously on complete — count successes
+    // so we can settle immediately when nothing is left in the async worker.
+    let largeSucceeded = 0;
+    let unitIndex = 0;
 
     try {
+      // --- Large files: existing backend chunked-upload (10MB parts) ---
+      for (let li = 0; li < largeFiles.length; li++) {
+        const file = largeFiles[li];
+        setCurrentChunk(unitIndex + 1);
+        setPhase({
+          kind: 'transferring',
+          chunkIndex: unitIndex,
+          totalChunks: totalUnits,
+          bytePct: 0,
+        });
+
+        try {
+          await photosService.uploadLargeFile(
+            eventId,
+            file,
+            selectedCategoryId,
+            (pct) => {
+              // pct is 0–100 for this file's chunks only
+              const overall =
+                totalUnits > 0
+                  ? ((unitIndex + Math.min(pct, 100) / 100) / totalUnits) * 100
+                  : pct;
+              setUploadProgress(Math.round(overall));
+              setPhase({
+                kind: 'transferring',
+                chunkIndex: unitIndex,
+                totalChunks: totalUnits,
+                bytePct: Math.round(Math.min(pct, 100)),
+              });
+            }
+          );
+          largeSucceeded += 1;
+          // complete() already ran ffmpeg + insert — refresh grid
+          if (onUploadComplete) onUploadComplete();
+        } catch (error: any) {
+          console.error(`Error uploading large file ${file.name}:`, error);
+          const reason =
+            error?.response?.data?.error ||
+            error?.message ||
+            t('upload.failures.transferReason', 'Transfer failed');
+          collected.push({ filename: file.name, reason, kind: 'transfer' });
+        }
+        unitIndex += 1;
+      }
+
+      // --- Small files: existing multipart batch path ---
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-        setCurrentChunk(chunkIndex + 1);
+        setCurrentChunk(unitIndex + 1);
         const chunk = chunks[chunkIndex];
         const formData = new FormData();
 
@@ -295,8 +369,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
 
         setPhase({
           kind: 'transferring',
-          chunkIndex,
-          totalChunks: chunks.length,
+          chunkIndex: unitIndex,
+          totalChunks: totalUnits,
           bytePct: 0,
         });
 
@@ -305,7 +379,10 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
             onUploadProgress: (progressEvent) => {
               if (progressEvent.total) {
                 const chunkProgress = progressEvent.loaded / progressEvent.total;
-                const overallProgress = ((chunkIndex + chunkProgress) / chunks.length) * 100;
+                const overallProgress =
+                  totalUnits > 0
+                    ? ((unitIndex + chunkProgress) / totalUnits) * 100
+                    : chunkProgress * 100;
                 setUploadProgress(Math.round(overallProgress));
 
                 // Once bytes have all left the browser, the request is
@@ -314,11 +391,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
                 // looking frozen at the chunk's max progress.
                 if (chunkProgress >= 1) {
                   setPhase((prev) =>
-                    prev.kind === 'transferring' && prev.chunkIndex === chunkIndex
+                    prev.kind === 'transferring' && prev.chunkIndex === unitIndex
                       ? {
                           kind: 'processing',
-                          chunkIndex,
-                          totalChunks: chunks.length,
+                          chunkIndex: unitIndex,
+                          totalChunks: totalUnits,
                           filesInChunk: chunk.length,
                         }
                       : prev
@@ -326,8 +403,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
                 } else {
                   setPhase({
                     kind: 'transferring',
-                    chunkIndex,
-                    totalChunks: chunks.length,
+                    chunkIndex: unitIndex,
+                    totalChunks: totalUnits,
                     bytePct: Math.round(chunkProgress * 100),
                   });
                 }
@@ -370,8 +447,8 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
           );
 
           // Continue with next chunk even if one fails
-          continue;
         }
+        unitIndex += 1;
       }
 
       // Bytes are all on the server. Clear the file picker so the
@@ -397,6 +474,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
             count: collected.length,
           })
         );
+      } else if (largeSucceeded > 0 && !anyQueued) {
+        toast.success(
+          t('upload.uploadComplete') ||
+            `Successfully uploaded ${largeSucceeded} file(s)`
+        );
       }
 
       // Refresh the grid early so the user sees their photos appearing
@@ -412,6 +494,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({ eventId, onUploadCompl
       // stage is already terminal — settle now and reset the UI. Otherwise
       // the processing effect below settles once the worker finishes, so
       // processing failures are included before the modal decides to close.
+      // Large chunked uploads finish processing inside complete() — no async queue.
       if (!anyQueued) {
         onUploadSettled?.({ hasFailures: collected.length > 0 });
         setIsUploading(false);

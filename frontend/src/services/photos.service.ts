@@ -1,5 +1,6 @@
 import { api } from '../config/api';
 import { parseContentDispositionFilename } from '../utils/contentDisposition';
+import { resolveFileMimeType } from '../utils/fileTypes';
 
 export interface AdminPhoto {
   id: number;
@@ -162,8 +163,13 @@ class PhotosService {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
-  // Chunked upload methods for large files (videos up to 10GB)
+  // Chunked upload methods for large files (videos up to 10GB).
+  // 10MB chunks stay under Cloudflare Tunnel / free-proxy ~100MB body limits.
   private CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+
+  // Default single-request threshold — aligns with Cloudflare-safe batch headroom.
+  // Prefer general_max_upload_batch_size_mb from settings when calling from UI.
+  private DEFAULT_CHUNKED_THRESHOLD = 95 * 1024 * 1024;
 
   async initChunkedUpload(
     eventId: number,
@@ -193,7 +199,9 @@ class PhotosService {
       {
         headers: {
           'Content-Type': 'application/octet-stream'
-        }
+        },
+        // Large videos: many sequential 10MB parts; avoid client-side abort mid-transfer.
+        timeout: 0,
       }
     );
     return response.data;
@@ -206,7 +214,9 @@ class PhotosService {
   ): Promise<{ success: boolean; uploaded: number; photos: AdminPhoto[] }> {
     const response = await api.post(
       `/admin/photos/${eventId}/chunked-upload/${uploadId}/complete`,
-      { category_id: categoryId }
+      { category_id: categoryId },
+      // Merge + ffmpeg thumbnail can take a while on large videos.
+      { timeout: 0 }
     );
     return response.data;
   }
@@ -219,14 +229,20 @@ class PhotosService {
     eventId: number,
     file: File,
     categoryId?: number | null,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    mimeTypeOverride?: string
   ): Promise<AdminPhoto[]> {
+    const mimeType = mimeTypeOverride || resolveFileMimeType(file);
+    if (!mimeType) {
+      throw new Error(`Unable to determine MIME type for ${file.name}`);
+    }
+
     // Initialize upload
     const { uploadId, expectedChunks } = await this.initChunkedUpload(
       eventId,
       file.name,
       file.size,
-      file.type
+      mimeType
     );
 
     try {
@@ -257,9 +273,10 @@ class PhotosService {
     }
   }
 
-  // Check if file should use chunked upload (> 100MB)
-  shouldUseChunkedUpload(fileSize: number): boolean {
-    return fileSize > 100 * 1024 * 1024; // 100MB threshold
+  // Check if file should use chunked upload (default > 95MB Cloudflare-safe batch).
+  shouldUseChunkedUpload(fileSize: number, thresholdBytes?: number): boolean {
+    const threshold = thresholdBytes ?? this.DEFAULT_CHUNKED_THRESHOLD;
+    return fileSize > threshold;
   }
 
   // ============================================
