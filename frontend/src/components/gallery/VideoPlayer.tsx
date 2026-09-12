@@ -105,19 +105,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [t]);
 
   // Keep isFullscreen honest when the user leaves through Esc or the native
-  // UI rather than our button: the document-level event covers the desktop
-  // path, and iOS Safari only tells the <video> itself (webkitendfullscreen).
+  // UI rather than our button. Browsers with only the prefixed API (the
+  // webkitRequestFullscreen path below) fire webkitfullscreenchange and
+  // expose webkitFullscreenElement instead of the standard pair; iOS Safari
+  // only tells the <video> itself (webkitendfullscreen). Compare against our
+  // own container so another element going fullscreen does not flip us.
   useEffect(() => {
     const video = videoRef.current;
     const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      const doc = document as Document & { webkitFullscreenElement?: Element | null };
+      const active = document.fullscreenElement || doc.webkitFullscreenElement || null;
+      setIsFullscreen(active !== null && active === containerRef.current);
     };
     const handleWebkitEnd = () => setIsFullscreen(false);
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     video?.addEventListener('webkitendfullscreen', handleWebkitEnd);
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       video?.removeEventListener('webkitendfullscreen', handleWebkitEnd);
     };
   }, []);

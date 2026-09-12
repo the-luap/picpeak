@@ -84,6 +84,32 @@ describe('VideoPlayer paused-state controls', () => {
     expect(screen.getByLabelText('Fullscreen')).toBeInTheDocument();
   });
 
+  it('syncs an Esc exit on browsers that only fire the prefixed event', async () => {
+    const { container } = render(<VideoPlayer src="/api/gallery/e/photo/1" />);
+    const root = container.firstElementChild as FullscreenTarget;
+    root.requestFullscreen = undefined;
+    root.webkitRequestFullscreen = vi.fn().mockResolvedValue(undefined);
+
+    fireEvent.click(screen.getByLabelText('Fullscreen'));
+    await vi.waitFor(() => expect(screen.getByLabelText('Exit fullscreen')).toBeInTheDocument());
+
+    fireEvent(document, new Event('webkitfullscreenchange'));
+    expect(screen.getByLabelText('Fullscreen')).toBeInTheDocument();
+  });
+
+  it('ignores another element entering fullscreen', async () => {
+    const { container } = render(<VideoPlayer src="/api/gallery/e/photo/1" />);
+    const other = document.createElement('div');
+    Object.defineProperty(document, 'fullscreenElement', { value: other, configurable: true });
+    try {
+      fireEvent(document, new Event('fullscreenchange'));
+      expect(screen.getByLabelText('Fullscreen')).toBeInTheDocument();
+      expect(container.querySelector('video')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true });
+    }
+  });
+
   it('keeps the controls visible after a pause, even if a hide was already scheduled', () => {
     vi.useFakeTimers();
     try {
