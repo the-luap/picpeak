@@ -41,6 +41,13 @@ async function archiveEvent(event) {
           'photos.filename',
           'photos.original_filename',
           'photos.type',
+          // Not derivable from the extension for every format, and restore
+          // has to know a video from a photo to write the row back. Both,
+          // because neither is reliable alone: fileWatcher sets a video/*
+          // mime_type but never media_type, so its videos carry the 'image'
+          // default and every reader knows them as videos only through mime.
+          'photos.media_type',
+          'photos.mime_type',
           'photos.uploaded_at',
           'photo_categories.name as category_name',
         );
